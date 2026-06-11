@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.AddCardController">
+    <left>
+        <VBox styleClass="sidebar" spacing="12">
+            <Label text="CodeFit" styleClass="brand" />
+            <Button text="Dashboard" onAction="#goDashboard" styleClass="nav-button" />
+            <Button text="Decks" onAction="#goDecks" styleClass="nav-button" />
+            <Button text="Add Card" onAction="#goAddCard" styleClass="nav-button-primary" />
+            <Button text="Review" onAction="#goReview" styleClass="nav-button" />
+            <Button text="Stats" onAction="#goStats" styleClass="nav-button" />
+        </VBox>
+    </left>
+    <center>
+        <VBox spacing="18" styleClass="content">
+            <Label text="Forge Flashcard" styleClass="page-title" />
+            <Label fx:id="messageLabel" styleClass="status-banner" />
+            <VBox spacing="14" styleClass="panel">
+                <Label text="Deck" styleClass="section-title" />
+                <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
+                <Label text="Prompt" styleClass="section-title" />
+                <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" />
+                <Label text="Answer" styleClass="section-title" />
+                <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" />
+                <Button text="Save Card" onAction="#saveCard" styleClass="action-button" />
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>

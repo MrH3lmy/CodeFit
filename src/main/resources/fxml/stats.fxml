@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.StatsController">
+    <left>
+        <VBox styleClass="sidebar" spacing="12">
+            <Label text="CodeFit" styleClass="brand" />
+            <Button text="Dashboard" onAction="#goDashboard" styleClass="nav-button" />
+            <Button text="Decks" onAction="#goDecks" styleClass="nav-button" />
+            <Button text="Add Card" onAction="#goAddCard" styleClass="nav-button" />
+            <Button text="Review" onAction="#goReview" styleClass="nav-button" />
+            <Button text="Stats" onAction="#goStats" styleClass="nav-button-primary" />
+        </VBox>
+    </left>
+    <center>
+        <VBox spacing="18" styleClass="content">
+            <Label text="Combat Telemetry" styleClass="page-title" />
+            <GridPane hgap="18" vgap="18">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                </columnConstraints>
+                <VBox styleClass="stat-card" GridPane.columnIndex="0"><Label text="LEVEL" styleClass="stat-label" /><Label fx:id="levelLabel" styleClass="stat-value" /><ProgressBar fx:id="xpProgressBar" maxWidth="Infinity" /><Label fx:id="xpLabel" styleClass="muted" /></VBox>
+                <VBox styleClass="stat-card" GridPane.columnIndex="1"><Label text="STREAK" styleClass="stat-label" /><Label fx:id="streakLabel" styleClass="stat-value" /></VBox>
+                <VBox styleClass="stat-card" GridPane.columnIndex="2"><Label text="REVIEWS" styleClass="stat-label" /><Label fx:id="totalReviewsLabel" styleClass="stat-value" /></VBox>
+                <VBox styleClass="stat-card" GridPane.columnIndex="3"><Label text="TODAY" styleClass="stat-label" /><Label fx:id="reviewedTodayLabel" styleClass="stat-value accent" /></VBox>
+            </GridPane>
+            <HBox spacing="18">
+                <VBox styleClass="small-card" HBox.hgrow="ALWAYS"><Label text="Total Cards" styleClass="stat-label" /><Label fx:id="totalCardsLabel" styleClass="stat-value" /></VBox>
+                <VBox styleClass="small-card" HBox.hgrow="ALWAYS"><Label text="Due Cards" styleClass="stat-label" /><Label fx:id="dueCardsLabel" styleClass="stat-value" /></VBox>
+            </HBox>
+            <VBox spacing="10" styleClass="panel" VBox.vgrow="ALWAYS">
+                <Label text="Recent Reviews" styleClass="section-title" />
+                <ListView fx:id="recentReviewsListView" VBox.vgrow="ALWAYS" />
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>

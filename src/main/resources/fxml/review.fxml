@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ReviewController">
+    <left>
+        <VBox styleClass="sidebar" spacing="12">
+            <Label text="CodeFit" styleClass="brand" />
+            <Button text="Dashboard" onAction="#goDashboard" styleClass="nav-button" />
+            <Button text="Decks" onAction="#goDecks" styleClass="nav-button" />
+            <Button text="Add Card" onAction="#goAddCard" styleClass="nav-button" />
+            <Button text="Review" onAction="#goReview" styleClass="nav-button-primary" />
+            <Button text="Stats" onAction="#goStats" styleClass="nav-button" />
+        </VBox>
+    </left>
+    <center>
+        <VBox spacing="18" styleClass="content">
+            <HBox spacing="14">
+                <Label text="Review Arena" styleClass="page-title" />
+                <Label fx:id="queueLabel" styleClass="pill" />
+            </HBox>
+            <Label fx:id="messageLabel" styleClass="status-banner" />
+            <VBox spacing="20" styleClass="review-card" VBox.vgrow="ALWAYS">
+                <Label text="PROMPT" styleClass="stat-label" />
+                <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />
+                <Separator />
+                <Label text="ANSWER" styleClass="stat-label" />
+                <Label fx:id="answerLabel" styleClass="review-answer" wrapText="true" />
+                <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button" />
+                <HBox spacing="12">
+                    <Button fx:id="againButton" text="Again" onAction="#rateAgain" styleClass="danger-button" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
+                    <Button fx:id="hardButton" text="Hard" onAction="#rateHard" styleClass="warning-button" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
+                    <Button fx:id="goodButton" text="Good" onAction="#rateGood" styleClass="success-button" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
+                    <Button fx:id="easyButton" text="Easy" onAction="#rateEasy" styleClass="epic-button" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
+                </HBox>
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>

@@ -1,0 +1,178 @@
+.root {
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-background-color: #090d14;
+    -fx-text-fill: #e5eefc;
+}
+
+.app-root {
+    -fx-background-color: linear-gradient(to bottom right, #080b12, #111827 60%, #0b1020);
+}
+
+.sidebar {
+    -fx-background-color: rgba(8, 13, 22, 0.96);
+    -fx-border-color: transparent #1f2a44 transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 28 18;
+    -fx-pref-width: 220;
+}
+
+.content {
+    -fx-padding: 34;
+}
+
+.brand {
+    -fx-text-fill: #67e8f9;
+    -fx-font-size: 30px;
+    -fx-font-weight: 900;
+    -fx-padding: 0 0 22 0;
+    -fx-effect: dropshadow(gaussian, rgba(103, 232, 249, 0.35), 18, 0.25, 0, 0);
+}
+
+.page-title {
+    -fx-text-fill: #f8fafc;
+    -fx-font-size: 32px;
+    -fx-font-weight: 800;
+}
+
+.section-title {
+    -fx-text-fill: #c4d5f6;
+    -fx-font-size: 15px;
+    -fx-font-weight: 800;
+}
+
+.stat-label {
+    -fx-text-fill: #7dd3fc;
+    -fx-font-size: 12px;
+    -fx-font-weight: 900;
+    -fx-letter-spacing: 0.18em;
+}
+
+.stat-value {
+    -fx-text-fill: #f8fafc;
+    -fx-font-size: 34px;
+    -fx-font-weight: 900;
+}
+
+.accent {
+    -fx-text-fill: #34d399;
+}
+
+.muted {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 13px;
+}
+
+.status-banner, .pill {
+    -fx-background-color: rgba(14, 165, 233, 0.12);
+    -fx-border-color: rgba(125, 211, 252, 0.28);
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-text-fill: #bae6fd;
+    -fx-padding: 12 16;
+    -fx-font-weight: 700;
+}
+
+.pill {
+    -fx-padding: 8 14;
+    -fx-alignment: center;
+}
+
+.stat-card, .small-card, .panel, .review-card {
+    -fx-background-color: rgba(15, 23, 42, 0.84);
+    -fx-border-color: rgba(148, 163, 184, 0.18);
+    -fx-border-width: 1;
+    -fx-border-radius: 18;
+    -fx-background-radius: 18;
+    -fx-padding: 22;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 18, 0.12, 0, 8);
+}
+
+.review-card {
+    -fx-padding: 30;
+}
+
+.review-prompt {
+    -fx-text-fill: #f8fafc;
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+}
+
+.review-answer {
+    -fx-text-fill: #dbeafe;
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+}
+
+.button {
+    -fx-cursor: hand;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-font-weight: 800;
+    -fx-padding: 11 16;
+}
+
+.nav-button, .nav-button-primary {
+    -fx-alignment: center-left;
+    -fx-background-color: transparent;
+    -fx-text-fill: #94a3b8;
+    -fx-pref-width: 180;
+}
+
+.nav-button:hover {
+    -fx-background-color: rgba(148, 163, 184, 0.10);
+    -fx-text-fill: #e2e8f0;
+}
+
+.nav-button-primary {
+    -fx-background-color: linear-gradient(to right, rgba(14, 165, 233, 0.28), rgba(20, 184, 166, 0.18));
+    -fx-text-fill: #f8fafc;
+    -fx-border-color: rgba(125, 211, 252, 0.38);
+}
+
+.action-button {
+    -fx-background-color: linear-gradient(to right, #0891b2, #0f766e);
+    -fx-text-fill: white;
+}
+
+.danger-button { -fx-background-color: #7f1d1d; -fx-text-fill: #fee2e2; }
+.warning-button { -fx-background-color: #78350f; -fx-text-fill: #ffedd5; }
+.success-button { -fx-background-color: #14532d; -fx-text-fill: #dcfce7; }
+.epic-button { -fx-background-color: #4c1d95; -fx-text-fill: #ede9fe; }
+
+.text-field, .text-area, .combo-box, .list-view {
+    -fx-background-color: rgba(2, 6, 23, 0.72);
+    -fx-border-color: rgba(148, 163, 184, 0.26);
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-text-fill: #e5eefc;
+    -fx-control-inner-background: #0f172a;
+    -fx-prompt-text-fill: #64748b;
+}
+
+.text-area .content {
+    -fx-background-color: #0f172a;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #dbeafe;
+    -fx-padding: 10;
+}
+
+.list-cell:selected {
+    -fx-background-color: rgba(14, 165, 233, 0.30);
+}
+
+.progress-bar > .track {
+    -fx-background-color: rgba(15, 23, 42, 0.95);
+    -fx-background-radius: 999;
+}
+
+.progress-bar > .bar {
+    -fx-background-color: linear-gradient(to right, #06b6d4, #22c55e);
+    -fx-background-radius: 999;
+}
+
+.separator .line {
+    -fx-border-color: rgba(148, 163, 184, 0.25);
+}

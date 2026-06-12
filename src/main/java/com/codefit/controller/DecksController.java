@@ -4,16 +4,26 @@ import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
+import java.time.format.DateTimeFormatter;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 public class DecksController extends BaseController {
+    private static final DateTimeFormatter DUE_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d");
+
     @FXML private ListView<Deck> deckListView;
-    @FXML private ListView<String> cardListView;
+    @FXML private ListView<Flashcard> cardListView;
     @FXML private TextField deckNameField;
     @FXML private TextArea deckDescriptionArea;
     @FXML private Label messageLabel;
@@ -23,8 +33,10 @@ public class DecksController extends BaseController {
 
     @FXML
     public void initialize() {
-        loadDecks();
+        deckListView.setCellFactory(listView -> new DeckCell());
+        cardListView.setCellFactory(listView -> new FlashcardCell());
         deckListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, deck) -> loadCards(deck));
+        loadDecks();
     }
 
     @FXML
@@ -44,7 +56,9 @@ public class DecksController extends BaseController {
         deckListView.setItems(FXCollections.observableArrayList(deckService.getDecks()));
         if (deckListView.getItems().isEmpty()) {
             messageLabel.setText("No decks yet. Build your first training deck.");
-            cardListView.setItems(FXCollections.observableArrayList("Select or create a deck to inspect cards."));
+            deckListView.setPlaceholder(new Label("Create a deck to start organizing cards."));
+            cardListView.setPlaceholder(new Label("Select or create a deck to inspect cards."));
+            cardListView.getItems().clear();
         } else {
             deckListView.getSelectionModel().selectFirst();
         }
@@ -52,18 +66,100 @@ public class DecksController extends BaseController {
 
     private void loadCards(Deck deck) {
         if (deck == null) {
-            cardListView.setItems(FXCollections.observableArrayList("No deck selected."));
+            cardListView.setPlaceholder(new Label("No deck selected."));
+            cardListView.getItems().clear();
             return;
         }
-        var cards = flashcardService.getCardsForDeck(deck.getId()).stream()
-                .map(this::formatCard)
-                .toList();
-        cardListView.setItems(cards.isEmpty()
-                ? FXCollections.observableArrayList("No cards in this deck yet.")
-                : FXCollections.observableArrayList(cards));
+
+        var cards = FXCollections.observableArrayList(flashcardService.getCardsForDeck(deck.getId()));
+        cardListView.setPlaceholder(new Label("No cards in this deck yet."));
+        cardListView.setItems(cards);
     }
 
-    private String formatCard(Flashcard card) {
-        return card.getFront() + "  →  " + card.getBack() + "  • due " + card.getDueDate();
+    private static String displayText(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.strip();
+    }
+
+    private static final class DeckCell extends ListCell<Deck> {
+        private final Label nameLabel = new Label();
+        private final Label descriptionLabel = new Label();
+        private final VBox content = new VBox(4, nameLabel, descriptionLabel);
+
+        private DeckCell() {
+            nameLabel.getStyleClass().add("deck-row-title");
+            nameLabel.setWrapText(true);
+            nameLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+            nameLabel.maxWidthProperty().bind(widthProperty().subtract(28));
+
+            descriptionLabel.getStyleClass().add("deck-row-description");
+            descriptionLabel.setWrapText(true);
+            descriptionLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+            descriptionLabel.maxWidthProperty().bind(widthProperty().subtract(28));
+
+            content.getStyleClass().add("deck-row");
+            content.setMaxWidth(Double.MAX_VALUE);
+
+            setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        }
+
+        @Override
+        protected void updateItem(Deck deck, boolean empty) {
+            super.updateItem(deck, empty);
+            if (empty || deck == null) {
+                setGraphic(null);
+                return;
+            }
+
+            nameLabel.setText(displayText(deck.getName(), "Untitled deck"));
+            descriptionLabel.setText(displayText(deck.getDescription(), "No description yet."));
+            setGraphic(content);
+        }
+    }
+
+    private static final class FlashcardCell extends ListCell<Flashcard> {
+        private final Label promptLabel = new Label();
+        private final Label answerLabel = new Label();
+        private final Label dueBadge = new Label();
+        private final VBox textBlock = new VBox(5, promptLabel, answerLabel);
+        private final HBox content = new HBox(12, textBlock, dueBadge);
+
+        private FlashcardCell() {
+            promptLabel.getStyleClass().add("card-row-prompt");
+            promptLabel.setWrapText(true);
+            promptLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+            promptLabel.maxWidthProperty().bind(widthProperty().subtract(132));
+
+            answerLabel.getStyleClass().add("card-row-answer");
+            answerLabel.setWrapText(true);
+            answerLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+            answerLabel.maxWidthProperty().bind(widthProperty().subtract(132));
+
+            dueBadge.getStyleClass().add("due-badge");
+            dueBadge.setMinWidth(76);
+            dueBadge.setAlignment(Pos.CENTER);
+
+            textBlock.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(textBlock, Priority.ALWAYS);
+
+            content.getStyleClass().add("card-row");
+            content.setAlignment(Pos.TOP_LEFT);
+            content.setMaxWidth(Double.MAX_VALUE);
+
+            setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        }
+
+        @Override
+        protected void updateItem(Flashcard card, boolean empty) {
+            super.updateItem(card, empty);
+            if (empty || card == null) {
+                setGraphic(null);
+                return;
+            }
+
+            promptLabel.setText(displayText(card.getFront(), "Untitled prompt"));
+            answerLabel.setText(displayText(card.getBack(), "No answer yet."));
+            dueBadge.setText(card.getDueDate() == null ? "No due" : "Due " + DUE_DATE_FORMATTER.format(card.getDueDate()));
+            setGraphic(content);
+        }
     }
 }

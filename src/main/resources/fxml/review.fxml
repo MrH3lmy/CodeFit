@@ -8,26 +8,30 @@
         <Sidebar activePage="review" />
     </left>
     <center>
-        <VBox spacing="18" styleClass="content">
-            <HBox spacing="14">
-                <Label text="Review Arena" styleClass="page-title" />
-                <Label fx:id="queueLabel" styleClass="pill" />
-            </HBox>
-            <Label fx:id="messageLabel" styleClass="status-banner" />
-            <VBox spacing="20" styleClass="review-card" VBox.vgrow="ALWAYS">
-                <Label text="PROMPT" styleClass="stat-label" />
-                <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />
-                <Separator />
-                <Label text="ANSWER" styleClass="stat-label" />
-                <Label fx:id="answerLabel" styleClass="review-answer" wrapText="true" />
-                <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button" />
-                <HBox spacing="12">
-                    <Button fx:id="againButton" text="Again" onAction="#rateAgain" styleClass="danger-button" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
-                    <Button fx:id="hardButton" text="Hard" onAction="#rateHard" styleClass="warning-button" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
-                    <Button fx:id="goodButton" text="Good" onAction="#rateGood" styleClass="success-button" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
-                    <Button fx:id="easyButton" text="Easy" onAction="#rateEasy" styleClass="epic-button" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
-                </HBox>
-            </VBox>
-        </VBox>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <content>
+                <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+                    <VBox spacing="10" maxWidth="Infinity">
+                        <Label text="Review Arena" styleClass="page-title" wrapText="true" />
+                        <Label fx:id="queueLabel" styleClass="pill" wrapText="true" />
+                    </VBox>
+                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" />
+                    <VBox spacing="20" styleClass="review-card" maxWidth="Infinity" VBox.vgrow="ALWAYS">
+                        <Label text="PROMPT" styleClass="stat-label" />
+                        <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />
+                        <Separator />
+                        <Label text="ANSWER" styleClass="stat-label" />
+                        <Label fx:id="answerLabel" styleClass="review-answer" wrapText="true" />
+                        <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button" />
+                        <TilePane hgap="12" vgap="12" prefTileWidth="120" tileAlignment="TOP_LEFT">
+                            <Button fx:id="againButton" text="Again" onAction="#rateAgain" styleClass="danger-button" maxWidth="Infinity" />
+                            <Button fx:id="hardButton" text="Hard" onAction="#rateHard" styleClass="warning-button" maxWidth="Infinity" />
+                            <Button fx:id="goodButton" text="Good" onAction="#rateGood" styleClass="success-button" maxWidth="Infinity" />
+                            <Button fx:id="easyButton" text="Easy" onAction="#rateEasy" styleClass="epic-button" maxWidth="Infinity" />
+                        </TilePane>
+                    </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
     </center>
 </BorderPane>

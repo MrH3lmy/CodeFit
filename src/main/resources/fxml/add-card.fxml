@@ -8,18 +8,22 @@
         <Sidebar activePage="add-card" />
     </left>
     <center>
-        <VBox spacing="18" styleClass="content">
-            <Label text="Forge Flashcard" styleClass="page-title" />
-            <Label fx:id="messageLabel" styleClass="status-banner" />
-            <VBox spacing="14" styleClass="panel">
-                <Label text="Deck" styleClass="section-title" />
-                <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
-                <Label text="Prompt" styleClass="section-title" />
-                <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" />
-                <Label text="Answer" styleClass="section-title" />
-                <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" />
-                <Button text="Save Card" onAction="#saveCard" styleClass="action-button" />
-            </VBox>
-        </VBox>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <content>
+                <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+                    <Label text="Forge Flashcard" styleClass="page-title" wrapText="true" />
+                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" />
+                    <VBox spacing="14" styleClass="panel" maxWidth="Infinity">
+                        <Label text="Deck" styleClass="section-title" />
+                        <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
+                        <Label text="Prompt" styleClass="section-title" />
+                        <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" />
+                        <Label text="Answer" styleClass="section-title" />
+                        <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" />
+                        <Button text="Save Card" onAction="#saveCard" styleClass="action-button" />
+                    </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
     </center>
 </BorderPane>

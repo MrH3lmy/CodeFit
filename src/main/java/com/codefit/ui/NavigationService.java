@@ -48,6 +48,8 @@ public final class NavigationService {
             Scene scene = new Scene(root, 1100, 720);
             scene.getStylesheets().add(NavigationService.class.getResource("/css/app.css").toExternalForm());
             primaryStage.setTitle(title);
+            primaryStage.setMinWidth(760);
+            primaryStage.setMinHeight(560);
             primaryStage.setScene(scene);
             primaryStage.show();
         } catch (IOException exception) {

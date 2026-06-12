@@ -8,28 +8,26 @@
         <Sidebar activePage="stats" />
     </left>
     <center>
-        <VBox spacing="18" styleClass="content">
-            <Label text="Combat Telemetry" styleClass="page-title" />
-            <GridPane hgap="18" vgap="18">
-                <columnConstraints>
-                    <ColumnConstraints percentWidth="25" />
-                    <ColumnConstraints percentWidth="25" />
-                    <ColumnConstraints percentWidth="25" />
-                    <ColumnConstraints percentWidth="25" />
-                </columnConstraints>
-                <VBox styleClass="stat-card" GridPane.columnIndex="0"><Label text="LEVEL" styleClass="stat-label" /><Label fx:id="levelLabel" styleClass="stat-value" /><ProgressBar fx:id="xpProgressBar" maxWidth="Infinity" /><Label fx:id="xpLabel" styleClass="muted" /></VBox>
-                <VBox styleClass="stat-card" GridPane.columnIndex="1"><Label text="STREAK" styleClass="stat-label" /><Label fx:id="streakLabel" styleClass="stat-value" /></VBox>
-                <VBox styleClass="stat-card" GridPane.columnIndex="2"><Label text="REVIEWS" styleClass="stat-label" /><Label fx:id="totalReviewsLabel" styleClass="stat-value" /></VBox>
-                <VBox styleClass="stat-card" GridPane.columnIndex="3"><Label text="TODAY" styleClass="stat-label" /><Label fx:id="reviewedTodayLabel" styleClass="stat-value accent" /></VBox>
-            </GridPane>
-            <HBox spacing="18">
-                <VBox styleClass="small-card" HBox.hgrow="ALWAYS"><Label text="Total Cards" styleClass="stat-label" /><Label fx:id="totalCardsLabel" styleClass="stat-value" /></VBox>
-                <VBox styleClass="small-card" HBox.hgrow="ALWAYS"><Label text="Due Cards" styleClass="stat-label" /><Label fx:id="dueCardsLabel" styleClass="stat-value" /></VBox>
-            </HBox>
-            <VBox spacing="10" styleClass="panel" VBox.vgrow="ALWAYS">
-                <Label text="Recent Reviews" styleClass="section-title" />
-                <ListView fx:id="recentReviewsListView" VBox.vgrow="ALWAYS" />
-            </VBox>
-        </VBox>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <content>
+                <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+                    <Label text="Combat Telemetry" styleClass="page-title" wrapText="true" />
+                    <TilePane hgap="18" vgap="18" prefTileWidth="180" tileAlignment="TOP_LEFT">
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="LEVEL" styleClass="stat-label" /><Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" /><ProgressBar fx:id="xpProgressBar" maxWidth="Infinity" /><Label fx:id="xpLabel" styleClass="muted" wrapText="true" /></VBox>
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="STREAK" styleClass="stat-label" /><Label fx:id="streakLabel" styleClass="stat-value" wrapText="true" /></VBox>
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="REVIEWS" styleClass="stat-label" /><Label fx:id="totalReviewsLabel" styleClass="stat-value" wrapText="true" /></VBox>
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="TODAY" styleClass="stat-label" /><Label fx:id="reviewedTodayLabel" styleClass="stat-value accent" wrapText="true" /></VBox>
+                    </TilePane>
+                    <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
+                        <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity"><Label text="Total Cards" styleClass="stat-label" /><Label fx:id="totalCardsLabel" styleClass="stat-value" wrapText="true" /></VBox>
+                        <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity"><Label text="Due Cards" styleClass="stat-label" /><Label fx:id="dueCardsLabel" styleClass="stat-value" wrapText="true" /></VBox>
+                    </TilePane>
+                    <VBox spacing="10" styleClass="panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
+                        <Label text="Recent Reviews" styleClass="section-title" />
+                        <ListView fx:id="recentReviewsListView" prefHeight="260" VBox.vgrow="ALWAYS" />
+                    </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
     </center>
 </BorderPane>

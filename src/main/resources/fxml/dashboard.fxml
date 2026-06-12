@@ -9,43 +9,42 @@
         <Sidebar activePage="dashboard" />
     </left>
     <center>
-        <VBox spacing="24" styleClass="content">
-            <Label text="Mission Control" styleClass="page-title" />
-            <Label fx:id="emptyStateLabel" styleClass="status-banner" />
-            <GridPane hgap="18" vgap="18">
-                <columnConstraints>
-                    <ColumnConstraints percentWidth="33" />
-                    <ColumnConstraints percentWidth="33" />
-                    <ColumnConstraints percentWidth="34" />
-                </columnConstraints>
-                <VBox styleClass="stat-card" GridPane.columnIndex="0">
-                    <Label text="RANK" styleClass="stat-label" />
-                    <Label fx:id="levelLabel" styleClass="stat-value" />
-                    <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" />
-                    <Label fx:id="xpLabel" styleClass="muted" />
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <content>
+                <VBox spacing="24" styleClass="content" maxWidth="Infinity">
+                    <Label text="Mission Control" styleClass="page-title" wrapText="true" />
+                    <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" />
+                    <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="RANK" styleClass="stat-label" />
+                            <Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" />
+                            <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" />
+                            <Label fx:id="xpLabel" styleClass="muted" wrapText="true" />
+                        </VBox>
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="STREAK" styleClass="stat-label" />
+                            <Label fx:id="streakLabel" styleClass="stat-value" wrapText="true" />
+                            <Label text="Keep daily reviews alive to maintain your combo." styleClass="muted" wrapText="true" />
+                        </VBox>
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="DUE REVIEWS" styleClass="stat-label" />
+                            <Label fx:id="dueCountLabel" styleClass="stat-value accent" wrapText="true" />
+                            <Button text="Start Review" onAction="#goReview" styleClass="action-button" maxWidth="Infinity" />
+                        </VBox>
+                    </TilePane>
+                    <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
+                        <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="Decks" styleClass="stat-label" />
+                            <Label fx:id="deckCountLabel" styleClass="stat-value" wrapText="true" />
+                        </VBox>
+                        <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="Cards" styleClass="stat-label" />
+                            <Label fx:id="cardCountLabel" styleClass="stat-value" wrapText="true" />
+                        </VBox>
+                    </TilePane>
                 </VBox>
-                <VBox styleClass="stat-card" GridPane.columnIndex="1">
-                    <Label text="STREAK" styleClass="stat-label" />
-                    <Label fx:id="streakLabel" styleClass="stat-value" />
-                    <Label text="Keep daily reviews alive to maintain your combo." styleClass="muted" wrapText="true" />
-                </VBox>
-                <VBox styleClass="stat-card" GridPane.columnIndex="2">
-                    <Label text="DUE REVIEWS" styleClass="stat-label" />
-                    <Label fx:id="dueCountLabel" styleClass="stat-value accent" />
-                    <Button text="Start Review" onAction="#goReview" styleClass="action-button" />
-                </VBox>
-            </GridPane>
-            <HBox spacing="18">
-                <VBox styleClass="small-card" HBox.hgrow="ALWAYS">
-                    <Label text="Decks" styleClass="stat-label" />
-                    <Label fx:id="deckCountLabel" styleClass="stat-value" />
-                </VBox>
-                <VBox styleClass="small-card" HBox.hgrow="ALWAYS">
-                    <Label text="Cards" styleClass="stat-label" />
-                    <Label fx:id="cardCountLabel" styleClass="stat-value" />
-                </VBox>
-            </HBox>
-        </VBox>
+            </content>
+        </ScrollPane>
     </center>
     <padding><Insets top="0" right="0" bottom="0" left="0" /></padding>
 </BorderPane>

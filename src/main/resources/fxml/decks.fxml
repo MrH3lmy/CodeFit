@@ -8,25 +8,29 @@
         <Sidebar activePage="decks" />
     </left>
     <center>
-        <VBox spacing="18" styleClass="content">
-            <Label text="Deck Arsenal" styleClass="page-title" />
-            <Label fx:id="messageLabel" styleClass="status-banner" />
-            <HBox spacing="18" VBox.vgrow="ALWAYS">
-                <VBox spacing="10" styleClass="panel" HBox.hgrow="ALWAYS">
-                    <Label text="Decks" styleClass="section-title" />
-                    <ListView fx:id="deckListView" VBox.vgrow="ALWAYS" />
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <content>
+                <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+                    <Label text="Deck Arsenal" styleClass="page-title" wrapText="true" />
+                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" />
+                    <VBox spacing="18" VBox.vgrow="ALWAYS" maxWidth="Infinity">
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="Decks" styleClass="section-title" />
+                            <ListView fx:id="deckListView" prefHeight="220" VBox.vgrow="ALWAYS" />
+                        </VBox>
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="Cards" styleClass="section-title" />
+                            <ListView fx:id="cardListView" prefHeight="220" VBox.vgrow="ALWAYS" />
+                        </VBox>
+                        <VBox spacing="10" styleClass="panel" minWidth="0" maxWidth="Infinity">
+                            <Label text="Create Deck" styleClass="section-title" />
+                            <TextField fx:id="deckNameField" promptText="Deck name" maxWidth="Infinity" />
+                            <TextArea fx:id="deckDescriptionArea" promptText="Description" prefRowCount="6" wrapText="true" />
+                            <Button text="Create Deck" onAction="#createDeck" styleClass="action-button" />
+                        </VBox>
+                    </VBox>
                 </VBox>
-                <VBox spacing="10" styleClass="panel" HBox.hgrow="ALWAYS">
-                    <Label text="Cards" styleClass="section-title" />
-                    <ListView fx:id="cardListView" VBox.vgrow="ALWAYS" />
-                </VBox>
-                <VBox spacing="10" styleClass="panel" prefWidth="300">
-                    <Label text="Create Deck" styleClass="section-title" />
-                    <TextField fx:id="deckNameField" promptText="Deck name" />
-                    <TextArea fx:id="deckDescriptionArea" promptText="Description" prefRowCount="6" wrapText="true" />
-                    <Button text="Create Deck" onAction="#createDeck" styleClass="action-button" />
-                </VBox>
-            </HBox>
-        </VBox>
+            </content>
+        </ScrollPane>
     </center>
 </BorderPane>

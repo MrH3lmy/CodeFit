@@ -12,13 +12,25 @@
     -fx-background-color: rgba(8, 13, 22, 0.96);
     -fx-border-color: transparent #1f2a44 transparent transparent;
     -fx-border-width: 0 1 0 0;
-    -fx-padding: 28 18;
-    -fx-pref-width: 220;
+    -fx-padding: 28 14;
+    -fx-min-width: 170;
+    -fx-pref-width: 200;
+    -fx-max-width: 220;
 }
 
 .content {
     -fx-padding: 34;
 }
+
+.content-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.content-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
 
 .brand {
     -fx-text-fill: #67e8f9;
@@ -115,7 +127,6 @@
     -fx-alignment: center-left;
     -fx-background-color: transparent;
     -fx-text-fill: #94a3b8;
-    -fx-pref-width: 180;
 }
 
 .nav-button:hover {

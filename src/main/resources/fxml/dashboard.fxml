@@ -2,17 +2,11 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import com.codefit.ui.Sidebar?>
 
 <BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.DashboardController">
     <left>
-        <VBox styleClass="sidebar" spacing="12">
-            <Label text="CodeFit" styleClass="brand" />
-            <Button text="Dashboard" onAction="#goDashboard" styleClass="nav-button-primary" />
-            <Button text="Decks" onAction="#goDecks" styleClass="nav-button" />
-            <Button text="Add Card" onAction="#goAddCard" styleClass="nav-button" />
-            <Button text="Review" onAction="#goReview" styleClass="nav-button" />
-            <Button text="Stats" onAction="#goStats" styleClass="nav-button" />
-        </VBox>
+        <Sidebar activePage="dashboard" />
     </left>
     <center>
         <VBox spacing="24" styleClass="content">

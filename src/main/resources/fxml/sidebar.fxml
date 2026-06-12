@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<fx:root type="VBox" styleClass="sidebar" spacing="12" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+    <Label text="CodeFit" styleClass="brand" />
+    <Button fx:id="dashboardButton" text="Dashboard" onAction="#goDashboard" />
+    <Button fx:id="decksButton" text="Decks" onAction="#goDecks" />
+    <Button fx:id="addCardButton" text="Add Card" onAction="#goAddCard" />
+    <Button fx:id="reviewButton" text="Review" onAction="#goReview" />
+    <Button fx:id="statsButton" text="Stats" onAction="#goStats" />
+</fx:root>

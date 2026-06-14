@@ -38,13 +38,13 @@ public class DashboardController extends BaseController {
         levelProgressBar.setProgress((progress.getXp() % 100) / 100.0);
 
         if (deckCount == 0) {
-            emptyStateLabel.setText("No decks yet. Create a deck to start your first CodeFit training loop.");
+            setStatus(emptyStateLabel, "No decks yet. Create a deck to start your first CodeFit training loop.");
         } else if (cardCount == 0) {
-            emptyStateLabel.setText("Decks are ready. Add cards to begin reviews.");
+            setStatus(emptyStateLabel, "Decks are ready. Add cards to begin reviews.");
         } else if (dueCount == 0) {
-            emptyStateLabel.setText("No due reviews. Your queue is clear for now.");
+            setStatus(emptyStateLabel, "No due reviews. Your queue is clear for now.");
         } else {
-            emptyStateLabel.setText("Training queue armed. Review due cards to earn XP.");
+            setStatus(emptyStateLabel, "");
         }
     }
 }

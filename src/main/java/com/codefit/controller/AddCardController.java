@@ -22,10 +22,10 @@ public class AddCardController extends BaseController {
     public void initialize() {
         deckComboBox.setItems(FXCollections.observableArrayList(deckService.getDecks()));
         if (deckComboBox.getItems().isEmpty()) {
-            messageLabel.setText("No decks available. Create a deck before adding cards.");
+            setStatus(messageLabel, "No decks available. Create a deck before adding cards.");
         } else {
             deckComboBox.getSelectionModel().selectFirst();
-            messageLabel.setText("Create a new training card.");
+            setStatus(messageLabel, "");
         }
     }
 
@@ -36,9 +36,9 @@ public class AddCardController extends BaseController {
             flashcardService.addCard(deck == null ? 0 : deck.getId(), frontArea.getText(), backArea.getText());
             frontArea.clear();
             backArea.clear();
-            messageLabel.setText("Card added and scheduled for today.");
+            setStatus(messageLabel, "Card added and scheduled for today.");
         } catch (RuntimeException exception) {
-            messageLabel.setText(exception.getMessage());
+            setStatus(messageLabel, exception.getMessage());
         }
     }
 }

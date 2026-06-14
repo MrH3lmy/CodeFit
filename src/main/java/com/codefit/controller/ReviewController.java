@@ -53,7 +53,7 @@ public class ReviewController extends BaseController {
             return;
         }
         reviewService.review(currentCard, rating);
-        messageLabel.setText(rating.name() + " logged. +" + rating.getXp() + " XP");
+        setStatus(messageLabel, rating.name() + " logged. +" + rating.getXp() + " XP");
         currentIndex++;
         showCurrentCard();
     }
@@ -64,7 +64,7 @@ public class ReviewController extends BaseController {
             queueLabel.setText("0 due");
             promptLabel.setText("No due reviews.");
             answerLabel.setText("Add cards or come back when scheduled reviews mature.");
-            messageLabel.setText("Queue clear.");
+            setStatus(messageLabel, "");
             showAnswerButton.setDisable(true);
             setRatingButtonsDisabled(true);
             return;

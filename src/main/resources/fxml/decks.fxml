@@ -12,7 +12,7 @@
             <content>
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
                     <Label text="Deck Arsenal" styleClass="page-title" wrapText="true" />
-                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" />
+                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
                     <VBox spacing="18" VBox.vgrow="ALWAYS" maxWidth="Infinity">
                         <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
                             <Label text="Decks" styleClass="section-title" />

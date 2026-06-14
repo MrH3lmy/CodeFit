@@ -16,11 +16,12 @@
                     <VBox spacing="14" styleClass="panel" maxWidth="Infinity">
                         <Label text="Deck" styleClass="section-title" />
                         <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
+                        <Button fx:id="createDeckButton" text="Create a Deck" onAction="#goDecks" styleClass="nav-button-primary" visible="false" managed="false" />
                         <Label text="Prompt" styleClass="section-title" />
                         <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" />
                         <Label text="Answer" styleClass="section-title" />
                         <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" />
-                        <Button text="Save Card" onAction="#saveCard" styleClass="action-button" />
+                        <Button fx:id="saveCardButton" text="Save Card" onAction="#saveCard" styleClass="action-button" />
                     </VBox>
                 </VBox>
             </content>

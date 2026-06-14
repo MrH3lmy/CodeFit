@@ -15,7 +15,7 @@
                         <Label text="Review Arena" styleClass="page-title" wrapText="true" />
                         <Label fx:id="queueLabel" styleClass="pill" wrapText="true" />
                     </VBox>
-                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" />
+                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
                     <VBox spacing="20" styleClass="review-card" maxWidth="Infinity" VBox.vgrow="ALWAYS">
                         <Label text="PROMPT" styleClass="stat-label" />
                         <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />

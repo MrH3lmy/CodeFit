@@ -45,17 +45,17 @@ public class DecksController extends BaseController {
             deckService.createDeck(deckNameField.getText(), deckDescriptionArea.getText());
             deckNameField.clear();
             deckDescriptionArea.clear();
-            messageLabel.setText("Deck created.");
+            setStatus(messageLabel, "Deck created.");
             loadDecks();
         } catch (RuntimeException exception) {
-            messageLabel.setText(exception.getMessage());
+            setStatus(messageLabel, exception.getMessage());
         }
     }
 
     private void loadDecks() {
         deckListView.setItems(FXCollections.observableArrayList(deckService.getDecks()));
         if (deckListView.getItems().isEmpty()) {
-            messageLabel.setText("No decks yet. Build your first training deck.");
+            setStatus(messageLabel, "No decks yet. Build your first training deck.");
             deckListView.setPlaceholder(new Label("Create a deck to start organizing cards."));
             cardListView.setPlaceholder(new Label("Select or create a deck to inspect cards."));
             cardListView.getItems().clear();

@@ -12,7 +12,13 @@
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
             <content>
                 <VBox spacing="24" styleClass="content" maxWidth="Infinity">
-                    <Label text="Dashboard" styleClass="page-title" wrapText="true" />
+                    <VBox spacing="12" styleClass="page-header" maxWidth="Infinity">
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <Label text="Dashboard" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                            <Label text="Daily focus" styleClass="header-pill" wrapText="true" />
+                        </HBox>
+                        <Label text="Keep your learning streak moving with a quick look at rank, cards due, and deck momentum." styleClass="page-subtitle" wrapText="true" />
+                    </VBox>
                     <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
                     <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity">

@@ -11,9 +11,12 @@
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
             <content>
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
-                    <VBox spacing="10" maxWidth="Infinity">
-                        <Label text="Review" styleClass="page-title" wrapText="true" />
-                        <Label fx:id="queueLabel" styleClass="pill" wrapText="true" />
+                    <VBox spacing="12" styleClass="hero-card" maxWidth="Infinity">
+                        <HBox spacing="12" alignment="CENTER_LEFT">
+                            <Label text="Review Queue" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                            <Label fx:id="queueLabel" styleClass="header-pill" wrapText="true" />
+                        </HBox>
+                        <Label text="Clear today&apos;s queue, reinforce the cards that need attention, and turn each rating into smarter progress." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
                     <VBox spacing="20" styleClass="review-card" maxWidth="Infinity" VBox.vgrow="ALWAYS">

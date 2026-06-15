@@ -10,8 +10,8 @@ import java.io.IOException;
 import java.util.Locale;
 
 public class Sidebar extends VBox {
-    private static final String DEFAULT_NAV_CLASS = "nav-button";
-    private static final String ACTIVE_NAV_CLASS = "nav-button-primary";
+    private static final String DEFAULT_NAV_CLASS = "nav-item";
+    private static final String ACTIVE_NAV_CLASS = "nav-item-active";
 
     @FXML private Button dashboardButton;
     @FXML private Button decksButton;

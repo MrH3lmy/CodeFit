@@ -8,6 +8,7 @@ import javafx.stage.Stage;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 public final class NavigationService {
     private static final List<ThemeOption> THEMES = List.of(
@@ -18,9 +19,11 @@ public final class NavigationService {
             new ThemeOption("Synthwave", "theme-synthwave")
     );
     private static final String BASE_THEME_CLASS = "theme-dark";
+    private static final String THEME_PREFERENCE_KEY = "selectedTheme";
+    private static final Preferences PREFERENCES = Preferences.userNodeForPackage(NavigationService.class);
 
     private static Stage primaryStage;
-    private static ThemeOption currentTheme = THEMES.getFirst();
+    private static String selectedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
 
     private NavigationService() {
     }
@@ -74,28 +77,49 @@ public final class NavigationService {
     }
 
     public static String getCurrentThemeDisplayName() {
-        return currentTheme.displayName();
+        return getThemeOption(selectedTheme).displayName();
+    }
+
+    public static String getThemeClassByDisplayName(String displayName) {
+        return THEMES.stream()
+                .filter(theme -> theme.displayName().equals(displayName))
+                .findFirst()
+                .orElse(getThemeOption(selectedTheme))
+                .styleClass();
     }
 
     public static void setThemeByDisplayName(String displayName) {
-        currentTheme = THEMES.stream()
-                .filter(theme -> theme.displayName().equals(displayName))
-                .findFirst()
-                .orElse(currentTheme);
+        setTheme(getThemeClassByDisplayName(displayName));
+    }
+
+    public static void setTheme(String themeClass) {
+        selectedTheme = getThemeOption(themeClass).styleClass();
+        PREFERENCES.put(THEME_PREFERENCE_KEY, selectedTheme);
 
         if (primaryStage != null && primaryStage.getScene() != null) {
             applyTheme(primaryStage.getScene().getRoot());
         }
     }
 
+    public static String getTheme() {
+        return selectedTheme;
+    }
+
     private static void applyTheme(Parent root) {
         root.getStyleClass().removeAll(THEMES.stream().map(ThemeOption::styleClass).toArray(String[]::new));
         root.getStyleClass().remove(BASE_THEME_CLASS);
 
-        if (!currentTheme.styleClass().equals(BASE_THEME_CLASS)) {
+        if (!selectedTheme.equals(BASE_THEME_CLASS)) {
             root.getStyleClass().add(BASE_THEME_CLASS);
         }
-        root.getStyleClass().add(currentTheme.styleClass());
+        root.getStyleClass().add(selectedTheme);
+    }
+
+    private static ThemeOption getThemeOption(String themeClass) {
+        return THEMES.stream()
+                .filter(theme -> theme.styleClass().equals(themeClass))
+                .findFirst()
+                .orElse(THEMES.getFirst());
     }
 
     private record ThemeOption(String displayName, String styleClass) {

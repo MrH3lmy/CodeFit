@@ -21,31 +21,35 @@
                     </VBox>
                     <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
                     <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
-                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="RANK" styleClass="stat-label" />
+                        <VBox styleClass="stat-card cyan-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="🏆 RANK" styleClass="stat-label" />
                             <Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" />
                             <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" />
+                            <Label text="XP progress fills in as you complete reviews." styleClass="muted" wrapText="true" />
                             <Label fx:id="xpLabel" styleClass="muted" wrapText="true" />
                         </VBox>
-                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="STREAK" styleClass="stat-label" />
+                        <VBox styleClass="stat-card green-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="🔥 STREAK" styleClass="stat-label" />
                             <Label fx:id="streakLabel" styleClass="stat-value" wrapText="true" />
                             <Label text="Keep daily reviews alive to maintain your combo." styleClass="muted" wrapText="true" />
                         </VBox>
-                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="DUE REVIEWS" styleClass="stat-label" />
+                        <VBox styleClass="stat-card violet-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="⚡ DUE REVIEWS" styleClass="stat-label" />
                             <Label fx:id="dueCountLabel" styleClass="stat-value accent" wrapText="true" />
+                            <Label text="No rush—this queue updates when cards are ready." styleClass="muted" wrapText="true" />
                             <Button text="Start Review" onAction="#goReview" styleClass="action-button" maxWidth="Infinity" />
                         </VBox>
                     </TilePane>
                     <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
-                        <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="Decks" styleClass="stat-label" />
+                        <VBox styleClass="small-card amber-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="📚 DECKS" styleClass="stat-label" />
                             <Label fx:id="deckCountLabel" styleClass="stat-value" wrapText="true" />
+                            <Label text="Create focused decks to organize your practice." styleClass="muted" wrapText="true" />
                         </VBox>
-                        <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="Cards" styleClass="stat-label" />
+                        <VBox styleClass="small-card cyan-card" minWidth="0" maxWidth="Infinity">
+                            <Label text="🧠 CARDS" styleClass="stat-label" />
                             <Label fx:id="cardCountLabel" styleClass="stat-value" wrapText="true" />
+                            <Label text="Add prompts gradually; even one card starts momentum." styleClass="muted" wrapText="true" />
                         </VBox>
                     </TilePane>
                 </VBox>

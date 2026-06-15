@@ -81,7 +81,7 @@
                                 <Label text="XP PROGRESS" styleClass="stat-label" wrapText="true" />
                                 <HBox alignment="CENTER_LEFT" spacing="12">
                                     <Label text="Next Level" styleClass="panel-big-value" wrapText="true" HBox.hgrow="ALWAYS" />
-                                    <Label fx:id="xpLabel" text="15 XP / 100 XP" styleClass="xp-chip" wrapText="true" />
+                                    <Label fx:id="xpLabel" text="15 / 50 XP" styleClass="xp-chip" wrapText="true" />
                                 </HBox>
                                 <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" styleClass="level-progress" />
                                 <Label text="Complete reviews to fill the bar and unlock the next level." styleClass="helper-text" wrapText="true" />

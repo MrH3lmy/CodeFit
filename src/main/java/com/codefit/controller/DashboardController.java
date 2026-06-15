@@ -20,6 +20,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DashboardController extends BaseController {
+    private static final int XP_PER_LEVEL = 50;
+
     @FXML private Label levelLabel;
     @FXML private Label xpLabel;
     @FXML private Label streakLabel;
@@ -43,12 +45,12 @@ public class DashboardController extends BaseController {
         int dueCount = flashcardService.countDueCards();
 
         levelLabel.setText("Level " + progress.getLevel());
-        xpLabel.setText((progress.getXp() % 100) + " XP / 100 XP");
+        xpLabel.setText(formatXpProgress(progress));
         streakLabel.setText(progress.getStreakDays() + " day streak");
         deckCountLabel.setText(String.valueOf(deckCount));
         cardCountLabel.setText(String.valueOf(cardCount));
         dueCountLabel.setText(dueCount + " cards due");
-        levelProgressBar.setProgress((progress.getXp() % 100) / 100.0);
+        levelProgressBar.setProgress(calculateLevelProgress(progress));
 
         populateRecentDecks(decks);
 
@@ -61,6 +63,18 @@ public class DashboardController extends BaseController {
         } else {
             setStatus(emptyStateLabel, "You have cards ready to review.");
         }
+    }
+
+    private String formatXpProgress(UserProgress progress) {
+        return getCurrentLevelXp(progress) + " / " + XP_PER_LEVEL + " XP";
+    }
+
+    private double calculateLevelProgress(UserProgress progress) {
+        return getCurrentLevelXp(progress) / (double) XP_PER_LEVEL;
+    }
+
+    private int getCurrentLevelXp(UserProgress progress) {
+        return progress.getXp() % XP_PER_LEVEL;
     }
 
     private void populateRecentDecks(List<Deck> decks) {

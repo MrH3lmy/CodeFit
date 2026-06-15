@@ -31,10 +31,10 @@ public class DashboardController extends BaseController {
 
         levelLabel.setText("Level " + progress.getLevel());
         xpLabel.setText(progress.getXp() + " XP earned");
-        streakLabel.setText(progress.getStreakDays() + (progress.getStreakDays() == 1 ? " day" : " days"));
+        streakLabel.setText(progress.getStreakDays() + " day streak");
         deckCountLabel.setText(String.valueOf(deckCount));
         cardCountLabel.setText(String.valueOf(cardCount));
-        dueCountLabel.setText(String.valueOf(dueCount));
+        dueCountLabel.setText(dueCount + " cards due");
         levelProgressBar.setProgress((progress.getXp() % 100) / 100.0);
 
         if (deckCount == 0) {

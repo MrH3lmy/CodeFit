@@ -19,6 +19,11 @@
 
     <Region VBox.vgrow="ALWAYS" />
 
+    <VBox styleClass="theme-selector-card" spacing="8">
+        <Label text="THEME" styleClass="nav-section-label" />
+        <ChoiceBox fx:id="themeChoiceBox" maxWidth="Infinity" />
+    </VBox>
+
     <VBox styleClass="sidebar-footer-card" spacing="4">
         <Label text="🔥 Keep it warm" styleClass="sidebar-footer-title" />
         <Label text="Review a few cards today to protect your streak." styleClass="sidebar-footer-text" wrapText="true" />

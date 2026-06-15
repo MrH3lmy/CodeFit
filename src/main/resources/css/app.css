@@ -161,7 +161,7 @@
     -fx-alignment: center;
 }
 
-.stat-card, .small-card, .panel, .review-card {
+.stat-card, .small-card, .panel, .review-card, .composer-card, .tips-card {
     -fx-background-color:
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.080), rgba(255, 255, 255, 0.020)),
         rgba(15, 23, 42, 0.78);
@@ -231,6 +231,34 @@
     -fx-border-color: rgba(125, 211, 252, 0.16), rgba(148, 163, 184, 0.18);
 }
 
+.composer-card {
+    -fx-background-color:
+        radial-gradient(center 0% 0%, radius 90%, rgba(56, 189, 248, 0.24), transparent 48%),
+        radial-gradient(center 100% 0%, radius 80%, rgba(124, 58, 237, 0.16), transparent 46%),
+        linear-gradient(to bottom right, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.76)),
+        rgba(2, 6, 23, 0.48);
+    -fx-border-color: rgba(125, 211, 252, 0.34), rgba(255, 255, 255, 0.14);
+    -fx-padding: 26;
+    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.22), 32, 0.24, 0, 14);
+}
+
+.tips-card {
+    -fx-background-color:
+        radial-gradient(center 100% 0%, radius 92%, rgba(45, 212, 191, 0.18), transparent 46%),
+        linear-gradient(to bottom right, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.66)),
+        rgba(15, 23, 42, 0.82);
+    -fx-border-color: rgba(94, 234, 212, 0.28), rgba(148, 163, 184, 0.18);
+    -fx-padding: 24;
+}
+
+.helper-text {
+    -fx-text-fill: #8fb3c9;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-line-spacing: 2;
+    -fx-opacity: 0.92;
+}
+
 .review-card {
     -fx-padding: 30;
     -fx-background-color:
@@ -241,7 +269,7 @@
     -fx-border-color: rgba(196, 181, 253, 0.20), rgba(125, 211, 252, 0.18);
 }
 
-.stat-card:hover, .small-card:hover, .panel:hover, .review-card:hover {
+.stat-card:hover, .small-card:hover, .panel:hover, .review-card:hover, .composer-card:hover, .tips-card:hover {
     -fx-translate-y: -2;
     -fx-border-color: rgba(125, 211, 252, 0.36), rgba(255, 255, 255, 0.16);
     -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.20), 30, 0.20, 0, 14);
@@ -395,6 +423,7 @@
     -fx-text-fill: #e5eefc;
     -fx-control-inner-background: #0f172a;
     -fx-prompt-text-fill: #6f8098;
+    -fx-padding: 10 12;
     -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.32), 10, 0.20, 0, 2);
 }
 
@@ -405,6 +434,7 @@
 
 .text-field:focused, .text-area:focused, .combo-box:focused, .list-view:focused {
     -fx-border-color: #38bdf8;
+    -fx-border-width: 1.5;
     -fx-background-color: rgba(15, 23, 42, 0.94);
     -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.25), 18, 0.25, 0, 0);
 }
@@ -418,9 +448,15 @@
     -fx-border-color: rgba(125, 211, 252, 0.34);
 }
 
+.text-area {
+    -fx-padding: 12 14;
+}
+
 .text-area .content {
-    -fx-background-color: #0f172a;
+    -fx-background-color: linear-gradient(to bottom, #111c31, #0f172a);
     -fx-background-radius: 12;
+    -fx-padding: 10;
+    -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.34), 8, 0.18, 0, 1);
 }
 
 .list-cell {

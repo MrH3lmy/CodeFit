@@ -15,13 +15,13 @@
                         <Label text="Stats" styleClass="page-title" wrapText="true" />
                         <Label text="Track progress, protect your streaks, and scan your review history to see how every session compounds." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
-                    <TilePane hgap="18" vgap="18" prefTileWidth="180" tileAlignment="TOP_LEFT">
+                    <TilePane hgap="18" vgap="18" prefColumns="4" prefTileWidth="180" tileAlignment="TOP_LEFT" styleClass="card-tile-grid">
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="LEVEL" styleClass="stat-label" /><Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" /><ProgressBar fx:id="xpProgressBar" maxWidth="Infinity" /><Label fx:id="xpLabel" styleClass="muted" wrapText="true" /></VBox>
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="STREAK" styleClass="stat-label" /><Label fx:id="streakLabel" styleClass="stat-value" wrapText="true" /></VBox>
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="REVIEWS" styleClass="stat-label" /><Label fx:id="totalReviewsLabel" styleClass="stat-value" wrapText="true" /></VBox>
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="TODAY" styleClass="stat-label" /><Label fx:id="reviewedTodayLabel" styleClass="stat-value accent" wrapText="true" /></VBox>
                     </TilePane>
-                    <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
+                    <TilePane hgap="18" vgap="18" prefColumns="2" prefTileWidth="220" tileAlignment="TOP_LEFT" styleClass="card-tile-grid">
                         <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity"><Label text="Total Cards" styleClass="stat-label" /><Label fx:id="totalCardsLabel" styleClass="stat-value" wrapText="true" /></VBox>
                         <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity"><Label text="Due Cards" styleClass="stat-label" /><Label fx:id="dueCardsLabel" styleClass="stat-value" wrapText="true" /></VBox>
                     </TilePane>

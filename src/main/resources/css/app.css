@@ -90,14 +90,16 @@
     -fx-background-color: -color-sidebar-bg;
     -fx-border-color: transparent -color-sidebar-border transparent transparent;
     -fx-border-width: 0 1 0 0;
-    -fx-padding: 28 14 18 14;
-    -fx-min-width: 170;
-    -fx-pref-width: 210;
-    -fx-max-width: 230;
+    -fx-padding: 24 12 16 12;
+    -fx-min-width: 158;
+    -fx-pref-width: 190;
+    -fx-max-width: 220;
 }
 
 .content {
-    -fx-padding: 34;
+    -fx-padding: 28;
+    -fx-fill-width: true;
+    -fx-max-width: 1180;
 }
 
 .content-scroll {
@@ -679,31 +681,46 @@
 }
 
 .workspace-grid {
-    -fx-spacing: 22;
+    -fx-hgap: 22;
+    -fx-vgap: 22;
     -fx-alignment: top-left;
-    -fx-fill-height: true;
+    -fx-row-valignment: top;
+    -fx-column-halignment: left;
+}
+
+.card-tile-grid {
+    -fx-hgap: 18;
+    -fx-vgap: 18;
+    -fx-alignment: top-left;
+}
+
+.card-tile-grid .stat-card, .card-tile-grid .small-card {
+    -fx-min-width: 0;
+    -fx-pref-width: 220;
+    -fx-max-width: 360;
 }
 
 .primary-column {
     -fx-spacing: 18;
-    -fx-min-width: 440;
-    -fx-pref-width: 720;
+    -fx-min-width: 0;
+    -fx-pref-width: 500;
+    -fx-max-width: 860;
 }
 
 .side-panel {
-    -fx-min-width: 280;
-    -fx-pref-width: 340;
-    -fx-max-width: 380;
+    -fx-min-width: 0;
+    -fx-pref-width: 300;
+    -fx-max-width: 420;
 }
 
 .deck-list-panel, .card-list-panel {
-    -fx-min-height: 260;
-    -fx-pref-height: 320;
+    -fx-min-height: 220;
+    -fx-pref-height: 300;
 }
 
 .deck-list-panel .list-view, .card-list-panel .list-view {
-    -fx-min-height: 210;
-    -fx-pref-height: 260;
+    -fx-min-height: 180;
+    -fx-pref-height: 240;
 }
 
 .theme-selector-card {

@@ -11,47 +11,56 @@
     <center>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
             <content>
-                <VBox spacing="24" styleClass="content" maxWidth="Infinity">
-                    <VBox spacing="12" styleClass="page-header" maxWidth="Infinity">
-                        <HBox spacing="12" alignment="CENTER_LEFT">
+                <VBox alignment="TOP_CENTER" maxWidth="1100" spacing="24" styleClass="content">
+                    <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
                             <Label text="Dashboard" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
-                            <Label text="Daily focus" styleClass="header-pill" wrapText="true" />
+                            <Label text="Daily focus" styleClass="pill" wrapText="true" />
                         </HBox>
                         <Label text="Keep your learning streak moving with a quick look at rank, cards due, and deck momentum." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
+
                     <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
-                    <TilePane hgap="18" vgap="18" prefColumns="3" prefTileWidth="220" tileAlignment="TOP_LEFT" styleClass="card-tile-grid">
-                        <VBox styleClass="stat-card cyan-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="🏆 RANK" styleClass="stat-label" />
-                            <Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" />
-                            <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" />
-                            <Label text="XP progress fills in as you complete reviews." styleClass="muted" wrapText="true" />
-                            <Label fx:id="xpLabel" styleClass="muted" wrapText="true" />
+
+                    <VBox maxWidth="Infinity" spacing="16" styleClass="hero-card">
+                        <Label text="Today’s Review" styleClass="stat-label" wrapText="true" />
+                        <Label fx:id="dueCountLabel" styleClass="stat-value accent" wrapText="true" />
+                        <Label text="Review a few cards today to protect your streak." styleClass="muted" wrapText="true" />
+                        <Button text="Start Review" onAction="#goReview" styleClass="primary-button" />
+                        <Label text="1 day streak" styleClass="muted" wrapText="true" />
+                    </VBox>
+
+                    <GridPane hgap="18" maxWidth="Infinity" vgap="18">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
+                        </columnConstraints>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <Label text="Rank" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="levelLabel" text="Level 1" styleClass="stat-value" wrapText="true" />
                         </VBox>
-                        <VBox styleClass="stat-card green-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="🔥 STREAK" styleClass="stat-label" />
-                            <Label fx:id="streakLabel" styleClass="stat-value" wrapText="true" />
-                            <Label text="Keep daily reviews alive to maintain your combo." styleClass="muted" wrapText="true" />
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <Label text="Streak" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="streakLabel" text="1 day" styleClass="stat-value" wrapText="true" />
                         </VBox>
-                        <VBox styleClass="stat-card violet-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="⚡ DUE REVIEWS" styleClass="stat-label" />
-                            <Label fx:id="dueCountLabel" styleClass="stat-value accent" wrapText="true" />
-                            <Label text="No rush—this queue updates when cards are ready." styleClass="muted" wrapText="true" />
-                            <Button text="Start Review" onAction="#goReview" styleClass="action-button" maxWidth="Infinity" />
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                            <Label text="Decks" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="deckCountLabel" text="3" styleClass="stat-value" wrapText="true" />
                         </VBox>
-                    </TilePane>
-                    <TilePane hgap="18" vgap="18" prefColumns="2" prefTileWidth="220" tileAlignment="TOP_LEFT" styleClass="card-tile-grid">
-                        <VBox styleClass="small-card amber-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="📚 DECKS" styleClass="stat-label" />
-                            <Label fx:id="deckCountLabel" styleClass="stat-value" wrapText="true" />
-                            <Label text="Create focused decks to organize your practice." styleClass="muted" wrapText="true" />
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                            <Label text="Cards" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="cardCountLabel" text="9" styleClass="stat-value" wrapText="true" />
                         </VBox>
-                        <VBox styleClass="small-card cyan-card" minWidth="0" maxWidth="Infinity">
-                            <Label text="🧠 CARDS" styleClass="stat-label" />
-                            <Label fx:id="cardCountLabel" styleClass="stat-value" wrapText="true" />
-                            <Label text="Add prompts gradually; even one card starts momentum." styleClass="muted" wrapText="true" />
-                        </VBox>
-                    </TilePane>
+                    </GridPane>
+
+                    <VBox maxWidth="Infinity" spacing="12" styleClass="card progress-card">
+                        <Label text="XP Progress" styleClass="stat-label" wrapText="true" />
+                        <Label fx:id="xpLabel" text="15 XP earned" styleClass="stat-value" wrapText="true" />
+                        <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" />
+                        <Label text="Complete reviews to level up." styleClass="muted" wrapText="true" />
+                    </VBox>
                 </VBox>
             </content>
         </ScrollPane>

@@ -4,8 +4,8 @@
 
 <fx:root type="VBox" styleClass="sidebar" spacing="18" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
     <VBox styleClass="brand-block" spacing="3">
-        <Label text="CodeFit" styleClass="brand" />
-        <Label text="Train your dev memory" styleClass="brand-tagline" />
+        <Label text="CodeFit" styleClass="sidebar-title" />
+        <Label text="Train your dev memory" styleClass="sidebar-subtitle" />
     </VBox>
 
     <VBox styleClass="nav-group" spacing="8">

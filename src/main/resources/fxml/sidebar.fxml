@@ -2,11 +2,25 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<fx:root type="VBox" styleClass="sidebar" spacing="12" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
-    <Label text="CodeFit" styleClass="brand" />
-    <Button fx:id="dashboardButton" text="Dashboard" onAction="#goDashboard" maxWidth="Infinity" />
-    <Button fx:id="decksButton" text="Decks" onAction="#goDecks" maxWidth="Infinity" />
-    <Button fx:id="addCardButton" text="Add Card" onAction="#goAddCard" maxWidth="Infinity" />
-    <Button fx:id="reviewButton" text="Review" onAction="#goReview" maxWidth="Infinity" />
-    <Button fx:id="statsButton" text="Stats" onAction="#goStats" maxWidth="Infinity" />
+<fx:root type="VBox" styleClass="sidebar" spacing="18" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+    <VBox styleClass="brand-block" spacing="3">
+        <Label text="CodeFit" styleClass="brand" />
+        <Label text="Train your dev memory" styleClass="brand-tagline" />
+    </VBox>
+
+    <VBox styleClass="nav-group" spacing="8">
+        <Label text="TRAINING" styleClass="nav-section-label" />
+        <Button fx:id="dashboardButton" text="⌂  Dashboard" onAction="#goDashboard" maxWidth="Infinity" />
+        <Button fx:id="decksButton" text="▣  Decks" onAction="#goDecks" maxWidth="Infinity" />
+        <Button fx:id="addCardButton" text="＋  Add Card" onAction="#goAddCard" maxWidth="Infinity" />
+        <Button fx:id="reviewButton" text="◉  Review" onAction="#goReview" maxWidth="Infinity" />
+        <Button fx:id="statsButton" text="↗  Stats" onAction="#goStats" maxWidth="Infinity" />
+    </VBox>
+
+    <Region VBox.vgrow="ALWAYS" />
+
+    <VBox styleClass="sidebar-footer-card" spacing="4">
+        <Label text="🔥 Keep it warm" styleClass="sidebar-footer-title" />
+        <Label text="Review a few cards today to protect your streak." styleClass="sidebar-footer-text" wrapText="true" />
+    </VBox>
 </fx:root>

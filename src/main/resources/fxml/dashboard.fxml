@@ -20,7 +20,7 @@
                         <Label text="Keep your learning streak moving with a quick look at rank, cards due, and deck momentum." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
-                    <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
+                    <TilePane hgap="18" vgap="18" prefColumns="3" prefTileWidth="220" tileAlignment="TOP_LEFT" styleClass="card-tile-grid">
                         <VBox styleClass="stat-card cyan-card" minWidth="0" maxWidth="Infinity">
                             <Label text="🏆 RANK" styleClass="stat-label" />
                             <Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" />
@@ -40,7 +40,7 @@
                             <Button text="Start Review" onAction="#goReview" styleClass="action-button" maxWidth="Infinity" />
                         </VBox>
                     </TilePane>
-                    <TilePane hgap="18" vgap="18" prefTileWidth="220" tileAlignment="TOP_LEFT">
+                    <TilePane hgap="18" vgap="18" prefColumns="2" prefTileWidth="220" tileAlignment="TOP_LEFT" styleClass="card-tile-grid">
                         <VBox styleClass="small-card amber-card" minWidth="0" maxWidth="Infinity">
                             <Label text="📚 DECKS" styleClass="stat-label" />
                             <Label fx:id="deckCountLabel" styleClass="stat-value" wrapText="true" />

@@ -87,7 +87,7 @@ public class Sidebar extends VBox {
         themeChoiceBox.setValue(NavigationService.getCurrentThemeDisplayName());
         themeChoiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
-                NavigationService.setThemeByDisplayName(newValue);
+                NavigationService.setTheme(NavigationService.getThemeClassByDisplayName(newValue));
             }
         });
     }

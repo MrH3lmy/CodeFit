@@ -981,3 +981,26 @@
     -fx-font-size: 12px;
     -fx-font-weight: 900;
 }
+
+.deck-icon {
+    -fx-font-size: 16px;
+}
+
+.deck-name {
+    -fx-text-fill: -color-heading;
+    -fx-font-size: 13px;
+    -fx-font-weight: 900;
+}
+
+.deck-count, .deck-percent {
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+}
+
+.deck-count {
+    -fx-text-fill: -color-row-muted;
+}
+
+.deck-percent {
+    -fx-text-fill: -color-accent-text;
+}

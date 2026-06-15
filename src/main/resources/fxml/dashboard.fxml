@@ -91,27 +91,7 @@
                                     <Label text="RECENT DECKS" styleClass="stat-label" wrapText="true" HBox.hgrow="ALWAYS" />
                                     <Button text="View all decks" onAction="#goDecks" styleClass="ghost-button" />
                                 </HBox>
-                                <GridPane hgap="12" vgap="10" styleClass="recent-deck-row">
-                                    <columnConstraints><ColumnConstraints hgrow="ALWAYS" percentWidth="42" /><ColumnConstraints percentWidth="18" /><ColumnConstraints percentWidth="20" /><ColumnConstraints percentWidth="20" /></columnConstraints>
-                                    <Label text="Java Basics" styleClass="deck-row-title" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-                                    <Label text="24 cards" styleClass="deck-row-meta" GridPane.columnIndex="1" GridPane.rowIndex="0" />
-                                    <Label text="78%" styleClass="deck-row-progress" GridPane.columnIndex="2" GridPane.rowIndex="0" />
-                                    <Label text="3 due" styleClass="deck-row-due" GridPane.columnIndex="3" GridPane.rowIndex="0" />
-                                </GridPane>
-                                <GridPane hgap="12" vgap="10" styleClass="recent-deck-row">
-                                    <columnConstraints><ColumnConstraints hgrow="ALWAYS" percentWidth="42" /><ColumnConstraints percentWidth="18" /><ColumnConstraints percentWidth="20" /><ColumnConstraints percentWidth="20" /></columnConstraints>
-                                    <Label text="Spring Patterns" styleClass="deck-row-title" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-                                    <Label text="18 cards" styleClass="deck-row-meta" GridPane.columnIndex="1" GridPane.rowIndex="0" />
-                                    <Label text="54%" styleClass="deck-row-progress" GridPane.columnIndex="2" GridPane.rowIndex="0" />
-                                    <Label text="5 due" styleClass="deck-row-due" GridPane.columnIndex="3" GridPane.rowIndex="0" />
-                                </GridPane>
-                                <GridPane hgap="12" vgap="10" styleClass="recent-deck-row">
-                                    <columnConstraints><ColumnConstraints hgrow="ALWAYS" percentWidth="42" /><ColumnConstraints percentWidth="18" /><ColumnConstraints percentWidth="20" /><ColumnConstraints percentWidth="20" /></columnConstraints>
-                                    <Label text="Algorithms" styleClass="deck-row-title" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-                                    <Label text="31 cards" styleClass="deck-row-meta" GridPane.columnIndex="1" GridPane.rowIndex="0" />
-                                    <Label text="92%" styleClass="deck-row-progress" GridPane.columnIndex="2" GridPane.rowIndex="0" />
-                                    <Label text="0 due" styleClass="deck-row-due" GridPane.columnIndex="3" GridPane.rowIndex="0" />
-                                </GridPane>
+                                <VBox fx:id="recentDecksList" maxWidth="Infinity" spacing="10" />
                             </VBox>
                         </GridPane>
                     </VBox>

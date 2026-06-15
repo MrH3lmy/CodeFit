@@ -10,12 +10,13 @@
     -color-accent-strong: #14b8a6;
     -color-surface: #0f172a;
     -color-surface-elevated: #162033;
-    -color-border: rgba(148, 163, 184, 0.22);
-    -color-border-strong: rgba(125, 211, 252, 0.42);
+    -color-surface-card: rgba(15, 23, 42, 0.84);
+    -color-border: rgba(148, 163, 184, 0.18);
+    -color-border-strong: rgba(125, 211, 252, 0.32);
     -color-danger: #ef4444;
     -color-warning: #f59e0b;
     -color-success: #22c55e;
-    -color-app-base: #090d14;
+    -color-app-base: #070b16;
     -color-text: #e5eefc;
     -color-text-strong: #ffffff;
     -color-heading: #f8fafc;
@@ -23,8 +24,8 @@
     -color-secondary-text: #9fb2cc;
     -color-subtitle: #a7f3d0;
     -color-bg-start: #050814;
-    -color-bg-mid: #0b1220;
-    -color-bg-end: #111827;
+    -color-bg-mid: #08111f;
+    -color-bg-end: #0f172a;
     -color-bg-deep: #07111f;
     -color-brand: #67e8f9;
     -color-brand-muted: #9bd8ee;
@@ -65,7 +66,7 @@
     -color-selected-badge-text: #f0f9ff;
     -color-progress-start: #06b6d4;
     -color-sidebar-bg: rgba(8, 13, 22, 0.96);
-    -color-sidebar-border: #1f2a44;
+    -color-sidebar-border: rgba(125, 211, 252, 0.18);
     -fx-background-color: -color-app-base;
     -fx-text-fill: -color-text;
 }
@@ -78,7 +79,7 @@
 .theme-forest { -color-primary: #86efac; -color-primary-strong: #22c55e; -color-accent: #facc15; -color-accent-strong: #ca8a04; -color-brand: #bbf7d0; -color-subtitle: #fde68a; }
 .theme-synthwave { -color-primary: #f472b6; -color-primary-strong: #db2777; -color-accent: #a78bfa; -color-accent-strong: #7c3aed; -color-brand: #f0abfc; -color-subtitle: #f9a8d4; }
 
-.app-root {
+.root-layout, .app-root {
     -fx-background-color:
         radial-gradient(center 18% 10%, radius 75%, rgba(56, 189, 248, 0.22), transparent 48%),
         radial-gradient(center 88% 8%, radius 60%, rgba(45, 212, 191, 0.16), transparent 42%),
@@ -120,7 +121,6 @@
     -fx-text-fill: -color-brand;
     -fx-font-size: 30px;
     -fx-font-weight: 900;
-    -fx-effect: dropshadow(gaussian, rgba(103, 232, 249, 0.35), 18, 0.25, 0, 0);
 }
 
 .sidebar-subtitle {
@@ -136,7 +136,6 @@
     -fx-font-size: 34px;
     -fx-font-weight: 900;
     -fx-letter-spacing: -0.03em;
-    -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.18), 22, 0.20, 0, 2);
 }
 
 .page-header {
@@ -162,7 +161,6 @@
     -fx-border-radius: 24, 24;
     -fx-background-radius: 24, 24;
     -fx-padding: 24;
-    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.16), 28, 0.20, 0, 12);
 }
 
 .header-pill {
@@ -196,7 +194,6 @@
     -fx-text-fill: -color-text-strong;
     -fx-font-size: 36px;
     -fx-font-weight: 900;
-    -fx-effect: dropshadow(gaussian, rgba(45, 212, 191, 0.16), 14, 0.22, 0, 1);
 }
 
 .accent {
@@ -256,16 +253,16 @@
     -fx-effect: dropshadow(gaussian, rgba(34, 197, 94, 0.28), 14, 0.25, 0, 0);
 }
 
-.stat-card, .small-card, .panel, .review-card, .composer-card, .tips-card {
+.card, .stat-card, .small-card, .panel, .review-card, .composer-card, .tips-card, .progress-card {
     -fx-background-color:
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.080), rgba(255, 255, 255, 0.020)),
-        rgba(15, 23, 42, 0.78);
-    -fx-border-color: rgba(255, 255, 255, 0.12), rgba(148, 163, 184, 0.24);
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.016)),
+        -color-surface-card;
+    -fx-border-color: rgba(125, 211, 252, 0.18), rgba(148, 163, 184, 0.18);
     -fx-border-width: 1, 1;
     -fx-border-radius: 20, 20;
     -fx-background-radius: 20, 20;
     -fx-padding: 22;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.36), 24, 0.18, 0, 12);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.18), 14, 0.12, 0, 6);
 }
 
 .stat-card {
@@ -368,10 +365,10 @@
     -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.30), 42, 0.25, 0, 18);
 }
 
-.stat-card:hover, .small-card:hover, .panel:hover, .review-card:hover, .composer-card:hover, .tips-card:hover {
+.card:hover, .stat-card:hover, .small-card:hover, .panel:hover, .review-card:hover, .composer-card:hover, .tips-card:hover, .progress-card:hover {
     -fx-translate-y: -2;
     -fx-border-color: rgba(125, 211, 252, 0.36), rgba(255, 255, 255, 0.16);
-    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.20), 30, 0.20, 0, 14);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.20), 16, 0.14, 0, 7);
 }
 
 .review-stage {
@@ -444,7 +441,6 @@
     -fx-background-color: linear-gradient(to right, rgba(56, 189, 248, 0.16), rgba(45, 212, 191, 0.08));
     -fx-text-fill: -color-heading;
     -fx-border-color: rgba(125, 211, 252, 0.20) rgba(125, 211, 252, 0.20) rgba(125, 211, 252, 0.20) rgba(94, 234, 212, 0.62);
-    -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.14), 14, 0.22, 0, 3);
 }
 
 .nav-item:pressed {
@@ -456,13 +452,11 @@
     -fx-background-color: linear-gradient(to right, rgba(34, 211, 238, 0.24), rgba(168, 85, 247, 0.18));
     -fx-text-fill: -color-text-strong;
     -fx-border-color: rgba(125, 211, 252, 0.28) rgba(168, 85, 247, 0.20) rgba(168, 85, 247, 0.18) rgba(34, 211, 238, 0.42);
-    -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.08), 8, 0.18, 0, 2);
 }
 
 .nav-item-active:hover {
     -fx-background-color: linear-gradient(to right, rgba(34, 211, 238, 0.30), rgba(168, 85, 247, 0.22));
     -fx-border-color: rgba(125, 211, 252, 0.34) rgba(168, 85, 247, 0.26) rgba(168, 85, 247, 0.22) rgba(34, 211, 238, 0.48);
-    -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.10), 10, 0.16, 0, 2);
 }
 
 .nav-item-active:pressed {
@@ -494,22 +488,22 @@
     -fx-line-spacing: 2;
 }
 
-.action-button {
+.primary-button, .action-button {
     -fx-background-color: linear-gradient(to right, -color-action-start, -color-action-mid 48%, -color-accent-strong);
     -fx-border-color: rgba(224, 242, 254, 0.40);
     -fx-border-width: 1;
     -fx-text-fill: white;
     -fx-font-size: 14px;
     -fx-padding: 13 18;
-    -fx-effect: dropshadow(gaussian, rgba(20, 184, 166, 0.34), 22, 0.26, 0, 8);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.18), 12, 0.12, 0, 4);
 }
 
-.action-button:hover {
-    -fx-background-color: linear-gradient(to right, -color-primary-strong, #8b5cf6 48%, -color-accent);
-    -fx-translate-y: -2;
-    -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.36), 26, 0.28, 0, 11);
+.primary-button:hover, .action-button:hover {
+    -fx-background-color: linear-gradient(to right, -color-primary-strong, #7c3aed 48%, -color-accent);
+    -fx-border-color: rgba(224, 242, 254, 0.52);
+    -fx-translate-y: -1;
 }
-.action-button:pressed { -fx-background-color: linear-gradient(to right, -color-action-pressed, -color-action-pressed-end); -fx-translate-y: 1; }
+.primary-button:pressed, .action-button:pressed { -fx-background-color: linear-gradient(to right, -color-action-pressed, -color-action-pressed-end); -fx-translate-y: 1; }
 
 .reveal-button {
     -fx-font-size: 15px;

@@ -12,7 +12,7 @@
             <content>
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
                     <VBox spacing="10" maxWidth="Infinity">
-                        <Label text="Review Arena" styleClass="page-title" wrapText="true" />
+                        <Label text="Review" styleClass="page-title" wrapText="true" />
                         <Label fx:id="queueLabel" styleClass="pill" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />

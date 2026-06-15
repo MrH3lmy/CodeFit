@@ -44,7 +44,7 @@ public class DashboardController extends BaseController {
         } else if (dueCount == 0) {
             setStatus(emptyStateLabel, "No due reviews. Your queue is clear for now.");
         } else {
-            setStatus(emptyStateLabel, "");
+            setStatus(emptyStateLabel, "You have cards ready to review.");
         }
     }
 }

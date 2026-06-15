@@ -36,7 +36,7 @@ public class StatsController extends BaseController {
 
         var recent = statsService.getRecentReviews().stream().map(this::formatReview).toList();
         recentReviewsListView.setItems(recent.isEmpty()
-                ? FXCollections.observableArrayList("No reviews logged yet. Complete a session to populate combat telemetry.")
+                ? FXCollections.observableArrayList("No reviews logged yet. Complete a review session to see recent activity.")
                 : FXCollections.observableArrayList(recent));
     }
 

@@ -11,7 +11,7 @@
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
             <content>
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
-                    <Label text="Combat Telemetry" styleClass="page-title" wrapText="true" />
+                    <Label text="Stats" styleClass="page-title" wrapText="true" />
                     <TilePane hgap="18" vgap="18" prefTileWidth="180" tileAlignment="TOP_LEFT">
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="LEVEL" styleClass="stat-label" /><Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" /><ProgressBar fx:id="xpProgressBar" maxWidth="Infinity" /><Label fx:id="xpLabel" styleClass="muted" wrapText="true" /></VBox>
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="STREAK" styleClass="stat-label" /><Label fx:id="streakLabel" styleClass="stat-value" wrapText="true" /></VBox>

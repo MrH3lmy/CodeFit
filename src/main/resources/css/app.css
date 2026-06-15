@@ -739,3 +739,172 @@
     -fx-text-fill: -color-text;
     -fx-font-weight: 800;
 }
+
+.dashboard-hero {
+    -fx-padding: 30 32;
+    -fx-min-height: 230;
+    -fx-background-color:
+        radial-gradient(center 10% 10%, radius 86%, rgba(56, 189, 248, 0.30), transparent 48%),
+        radial-gradient(center 88% 20%, radius 78%, rgba(244, 114, 182, 0.24), transparent 44%),
+        radial-gradient(center 72% 100%, radius 86%, rgba(167, 139, 250, 0.18), transparent 48%),
+        linear-gradient(to bottom right, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.78));
+    -fx-border-color: rgba(125, 211, 252, 0.34), rgba(244, 114, 182, 0.22);
+    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.24), 34, 0.22, 0, 16);
+}
+
+.hero-due-count {
+    -fx-text-fill: -color-text-strong;
+    -fx-font-size: 52px;
+    -fx-font-weight: 900;
+    -fx-letter-spacing: -0.05em;
+}
+
+.hero-helper {
+    -fx-text-fill: -color-muted;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-line-spacing: 3;
+}
+
+.hero-visual-panel {
+    -fx-padding: 8;
+}
+
+.synth-horizon {
+    -fx-background-color:
+        radial-gradient(center 50% 38%, radius 48%, rgba(251, 113, 133, 0.42), transparent 36%),
+        linear-gradient(to bottom, rgba(15, 23, 42, 0.16) 0%, rgba(30, 41, 59, 0.42) 54%, rgba(2, 6, 23, 0.70) 55%, rgba(15, 23, 42, 0.16) 100%);
+    -fx-border-color: rgba(244, 114, 182, 0.30);
+    -fx-border-radius: 22;
+    -fx-background-radius: 22;
+    -fx-padding: 18;
+    -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.35), 18, 0.20, 0, 4);
+}
+
+.synth-sun {
+    -fx-min-width: 96;
+    -fx-min-height: 96;
+    -fx-max-width: 96;
+    -fx-max-height: 96;
+    -fx-background-radius: 999;
+    -fx-background-color: linear-gradient(to bottom, #facc15 0%, #fb7185 46%, #a855f7 100%);
+    -fx-opacity: 0.86;
+}
+
+.synth-grid {
+    -fx-min-height: 54;
+    -fx-max-height: 54;
+    -fx-translate-y: 48;
+    -fx-background-color:
+        linear-gradient(to right, transparent 0%, rgba(34, 211, 238, 0.38) 3%, transparent 6%),
+        linear-gradient(to bottom, transparent 0%, rgba(34, 211, 238, 0.30) 6%, transparent 12%),
+        linear-gradient(to bottom, rgba(168, 85, 247, 0.16), rgba(14, 165, 233, 0.08));
+    -fx-background-size: 34 54, 100 13, auto;
+    -fx-border-color: rgba(34, 211, 238, 0.28) transparent transparent transparent;
+}
+
+.hero-play-icon {
+    -fx-text-fill: white;
+    -fx-font-size: 30px;
+    -fx-font-weight: 900;
+    -fx-background-color: rgba(2, 6, 23, 0.44);
+    -fx-background-radius: 999;
+    -fx-border-color: rgba(255, 255, 255, 0.32);
+    -fx-border-radius: 999;
+    -fx-padding: 12 16;
+}
+
+.hero-review-button {
+    -fx-font-size: 15px;
+    -fx-padding: 14 20;
+}
+
+.dashboard-stat-card {
+    -fx-min-height: 190;
+}
+
+.stat-icon {
+    -fx-font-size: 28px;
+    -fx-text-fill: -color-text-strong;
+}
+
+.xp-panel, .recent-decks-panel {
+    -fx-min-height: 230;
+}
+
+.panel-big-value {
+    -fx-text-fill: -color-heading;
+    -fx-font-size: 28px;
+    -fx-font-weight: 900;
+}
+
+.xp-chip {
+    -fx-background-color: rgba(14, 165, 233, 0.14);
+    -fx-border-color: rgba(125, 211, 252, 0.30);
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-text-fill: -color-banner-text;
+    -fx-font-size: 12px;
+    -fx-font-weight: 900;
+    -fx-padding: 8 12;
+}
+
+.level-progress {
+    -fx-pref-height: 12;
+}
+
+.level-progress > .track {
+    -fx-background-color: rgba(148, 163, 184, 0.16);
+    -fx-background-radius: 999;
+}
+
+.level-progress > .bar {
+    -fx-background-color: linear-gradient(to right, -color-progress-start, -color-accent, -color-primary);
+    -fx-background-radius: 999;
+    -fx-background-insets: 0;
+}
+
+.recent-decks-panel {
+    -fx-background-color:
+        radial-gradient(center 100% 0%, radius 86%, rgba(124, 58, 237, 0.18), transparent 48%),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.016)),
+        -color-surface-card;
+}
+
+.ghost-button {
+    -fx-background-color: rgba(14, 165, 233, 0.10);
+    -fx-border-color: rgba(125, 211, 252, 0.24);
+    -fx-text-fill: -color-banner-text;
+    -fx-font-size: 12px;
+    -fx-padding: 9 12;
+}
+
+.ghost-button:hover {
+    -fx-background-color: rgba(14, 165, 233, 0.18);
+    -fx-border-color: rgba(125, 211, 252, 0.38);
+}
+
+.recent-deck-row {
+    -fx-background-color: rgba(2, 6, 23, 0.26);
+    -fx-border-color: rgba(148, 163, 184, 0.14);
+    -fx-border-radius: 14;
+    -fx-background-radius: 14;
+    -fx-padding: 12 14;
+}
+
+.deck-row-meta, .deck-row-progress, .deck-row-due {
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+}
+
+.deck-row-meta {
+    -fx-text-fill: -color-row-muted;
+}
+
+.deck-row-progress {
+    -fx-text-fill: -color-accent-text;
+}
+
+.deck-row-due {
+    -fx-text-fill: -color-amber-label;
+}

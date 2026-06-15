@@ -16,16 +16,32 @@
                         <Label text="Build a stronger learning set one card at a time: capture the prompt, add the answer, and file it into the right deck." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
-                    <VBox spacing="14" styleClass="panel" maxWidth="Infinity">
-                        <Label text="Deck" styleClass="section-title" />
-                        <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
-                        <Button fx:id="createDeckButton" text="Create a Deck" onAction="#goDecks" styleClass="nav-button-primary" visible="false" managed="false" />
-                        <Label text="Prompt" styleClass="section-title" />
-                        <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" />
-                        <Label text="Answer" styleClass="section-title" />
-                        <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" />
-                        <Button fx:id="saveCardButton" text="Save Card" onAction="#saveCard" styleClass="action-button" />
-                    </VBox>
+                    <HBox spacing="20" styleClass="workspace-grid" maxWidth="Infinity">
+                        <VBox spacing="14" styleClass="composer-card, primary-column" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                            <Label text="Card Composer" styleClass="section-title" />
+                            <Label text="Deck" styleClass="section-title" />
+                            <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
+                            <Button fx:id="createDeckButton" text="Create a Deck" onAction="#goDecks" styleClass="nav-button-primary" visible="false" managed="false" />
+                            <Label text="Prompt" styleClass="section-title" />
+                            <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" />
+                            <Label text="Write the cue learners should recognize: a question, term, bug, or code snippet." styleClass="helper-text" wrapText="true" />
+                            <Label text="Answer" styleClass="section-title" />
+                            <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" />
+                            <Label text="Keep it concise, then add the key explanation, edge case, or command that makes the answer stick." styleClass="helper-text" wrapText="true" />
+                            <Button fx:id="saveCardButton" text="Save Card" onAction="#saveCard" styleClass="action-button" />
+                        </VBox>
+                        <VBox spacing="14" styleClass="tips-card, side-panel">
+                            <Label text="Preview &amp; tips" styleClass="section-title" wrapText="true" />
+                            <Label text="Front" styleClass="stat-label" />
+                            <Label text="Use the prompt field for the exact cue you want to see during review." styleClass="muted" wrapText="true" />
+                            <Separator />
+                            <Label text="Back" styleClass="stat-label" />
+                            <Label text="Answers work best when they start with the short response and follow with just enough context." styleClass="muted" wrapText="true" />
+                            <Separator />
+                            <Label text="Tip" styleClass="stat-label" />
+                            <Label text="One idea per card keeps practice fast and helps spaced repetition find weak spots sooner." styleClass="helper-text" wrapText="true" />
+                        </VBox>
+                    </HBox>
                 </VBox>
             </content>
         </ScrollPane>

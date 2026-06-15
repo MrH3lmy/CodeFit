@@ -3,6 +3,7 @@ package com.codefit.ui;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Button;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
@@ -17,6 +18,7 @@ public class Sidebar extends VBox {
     @FXML private Button addCardButton;
     @FXML private Button reviewButton;
     @FXML private Button statsButton;
+    @FXML private ChoiceBox<String> themeChoiceBox;
 
     private String activePage = "";
 
@@ -27,6 +29,7 @@ public class Sidebar extends VBox {
 
         try {
             loader.load();
+            configureThemeSelector();
             updateActiveNavigation();
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to load sidebar component.", exception);
@@ -73,6 +76,20 @@ public class Sidebar extends VBox {
         setNavigationStyle(addCardButton, "add-card");
         setNavigationStyle(reviewButton, "review");
         setNavigationStyle(statsButton, "stats");
+    }
+
+    private void configureThemeSelector() {
+        if (themeChoiceBox == null) {
+            return;
+        }
+
+        themeChoiceBox.getItems().setAll(NavigationService.getThemeDisplayNames());
+        themeChoiceBox.setValue(NavigationService.getCurrentThemeDisplayName());
+        themeChoiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                NavigationService.setThemeByDisplayName(newValue);
+            }
+        });
     }
 
     private void setNavigationStyle(Button button, String page) {

@@ -33,9 +33,11 @@
                         <VBox spacing="14" styleClass="tips-card, side-panel" minWidth="0">
                             <Label text="Preview &amp; tips" styleClass="section-title" wrapText="true" />
                             <Label text="Front" styleClass="stat-label" />
+                            <Label fx:id="frontPreviewLabel" text="Your prompt preview will appear here." styleClass="section-title" wrapText="true" />
                             <Label text="Use the prompt field for the exact cue you want to see during review." styleClass="muted" wrapText="true" />
                             <Separator />
                             <Label text="Back" styleClass="stat-label" />
+                            <Label fx:id="backPreviewLabel" text="Your answer preview will appear here." styleClass="section-title" wrapText="true" />
                             <Label text="Answers work best when they start with the short response and follow with just enough context." styleClass="muted" wrapText="true" />
                             <Separator />
                             <Label text="Tip" styleClass="stat-label" />

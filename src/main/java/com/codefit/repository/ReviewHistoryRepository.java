@@ -15,13 +15,14 @@ import java.util.List;
 
 public class ReviewHistoryRepository {
     public ReviewHistory save(ReviewHistory history) {
-        String sql = "INSERT INTO review_history (flashcard_id, rating, previous_interval_days, new_interval_days) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO review_history (flashcard_id, rating, previous_interval_days, new_interval_days, submitted_in_time) VALUES (?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, history.getFlashcardId());
             statement.setString(2, history.getRating().name());
             statement.setInt(3, history.getPreviousIntervalDays());
             statement.setInt(4, history.getNewIntervalDays());
+            statement.setInt(5, history.isSubmittedInTime() ? 1 : 0);
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -69,7 +70,8 @@ public class ReviewHistoryRepository {
                 ReviewRating.valueOf(resultSet.getString("rating")),
                 resultSet.getInt("previous_interval_days"),
                 resultSet.getInt("new_interval_days"),
-                LocalDateTime.parse(resultSet.getString("reviewed_at").replace(' ', 'T'))
+                LocalDateTime.parse(resultSet.getString("reviewed_at").replace(' ', 'T')),
+                resultSet.getInt("submitted_in_time") == 1
         );
     }
 }

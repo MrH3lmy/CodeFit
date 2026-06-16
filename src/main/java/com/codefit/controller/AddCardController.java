@@ -10,6 +10,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 
 public class AddCardController extends BaseController {
@@ -19,6 +21,7 @@ public class AddCardController extends BaseController {
     @FXML private ComboBox<Deck> deckComboBox;
     @FXML private ComboBox<CardType> cardTypeComboBox;
     @FXML private ComboBox<ValidationMode> validationModeComboBox;
+    @FXML private Spinner<Integer> timeLimitSpinner;
     @FXML private TextArea frontArea;
     @FXML private TextArea backArea;
     @FXML private TextArea acceptedAnswersArea;
@@ -39,6 +42,7 @@ public class AddCardController extends BaseController {
         cardTypeComboBox.getSelectionModel().select(CardType.RECALL);
         validationModeComboBox.setItems(FXCollections.observableArrayList(ValidationMode.values()));
         validationModeComboBox.getSelectionModel().select(ValidationMode.CASE_INSENSITIVE);
+        timeLimitSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 5));
         cardTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> updateCommandFields());
         frontPreviewLabel.setText(previewText(frontArea.getText(), FRONT_PREVIEW_FALLBACK));
         backPreviewLabel.setText(previewText(backArea.getText(), BACK_PREVIEW_FALLBACK));
@@ -56,6 +60,7 @@ public class AddCardController extends BaseController {
         validationModeComboBox.setDisable(hasNoDecks);
         acceptedAnswersArea.setDisable(hasNoDecks);
         simulatedOutputArea.setDisable(hasNoDecks);
+        timeLimitSpinner.setDisable(hasNoDecks);
         saveCardButton.setDisable(hasNoDecks);
         createDeckButton.setVisible(hasNoDecks);
         createDeckButton.setManaged(hasNoDecks);
@@ -79,15 +84,21 @@ public class AddCardController extends BaseController {
         try {
             flashcardService.addCard(deck.getId(), frontArea.getText(), backArea.getText(),
                     cardTypeComboBox.getValue(), acceptedAnswersArea.getText(), validationModeComboBox.getValue(),
-                    simulatedOutputArea.getText());
+                    simulatedOutputArea.getText(), getTimeLimitSeconds());
             frontArea.clear();
             backArea.clear();
             acceptedAnswersArea.clear();
             simulatedOutputArea.clear();
+            timeLimitSpinner.getValueFactory().setValue(0);
             setStatus(messageLabel, "Card added and scheduled for today.");
         } catch (RuntimeException exception) {
             setStatus(messageLabel, exception.getMessage());
         }
+    }
+
+    private Integer getTimeLimitSeconds() {
+        Integer value = timeLimitSpinner.getValue();
+        return value == null || value <= 0 ? null : value;
     }
 
     private void updateCommandFields() {

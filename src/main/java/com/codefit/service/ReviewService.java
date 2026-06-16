@@ -19,10 +19,14 @@ public class ReviewService {
     }
 
     public void review(Flashcard card, ReviewRating rating) {
+        review(card, rating, true);
+    }
+
+    public void review(Flashcard card, ReviewRating rating, boolean submittedInTime) {
         int previousInterval = card.getIntervalDays();
         spacedRepetitionService.applyReview(card, rating);
         flashcardRepository.updateSchedule(card);
-        reviewHistoryRepository.save(new ReviewHistory(card.getId(), rating, previousInterval, card.getIntervalDays()));
+        reviewHistoryRepository.save(new ReviewHistory(0, card.getId(), rating, previousInterval, card.getIntervalDays(), java.time.LocalDateTime.now(), submittedInTime));
         progressService.recordReview(rating);
     }
 }

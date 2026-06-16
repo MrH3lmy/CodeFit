@@ -25,6 +25,11 @@
                             <ComboBox fx:id="cardTypeComboBox" maxWidth="Infinity" />
                             <Label text="Validation" styleClass="section-title" />
                             <ComboBox fx:id="validationModeComboBox" maxWidth="Infinity" />
+                            <Label text="Optional Time Limit" styleClass="section-title" />
+                            <HBox spacing="10" alignment="CENTER_LEFT">
+                                <Spinner fx:id="timeLimitSpinner" editable="true" prefWidth="120" />
+                                <Label text="seconds (0 = untimed)" styleClass="helper-text" wrapText="true" />
+                            </HBox>
                             <Button fx:id="createDeckButton" text="Create a Deck" onAction="#goDecks" styleClass="nav-button-primary" visible="false" managed="false" />
                             <Label text="Prompt" styleClass="section-title" />
                             <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" />

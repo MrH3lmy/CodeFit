@@ -52,7 +52,7 @@ public class FlashcardRepository {
     }
 
     public Flashcard save(Flashcard flashcard) {
-        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, due_date, interval_days, ease_factor, review_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, time_limit_seconds, due_date, interval_days, ease_factor, review_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, flashcard.getDeckId());
@@ -62,10 +62,15 @@ public class FlashcardRepository {
             statement.setString(5, flashcard.getAcceptedAnswers());
             statement.setString(6, flashcard.getValidationMode().name());
             statement.setString(7, flashcard.getSimulatedOutput());
-            statement.setString(8, flashcard.getDueDate().toString());
-            statement.setInt(9, flashcard.getIntervalDays());
-            statement.setDouble(10, flashcard.getEaseFactor());
-            statement.setInt(11, flashcard.getReviewCount());
+            if (flashcard.getTimeLimitSeconds() == null) {
+                statement.setNull(8, java.sql.Types.INTEGER);
+            } else {
+                statement.setInt(8, flashcard.getTimeLimitSeconds());
+            }
+            statement.setString(9, flashcard.getDueDate().toString());
+            statement.setInt(10, flashcard.getIntervalDays());
+            statement.setDouble(11, flashcard.getEaseFactor());
+            statement.setInt(12, flashcard.getReviewCount());
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -143,8 +148,14 @@ public class FlashcardRepository {
                 resultSet.getInt("interval_days"),
                 resultSet.getDouble("ease_factor"),
                 resultSet.getInt("review_count"),
-                LocalDateTime.parse(resultSet.getString("created_at").replace(' ', 'T'))
+                LocalDateTime.parse(resultSet.getString("created_at").replace(' ', 'T')),
+                nullableInteger(resultSet, "time_limit_seconds")
         );
+    }
+
+    private Integer nullableInteger(ResultSet resultSet, String columnName) throws SQLException {
+        int value = resultSet.getInt(columnName);
+        return resultSet.wasNull() ? null : value;
     }
 
     private <T extends Enum<T>> T enumValue(Class<T> enumClass, String value, T fallback) {

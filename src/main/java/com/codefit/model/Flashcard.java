@@ -17,17 +17,26 @@ public class Flashcard {
     private double easeFactor;
     private int reviewCount;
     private LocalDateTime createdAt;
+    private Integer timeLimitSeconds;
 
     public Flashcard(long id, long deckId, String front, String back, LocalDate dueDate,
                      int intervalDays, double easeFactor, int reviewCount, LocalDateTime createdAt) {
         this(id, deckId, front, back, CardType.RECALL, back, ValidationMode.CASE_INSENSITIVE, null,
-                dueDate, intervalDays, easeFactor, reviewCount, createdAt);
+                dueDate, intervalDays, easeFactor, reviewCount, createdAt, null);
     }
 
     public Flashcard(long id, long deckId, String front, String back, CardType cardType,
                      String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
                      LocalDate dueDate, int intervalDays, double easeFactor, int reviewCount,
                      LocalDateTime createdAt) {
+        this(id, deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput,
+                dueDate, intervalDays, easeFactor, reviewCount, createdAt, null);
+    }
+
+    public Flashcard(long id, long deckId, String front, String back, CardType cardType,
+                     String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
+                     LocalDate dueDate, int intervalDays, double easeFactor, int reviewCount,
+                     LocalDateTime createdAt, Integer timeLimitSeconds) {
         this.id = id;
         this.deckId = deckId;
         this.front = front;
@@ -41,6 +50,7 @@ public class Flashcard {
         this.easeFactor = easeFactor;
         this.reviewCount = reviewCount;
         this.createdAt = createdAt;
+        this.timeLimitSeconds = timeLimitSeconds;
     }
 
     public Flashcard(long deckId, String front, String back) {
@@ -49,8 +59,14 @@ public class Flashcard {
 
     public Flashcard(long deckId, String front, String back, CardType cardType,
                      String acceptedAnswers, ValidationMode validationMode, String simulatedOutput) {
+        this(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, null);
+    }
+
+    public Flashcard(long deckId, String front, String back, CardType cardType,
+                     String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
+                     Integer timeLimitSeconds) {
         this(0, deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput,
-                LocalDate.now(), 0, 2.5, 0, LocalDateTime.now());
+                LocalDate.now(), 0, 2.5, 0, LocalDateTime.now(), timeLimitSeconds);
     }
 
     public long getId() { return id; }
@@ -79,4 +95,6 @@ public class Flashcard {
     public void setReviewCount(int reviewCount) { this.reviewCount = reviewCount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Integer getTimeLimitSeconds() { return timeLimitSeconds; }
+    public void setTimeLimitSeconds(Integer timeLimitSeconds) { this.timeLimitSeconds = timeLimitSeconds; }
 }

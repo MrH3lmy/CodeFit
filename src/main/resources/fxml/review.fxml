@@ -15,6 +15,7 @@
                         <HBox spacing="12" alignment="CENTER_LEFT">
                             <Label text="Review Queue" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
                             <Label fx:id="queueLabel" styleClass="header-pill" wrapText="true" />
+                            <Label fx:id="timerLabel" styleClass="header-pill" wrapText="true" visible="false" managed="false" />
                         </HBox>
                         <Label text="Clear today&apos;s queue, reinforce the cards that need attention, and turn each rating into smarter progress." styleClass="page-subtitle" wrapText="true" />
                         <VBox spacing="10" styleClass="queue-strip" maxWidth="Infinity">

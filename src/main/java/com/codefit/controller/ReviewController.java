@@ -5,6 +5,8 @@ import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewRating;
 import com.codefit.service.ReviewService;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -12,6 +14,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -22,6 +25,7 @@ import java.util.Map;
 
 public class ReviewController extends BaseController {
     @FXML private Label queueLabel;
+    @FXML private Label timerLabel;
     @FXML private Label promptLabel;
     @FXML private Label answerLabel;
     @FXML private Label messageLabel;
@@ -50,6 +54,9 @@ public class ReviewController extends BaseController {
     private final Map<ReviewRating, Integer> ratingCounts = new EnumMap<>(ReviewRating.class);
     private AttemptValidationResult latestValidationResult = AttemptValidationResult.EMPTY;
     private boolean answerRevealed;
+    private Timeline timeLimitTimeline;
+    private int remainingTimeSeconds;
+    private boolean submittedInTime = true;
 
     @FXML
     public void initialize() {
@@ -76,6 +83,8 @@ public class ReviewController extends BaseController {
         }
 
         latestValidationResult = validationResult;
+        stopTimeLimitTimeline();
+        submittedInTime = !isTimedCardExpired();
         answerRevealed = true;
         answerLabel.setText(formatRevealedAnswer());
         renderTerminalSubmission(validationResult);
@@ -96,7 +105,8 @@ public class ReviewController extends BaseController {
         }
         int previousInterval = currentCard.getIntervalDays();
         LocalDate previousDueDate = currentCard.getDueDate();
-        reviewService.review(currentCard, rating);
+        stopTimeLimitTimeline();
+        reviewService.review(currentCard, rating, submittedInTime);
         reviewedCardCount++;
         earnedXp += rating.getXp();
         ratingCounts.merge(rating, 1, Integer::sum);
@@ -164,8 +174,10 @@ public class ReviewController extends BaseController {
 
     private void showCurrentCard() {
         if (dueCards.isEmpty()) {
+            stopTimeLimitTimeline();
             currentCard = null;
             queueLabel.setText("0 due");
+            hideTimer();
             promptLabel.setText("No due reviews.");
             answerLabel.setText("Add cards or come back when scheduled reviews mature.");
             clearAttempts();
@@ -182,6 +194,7 @@ public class ReviewController extends BaseController {
         if (currentIndex >= dueCards.size()) {
             currentCard = null;
             queueLabel.setText("Complete");
+            hideTimer();
             promptLabel.setText("Review session complete.");
             answerLabel.setText("Great work. Your XP, streak, and schedules are updated.");
             clearAttempts();
@@ -201,6 +214,7 @@ public class ReviewController extends BaseController {
         promptLabel.setText(currentCard.getFront());
         latestValidationResult = AttemptValidationResult.EMPTY;
         answerRevealed = false;
+        submittedInTime = true;
         matchRequirementLabel.setText(formatMatchRequirement());
         clearAttempts();
         configureAttemptInput();
@@ -208,6 +222,72 @@ public class ReviewController extends BaseController {
         setRatingDescriptions(currentCard);
         showAnswerButton.setDisable(true);
         setRatingButtonsDisabled(true);
+        startTimeLimitIfNeeded();
+    }
+
+    private void startTimeLimitIfNeeded() {
+        stopTimeLimitTimeline();
+        if (currentCard == null || currentCard.getTimeLimitSeconds() == null || currentCard.getTimeLimitSeconds() <= 0) {
+            hideTimer();
+            return;
+        }
+        remainingTimeSeconds = currentCard.getTimeLimitSeconds();
+        updateTimerLabel();
+        timerLabel.setVisible(true);
+        timerLabel.setManaged(true);
+        timeLimitTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+            remainingTimeSeconds--;
+            updateTimerLabel();
+            if (remainingTimeSeconds <= 0) {
+                handleTimeExpired();
+            }
+        }));
+        timeLimitTimeline.setCycleCount(Timeline.INDEFINITE);
+        timeLimitTimeline.play();
+    }
+
+    private void handleTimeExpired() {
+        stopTimeLimitTimeline();
+        submittedInTime = false;
+        latestValidationResult = validateAttempt();
+        if (latestValidationResult == AttemptValidationResult.EXACT || latestValidationResult == AttemptValidationResult.CLOSE_SPACING) {
+            latestValidationResult = AttemptValidationResult.TIMED_OUT_WITH_ATTEMPT;
+        } else {
+            latestValidationResult = AttemptValidationResult.TIMED_OUT;
+        }
+        answerRevealed = true;
+        attemptTextArea.setDisable(true);
+        commandTextField.setDisable(true);
+        answerLabel.setText(formatRevealedAnswer());
+        renderTerminalSubmission(latestValidationResult);
+        showAnswerButton.setDisable(true);
+        setRatingButtonsDisabled(false);
+        setRatingDescriptions(currentCard);
+        setStatus(messageLabel, "Time expired. Answer revealed. Recommended rating: " + latestValidationResult.recommendedRatingLabel() + ".");
+    }
+
+    private boolean isTimedCardExpired() {
+        return currentCard != null && currentCard.getTimeLimitSeconds() != null && remainingTimeSeconds <= 0;
+    }
+
+    private void stopTimeLimitTimeline() {
+        if (timeLimitTimeline != null) {
+            timeLimitTimeline.stop();
+            timeLimitTimeline = null;
+        }
+    }
+
+    private void hideTimer() {
+        stopTimeLimitTimeline();
+        if (timerLabel != null) {
+            timerLabel.setVisible(false);
+            timerLabel.setManaged(false);
+            timerLabel.setText("");
+        }
+    }
+
+    private void updateTimerLabel() {
+        timerLabel.setText("Time left: " + Math.max(0, remainingTimeSeconds) + "s");
     }
 
     private void setRatingDescriptions(Flashcard card) {
@@ -344,7 +424,9 @@ public class ReviewController extends BaseController {
 
     private void clearAttempts() {
         attemptTextArea.clear();
+        attemptTextArea.setDisable(false);
         commandTextField.clear();
+        commandTextField.setDisable(false);
         resetTerminalHistory();
     }
 
@@ -413,6 +495,9 @@ public class ReviewController extends BaseController {
     }
 
     private String formatAttemptFeedback(AttemptValidationResult result) {
+        if (result == AttemptValidationResult.TIMED_OUT || result == AttemptValidationResult.TIMED_OUT_WITH_ATTEMPT) {
+            return "Time expired. Recommended rating: " + result.recommendedRatingLabel() + ".";
+        }
         if (currentCard != null && currentCard.getCardType() == CardType.COMMAND && result == AttemptValidationResult.DIFFERENT) {
             return formatSafeCommandFeedback() + ". Recommended rating: " + result.recommendedRatingLabel() + ".";
         }
@@ -421,6 +506,8 @@ public class ReviewController extends BaseController {
             case EXACT -> "Exact match. Recommended rating: " + result.recommendedRatingLabel() + ".";
             case CLOSE_SPACING -> "Close, check spacing. Recommended rating: " + result.recommendedRatingLabel() + ".";
             case DIFFERENT -> "Different from expected answer. Recommended rating: " + result.recommendedRatingLabel() + ".";
+            case TIMED_OUT -> "Time expired with no matching attempt. Recommended rating: " + result.recommendedRatingLabel() + ".";
+            case TIMED_OUT_WITH_ATTEMPT -> "Time expired after an attempt. Recommended rating: " + result.recommendedRatingLabel() + ".";
         };
     }
 
@@ -446,7 +533,9 @@ public class ReviewController extends BaseController {
         EMPTY(null),
         EXACT(ReviewRating.EASY),
         CLOSE_SPACING(ReviewRating.GOOD),
-        DIFFERENT(ReviewRating.AGAIN);
+        DIFFERENT(ReviewRating.AGAIN),
+        TIMED_OUT(ReviewRating.AGAIN),
+        TIMED_OUT_WITH_ATTEMPT(ReviewRating.HARD);
 
         private final ReviewRating recommendedRating;
 

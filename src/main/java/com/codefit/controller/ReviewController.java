@@ -1,12 +1,16 @@
 package com.codefit.controller;
 
+import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
+import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewRating;
 import com.codefit.service.ReviewService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -26,6 +30,8 @@ public class ReviewController extends BaseController {
     @FXML private Label goodDescriptionLabel;
     @FXML private Label easyDescriptionLabel;
     @FXML private TextArea attemptTextArea;
+    @FXML private HBox commandAttemptBox;
+    @FXML private TextField commandTextField;
     @FXML private Button showAnswerButton;
     @FXML private Button againButton;
     @FXML private Button hardButton;
@@ -39,7 +45,6 @@ public class ReviewController extends BaseController {
     private int reviewedCardCount;
     private int earnedXp;
     private final Map<ReviewRating, Integer> ratingCounts = new EnumMap<>(ReviewRating.class);
-    private static final boolean ALLOW_CASE_INSENSITIVE_MATCH = true;
     private AttemptValidationResult latestValidationResult = AttemptValidationResult.EMPTY;
     private boolean answerRevealed;
 
@@ -49,6 +54,7 @@ public class ReviewController extends BaseController {
         currentIndex = 0;
         resetSessionMetrics();
         attemptTextArea.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
+        commandTextField.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
         showCurrentCard();
     }
 
@@ -68,7 +74,7 @@ public class ReviewController extends BaseController {
 
         latestValidationResult = validationResult;
         answerRevealed = true;
-        answerLabel.setText(currentCard.getBack());
+        answerLabel.setText(formatRevealedAnswer());
         setRatingButtonsDisabled(false);
         showAnswerButton.setDisable(true);
         setStatus(messageLabel, formatAttemptFeedback(validationResult));
@@ -158,11 +164,12 @@ public class ReviewController extends BaseController {
             queueLabel.setText("0 due");
             promptLabel.setText("No due reviews.");
             answerLabel.setText("Add cards or come back when scheduled reviews mature.");
-            attemptTextArea.clear();
+            clearAttempts();
             latestValidationResult = AttemptValidationResult.EMPTY;
             answerRevealed = false;
             setStatus(messageLabel, "");
             matchRequirementLabel.setText("");
+            configureAttemptInput();
             showAnswerButton.setDisable(true);
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
@@ -173,11 +180,12 @@ public class ReviewController extends BaseController {
             queueLabel.setText("Complete");
             promptLabel.setText("Review session complete.");
             answerLabel.setText("Great work. Your XP, streak, and schedules are updated.");
-            attemptTextArea.clear();
+            clearAttempts();
             latestValidationResult = AttemptValidationResult.EMPTY;
             answerRevealed = false;
             setStatus(messageLabel, formatSessionSummary());
             matchRequirementLabel.setText("");
+            configureAttemptInput();
             showAnswerButton.setDisable(true);
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
@@ -190,7 +198,8 @@ public class ReviewController extends BaseController {
         latestValidationResult = AttemptValidationResult.EMPTY;
         answerRevealed = false;
         matchRequirementLabel.setText(formatMatchRequirement());
-        attemptTextArea.clear();
+        clearAttempts();
+        configureAttemptInput();
         answerLabel.setText("Answer hidden. Reveal when ready.");
         setRatingDescriptions(currentCard);
         showAnswerButton.setDisable(true);
@@ -262,19 +271,71 @@ public class ReviewController extends BaseController {
     }
 
     private AttemptValidationResult validateAttempt() {
-        String attempt = attemptTextArea.getText() == null ? "" : attemptTextArea.getText().strip();
-        String expectedAnswer = currentCard == null || currentCard.getBack() == null ? "" : currentCard.getBack().strip();
+        String attempt = getAttemptText();
         if (attempt.isEmpty()) {
             return AttemptValidationResult.EMPTY;
         }
-        if (attempt.equals(expectedAnswer) || (ALLOW_CASE_INSENSITIVE_MATCH && attempt.equalsIgnoreCase(expectedAnswer))) {
-            return AttemptValidationResult.EXACT;
-        }
-        if (normalizeSpacing(attempt).equals(normalizeSpacing(expectedAnswer))
-                || (ALLOW_CASE_INSENSITIVE_MATCH && normalizeSpacing(attempt).equalsIgnoreCase(normalizeSpacing(expectedAnswer)))) {
-            return AttemptValidationResult.CLOSE_SPACING;
+        for (String expectedAnswer : acceptedAnswers()) {
+            if (matchesByMode(attempt, expectedAnswer, currentCard.getValidationMode())) {
+                return AttemptValidationResult.EXACT;
+            }
+            if (normalizeSpacing(attempt).equalsIgnoreCase(normalizeSpacing(expectedAnswer))) {
+                return AttemptValidationResult.CLOSE_SPACING;
+            }
         }
         return AttemptValidationResult.DIFFERENT;
+    }
+
+    private String getAttemptText() {
+        String attempt = currentCard != null && currentCard.getCardType() == CardType.COMMAND
+                ? commandTextField.getText()
+                : attemptTextArea.getText();
+        return attempt == null ? "" : attempt.strip();
+    }
+
+    private List<String> acceptedAnswers() {
+        String rawAnswers = currentCard == null || currentCard.getAcceptedAnswers() == null || currentCard.getAcceptedAnswers().isBlank()
+                ? currentCard == null ? "" : currentCard.getBack()
+                : currentCard.getAcceptedAnswers();
+        return rawAnswers.lines()
+                .map(String::strip)
+                .filter(answer -> !answer.isEmpty())
+                .toList();
+    }
+
+    private boolean matchesByMode(String attempt, String expectedAnswer, ValidationMode validationMode) {
+        return switch (validationMode == null ? ValidationMode.CASE_INSENSITIVE : validationMode) {
+            case EXACT -> attempt.equals(expectedAnswer);
+            case CASE_INSENSITIVE -> attempt.equalsIgnoreCase(expectedAnswer);
+            case NORMALIZED_SPACING -> normalizeSpacing(attempt).equalsIgnoreCase(normalizeSpacing(expectedAnswer));
+            case COMMAND_NORMALIZED -> normalizeCommand(attempt).equalsIgnoreCase(normalizeCommand(expectedAnswer));
+        };
+    }
+
+    private String normalizeCommand(String value) {
+        return normalizeSpacing(value).replaceAll("\\s*=\\s*", "=");
+    }
+
+    private String formatRevealedAnswer() {
+        String answer = currentCard.getBack();
+        if (currentCard.getCardType() == CardType.COMMAND && currentCard.getSimulatedOutput() != null
+                && !currentCard.getSimulatedOutput().isBlank()) {
+            return answer + "\n\nSimulated output:\n" + currentCard.getSimulatedOutput();
+        }
+        return answer;
+    }
+
+    private void configureAttemptInput() {
+        boolean command = currentCard != null && currentCard.getCardType() == CardType.COMMAND;
+        attemptTextArea.setVisible(!command);
+        attemptTextArea.setManaged(!command);
+        commandAttemptBox.setVisible(command);
+        commandAttemptBox.setManaged(command);
+    }
+
+    private void clearAttempts() {
+        attemptTextArea.clear();
+        commandTextField.clear();
     }
 
     private String normalizeSpacing(String value) {
@@ -291,10 +352,14 @@ public class ReviewController extends BaseController {
     }
 
     private String formatMatchRequirement() {
-        if (ALLOW_CASE_INSENSITIVE_MATCH) {
-            return "Case-insensitive exact matching is accepted for this card.";
+        if (currentCard != null && currentCard.getCardType() == CardType.COMMAND) {
+            return "Enter a command. Any listed accepted answer is valid (for example, ls -la or ls -al).";
         }
-        return "Exact capitalization, wording, and spacing are required for this card.";
+        return switch (currentCard == null || currentCard.getValidationMode() == null ? ValidationMode.CASE_INSENSITIVE : currentCard.getValidationMode()) {
+            case EXACT -> "Exact capitalization, wording, and spacing are required for this card.";
+            case CASE_INSENSITIVE -> "Case-insensitive exact matching is accepted for this card.";
+            case NORMALIZED_SPACING, COMMAND_NORMALIZED -> "Extra spacing is normalized, and case-insensitive alternatives are accepted.";
+        };
     }
 
     private void setRatingButtonsDisabled(boolean disabled) {

@@ -33,6 +33,10 @@ public final class DatabaseConfig {
                         deck_id INTEGER NOT NULL,
                         front TEXT NOT NULL,
                         back TEXT NOT NULL,
+                        card_type TEXT NOT NULL DEFAULT 'RECALL',
+                        accepted_answers TEXT,
+                        validation_mode TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE',
+                        simulated_output TEXT,
                         due_date TEXT NOT NULL,
                         interval_days INTEGER NOT NULL DEFAULT 0,
                         ease_factor REAL NOT NULL DEFAULT 2.5,
@@ -62,11 +66,43 @@ public final class DatabaseConfig {
                         total_reviews INTEGER NOT NULL DEFAULT 0
                     )
                     """);
+            ensureFlashcardColumns(connection);
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");
             seedStarterContent(connection);
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to initialize CodeFit database", exception);
         }
+    }
+
+    private static void ensureFlashcardColumns(Connection connection) throws SQLException {
+        addColumnIfMissing(connection, "flashcards", "card_type", "TEXT NOT NULL DEFAULT 'RECALL'");
+        addColumnIfMissing(connection, "flashcards", "accepted_answers", "TEXT");
+        addColumnIfMissing(connection, "flashcards", "validation_mode", "TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE'");
+        addColumnIfMissing(connection, "flashcards", "simulated_output", "TEXT");
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE flashcards SET accepted_answers = back WHERE accepted_answers IS NULL OR trim(accepted_answers) = ''");
+        }
+    }
+
+    private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {
+        if (hasColumn(connection, tableName, columnName)) {
+            return;
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + definition);
+        }
+    }
+
+    private static boolean hasColumn(Connection connection, String tableName, String columnName) throws SQLException {
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("PRAGMA table_info(" + tableName + ")")) {
+            while (resultSet.next()) {
+                if (columnName.equalsIgnoreCase(resultSet.getString("name"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static void seedStarterContent(Connection connection) throws SQLException {
@@ -82,16 +118,16 @@ public final class DatabaseConfig {
                     ('SQL & Persistence', 'SQLite, JDBC, schema design, and repository fundamentals.')
                     """);
             statement.executeUpdate("""
-                    INSERT INTO flashcards (deck_id, front, back, due_date) VALUES
-                    (1, 'What Java keyword creates a subclass relationship?', 'extends', date('now')),
-                    (1, 'Which collection keeps insertion order and allows indexed access?', 'ArrayList', date('now')),
-                    (1, 'What does JVM stand for?', 'Java Virtual Machine', date('now')),
-                    (2, 'Which JavaFX file format describes a scene graph declaratively?', 'FXML', date('now')),
-                    (2, 'Which JavaFX class usually owns one application window?', 'Stage', date('now')),
-                    (2, 'What method loads an FXML resource?', 'FXMLLoader.load()', date('now')),
-                    (3, 'What SQL command creates a table?', 'CREATE TABLE', date('now')),
-                    (3, 'What JDBC object executes parameterized SQL safely?', 'PreparedStatement', date('now')),
-                    (3, 'What SQLite clause avoids duplicate seed rows?', 'INSERT OR IGNORE', date('now'))
+                    INSERT INTO flashcards (deck_id, front, back, accepted_answers, due_date) VALUES
+                    (1, 'What Java keyword creates a subclass relationship?', 'extends', 'extends', date('now')),
+                    (1, 'Which collection keeps insertion order and allows indexed access?', 'ArrayList', 'ArrayList', date('now')),
+                    (1, 'What does JVM stand for?', 'Java Virtual Machine', 'Java Virtual Machine', date('now')),
+                    (2, 'Which JavaFX file format describes a scene graph declaratively?', 'FXML', 'FXML', date('now')),
+                    (2, 'Which JavaFX class usually owns one application window?', 'Stage', 'Stage', date('now')),
+                    (2, 'What method loads an FXML resource?', 'FXMLLoader.load()', 'FXMLLoader.load()', date('now')),
+                    (3, 'What SQL command creates a table?', 'CREATE TABLE', 'CREATE TABLE', date('now')),
+                    (3, 'What JDBC object executes parameterized SQL safely?', 'PreparedStatement', 'PreparedStatement', date('now')),
+                    (3, 'What SQLite clause avoids duplicate seed rows?', 'INSERT OR IGNORE', 'INSERT OR IGNORE', date('now'))
                     """);
         }
     }

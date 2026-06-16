@@ -1,7 +1,9 @@
 package com.codefit.repository;
 
 import com.codefit.config.DatabaseConfig;
+import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
+import com.codefit.model.ValidationMode;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -50,16 +52,20 @@ public class FlashcardRepository {
     }
 
     public Flashcard save(Flashcard flashcard) {
-        String sql = "INSERT INTO flashcards (deck_id, front, back, due_date, interval_days, ease_factor, review_count) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, due_date, interval_days, ease_factor, review_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, flashcard.getDeckId());
             statement.setString(2, flashcard.getFront());
             statement.setString(3, flashcard.getBack());
-            statement.setString(4, flashcard.getDueDate().toString());
-            statement.setInt(5, flashcard.getIntervalDays());
-            statement.setDouble(6, flashcard.getEaseFactor());
-            statement.setInt(7, flashcard.getReviewCount());
+            statement.setString(4, flashcard.getCardType().name());
+            statement.setString(5, flashcard.getAcceptedAnswers());
+            statement.setString(6, flashcard.getValidationMode().name());
+            statement.setString(7, flashcard.getSimulatedOutput());
+            statement.setString(8, flashcard.getDueDate().toString());
+            statement.setInt(9, flashcard.getIntervalDays());
+            statement.setDouble(10, flashcard.getEaseFactor());
+            statement.setInt(11, flashcard.getReviewCount());
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -129,11 +135,26 @@ public class FlashcardRepository {
                 resultSet.getLong("deck_id"),
                 resultSet.getString("front"),
                 resultSet.getString("back"),
+                enumValue(CardType.class, resultSet.getString("card_type"), CardType.RECALL),
+                resultSet.getString("accepted_answers"),
+                enumValue(ValidationMode.class, resultSet.getString("validation_mode"), ValidationMode.CASE_INSENSITIVE),
+                resultSet.getString("simulated_output"),
                 LocalDate.parse(resultSet.getString("due_date")),
                 resultSet.getInt("interval_days"),
                 resultSet.getDouble("ease_factor"),
                 resultSet.getInt("review_count"),
                 LocalDateTime.parse(resultSet.getString("created_at").replace(' ', 'T'))
         );
+    }
+
+    private <T extends Enum<T>> T enumValue(Class<T> enumClass, String value, T fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Enum.valueOf(enumClass, value);
+        } catch (IllegalArgumentException exception) {
+            return fallback;
+        }
     }
 }

@@ -44,6 +44,10 @@
                                     <Label fx:id="matchRequirementLabel" styleClass="muted" wrapText="true" HBox.hgrow="ALWAYS" />
                                 </HBox>
                                 <TextArea fx:id="attemptTextArea" promptText="Type your recall attempt before revealing the answer." wrapText="true" prefRowCount="3" maxWidth="Infinity" />
+                                <HBox fx:id="commandAttemptBox" spacing="8" alignment="CENTER_LEFT" styleClass="terminal-input" visible="false" managed="false" maxWidth="Infinity">
+                                    <Label text="$" styleClass="terminal-prompt" />
+                                    <TextField fx:id="commandTextField" promptText="Type the command you would run." HBox.hgrow="ALWAYS" />
+                                </HBox>
                             </VBox>
                             <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" />
                             <VBox spacing="12" styleClass="answer-section">

@@ -397,7 +397,7 @@ public class ReviewController extends BaseController {
     }
 
     private String getAttemptText() {
-        String attempt = currentCard != null && currentCard.getCardType() == CardType.COMMAND
+        String attempt = currentCard != null && currentCard.getCardType().isCommandTemplate()
                 ? commandTextField.getText()
                 : attemptTextArea.getText();
         return attempt == null ? "" : attempt.strip();
@@ -428,7 +428,7 @@ public class ReviewController extends BaseController {
 
     private String formatRevealedAnswer() {
         String answer = currentCard.getBack();
-        if (currentCard.getCardType() == CardType.COMMAND && currentCard.getSimulatedOutput() != null
+        if (currentCard.getCardType().isCommandTemplate() && currentCard.getSimulatedOutput() != null
                 && !currentCard.getSimulatedOutput().isBlank()) {
             return answer + "\n\nSimulated output:\n" + currentCard.getSimulatedOutput();
         }
@@ -436,7 +436,7 @@ public class ReviewController extends BaseController {
     }
 
     private void configureAttemptInput() {
-        boolean command = currentCard != null && currentCard.getCardType() == CardType.COMMAND;
+        boolean command = currentCard != null && currentCard.getCardType().isCommandTemplate();
         attemptTextArea.setVisible(!command);
         attemptTextArea.setManaged(!command);
         commandPracticePanel.setVisible(command);
@@ -467,7 +467,7 @@ public class ReviewController extends BaseController {
     }
 
     private void renderTerminalSubmission(AttemptValidationResult result) {
-        if (currentCard == null || currentCard.getCardType() != CardType.COMMAND || terminalHistoryArea == null) {
+        if (currentCard == null || !currentCard.getCardType().isCommandTemplate() || terminalHistoryArea == null) {
             return;
         }
 
@@ -524,7 +524,7 @@ public class ReviewController extends BaseController {
         if (result == AttemptValidationResult.TIMED_OUT || result == AttemptValidationResult.TIMED_OUT_WITH_ATTEMPT) {
             return "Time expired. Recommended rating: " + recommendedRatingLabel(result) + ".";
         }
-        if (currentCard != null && currentCard.getCardType() == CardType.COMMAND && result == AttemptValidationResult.DIFFERENT) {
+        if (currentCard != null && currentCard.getCardType().isCommandTemplate() && result == AttemptValidationResult.DIFFERENT) {
             return formatSafeCommandFeedback() + ". Recommended rating: " + recommendedRatingLabel(result) + ".";
         }
         return switch (result) {
@@ -538,7 +538,7 @@ public class ReviewController extends BaseController {
     }
 
     private String formatMatchRequirement() {
-        if (currentCard != null && currentCard.getCardType() == CardType.COMMAND) {
+        if (currentCard != null && currentCard.getCardType().isCommandTemplate()) {
             return "Enter a command. Any listed accepted answer is valid (for example, ls -la or ls -al).";
         }
         return switch (currentCard == null || currentCard.getValidationMode() == null ? ValidationMode.CASE_INSENSITIVE : currentCard.getValidationMode()) {

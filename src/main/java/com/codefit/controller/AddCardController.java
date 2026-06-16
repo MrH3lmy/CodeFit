@@ -13,6 +13,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
+import javafx.scene.layout.VBox;
 
 public class AddCardController extends BaseController {
     private static final String FRONT_PREVIEW_FALLBACK = "Your prompt preview will appear here.";
@@ -28,6 +29,20 @@ public class AddCardController extends BaseController {
     @FXML private TextArea acceptedAnswersArea;
     @FXML private TextArea simulatedOutputArea;
     @FXML private Label messageLabel;
+    @FXML private Label templateHelpLabel;
+    @FXML private Label frontLabel;
+    @FXML private Label frontHelpLabel;
+    @FXML private Label backLabel;
+    @FXML private Label backHelpLabel;
+    @FXML private Label acceptedAnswersLabel;
+    @FXML private Label simulatedOutputLabel;
+    @FXML private VBox validationField;
+    @FXML private VBox timeLimitField;
+    @FXML private VBox frontField;
+    @FXML private VBox backField;
+    @FXML private VBox hintField;
+    @FXML private VBox acceptedAnswersField;
+    @FXML private VBox simulatedOutputField;
     @FXML private Label frontPreviewLabel;
     @FXML private Label backPreviewLabel;
     @FXML private Button saveCardButton;
@@ -44,14 +59,14 @@ public class AddCardController extends BaseController {
         validationModeComboBox.setItems(FXCollections.observableArrayList(ValidationMode.values()));
         validationModeComboBox.getSelectionModel().select(ValidationMode.CASE_INSENSITIVE);
         timeLimitSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 5));
-        cardTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> updateCommandFields());
+        cardTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applyTemplate(newValue));
         frontPreviewLabel.setText(previewText(frontArea.getText(), FRONT_PREVIEW_FALLBACK));
         backPreviewLabel.setText(previewText(backArea.getText(), BACK_PREVIEW_FALLBACK));
         frontArea.textProperty().addListener((observable, oldValue, newValue) ->
                 frontPreviewLabel.setText(previewText(newValue, FRONT_PREVIEW_FALLBACK)));
         backArea.textProperty().addListener((observable, oldValue, newValue) ->
                 backPreviewLabel.setText(previewText(newValue, BACK_PREVIEW_FALLBACK)));
-        updateCommandFields();
+        applyTemplate(cardTypeComboBox.getValue());
 
         boolean hasNoDecks = deckComboBox.getItems().isEmpty();
         deckComboBox.setDisable(hasNoDecks);
@@ -104,13 +119,84 @@ public class AddCardController extends BaseController {
         return value == null || value <= 0 ? null : value;
     }
 
-    private void updateCommandFields() {
-        boolean command = cardTypeComboBox.getValue() == CardType.COMMAND;
-        acceptedAnswersArea.setVisible(command);
-        acceptedAnswersArea.setManaged(command);
-        simulatedOutputArea.setVisible(command);
-        simulatedOutputArea.setManaged(command);
-        validationModeComboBox.getSelectionModel().select(command ? ValidationMode.COMMAND_NORMALIZED : ValidationMode.CASE_INSENSITIVE);
+    private void applyTemplate(CardType selectedTemplate) {
+        CardType template = selectedTemplate == null ? CardType.RECALL : selectedTemplate;
+        boolean command = template.isCommandTemplate();
+        boolean codeOutput = template == CardType.CODE_OUTPUT;
+        boolean regex = template == CardType.REGEX_PATTERN;
+        boolean sql = template == CardType.SQL_QUERY;
+        boolean concept = template == CardType.RECALL || template == CardType.CONCEPT;
+
+        setVisible(validationField, command || regex || sql || codeOutput);
+        setVisible(timeLimitField, command || codeOutput);
+        setVisible(acceptedAnswersField, command || regex || sql);
+        setVisible(simulatedOutputField, command || codeOutput);
+        setVisible(hintField, !regex);
+
+        if (command) {
+            validationModeComboBox.getSelectionModel().select(ValidationMode.COMMAND_NORMALIZED);
+        } else if (regex || sql || codeOutput) {
+            validationModeComboBox.getSelectionModel().select(ValidationMode.NORMALIZED_SPACING);
+        } else {
+            validationModeComboBox.getSelectionModel().select(ValidationMode.CASE_INSENSITIVE);
+        }
+
+        switch (template) {
+            case LINUX_COMMAND -> configureCopy(
+                    "Linux command template: practice terminal syntax, aliases, and expected output.",
+                    "Task", "Describe the Linux task to complete (for example, list hidden files).",
+                    "Canonical command", "Enter the preferred command and a short explanation.",
+                    "Accepted command variants", "Accepted Linux commands, one per line (for example: ls -la\nls -al)",
+                    "Simulated terminal output", "Optional terminal output shown after reveal");
+            case GIT_COMMAND -> configureCopy(
+                    "Git command template: capture repository tasks and valid command variants.",
+                    "Git task", "Describe the Git operation to perform (for example, undo staged changes).",
+                    "Canonical Git command", "Enter the preferred Git command and why it works.",
+                    "Accepted Git variants", "Accepted Git commands, one per line",
+                    "Simulated Git output", "Optional Git output shown after reveal");
+            case SQL_QUERY -> configureCopy(
+                    "SQL query template: focus on schema, expected query, and equivalent answers.",
+                    "Schema or request", "Describe the table schema and the data question to answer.",
+                    "Expected query", "Enter the query and a brief explanation of important clauses.",
+                    "Accepted query variants", "Accepted SQL queries, one per line",
+                    "", "");
+            case REGEX_PATTERN -> configureCopy(
+                    "Regex template: define matching requirements and accepted patterns.",
+                    "Matching requirement", "Describe strings that should match and not match.",
+                    "Regex explanation", "Explain the pattern and any flags or anchors.",
+                    "Accepted regex patterns", "Accepted regex patterns, one per line",
+                    "", "");
+            case CODE_OUTPUT -> configureCopy(
+                    "Code output template: ask learners to predict a snippet's output.",
+                    "Code snippet", "Paste the code whose output should be predicted.",
+                    "Expected output", "Enter the exact output and explain the execution path.",
+                    "", "",
+                    "Runtime output", "Optional runtime output shown after reveal");
+            default -> configureCopy(
+                    concept ? "Concept flashcard template: capture one focused term, question, or idea." : "Command template: practice command syntax and output safely.",
+                    "Prompt", "Write the cue learners should recognize: a question, term, bug, or code snippet.",
+                    "Answer", "Keep it concise, then add the key explanation, edge case, or command that makes the answer stick.",
+                    "Accepted command answers", "Accepted command answers, one per line",
+                    "Simulated output", "Optional simulated output shown after reveal");
+        }
+    }
+
+    private void configureCopy(String templateHelp, String frontTitle, String frontHelp, String backTitle, String backHelp,
+                               String acceptedTitle, String acceptedPrompt, String outputTitle, String outputPrompt) {
+        templateHelpLabel.setText(templateHelp);
+        frontLabel.setText(frontTitle);
+        frontHelpLabel.setText(frontHelp);
+        backLabel.setText(backTitle);
+        backHelpLabel.setText(backHelp);
+        acceptedAnswersLabel.setText(acceptedTitle);
+        acceptedAnswersArea.setPromptText(acceptedPrompt);
+        simulatedOutputLabel.setText(outputTitle);
+        simulatedOutputArea.setPromptText(outputPrompt);
+    }
+
+    private void setVisible(VBox field, boolean visible) {
+        field.setVisible(visible);
+        field.setManaged(visible);
     }
 
     private String previewText(String value, String fallback) {

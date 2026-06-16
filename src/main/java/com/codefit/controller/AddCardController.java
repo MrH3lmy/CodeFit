@@ -11,10 +11,15 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 
 public class AddCardController extends BaseController {
+    private static final String FRONT_PREVIEW_FALLBACK = "Your prompt preview will appear here.";
+    private static final String BACK_PREVIEW_FALLBACK = "Your answer preview will appear here.";
+
     @FXML private ComboBox<Deck> deckComboBox;
     @FXML private TextArea frontArea;
     @FXML private TextArea backArea;
     @FXML private Label messageLabel;
+    @FXML private Label frontPreviewLabel;
+    @FXML private Label backPreviewLabel;
     @FXML private Button saveCardButton;
     @FXML private Button createDeckButton;
 
@@ -24,6 +29,13 @@ public class AddCardController extends BaseController {
     @FXML
     public void initialize() {
         deckComboBox.setItems(FXCollections.observableArrayList(deckService.getDecks()));
+        frontPreviewLabel.setText(previewText(frontArea.getText(), FRONT_PREVIEW_FALLBACK));
+        backPreviewLabel.setText(previewText(backArea.getText(), BACK_PREVIEW_FALLBACK));
+        frontArea.textProperty().addListener((observable, oldValue, newValue) ->
+                frontPreviewLabel.setText(previewText(newValue, FRONT_PREVIEW_FALLBACK)));
+        backArea.textProperty().addListener((observable, oldValue, newValue) ->
+                backPreviewLabel.setText(previewText(newValue, BACK_PREVIEW_FALLBACK)));
+
         boolean hasNoDecks = deckComboBox.getItems().isEmpty();
         deckComboBox.setDisable(hasNoDecks);
         frontArea.setDisable(hasNoDecks);
@@ -56,5 +68,12 @@ public class AddCardController extends BaseController {
         } catch (RuntimeException exception) {
             setStatus(messageLabel, exception.getMessage());
         }
+    }
+
+    private String previewText(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return value.strip();
     }
 }

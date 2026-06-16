@@ -31,7 +31,10 @@
                             </HBox>
                         </VBox>
                     </VBox>
-                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+                    <VBox spacing="12" maxWidth="Infinity">
+                        <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+                        <Button fx:id="reviewMissedButton" text="Review missed cards now" onAction="#reviewMissedNow" styleClass="action-button" maxWidth="Infinity" visible="false" managed="false" />
+                    </VBox>
                     <StackPane styleClass="review-stage" maxWidth="Infinity">
                         <VBox spacing="30" styleClass="review-card" maxWidth="900" StackPane.alignment="CENTER">
                             <VBox spacing="12" styleClass="prompt-section">

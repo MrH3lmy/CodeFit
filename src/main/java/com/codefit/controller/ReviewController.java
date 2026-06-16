@@ -1,9 +1,11 @@
 package com.codefit.controller;
 
 import com.codefit.model.CardType;
+import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewRating;
+import com.codefit.service.DeckService;
 import com.codefit.service.ReviewService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -20,8 +22,10 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ReviewController extends BaseController {
     @FXML private Label queueLabel;
@@ -45,14 +49,17 @@ public class ReviewController extends BaseController {
     @FXML private Button hardButton;
     @FXML private Button goodButton;
     @FXML private Button easyButton;
+    @FXML private Button reviewMissedButton;
 
     private final ReviewService reviewService = new ReviewService();
+    private final DeckService deckService = new DeckService();
     private List<Flashcard> dueCards = new ArrayList<>();
     private int currentIndex;
     private Flashcard currentCard;
     private int reviewedCardCount;
     private int earnedXp;
     private final Map<ReviewRating, Integer> ratingCounts = new EnumMap<>(ReviewRating.class);
+    private final List<Flashcard> missedCards = new ArrayList<>();
     private AttemptValidationResult latestValidationResult = AttemptValidationResult.EMPTY;
     private boolean answerRevealed;
     private Timeline timeLimitTimeline;
@@ -111,6 +118,23 @@ public class ReviewController extends BaseController {
         setRatingDescriptions(currentCard);
     }
 
+    @FXML
+    public void reviewMissedNow() {
+        if (missedCards.isEmpty()) {
+            return;
+        }
+
+        dueCards = new ArrayList<>(missedCards);
+        currentIndex = 0;
+        resetSessionMetrics();
+        if (reviewMissedButton != null) {
+            reviewMissedButton.setVisible(false);
+            reviewMissedButton.setManaged(false);
+            reviewMissedButton.setDisable(true);
+        }
+        showCurrentCard();
+    }
+
     @FXML public void rateAgain() { rate(ReviewRating.AGAIN); }
     @FXML public void rateHard() { rate(ReviewRating.HARD); }
     @FXML public void rateGood() { rate(ReviewRating.GOOD); }
@@ -123,11 +147,15 @@ public class ReviewController extends BaseController {
         int previousInterval = currentCard.getIntervalDays();
         LocalDate previousDueDate = currentCard.getDueDate();
         stopTimeLimitTimeline();
-        reviewService.review(currentCard, rating, submittedInTime);
+        Flashcard reviewedCard = currentCard;
+        reviewService.review(reviewedCard, rating, submittedInTime);
         reviewedCardCount++;
         earnedXp += rating.getXp();
         ratingCounts.merge(rating, 1, Integer::sum);
-        setStatus(messageLabel, formatReviewFeedback(rating, previousInterval, previousDueDate, currentCard));
+        if (rating == ReviewRating.AGAIN || rating == ReviewRating.HARD) {
+            missedCards.add(reviewedCard);
+        }
+        setStatus(messageLabel, formatReviewFeedback(rating, previousInterval, previousDueDate, reviewedCard));
         currentIndex++;
         showCurrentCard();
     }
@@ -136,19 +164,117 @@ public class ReviewController extends BaseController {
         reviewedCardCount = 0;
         earnedXp = 0;
         ratingCounts.clear();
+        missedCards.clear();
         for (ReviewRating rating : ReviewRating.values()) {
             ratingCounts.put(rating, 0);
         }
     }
 
     private String formatSessionSummary() {
-        return "Session complete: "
-                + reviewedCardCount + " " + pluralize(reviewedCardCount, "card") + " reviewed, "
-                + earnedXp + " XP earned, "
-                + formatRatingCount(ReviewRating.AGAIN) + " marked Again, "
-                + formatRatingCount(ReviewRating.HARD) + " marked Hard, "
-                + formatRatingCount(ReviewRating.GOOD) + " marked Good, and "
-                + formatRatingCount(ReviewRating.EASY) + " marked Easy.";
+        StringBuilder summary = new StringBuilder("Session complete: ")
+                .append(reviewedCardCount).append(" ").append(pluralize(reviewedCardCount, "card")).append(" reviewed, ")
+                .append(earnedXp).append(" XP earned, ")
+                .append(formatRatingCount(ReviewRating.AGAIN)).append(" marked Again, ")
+                .append(formatRatingCount(ReviewRating.HARD)).append(" marked Hard, ")
+                .append(formatRatingCount(ReviewRating.GOOD)).append(" marked Good, and ")
+                .append(formatRatingCount(ReviewRating.EASY)).append(" marked Easy.");
+
+        String weakAreaSignal = formatWeakAreaSignal();
+        if (!weakAreaSignal.isBlank()) {
+            summary.append("\n").append(weakAreaSignal);
+        }
+
+        String missedCardGroups = formatMissedCardGroups();
+        if (!missedCardGroups.isBlank()) {
+            summary.append("\n").append(missedCardGroups);
+        }
+
+        summary.append("\nNext action: ").append(formatSuggestedNextAction());
+        return summary.toString();
+    }
+
+    private String formatWeakAreaSignal() {
+        int againCount = ratingCounts.getOrDefault(ReviewRating.AGAIN, 0);
+        int hardCount = ratingCounts.getOrDefault(ReviewRating.HARD, 0);
+        int weakCount = againCount + hardCount;
+        if (weakCount == 0) {
+            return "Weak-area signal: none today — keep the streak going.";
+        }
+        String intensity = againCount > hardCount ? "missed recall" : hardCount > againCount ? "effortful recall" : "mixed missed and effortful recall";
+        return "Weak-area signal: " + weakCount + " " + pluralize(weakCount, "card") + " need reinforcement ("
+                + againCount + " Again, " + hardCount + " Hard), pointing to " + intensity + ".";
+    }
+
+    private String formatMissedCardGroups() {
+        if (missedCards.isEmpty()) {
+            return "";
+        }
+
+        Map<String, Long> groupedMisses = missedCards.stream()
+                .collect(Collectors.groupingBy(this::missedCardGroupLabel, LinkedHashMap::new, Collectors.counting()));
+
+        return "Missed-card focus: " + groupedMisses.entrySet().stream()
+                .map(entry -> entry.getKey() + " (" + entry.getValue() + ")")
+                .collect(Collectors.joining(", ")) + ".";
+    }
+
+    private String missedCardGroupLabel(Flashcard card) {
+        if (card.getCardType().isCommandTemplate()) {
+            return commandSkillLabel(card) + " / " + commandFamily(card);
+        }
+        return deckName(card.getDeckId()) + " / " + card.getCardType();
+    }
+
+    private String commandSkillLabel(Flashcard card) {
+        return switch (card.getCardType()) {
+            case LINUX_COMMAND -> "Linux commands";
+            case GIT_COMMAND -> "Git commands";
+            default -> "Commands";
+        };
+    }
+
+    private String commandFamily(Flashcard card) {
+        String answer = card.getAcceptedAnswers() == null || card.getAcceptedAnswers().isBlank() ? card.getBack() : card.getAcceptedAnswers();
+        String command = answer.lines()
+                .map(this::firstToken)
+                .filter(token -> !token.isBlank())
+                .findFirst()
+                .orElse("syntax");
+        return command + " family";
+    }
+
+    private String deckName(long deckId) {
+        return deckService.getDecks().stream()
+                .filter(deck -> deck.getId() == deckId)
+                .map(Deck::getName)
+                .findFirst()
+                .orElse("Deck " + deckId);
+    }
+
+    private String commandPracticeFocus(Flashcard card) {
+        String answers = card.getAcceptedAnswers() == null || card.getAcceptedAnswers().isBlank() ? card.getBack() : card.getAcceptedAnswers();
+        String skill = commandSkillLabel(card).toLowerCase();
+        if (answers.contains(" -") || answers.contains("--")) {
+            return skill.replace(" commands", " flags");
+        }
+        return skill + " in the " + commandFamily(card).replace(" family", "") + " family";
+    }
+
+    private String formatSuggestedNextAction() {
+        if (missedCards.isEmpty()) {
+            return "Add a stretch card or start another review when new cards are due.";
+        }
+
+        long missedCommands = missedCards.stream().filter(card -> card.getCardType().isCommandTemplate()).count();
+        if (missedCommands > 0) {
+            Flashcard firstCommandMiss = missedCards.stream()
+                    .filter(card -> card.getCardType().isCommandTemplate())
+                    .findFirst()
+                    .orElse(missedCards.get(0));
+            return "Practice " + commandPracticeFocus(firstCommandMiss) + " again, then add 3 cards for commands you missed.";
+        }
+
+        return "Review missed cards now, then add 3 cards for the weakest deck.";
     }
 
     private String formatRatingCount(ReviewRating rating) {
@@ -208,6 +334,7 @@ public class ReviewController extends BaseController {
             updateShowHintButton();
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
+            updateReviewMissedButton(false);
             return;
         }
         if (currentIndex >= dueCards.size()) {
@@ -227,9 +354,11 @@ public class ReviewController extends BaseController {
             updateShowHintButton();
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
+            updateReviewMissedButton(!missedCards.isEmpty());
             return;
         }
 
+        updateReviewMissedButton(false);
         currentCard = dueCards.get(currentIndex);
         queueLabel.setText((currentIndex + 1) + " / " + dueCards.size());
         promptLabel.setText(currentCard.getFront());
@@ -553,6 +682,14 @@ public class ReviewController extends BaseController {
         hardButton.setDisable(disabled);
         goodButton.setDisable(disabled);
         easyButton.setDisable(disabled);
+    }
+
+    private void updateReviewMissedButton(boolean visible) {
+        if (reviewMissedButton != null) {
+            reviewMissedButton.setVisible(visible);
+            reviewMissedButton.setManaged(visible);
+            reviewMissedButton.setDisable(!visible);
+        }
     }
 
 

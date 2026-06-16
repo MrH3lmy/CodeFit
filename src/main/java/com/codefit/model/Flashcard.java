@@ -13,6 +13,7 @@ public class Flashcard {
     private ValidationMode validationMode;
     private String simulatedOutput;
     private String hint;
+    private String skillCategory;
     private LocalDate dueDate;
     private int intervalDays;
     private double easeFactor;
@@ -38,6 +39,14 @@ public class Flashcard {
                      String acceptedAnswers, ValidationMode validationMode, String simulatedOutput, String hint,
                      LocalDate dueDate, int intervalDays, double easeFactor, int reviewCount,
                      LocalDateTime createdAt, Integer timeLimitSeconds) {
+        this(id, deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, hint, "General",
+                dueDate, intervalDays, easeFactor, reviewCount, createdAt, timeLimitSeconds);
+    }
+
+    public Flashcard(long id, long deckId, String front, String back, CardType cardType,
+                     String acceptedAnswers, ValidationMode validationMode, String simulatedOutput, String hint, String skillCategory,
+                     LocalDate dueDate, int intervalDays, double easeFactor, int reviewCount,
+                     LocalDateTime createdAt, Integer timeLimitSeconds) {
         this.id = id;
         this.deckId = deckId;
         this.front = front;
@@ -47,6 +56,7 @@ public class Flashcard {
         this.validationMode = validationMode == null ? ValidationMode.CASE_INSENSITIVE : validationMode;
         this.simulatedOutput = simulatedOutput;
         this.hint = hint;
+        this.skillCategory = normalizeSkillCategory(skillCategory);
         this.dueDate = dueDate;
         this.intervalDays = intervalDays;
         this.easeFactor = easeFactor;
@@ -95,6 +105,8 @@ public class Flashcard {
     public void setSimulatedOutput(String simulatedOutput) { this.simulatedOutput = simulatedOutput; }
     public String getHint() { return hint; }
     public void setHint(String hint) { this.hint = hint; }
+    public String getSkillCategory() { return skillCategory; }
+    public void setSkillCategory(String skillCategory) { this.skillCategory = normalizeSkillCategory(skillCategory); }
     public boolean hasHint() { return hint != null && !hint.isBlank(); }
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
@@ -108,4 +120,8 @@ public class Flashcard {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Integer getTimeLimitSeconds() { return timeLimitSeconds; }
     public void setTimeLimitSeconds(Integer timeLimitSeconds) { this.timeLimitSeconds = timeLimitSeconds; }
+
+    private String normalizeSkillCategory(String skillCategory) {
+        return skillCategory == null || skillCategory.isBlank() ? "General" : skillCategory.strip();
+    }
 }

@@ -13,6 +13,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 
 public class AddCardController extends BaseController {
@@ -23,6 +24,7 @@ public class AddCardController extends BaseController {
     @FXML private ComboBox<CardType> cardTypeComboBox;
     @FXML private ComboBox<ValidationMode> validationModeComboBox;
     @FXML private Spinner<Integer> timeLimitSpinner;
+    @FXML private TextField skillCategoryField;
     @FXML private TextArea frontArea;
     @FXML private TextArea backArea;
     @FXML private TextArea hintArea;
@@ -78,6 +80,7 @@ public class AddCardController extends BaseController {
         acceptedAnswersArea.setDisable(hasNoDecks);
         simulatedOutputArea.setDisable(hasNoDecks);
         timeLimitSpinner.setDisable(hasNoDecks);
+        skillCategoryField.setDisable(hasNoDecks);
         saveCardButton.setDisable(hasNoDecks);
         createDeckButton.setVisible(hasNoDecks);
         createDeckButton.setManaged(hasNoDecks);
@@ -101,13 +104,14 @@ public class AddCardController extends BaseController {
         try {
             flashcardService.addCard(deck.getId(), frontArea.getText(), backArea.getText(),
                     cardTypeComboBox.getValue(), acceptedAnswersArea.getText(), validationModeComboBox.getValue(),
-                    simulatedOutputArea.getText(), hintArea.getText(), getTimeLimitSeconds());
+                    simulatedOutputArea.getText(), hintArea.getText(), getTimeLimitSeconds(), skillCategoryField.getText());
             frontArea.clear();
             backArea.clear();
             hintArea.clear();
             acceptedAnswersArea.clear();
             simulatedOutputArea.clear();
             timeLimitSpinner.getValueFactory().setValue(0);
+            skillCategoryField.clear();
             setStatus(messageLabel, "Card added and scheduled for today.");
         } catch (RuntimeException exception) {
             setStatus(messageLabel, exception.getMessage());

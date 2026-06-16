@@ -38,6 +38,7 @@ public final class DatabaseConfig {
                         validation_mode TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE',
                         simulated_output TEXT,
                         hint TEXT,
+                        skill_category TEXT NOT NULL DEFAULT 'General',
                         time_limit_seconds INTEGER,
                         due_date TEXT NOT NULL,
                         interval_days INTEGER NOT NULL DEFAULT 0,
@@ -84,9 +85,11 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "flashcards", "validation_mode", "TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE'");
         addColumnIfMissing(connection, "flashcards", "simulated_output", "TEXT");
         addColumnIfMissing(connection, "flashcards", "hint", "TEXT");
+        addColumnIfMissing(connection, "flashcards", "skill_category", "TEXT NOT NULL DEFAULT 'General'");
         addColumnIfMissing(connection, "flashcards", "time_limit_seconds", "INTEGER");
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("UPDATE flashcards SET accepted_answers = back WHERE accepted_answers IS NULL OR trim(accepted_answers) = ''");
+            statement.executeUpdate("UPDATE flashcards SET skill_category = 'General' WHERE skill_category IS NULL OR trim(skill_category) = ''");
         }
     }
 
@@ -128,16 +131,16 @@ public final class DatabaseConfig {
                     ('SQL & Persistence', 'SQLite, JDBC, schema design, and repository fundamentals.')
                     """);
             statement.executeUpdate("""
-                    INSERT INTO flashcards (deck_id, front, back, accepted_answers, due_date) VALUES
-                    (1, 'What Java keyword creates a subclass relationship?', 'extends', 'extends', date('now')),
-                    (1, 'Which collection keeps insertion order and allows indexed access?', 'ArrayList', 'ArrayList', date('now')),
-                    (1, 'What does JVM stand for?', 'Java Virtual Machine', 'Java Virtual Machine', date('now')),
-                    (2, 'Which JavaFX file format describes a scene graph declaratively?', 'FXML', 'FXML', date('now')),
-                    (2, 'Which JavaFX class usually owns one application window?', 'Stage', 'Stage', date('now')),
-                    (2, 'What method loads an FXML resource?', 'FXMLLoader.load()', 'FXMLLoader.load()', date('now')),
-                    (3, 'What SQL command creates a table?', 'CREATE TABLE', 'CREATE TABLE', date('now')),
-                    (3, 'What JDBC object executes parameterized SQL safely?', 'PreparedStatement', 'PreparedStatement', date('now')),
-                    (3, 'What SQLite clause avoids duplicate seed rows?', 'INSERT OR IGNORE', 'INSERT OR IGNORE', date('now'))
+                    INSERT INTO flashcards (deck_id, front, back, accepted_answers, skill_category, due_date) VALUES
+                    (1, 'What Java keyword creates a subclass relationship?', 'extends', 'extends', 'Java Syntax', date('now')),
+                    (1, 'Which collection keeps insertion order and allows indexed access?', 'ArrayList', 'ArrayList', 'Collections', date('now')),
+                    (1, 'What does JVM stand for?', 'Java Virtual Machine', 'Java Virtual Machine', 'Java Runtime', date('now')),
+                    (2, 'Which JavaFX file format describes a scene graph declaratively?', 'FXML', 'FXML', 'JavaFX UI', date('now')),
+                    (2, 'Which JavaFX class usually owns one application window?', 'Stage', 'Stage', 'JavaFX UI', date('now')),
+                    (2, 'What method loads an FXML resource?', 'FXMLLoader.load()', 'FXMLLoader.load()', 'JavaFX UI', date('now')),
+                    (3, 'What SQL command creates a table?', 'CREATE TABLE', 'CREATE TABLE', 'SQL', date('now')),
+                    (3, 'What JDBC object executes parameterized SQL safely?', 'PreparedStatement', 'PreparedStatement', 'JDBC', date('now')),
+                    (3, 'What SQLite clause avoids duplicate seed rows?', 'INSERT OR IGNORE', 'INSERT OR IGNORE', 'SQLite', date('now'))
                     """);
         }
     }

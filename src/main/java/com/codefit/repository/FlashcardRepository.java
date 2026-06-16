@@ -52,7 +52,7 @@ public class FlashcardRepository {
     }
 
     public Flashcard save(Flashcard flashcard) {
-        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, time_limit_seconds, due_date, interval_days, ease_factor, review_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, hint, time_limit_seconds, due_date, interval_days, ease_factor, review_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, flashcard.getDeckId());
@@ -62,15 +62,16 @@ public class FlashcardRepository {
             statement.setString(5, flashcard.getAcceptedAnswers());
             statement.setString(6, flashcard.getValidationMode().name());
             statement.setString(7, flashcard.getSimulatedOutput());
+            statement.setString(8, flashcard.getHint());
             if (flashcard.getTimeLimitSeconds() == null) {
-                statement.setNull(8, java.sql.Types.INTEGER);
+                statement.setNull(9, java.sql.Types.INTEGER);
             } else {
-                statement.setInt(8, flashcard.getTimeLimitSeconds());
+                statement.setInt(9, flashcard.getTimeLimitSeconds());
             }
-            statement.setString(9, flashcard.getDueDate().toString());
-            statement.setInt(10, flashcard.getIntervalDays());
-            statement.setDouble(11, flashcard.getEaseFactor());
-            statement.setInt(12, flashcard.getReviewCount());
+            statement.setString(10, flashcard.getDueDate().toString());
+            statement.setInt(11, flashcard.getIntervalDays());
+            statement.setDouble(12, flashcard.getEaseFactor());
+            statement.setInt(13, flashcard.getReviewCount());
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -144,6 +145,7 @@ public class FlashcardRepository {
                 resultSet.getString("accepted_answers"),
                 enumValue(ValidationMode.class, resultSet.getString("validation_mode"), ValidationMode.CASE_INSENSITIVE),
                 resultSet.getString("simulated_output"),
+                resultSet.getString("hint"),
                 LocalDate.parse(resultSet.getString("due_date")),
                 resultSet.getInt("interval_days"),
                 resultSet.getDouble("ease_factor"),

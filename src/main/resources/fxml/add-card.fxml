@@ -37,6 +37,9 @@
                             <Label text="Answer" styleClass="section-title" />
                             <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" />
                             <Label text="Keep it concise, then add the key explanation, edge case, or command that makes the answer stick." styleClass="helper-text" wrapText="true" />
+                            <Label text="Hint (optional)" styleClass="section-title" />
+                            <TextArea fx:id="hintArea" promptText="Optional clue shown during review before the answer" prefRowCount="3" wrapText="true" />
+                            <Label text="Hints should nudge recall without giving away the full answer." styleClass="helper-text" wrapText="true" />
                             <TextArea fx:id="acceptedAnswersArea" promptText="Accepted command answers, one per line (for example: ls -la&#10;ls -al)" prefRowCount="4" wrapText="true" />
                             <TextArea fx:id="simulatedOutputArea" promptText="Optional simulated terminal output shown after reveal" prefRowCount="4" wrapText="true" />
                             <Button fx:id="saveCardButton" text="Save Card" onAction="#saveCard" styleClass="action-button" />

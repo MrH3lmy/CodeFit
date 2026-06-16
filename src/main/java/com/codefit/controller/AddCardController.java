@@ -24,6 +24,7 @@ public class AddCardController extends BaseController {
     @FXML private Spinner<Integer> timeLimitSpinner;
     @FXML private TextArea frontArea;
     @FXML private TextArea backArea;
+    @FXML private TextArea hintArea;
     @FXML private TextArea acceptedAnswersArea;
     @FXML private TextArea simulatedOutputArea;
     @FXML private Label messageLabel;
@@ -56,6 +57,7 @@ public class AddCardController extends BaseController {
         deckComboBox.setDisable(hasNoDecks);
         frontArea.setDisable(hasNoDecks);
         backArea.setDisable(hasNoDecks);
+        hintArea.setDisable(hasNoDecks);
         cardTypeComboBox.setDisable(hasNoDecks);
         validationModeComboBox.setDisable(hasNoDecks);
         acceptedAnswersArea.setDisable(hasNoDecks);
@@ -84,9 +86,10 @@ public class AddCardController extends BaseController {
         try {
             flashcardService.addCard(deck.getId(), frontArea.getText(), backArea.getText(),
                     cardTypeComboBox.getValue(), acceptedAnswersArea.getText(), validationModeComboBox.getValue(),
-                    simulatedOutputArea.getText(), getTimeLimitSeconds());
+                    simulatedOutputArea.getText(), hintArea.getText(), getTimeLimitSeconds());
             frontArea.clear();
             backArea.clear();
+            hintArea.clear();
             acceptedAnswersArea.clear();
             simulatedOutputArea.clear();
             timeLimitSpinner.getValueFactory().setValue(0);

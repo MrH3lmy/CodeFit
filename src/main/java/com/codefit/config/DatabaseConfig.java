@@ -37,6 +37,7 @@ public final class DatabaseConfig {
                         accepted_answers TEXT,
                         validation_mode TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE',
                         simulated_output TEXT,
+                        hint TEXT,
                         time_limit_seconds INTEGER,
                         due_date TEXT NOT NULL,
                         interval_days INTEGER NOT NULL DEFAULT 0,
@@ -82,6 +83,7 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "flashcards", "accepted_answers", "TEXT");
         addColumnIfMissing(connection, "flashcards", "validation_mode", "TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE'");
         addColumnIfMissing(connection, "flashcards", "simulated_output", "TEXT");
+        addColumnIfMissing(connection, "flashcards", "hint", "TEXT");
         addColumnIfMissing(connection, "flashcards", "time_limit_seconds", "INTEGER");
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("UPDATE flashcards SET accepted_answers = back WHERE accepted_answers IS NULL OR trim(accepted_answers) = ''");

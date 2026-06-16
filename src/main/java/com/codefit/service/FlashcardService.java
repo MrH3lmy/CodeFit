@@ -28,17 +28,23 @@ public class FlashcardService {
     }
 
     public Flashcard addCard(long deckId, String front, String back) {
-        return addCard(deckId, front, back, CardType.RECALL, back, ValidationMode.CASE_INSENSITIVE, null, null);
+        return addCard(deckId, front, back, CardType.RECALL, back, ValidationMode.CASE_INSENSITIVE, null, null, null);
     }
 
     public Flashcard addCard(long deckId, String front, String back, CardType cardType,
                              String acceptedAnswers, ValidationMode validationMode, String simulatedOutput) {
-        return addCard(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, null);
+        return addCard(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, null, null);
     }
 
     public Flashcard addCard(long deckId, String front, String back, CardType cardType,
                              String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
                              Integer timeLimitSeconds) {
+        return addCard(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, null, timeLimitSeconds);
+    }
+
+    public Flashcard addCard(long deckId, String front, String back, CardType cardType,
+                             String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
+                             String hint, Integer timeLimitSeconds) {
         if (deckId <= 0) {
             throw new IllegalArgumentException("Choose a deck before adding a card.");
         }
@@ -48,7 +54,7 @@ public class FlashcardService {
         String answers = acceptedAnswers == null || acceptedAnswers.isBlank() ? back : acceptedAnswers;
         return flashcardRepository.save(new Flashcard(deckId, front.trim(), back.trim(), cardType,
                 answers.trim(), validationMode, simulatedOutput == null || simulatedOutput.isBlank() ? null : simulatedOutput.trim(),
-                timeLimitSeconds));
+                hint == null || hint.isBlank() ? null : hint.trim(), timeLimitSeconds));
     }
 
     public int countAllCards() {

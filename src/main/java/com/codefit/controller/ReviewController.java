@@ -40,6 +40,7 @@ public class ReviewController extends BaseController {
     @FXML private TextField commandTextField;
     @FXML private TextArea terminalHistoryArea;
     @FXML private Button showAnswerButton;
+    @FXML private Button showHintButton;
     @FXML private Button againButton;
     @FXML private Button hardButton;
     @FXML private Button goodButton;
@@ -57,6 +58,7 @@ public class ReviewController extends BaseController {
     private Timeline timeLimitTimeline;
     private int remainingTimeSeconds;
     private boolean submittedInTime = true;
+    private boolean hintUsed;
 
     @FXML
     public void initialize() {
@@ -66,6 +68,19 @@ public class ReviewController extends BaseController {
         attemptTextArea.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
         commandTextField.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
         showCurrentCard();
+    }
+
+    @FXML
+    public void showHint() {
+        if (currentCard == null || !currentCard.hasHint() || answerRevealed) {
+            return;
+        }
+
+        hintUsed = true;
+        answerLabel.setText("Hint:\n" + currentCard.getHint().strip());
+        showHintButton.setDisable(true);
+        setStatus(messageLabel, "Hint shown. If it helped, avoid marking this card Easy.");
+        setRatingDescriptions(currentCard);
     }
 
     @FXML
@@ -79,6 +94,7 @@ public class ReviewController extends BaseController {
             latestValidationResult = validationResult;
             setStatus(messageLabel, "Enter an attempt before revealing the answer.");
             showAnswerButton.setDisable(true);
+            updateShowHintButton();
             return;
         }
 
@@ -90,6 +106,7 @@ public class ReviewController extends BaseController {
         renderTerminalSubmission(validationResult);
         setRatingButtonsDisabled(false);
         showAnswerButton.setDisable(true);
+        updateShowHintButton();
         setStatus(messageLabel, formatAttemptFeedback(validationResult));
         setRatingDescriptions(currentCard);
     }
@@ -183,10 +200,12 @@ public class ReviewController extends BaseController {
             clearAttempts();
             latestValidationResult = AttemptValidationResult.EMPTY;
             answerRevealed = false;
+            hintUsed = false;
             setStatus(messageLabel, "");
             matchRequirementLabel.setText("");
             configureAttemptInput();
             showAnswerButton.setDisable(true);
+            updateShowHintButton();
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             return;
@@ -200,10 +219,12 @@ public class ReviewController extends BaseController {
             clearAttempts();
             latestValidationResult = AttemptValidationResult.EMPTY;
             answerRevealed = false;
+            hintUsed = false;
             setStatus(messageLabel, formatSessionSummary());
             matchRequirementLabel.setText("");
             configureAttemptInput();
             showAnswerButton.setDisable(true);
+            updateShowHintButton();
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             return;
@@ -214,13 +235,15 @@ public class ReviewController extends BaseController {
         promptLabel.setText(currentCard.getFront());
         latestValidationResult = AttemptValidationResult.EMPTY;
         answerRevealed = false;
+        hintUsed = false;
         submittedInTime = true;
         matchRequirementLabel.setText(formatMatchRequirement());
         clearAttempts();
         configureAttemptInput();
-        answerLabel.setText("Answer hidden. Reveal when ready.");
+        answerLabel.setText(currentCard.hasHint() ? "Answer hidden. Use Show Hint for a clue, or reveal when ready." : "Answer hidden. Reveal when ready.");
         setRatingDescriptions(currentCard);
         showAnswerButton.setDisable(true);
+        updateShowHintButton();
         setRatingButtonsDisabled(true);
         startTimeLimitIfNeeded();
     }
@@ -261,9 +284,10 @@ public class ReviewController extends BaseController {
         answerLabel.setText(formatRevealedAnswer());
         renderTerminalSubmission(latestValidationResult);
         showAnswerButton.setDisable(true);
+        updateShowHintButton();
         setRatingButtonsDisabled(false);
         setRatingDescriptions(currentCard);
-        setStatus(messageLabel, "Time expired. Answer revealed. Recommended rating: " + latestValidationResult.recommendedRatingLabel() + ".");
+        setStatus(messageLabel, "Time expired. Answer revealed. Recommended rating: " + recommendedRatingLabel(latestValidationResult) + ".");
     }
 
     private boolean isTimedCardExpired() {
@@ -291,7 +315,7 @@ public class ReviewController extends BaseController {
     }
 
     private void setRatingDescriptions(Flashcard card) {
-        ReviewRating recommendedRating = latestValidationResult.recommendedRating();
+        ReviewRating recommendedRating = recommendedRating();
         againDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.AGAIN, recommendedRating,
                 "Missed it — review again today"));
         hardDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.HARD, recommendedRating,
@@ -342,11 +366,13 @@ public class ReviewController extends BaseController {
         if (currentCard == null) {
             latestValidationResult = AttemptValidationResult.EMPTY;
             showAnswerButton.setDisable(true);
+            updateShowHintButton();
             return;
         }
 
         latestValidationResult = validateAttempt();
         showAnswerButton.setDisable(answerRevealed || latestValidationResult == AttemptValidationResult.EMPTY);
+        updateShowHintButton();
         if (latestValidationResult == AttemptValidationResult.EMPTY) {
             setStatus(messageLabel, "Enter an attempt to enable Reveal Answer.");
         } else {
@@ -496,18 +522,18 @@ public class ReviewController extends BaseController {
 
     private String formatAttemptFeedback(AttemptValidationResult result) {
         if (result == AttemptValidationResult.TIMED_OUT || result == AttemptValidationResult.TIMED_OUT_WITH_ATTEMPT) {
-            return "Time expired. Recommended rating: " + result.recommendedRatingLabel() + ".";
+            return "Time expired. Recommended rating: " + recommendedRatingLabel(result) + ".";
         }
         if (currentCard != null && currentCard.getCardType() == CardType.COMMAND && result == AttemptValidationResult.DIFFERENT) {
-            return formatSafeCommandFeedback() + ". Recommended rating: " + result.recommendedRatingLabel() + ".";
+            return formatSafeCommandFeedback() + ". Recommended rating: " + recommendedRatingLabel(result) + ".";
         }
         return switch (result) {
             case EMPTY -> "Enter an attempt to enable Reveal Answer.";
-            case EXACT -> "Exact match. Recommended rating: " + result.recommendedRatingLabel() + ".";
-            case CLOSE_SPACING -> "Close, check spacing. Recommended rating: " + result.recommendedRatingLabel() + ".";
-            case DIFFERENT -> "Different from expected answer. Recommended rating: " + result.recommendedRatingLabel() + ".";
-            case TIMED_OUT -> "Time expired with no matching attempt. Recommended rating: " + result.recommendedRatingLabel() + ".";
-            case TIMED_OUT_WITH_ATTEMPT -> "Time expired after an attempt. Recommended rating: " + result.recommendedRatingLabel() + ".";
+            case EXACT -> "Exact match. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case CLOSE_SPACING -> "Close, check spacing. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case DIFFERENT -> "Different from expected answer. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case TIMED_OUT -> "Time expired with no matching attempt. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case TIMED_OUT_WITH_ATTEMPT -> "Time expired after an attempt. Recommended rating: " + recommendedRatingLabel(result) + ".";
         };
     }
 
@@ -527,6 +553,29 @@ public class ReviewController extends BaseController {
         hardButton.setDisable(disabled);
         goodButton.setDisable(disabled);
         easyButton.setDisable(disabled);
+    }
+
+
+    private void updateShowHintButton() {
+        if (showHintButton != null) {
+            showHintButton.setDisable(currentCard == null || !currentCard.hasHint() || hintUsed || answerRevealed);
+        }
+    }
+
+    private ReviewRating recommendedRating() {
+        ReviewRating rating = latestValidationResult.recommendedRating();
+        if (hintUsed && rating == ReviewRating.EASY) {
+            return ReviewRating.GOOD;
+        }
+        return rating;
+    }
+
+    private String recommendedRatingLabel(AttemptValidationResult result) {
+        ReviewRating rating = result == latestValidationResult ? recommendedRating() : result.recommendedRating();
+        if (rating == null) {
+            return "none";
+        }
+        return rating.name().charAt(0) + rating.name().substring(1).toLowerCase();
     }
 
     private enum AttemptValidationResult {

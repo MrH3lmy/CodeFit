@@ -20,8 +20,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DashboardController extends BaseController {
-    private static final int XP_PER_LEVEL = 50;
-
     @FXML private Label levelLabel;
     @FXML private Label xpLabel;
     @FXML private Label streakLabel;
@@ -66,15 +64,15 @@ public class DashboardController extends BaseController {
     }
 
     private String formatXpProgress(UserProgress progress) {
-        return getCurrentLevelXp(progress) + " / " + XP_PER_LEVEL + " XP";
+        return getCurrentLevelXp(progress) + " / " + ProgressService.XP_PER_LEVEL + " XP";
     }
 
     private double calculateLevelProgress(UserProgress progress) {
-        return getCurrentLevelXp(progress) / (double) XP_PER_LEVEL;
+        return getCurrentLevelXp(progress) / (double) ProgressService.XP_PER_LEVEL;
     }
 
     private int getCurrentLevelXp(UserProgress progress) {
-        return progress.getXp() % XP_PER_LEVEL;
+        return progress.getXp() % ProgressService.XP_PER_LEVEL;
     }
 
     private void populateRecentDecks(List<Deck> decks) {

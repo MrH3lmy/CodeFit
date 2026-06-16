@@ -2,6 +2,7 @@ package com.codefit.controller;
 
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.UserProgress;
+import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -32,7 +33,7 @@ public class StatsController extends BaseController {
         totalCardsLabel.setText(String.valueOf(statsService.getTotalCards()));
         dueCardsLabel.setText(String.valueOf(statsService.getDueCards()));
         reviewedTodayLabel.setText(String.valueOf(statsService.getReviewedToday()));
-        xpProgressBar.setProgress((progress.getXp() % 100) / 100.0);
+        xpProgressBar.setProgress((progress.getXp() % ProgressService.XP_PER_LEVEL) / (double) ProgressService.XP_PER_LEVEL);
 
         var recent = statsService.getRecentReviews().stream().map(this::formatReview).toList();
         recentReviewsListView.setItems(recent.isEmpty()

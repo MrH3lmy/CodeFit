@@ -1,7 +1,9 @@
 package com.codefit.controller;
 
+import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.UserProgress;
+import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
 import javafx.collections.FXCollections;
@@ -21,7 +23,10 @@ public class StatsController extends BaseController {
     @FXML private ProgressBar xpProgressBar;
     @FXML private ListView<String> recentReviewsListView;
 
+    private static final int MAX_PROMPT_LENGTH = 48;
+
     private final StatsService statsService = new StatsService();
+    private final FlashcardService flashcardService = new FlashcardService();
 
     @FXML
     public void initialize() {
@@ -42,8 +47,26 @@ public class StatsController extends BaseController {
     }
 
     private String formatReview(ReviewHistory history) {
-        return history.getReviewedAt().toLocalDate() + " • Card #" + history.getFlashcardId()
+        return history.getReviewedAt().toLocalDate() + " • " + getCardPrompt(history.getFlashcardId())
                 + " • " + history.getRating() + " • " + history.getPreviousIntervalDays()
                 + "d → " + history.getNewIntervalDays() + "d";
+    }
+
+    private String getCardPrompt(long flashcardId) {
+        return flashcardService.getCardById(flashcardId)
+                .map(Flashcard::getFront)
+                .map(this::shortenPrompt)
+                .orElse("Deleted card #" + flashcardId);
+    }
+
+    private String shortenPrompt(String prompt) {
+        String normalized = prompt == null ? "" : prompt.replaceAll("\\s+", " ").trim();
+        if (normalized.isEmpty()) {
+            return "Untitled card";
+        }
+        if (normalized.length() <= MAX_PROMPT_LENGTH) {
+            return normalized;
+        }
+        return normalized.substring(0, MAX_PROMPT_LENGTH - 1).stripTrailing() + "…";
     }
 }

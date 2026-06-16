@@ -4,6 +4,7 @@ import com.codefit.model.Flashcard;
 import com.codefit.repository.FlashcardRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public class FlashcardService {
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
@@ -18,6 +19,10 @@ public class FlashcardService {
 
     public List<Flashcard> getDueCards() {
         return flashcardRepository.findDueCards();
+    }
+
+    public Optional<Flashcard> getCardById(long id) {
+        return flashcardRepository.findById(id);
     }
 
     public Flashcard addCard(long deckId, String front, String back) {

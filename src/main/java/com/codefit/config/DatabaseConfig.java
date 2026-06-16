@@ -37,6 +37,7 @@ public final class DatabaseConfig {
                         accepted_answers TEXT,
                         validation_mode TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE',
                         simulated_output TEXT,
+                        time_limit_seconds INTEGER,
                         due_date TEXT NOT NULL,
                         interval_days INTEGER NOT NULL DEFAULT 0,
                         ease_factor REAL NOT NULL DEFAULT 2.5,
@@ -53,6 +54,7 @@ public final class DatabaseConfig {
                         previous_interval_days INTEGER NOT NULL,
                         new_interval_days INTEGER NOT NULL,
                         reviewed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        submitted_in_time INTEGER NOT NULL DEFAULT 1,
                         FOREIGN KEY(flashcard_id) REFERENCES flashcards(id) ON DELETE CASCADE
                     )
                     """);
@@ -67,6 +69,7 @@ public final class DatabaseConfig {
                     )
                     """);
             ensureFlashcardColumns(connection);
+            ensureReviewHistoryColumns(connection);
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");
             seedStarterContent(connection);
         } catch (SQLException exception) {
@@ -79,9 +82,14 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "flashcards", "accepted_answers", "TEXT");
         addColumnIfMissing(connection, "flashcards", "validation_mode", "TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE'");
         addColumnIfMissing(connection, "flashcards", "simulated_output", "TEXT");
+        addColumnIfMissing(connection, "flashcards", "time_limit_seconds", "INTEGER");
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("UPDATE flashcards SET accepted_answers = back WHERE accepted_answers IS NULL OR trim(accepted_answers) = ''");
         }
+    }
+
+    private static void ensureReviewHistoryColumns(Connection connection) throws SQLException {
+        addColumnIfMissing(connection, "review_history", "submitted_in_time", "INTEGER NOT NULL DEFAULT 1");
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

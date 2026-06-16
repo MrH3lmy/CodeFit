@@ -21,6 +21,9 @@
                             <Label text="Card Composer" styleClass="section-title" />
                             <Label text="Deck" styleClass="section-title" />
                             <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
+                            <Label text="Skill / Category" styleClass="section-title" />
+                            <TextField fx:id="skillCategoryField" promptText="Example: Java Syntax, SQL, JavaFX UI" />
+                            <Label text="Categories power per-skill stats and weak-area detection." styleClass="helper-text" wrapText="true" />
                             <Label text="Template" styleClass="section-title" />
                             <ComboBox fx:id="cardTypeComboBox" maxWidth="Infinity" />
                             <Label fx:id="templateHelpLabel" text="Choose a technical-skill template to tailor the fields below." styleClass="helper-text" wrapText="true" />

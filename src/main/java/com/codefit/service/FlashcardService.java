@@ -28,23 +28,29 @@ public class FlashcardService {
     }
 
     public Flashcard addCard(long deckId, String front, String back) {
-        return addCard(deckId, front, back, CardType.RECALL, back, ValidationMode.CASE_INSENSITIVE, null, null, null);
+        return addCard(deckId, front, back, CardType.RECALL, back, ValidationMode.CASE_INSENSITIVE, null, null, null, null);
     }
 
     public Flashcard addCard(long deckId, String front, String back, CardType cardType,
                              String acceptedAnswers, ValidationMode validationMode, String simulatedOutput) {
-        return addCard(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, null, null);
+        return addCard(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, null, null, null);
     }
 
     public Flashcard addCard(long deckId, String front, String back, CardType cardType,
                              String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
                              Integer timeLimitSeconds) {
-        return addCard(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, null, timeLimitSeconds);
+        return addCard(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, null, timeLimitSeconds, null);
     }
 
     public Flashcard addCard(long deckId, String front, String back, CardType cardType,
                              String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
                              String hint, Integer timeLimitSeconds) {
+        return addCard(deckId, front, back, cardType, acceptedAnswers, validationMode, simulatedOutput, hint, timeLimitSeconds, null);
+    }
+
+    public Flashcard addCard(long deckId, String front, String back, CardType cardType,
+                             String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
+                             String hint, Integer timeLimitSeconds, String skillCategory) {
         if (deckId <= 0) {
             throw new IllegalArgumentException("Choose a deck before adding a card.");
         }
@@ -52,9 +58,11 @@ public class FlashcardService {
             throw new IllegalArgumentException("Both prompt and answer are required.");
         }
         String answers = acceptedAnswers == null || acceptedAnswers.isBlank() ? back : acceptedAnswers;
-        return flashcardRepository.save(new Flashcard(deckId, front.trim(), back.trim(), cardType,
+        Flashcard flashcard = new Flashcard(deckId, front.trim(), back.trim(), cardType,
                 answers.trim(), validationMode, simulatedOutput == null || simulatedOutput.isBlank() ? null : simulatedOutput.trim(),
-                hint == null || hint.isBlank() ? null : hint.trim(), timeLimitSeconds));
+                hint == null || hint.isBlank() ? null : hint.trim(), timeLimitSeconds);
+        flashcard.setSkillCategory(skillCategory);
+        return flashcardRepository.save(flashcard);
     }
 
     public int countAllCards() {

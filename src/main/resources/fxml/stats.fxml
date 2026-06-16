@@ -25,6 +25,19 @@
                         <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity"><Label text="Total Cards" styleClass="stat-label" /><Label fx:id="totalCardsLabel" styleClass="stat-value" wrapText="true" /></VBox>
                         <VBox styleClass="small-card" minWidth="0" maxWidth="Infinity"><Label text="Due Cards" styleClass="stat-label" /><Label fx:id="dueCardsLabel" styleClass="stat-value" wrapText="true" /></VBox>
                     </TilePane>
+
+                    <HBox spacing="18" maxWidth="Infinity">
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                            <Label text="Skill Performance" styleClass="section-title" />
+                            <Label text="Accuracy is based on recent GOOD/EASY ratings by skill category. Distribution shows AGAIN, HARD, GOOD, and EASY counts." styleClass="muted" wrapText="true" />
+                            <ListView fx:id="skillPerformanceListView" prefHeight="220" VBox.vgrow="ALWAYS" />
+                        </VBox>
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                            <Label text="Needs Practice" styleClass="section-title" />
+                            <Label text="Categories with elevated AGAIN or HARD rates are flagged here as weak areas." styleClass="muted" wrapText="true" />
+                            <ListView fx:id="needsPracticeListView" prefHeight="220" VBox.vgrow="ALWAYS" />
+                        </VBox>
+                    </HBox>
                     <VBox spacing="10" styleClass="panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
                         <Label text="Recent Reviews" styleClass="section-title" />
                         <ListView fx:id="recentReviewsListView" prefHeight="260" VBox.vgrow="ALWAYS" />

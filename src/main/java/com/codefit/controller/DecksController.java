@@ -4,7 +4,9 @@ import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -80,10 +82,11 @@ public class DecksController extends BaseController {
         return value == null || value.isBlank() ? fallback : value.strip();
     }
 
-    private static final class DeckCell extends ListCell<Deck> {
+    private final class DeckCell extends ListCell<Deck> {
         private final Label nameLabel = new Label();
         private final Label descriptionLabel = new Label();
-        private final VBox content = new VBox(4, nameLabel, descriptionLabel);
+        private final Label metadataLabel = new Label();
+        private final VBox content = new VBox(4, nameLabel, descriptionLabel, metadataLabel);
 
         private DeckCell() {
             nameLabel.getStyleClass().add("deck-row-title");
@@ -95,6 +98,11 @@ public class DecksController extends BaseController {
             descriptionLabel.setWrapText(true);
             descriptionLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
             descriptionLabel.maxWidthProperty().bind(widthProperty().subtract(28));
+
+            metadataLabel.getStyleClass().add("deck-row-stats");
+            metadataLabel.setWrapText(true);
+            metadataLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+            metadataLabel.maxWidthProperty().bind(widthProperty().subtract(28));
 
             content.getStyleClass().add("deck-row");
             content.setMaxWidth(Double.MAX_VALUE);
@@ -110,9 +118,30 @@ public class DecksController extends BaseController {
                 return;
             }
 
+            List<Flashcard> cards = flashcardService.getCardsForDeck(deck.getId());
+            long totalCards = cards.size();
+            long dueCards = countDueCards(cards);
+            long reviewedCards = cards.stream()
+                    .filter(card -> card.getReviewCount() > 0)
+                    .count();
+            long reviewedPercent = totalCards == 0 ? 0 : Math.round(reviewedCards * 100.0 / totalCards);
+
             nameLabel.setText(displayText(deck.getName(), "Untitled deck"));
             descriptionLabel.setText(displayText(deck.getDescription(), "No description yet."));
+            metadataLabel.setText(String.format(
+                    "%d %s • %d due • %d%% reviewed",
+                    totalCards,
+                    totalCards == 1 ? "card" : "cards",
+                    dueCards,
+                    reviewedPercent));
             setGraphic(content);
+        }
+
+        private long countDueCards(List<Flashcard> cards) {
+            LocalDate today = LocalDate.now();
+            return cards.stream()
+                    .filter(card -> card.getDueDate() != null && !card.getDueDate().isAfter(today))
+                    .count();
         }
     }
 

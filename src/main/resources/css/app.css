@@ -640,6 +640,13 @@
     -fx-font-weight: 600;
 }
 
+.deck-row-stats {
+    -fx-text-fill: -color-accent-text;
+    -fx-font-size: 11px;
+    -fx-font-weight: 900;
+    -fx-opacity: 0.94;
+}
+
 .card-row-answer {
     -fx-opacity: 0.92;
 }
@@ -663,6 +670,10 @@
 .list-cell:selected .deck-row-description,
 .list-cell:selected .card-row-answer {
     -fx-text-fill: -color-list-text;
+}
+
+.list-cell:selected .deck-row-stats {
+    -fx-text-fill: -color-selected-badge-text;
 }
 
 .list-cell:selected .due-badge {

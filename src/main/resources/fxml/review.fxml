@@ -44,10 +44,19 @@
                                     <Label fx:id="matchRequirementLabel" styleClass="muted" wrapText="true" HBox.hgrow="ALWAYS" />
                                 </HBox>
                                 <TextArea fx:id="attemptTextArea" promptText="Type your recall attempt before revealing the answer." wrapText="true" prefRowCount="3" maxWidth="Infinity" />
-                                <HBox fx:id="commandAttemptBox" spacing="8" alignment="CENTER_LEFT" styleClass="terminal-input" visible="false" managed="false" maxWidth="Infinity">
-                                    <Label text="$" styleClass="terminal-prompt" />
-                                    <TextField fx:id="commandTextField" promptText="Type the command you would run." HBox.hgrow="ALWAYS" />
-                                </HBox>
+                                <VBox fx:id="commandPracticePanel" spacing="12" styleClass="terminal-panel" visible="false" managed="false" maxWidth="Infinity">
+                                    <HBox spacing="8" alignment="CENTER_LEFT" styleClass="terminal-titlebar">
+                                        <Label text="●" styleClass="terminal-dot terminal-dot-red" />
+                                        <Label text="●" styleClass="terminal-dot terminal-dot-yellow" />
+                                        <Label text="●" styleClass="terminal-dot terminal-dot-green" />
+                                        <Label text="Practice shell" styleClass="terminal-title" HBox.hgrow="ALWAYS" />
+                                    </HBox>
+                                    <TextArea fx:id="terminalHistoryArea" text="$ # output history appears after reveal" editable="false" wrapText="true" prefRowCount="5" focusTraversable="false" styleClass="terminal-history" maxWidth="Infinity" />
+                                    <HBox fx:id="commandAttemptBox" spacing="8" alignment="CENTER_LEFT" styleClass="terminal-input" maxWidth="Infinity">
+                                        <Label text="$" styleClass="terminal-prompt" />
+                                        <TextField fx:id="commandTextField" promptText="Type the command you would run." HBox.hgrow="ALWAYS" />
+                                    </HBox>
+                                </VBox>
                             </VBox>
                             <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" />
                             <VBox spacing="12" styleClass="answer-section">

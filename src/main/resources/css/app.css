@@ -1038,3 +1038,54 @@
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
     -fx-highlight-fill: rgba(34, 211, 238, 0.35);
 }
+
+.terminal-panel {
+    -fx-background-color:
+        radial-gradient(center 0% 0%, radius 88%, rgba(34, 211, 238, 0.14), transparent 42%),
+        linear-gradient(to bottom, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.96));
+    -fx-border-color: rgba(56, 189, 248, 0.42), rgba(255, 255, 255, 0.08);
+    -fx-border-width: 1.5, 1;
+    -fx-border-radius: 18, 18;
+    -fx-background-radius: 18, 18;
+    -fx-padding: 14;
+    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.18), 24, 0.18, 0, 8);
+}
+
+.terminal-titlebar {
+    -fx-padding: 0 2 4 2;
+}
+
+.terminal-dot {
+    -fx-font-size: 10px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+.terminal-dot-red { -fx-text-fill: #fb7185; }
+.terminal-dot-yellow { -fx-text-fill: #facc15; }
+.terminal-dot-green { -fx-text-fill: #34d399; }
+
+.terminal-title {
+    -fx-text-fill: rgba(203, 213, 225, 0.86);
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-padding: 0 0 0 8;
+}
+
+.terminal-history {
+    -fx-background-color: rgba(2, 6, 23, 0.72);
+    -fx-control-inner-background: rgba(2, 6, 23, 0.72);
+    -fx-border-color: rgba(148, 163, 184, 0.18);
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-text-fill: #d1fae5;
+    -fx-prompt-text-fill: rgba(186, 230, 253, 0.58);
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-highlight-fill: rgba(34, 211, 238, 0.26);
+}
+
+.terminal-history .content {
+    -fx-background-color: rgba(2, 6, 23, 0.72);
+    -fx-background-radius: 12;
+}

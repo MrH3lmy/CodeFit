@@ -6,6 +6,7 @@ import com.codefit.service.ReviewService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -17,6 +18,7 @@ public class ReviewController extends BaseController {
     @FXML private Label promptLabel;
     @FXML private Label answerLabel;
     @FXML private Label messageLabel;
+    @FXML private TextArea attemptTextArea;
     @FXML private Button showAnswerButton;
     @FXML private Button againButton;
     @FXML private Button hardButton;
@@ -97,6 +99,7 @@ public class ReviewController extends BaseController {
             queueLabel.setText("0 due");
             promptLabel.setText("No due reviews.");
             answerLabel.setText("Add cards or come back when scheduled reviews mature.");
+            attemptTextArea.clear();
             setStatus(messageLabel, "");
             showAnswerButton.setDisable(true);
             setRatingButtonsDisabled(true);
@@ -107,6 +110,7 @@ public class ReviewController extends BaseController {
             queueLabel.setText("Complete");
             promptLabel.setText("Review session complete.");
             answerLabel.setText("Great work. Your XP, streak, and schedules are updated.");
+            attemptTextArea.clear();
             showAnswerButton.setDisable(true);
             setRatingButtonsDisabled(true);
             return;
@@ -115,6 +119,7 @@ public class ReviewController extends BaseController {
         currentCard = dueCards.get(currentIndex);
         queueLabel.setText((currentIndex + 1) + " / " + dueCards.size());
         promptLabel.setText(currentCard.getFront());
+        attemptTextArea.clear();
         answerLabel.setText("Answer hidden. Reveal when ready.");
         showAnswerButton.setDisable(false);
         setRatingButtonsDisabled(true);

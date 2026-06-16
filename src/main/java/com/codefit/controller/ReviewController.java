@@ -11,7 +11,9 @@ import javafx.scene.control.TextArea;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 public class ReviewController extends BaseController {
     @FXML private Label queueLabel;
@@ -33,11 +35,15 @@ public class ReviewController extends BaseController {
     private List<Flashcard> dueCards = new ArrayList<>();
     private int currentIndex;
     private Flashcard currentCard;
+    private int reviewedCardCount;
+    private int earnedXp;
+    private final Map<ReviewRating, Integer> ratingCounts = new EnumMap<>(ReviewRating.class);
 
     @FXML
     public void initialize() {
         dueCards = new ArrayList<>(reviewService.getDueCards());
         currentIndex = 0;
+        resetSessionMetrics();
         showCurrentCard();
     }
 
@@ -63,9 +69,40 @@ public class ReviewController extends BaseController {
         int previousInterval = currentCard.getIntervalDays();
         LocalDate previousDueDate = currentCard.getDueDate();
         reviewService.review(currentCard, rating);
+        reviewedCardCount++;
+        earnedXp += rating.getXp();
+        ratingCounts.merge(rating, 1, Integer::sum);
         setStatus(messageLabel, formatReviewFeedback(rating, previousInterval, previousDueDate, currentCard));
         currentIndex++;
         showCurrentCard();
+    }
+
+    private void resetSessionMetrics() {
+        reviewedCardCount = 0;
+        earnedXp = 0;
+        ratingCounts.clear();
+        for (ReviewRating rating : ReviewRating.values()) {
+            ratingCounts.put(rating, 0);
+        }
+    }
+
+    private String formatSessionSummary() {
+        return "Session complete: "
+                + reviewedCardCount + " " + pluralize(reviewedCardCount, "card") + " reviewed, "
+                + earnedXp + " XP earned, "
+                + formatRatingCount(ReviewRating.AGAIN) + " marked Again, "
+                + formatRatingCount(ReviewRating.HARD) + " marked Hard, "
+                + formatRatingCount(ReviewRating.GOOD) + " marked Good, and "
+                + formatRatingCount(ReviewRating.EASY) + " marked Easy.";
+    }
+
+    private String formatRatingCount(ReviewRating rating) {
+        int count = ratingCounts.getOrDefault(rating, 0);
+        return count + " " + pluralize(count, "card");
+    }
+
+    private String pluralize(int count, String singular) {
+        return count == 1 ? singular : singular + "s";
     }
 
     private String formatReviewFeedback(ReviewRating rating, int previousInterval, LocalDate previousDueDate, Flashcard reviewedCard) {
@@ -116,6 +153,7 @@ public class ReviewController extends BaseController {
             promptLabel.setText("Review session complete.");
             answerLabel.setText("Great work. Your XP, streak, and schedules are updated.");
             attemptTextArea.clear();
+            setStatus(messageLabel, formatSessionSummary());
             showAnswerButton.setDisable(true);
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);

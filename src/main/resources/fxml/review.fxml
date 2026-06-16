@@ -38,11 +38,15 @@
                                 <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />
                             </VBox>
                             <Separator />
+                            <VBox spacing="12" styleClass="attempt-section">
+                                <Label text="YOUR ATTEMPT" styleClass="stat-label" />
+                                <TextArea fx:id="attemptTextArea" promptText="Type your recall attempt before revealing the answer." wrapText="true" prefRowCount="3" maxWidth="Infinity" />
+                            </VBox>
+                            <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" />
                             <VBox spacing="12" styleClass="answer-section">
                                 <Label text="ANSWER" styleClass="stat-label" />
                                 <Label fx:id="answerLabel" styleClass="review-answer" wrapText="true" />
                             </VBox>
-                            <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" />
                             <VBox spacing="14" styleClass="rating-panel" maxWidth="Infinity">
                                 <Label text="How did recall feel?" styleClass="section-title" />
                                 <TilePane hgap="14" vgap="14" prefTileWidth="154" tileAlignment="TOP_LEFT" styleClass="rating-grid">

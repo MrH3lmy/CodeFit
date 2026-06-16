@@ -7,6 +7,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,10 +54,41 @@ public class ReviewController extends BaseController {
         if (currentCard == null) {
             return;
         }
+        int previousInterval = currentCard.getIntervalDays();
+        LocalDate previousDueDate = currentCard.getDueDate();
         reviewService.review(currentCard, rating);
-        setStatus(messageLabel, rating.name() + " logged. +" + rating.getXp() + " XP");
+        setStatus(messageLabel, formatReviewFeedback(rating, previousInterval, previousDueDate, currentCard));
         currentIndex++;
         showCurrentCard();
+    }
+
+    private String formatReviewFeedback(ReviewRating rating, int previousInterval, LocalDate previousDueDate, Flashcard reviewedCard) {
+        String ratingLabel = rating.name().charAt(0) + rating.name().substring(1).toLowerCase();
+        String nextReview = formatNextReview(previousInterval, previousDueDate, reviewedCard);
+        return ratingLabel + " logged. +" + rating.getXp() + " XP. Next review " + nextReview + ".";
+    }
+
+    private String formatNextReview(int previousInterval, LocalDate previousDueDate, Flashcard reviewedCard) {
+        int updatedInterval = reviewedCard.getIntervalDays();
+        LocalDate updatedDueDate = reviewedCard.getDueDate();
+        if (updatedDueDate != null) {
+            long daysUntilDue = ChronoUnit.DAYS.between(LocalDate.now(), updatedDueDate);
+            if (daysUntilDue <= 0) {
+                return "today";
+            }
+            return "in " + daysUntilDue + " " + pluralizeDay(daysUntilDue);
+        }
+        if (updatedInterval > 0) {
+            return "in " + updatedInterval + " " + pluralizeDay(updatedInterval);
+        }
+        if (previousDueDate != null || previousInterval > 0) {
+            return "today";
+        }
+        return "soon";
+    }
+
+    private String pluralizeDay(long days) {
+        return days == 1 ? "day" : "days";
     }
 
     private void showCurrentCard() {

@@ -11,6 +11,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -30,8 +31,10 @@ public class ReviewController extends BaseController {
     @FXML private Label goodDescriptionLabel;
     @FXML private Label easyDescriptionLabel;
     @FXML private TextArea attemptTextArea;
+    @FXML private VBox commandPracticePanel;
     @FXML private HBox commandAttemptBox;
     @FXML private TextField commandTextField;
+    @FXML private TextArea terminalHistoryArea;
     @FXML private Button showAnswerButton;
     @FXML private Button againButton;
     @FXML private Button hardButton;
@@ -75,6 +78,7 @@ public class ReviewController extends BaseController {
         latestValidationResult = validationResult;
         answerRevealed = true;
         answerLabel.setText(formatRevealedAnswer());
+        renderTerminalSubmission(validationResult);
         setRatingButtonsDisabled(false);
         showAnswerButton.setDisable(true);
         setStatus(messageLabel, formatAttemptFeedback(validationResult));
@@ -329,20 +333,89 @@ public class ReviewController extends BaseController {
         boolean command = currentCard != null && currentCard.getCardType() == CardType.COMMAND;
         attemptTextArea.setVisible(!command);
         attemptTextArea.setManaged(!command);
+        commandPracticePanel.setVisible(command);
+        commandPracticePanel.setManaged(command);
         commandAttemptBox.setVisible(command);
         commandAttemptBox.setManaged(command);
+        if (command) {
+            resetTerminalHistory();
+        }
     }
 
     private void clearAttempts() {
         attemptTextArea.clear();
         commandTextField.clear();
+        resetTerminalHistory();
     }
 
     private String normalizeSpacing(String value) {
         return value.replaceAll("\\s+", " ").strip();
     }
 
+    private void resetTerminalHistory() {
+        if (terminalHistoryArea != null) {
+            terminalHistoryArea.setText("$ # output history appears after reveal");
+        }
+    }
+
+    private void renderTerminalSubmission(AttemptValidationResult result) {
+        if (currentCard == null || currentCard.getCardType() != CardType.COMMAND || terminalHistoryArea == null) {
+            return;
+        }
+
+        StringBuilder history = new StringBuilder();
+        history.append("$ ").append(getAttemptText()).append("\n");
+        if (result == AttemptValidationResult.EXACT || result == AttemptValidationResult.CLOSE_SPACING) {
+            history.append(formatSimulatedOutput());
+        } else {
+            history.append(formatSafeCommandFeedback());
+            String expectedOutput = formatSimulatedOutput();
+            if (!expectedOutput.isBlank()) {
+                history.append("\n\n# Expected simulated output\n").append(expectedOutput);
+            }
+        }
+        terminalHistoryArea.setText(history.toString());
+    }
+
+    private String formatSimulatedOutput() {
+        if (currentCard == null || currentCard.getSimulatedOutput() == null || currentCard.getSimulatedOutput().isBlank()) {
+            return "# No simulated output saved for this card.";
+        }
+        return currentCard.getSimulatedOutput();
+    }
+
+    private String formatSafeCommandFeedback() {
+        String attempt = normalizeCommand(getAttemptText()).toLowerCase();
+        String expected = acceptedAnswers().stream()
+                .map(this::normalizeCommand)
+                .map(String::toLowerCase)
+                .findFirst()
+                .orElse("");
+
+        if (!expected.isBlank() && sharesCommandName(attempt, expected)) {
+            return "command accepted but flags are missing";
+        }
+        if (expected.contains(" -l") || expected.contains(" --all") || expected.contains(" -a")) {
+            return "expected long listing output";
+        }
+        return "command accepted, but output differs from the saved simulation";
+    }
+
+    private boolean sharesCommandName(String attempt, String expected) {
+        return firstToken(attempt).equals(firstToken(expected));
+    }
+
+    private String firstToken(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value.strip().split("\\s+", 2)[0];
+    }
+
     private String formatAttemptFeedback(AttemptValidationResult result) {
+        if (currentCard != null && currentCard.getCardType() == CardType.COMMAND && result == AttemptValidationResult.DIFFERENT) {
+            return formatSafeCommandFeedback() + ". Recommended rating: " + result.recommendedRatingLabel() + ".";
+        }
         return switch (result) {
             case EMPTY -> "Enter an attempt to enable Reveal Answer.";
             case EXACT -> "Exact match. Recommended rating: " + result.recommendedRatingLabel() + ".";

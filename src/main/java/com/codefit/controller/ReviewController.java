@@ -18,6 +18,10 @@ public class ReviewController extends BaseController {
     @FXML private Label promptLabel;
     @FXML private Label answerLabel;
     @FXML private Label messageLabel;
+    @FXML private Label againDescriptionLabel;
+    @FXML private Label hardDescriptionLabel;
+    @FXML private Label goodDescriptionLabel;
+    @FXML private Label easyDescriptionLabel;
     @FXML private TextArea attemptTextArea;
     @FXML private Button showAnswerButton;
     @FXML private Button againButton;
@@ -102,6 +106,7 @@ public class ReviewController extends BaseController {
             attemptTextArea.clear();
             setStatus(messageLabel, "");
             showAnswerButton.setDisable(true);
+            setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             return;
         }
@@ -112,6 +117,7 @@ public class ReviewController extends BaseController {
             answerLabel.setText("Great work. Your XP, streak, and schedules are updated.");
             attemptTextArea.clear();
             showAnswerButton.setDisable(true);
+            setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             return;
         }
@@ -121,8 +127,44 @@ public class ReviewController extends BaseController {
         promptLabel.setText(currentCard.getFront());
         attemptTextArea.clear();
         answerLabel.setText("Answer hidden. Reveal when ready.");
+        setRatingDescriptions(currentCard);
         showAnswerButton.setDisable(false);
         setRatingButtonsDisabled(true);
+    }
+
+    private void setRatingDescriptions(Flashcard card) {
+        againDescriptionLabel.setText("Missed it — review again today");
+        hardDescriptionLabel.setText(formatRatingDescription(card, ReviewRating.HARD, "Remembered with effort", "short interval"));
+        goodDescriptionLabel.setText(formatRatingDescription(card, ReviewRating.GOOD, "Solid recall", "normal interval"));
+        easyDescriptionLabel.setText(formatRatingDescription(card, ReviewRating.EASY, "Instant recall", "longer interval"));
+    }
+
+    private String formatRatingDescription(Flashcard card, ReviewRating rating, String recallDescription, String fallbackInterval) {
+        if (card == null) {
+            return recallDescription + " — " + fallbackInterval;
+        }
+
+        int previewInterval = calculatePreviewInterval(card, rating);
+        return recallDescription + " — " + formatInterval(previewInterval);
+    }
+
+    private int calculatePreviewInterval(Flashcard card, ReviewRating rating) {
+        int interval = card.getIntervalDays();
+        double ease = card.getEaseFactor();
+
+        return switch (rating) {
+            case AGAIN -> 0;
+            case HARD -> Math.max(1, (int) Math.ceil(interval * 1.2));
+            case GOOD -> interval == 0 ? 1 : Math.max(1, (int) Math.round(interval * ease));
+            case EASY -> interval == 0 ? 4 : Math.max(4, (int) Math.round(interval * ease * 1.3));
+        };
+    }
+
+    private String formatInterval(int intervalDays) {
+        if (intervalDays <= 0) {
+            return "review again today";
+        }
+        return "next review in " + intervalDays + " " + pluralizeDay(intervalDays);
     }
 
     private void setRatingButtonsDisabled(boolean disabled) {

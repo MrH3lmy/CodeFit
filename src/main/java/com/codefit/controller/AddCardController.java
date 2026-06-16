@@ -1,6 +1,8 @@
 package com.codefit.controller;
 
+import com.codefit.model.CardType;
 import com.codefit.model.Deck;
+import com.codefit.model.ValidationMode;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
 import javafx.collections.FXCollections;
@@ -15,8 +17,12 @@ public class AddCardController extends BaseController {
     private static final String BACK_PREVIEW_FALLBACK = "Your answer preview will appear here.";
 
     @FXML private ComboBox<Deck> deckComboBox;
+    @FXML private ComboBox<CardType> cardTypeComboBox;
+    @FXML private ComboBox<ValidationMode> validationModeComboBox;
     @FXML private TextArea frontArea;
     @FXML private TextArea backArea;
+    @FXML private TextArea acceptedAnswersArea;
+    @FXML private TextArea simulatedOutputArea;
     @FXML private Label messageLabel;
     @FXML private Label frontPreviewLabel;
     @FXML private Label backPreviewLabel;
@@ -29,17 +35,27 @@ public class AddCardController extends BaseController {
     @FXML
     public void initialize() {
         deckComboBox.setItems(FXCollections.observableArrayList(deckService.getDecks()));
+        cardTypeComboBox.setItems(FXCollections.observableArrayList(CardType.values()));
+        cardTypeComboBox.getSelectionModel().select(CardType.RECALL);
+        validationModeComboBox.setItems(FXCollections.observableArrayList(ValidationMode.values()));
+        validationModeComboBox.getSelectionModel().select(ValidationMode.CASE_INSENSITIVE);
+        cardTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> updateCommandFields());
         frontPreviewLabel.setText(previewText(frontArea.getText(), FRONT_PREVIEW_FALLBACK));
         backPreviewLabel.setText(previewText(backArea.getText(), BACK_PREVIEW_FALLBACK));
         frontArea.textProperty().addListener((observable, oldValue, newValue) ->
                 frontPreviewLabel.setText(previewText(newValue, FRONT_PREVIEW_FALLBACK)));
         backArea.textProperty().addListener((observable, oldValue, newValue) ->
                 backPreviewLabel.setText(previewText(newValue, BACK_PREVIEW_FALLBACK)));
+        updateCommandFields();
 
         boolean hasNoDecks = deckComboBox.getItems().isEmpty();
         deckComboBox.setDisable(hasNoDecks);
         frontArea.setDisable(hasNoDecks);
         backArea.setDisable(hasNoDecks);
+        cardTypeComboBox.setDisable(hasNoDecks);
+        validationModeComboBox.setDisable(hasNoDecks);
+        acceptedAnswersArea.setDisable(hasNoDecks);
+        simulatedOutputArea.setDisable(hasNoDecks);
         saveCardButton.setDisable(hasNoDecks);
         createDeckButton.setVisible(hasNoDecks);
         createDeckButton.setManaged(hasNoDecks);
@@ -61,13 +77,26 @@ public class AddCardController extends BaseController {
         }
 
         try {
-            flashcardService.addCard(deck.getId(), frontArea.getText(), backArea.getText());
+            flashcardService.addCard(deck.getId(), frontArea.getText(), backArea.getText(),
+                    cardTypeComboBox.getValue(), acceptedAnswersArea.getText(), validationModeComboBox.getValue(),
+                    simulatedOutputArea.getText());
             frontArea.clear();
             backArea.clear();
+            acceptedAnswersArea.clear();
+            simulatedOutputArea.clear();
             setStatus(messageLabel, "Card added and scheduled for today.");
         } catch (RuntimeException exception) {
             setStatus(messageLabel, exception.getMessage());
         }
+    }
+
+    private void updateCommandFields() {
+        boolean command = cardTypeComboBox.getValue() == CardType.COMMAND;
+        acceptedAnswersArea.setVisible(command);
+        acceptedAnswersArea.setManaged(command);
+        simulatedOutputArea.setVisible(command);
+        simulatedOutputArea.setManaged(command);
+        validationModeComboBox.getSelectionModel().select(command ? ValidationMode.COMMAND_NORMALIZED : ValidationMode.CASE_INSENSITIVE);
     }
 
     private String previewText(String value, String fallback) {

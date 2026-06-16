@@ -1015,3 +1015,26 @@
 .deck-percent {
     -fx-text-fill: -color-accent-text;
 }
+
+.terminal-input {
+    -fx-background-color: rgba(2, 6, 23, 0.86);
+    -fx-border-color: rgba(56, 189, 248, 0.38);
+    -fx-border-radius: 14;
+    -fx-background-radius: 14;
+    -fx-padding: 10 12;
+}
+
+.terminal-prompt {
+    -fx-text-fill: #22d3ee;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+}
+
+.terminal-input .text-field {
+    -fx-background-color: transparent;
+    -fx-text-fill: #ecfeff;
+    -fx-prompt-text-fill: rgba(186, 230, 253, 0.62);
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-highlight-fill: rgba(34, 211, 238, 0.35);
+}

@@ -20,6 +20,7 @@ public class ReviewController extends BaseController {
     @FXML private Label promptLabel;
     @FXML private Label answerLabel;
     @FXML private Label messageLabel;
+    @FXML private Label matchRequirementLabel;
     @FXML private Label againDescriptionLabel;
     @FXML private Label hardDescriptionLabel;
     @FXML private Label goodDescriptionLabel;
@@ -38,12 +39,16 @@ public class ReviewController extends BaseController {
     private int reviewedCardCount;
     private int earnedXp;
     private final Map<ReviewRating, Integer> ratingCounts = new EnumMap<>(ReviewRating.class);
+    private static final boolean ALLOW_CASE_INSENSITIVE_MATCH = true;
+    private AttemptValidationResult latestValidationResult = AttemptValidationResult.EMPTY;
+    private boolean answerRevealed;
 
     @FXML
     public void initialize() {
         dueCards = new ArrayList<>(reviewService.getDueCards());
         currentIndex = 0;
         resetSessionMetrics();
+        attemptTextArea.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
         showCurrentCard();
     }
 
@@ -52,9 +57,22 @@ public class ReviewController extends BaseController {
         if (currentCard == null) {
             return;
         }
+
+        AttemptValidationResult validationResult = validateAttempt();
+        if (validationResult == AttemptValidationResult.EMPTY) {
+            latestValidationResult = validationResult;
+            setStatus(messageLabel, "Enter an attempt before revealing the answer.");
+            showAnswerButton.setDisable(true);
+            return;
+        }
+
+        latestValidationResult = validationResult;
+        answerRevealed = true;
         answerLabel.setText(currentCard.getBack());
         setRatingButtonsDisabled(false);
         showAnswerButton.setDisable(true);
+        setStatus(messageLabel, formatAttemptFeedback(validationResult));
+        setRatingDescriptions(currentCard);
     }
 
     @FXML public void rateAgain() { rate(ReviewRating.AGAIN); }
@@ -141,7 +159,10 @@ public class ReviewController extends BaseController {
             promptLabel.setText("No due reviews.");
             answerLabel.setText("Add cards or come back when scheduled reviews mature.");
             attemptTextArea.clear();
+            latestValidationResult = AttemptValidationResult.EMPTY;
+            answerRevealed = false;
             setStatus(messageLabel, "");
+            matchRequirementLabel.setText("");
             showAnswerButton.setDisable(true);
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
@@ -153,7 +174,10 @@ public class ReviewController extends BaseController {
             promptLabel.setText("Review session complete.");
             answerLabel.setText("Great work. Your XP, streak, and schedules are updated.");
             attemptTextArea.clear();
+            latestValidationResult = AttemptValidationResult.EMPTY;
+            answerRevealed = false;
             setStatus(messageLabel, formatSessionSummary());
+            matchRequirementLabel.setText("");
             showAnswerButton.setDisable(true);
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
@@ -163,18 +187,33 @@ public class ReviewController extends BaseController {
         currentCard = dueCards.get(currentIndex);
         queueLabel.setText((currentIndex + 1) + " / " + dueCards.size());
         promptLabel.setText(currentCard.getFront());
+        latestValidationResult = AttemptValidationResult.EMPTY;
+        answerRevealed = false;
+        matchRequirementLabel.setText(formatMatchRequirement());
         attemptTextArea.clear();
         answerLabel.setText("Answer hidden. Reveal when ready.");
         setRatingDescriptions(currentCard);
-        showAnswerButton.setDisable(false);
+        showAnswerButton.setDisable(true);
         setRatingButtonsDisabled(true);
     }
 
     private void setRatingDescriptions(Flashcard card) {
-        againDescriptionLabel.setText("Missed it — review again today");
-        hardDescriptionLabel.setText(formatRatingDescription(card, ReviewRating.HARD, "Remembered with effort", "short interval"));
-        goodDescriptionLabel.setText(formatRatingDescription(card, ReviewRating.GOOD, "Solid recall", "normal interval"));
-        easyDescriptionLabel.setText(formatRatingDescription(card, ReviewRating.EASY, "Instant recall", "longer interval"));
+        ReviewRating recommendedRating = latestValidationResult.recommendedRating();
+        againDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.AGAIN, recommendedRating,
+                "Missed it — review again today"));
+        hardDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.HARD, recommendedRating,
+                formatRatingDescription(card, ReviewRating.HARD, "Remembered with effort", "short interval")));
+        goodDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.GOOD, recommendedRating,
+                formatRatingDescription(card, ReviewRating.GOOD, "Solid recall", "normal interval")));
+        easyDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.EASY, recommendedRating,
+                formatRatingDescription(card, ReviewRating.EASY, "Instant recall", "longer interval")));
+    }
+
+    private String formatRecommendedDescription(ReviewRating rating, ReviewRating recommendedRating, String description) {
+        if (rating == recommendedRating) {
+            return description + " (recommended)";
+        }
+        return description;
     }
 
     private String formatRatingDescription(Flashcard card, ReviewRating rating, String recallDescription, String fallbackInterval) {
@@ -205,10 +244,87 @@ public class ReviewController extends BaseController {
         return "next review in " + intervalDays + " " + pluralizeDay(intervalDays);
     }
 
+
+    private void updateAttemptValidation() {
+        if (currentCard == null) {
+            latestValidationResult = AttemptValidationResult.EMPTY;
+            showAnswerButton.setDisable(true);
+            return;
+        }
+
+        latestValidationResult = validateAttempt();
+        showAnswerButton.setDisable(answerRevealed || latestValidationResult == AttemptValidationResult.EMPTY);
+        if (latestValidationResult == AttemptValidationResult.EMPTY) {
+            setStatus(messageLabel, "Enter an attempt to enable Reveal Answer.");
+        } else {
+            setStatus(messageLabel, formatAttemptFeedback(latestValidationResult));
+        }
+    }
+
+    private AttemptValidationResult validateAttempt() {
+        String attempt = attemptTextArea.getText() == null ? "" : attemptTextArea.getText().strip();
+        String expectedAnswer = currentCard == null || currentCard.getBack() == null ? "" : currentCard.getBack().strip();
+        if (attempt.isEmpty()) {
+            return AttemptValidationResult.EMPTY;
+        }
+        if (attempt.equals(expectedAnswer) || (ALLOW_CASE_INSENSITIVE_MATCH && attempt.equalsIgnoreCase(expectedAnswer))) {
+            return AttemptValidationResult.EXACT;
+        }
+        if (normalizeSpacing(attempt).equals(normalizeSpacing(expectedAnswer))
+                || (ALLOW_CASE_INSENSITIVE_MATCH && normalizeSpacing(attempt).equalsIgnoreCase(normalizeSpacing(expectedAnswer)))) {
+            return AttemptValidationResult.CLOSE_SPACING;
+        }
+        return AttemptValidationResult.DIFFERENT;
+    }
+
+    private String normalizeSpacing(String value) {
+        return value.replaceAll("\\s+", " ").strip();
+    }
+
+    private String formatAttemptFeedback(AttemptValidationResult result) {
+        return switch (result) {
+            case EMPTY -> "Enter an attempt to enable Reveal Answer.";
+            case EXACT -> "Exact match. Recommended rating: " + result.recommendedRatingLabel() + ".";
+            case CLOSE_SPACING -> "Close, check spacing. Recommended rating: " + result.recommendedRatingLabel() + ".";
+            case DIFFERENT -> "Different from expected answer. Recommended rating: " + result.recommendedRatingLabel() + ".";
+        };
+    }
+
+    private String formatMatchRequirement() {
+        if (ALLOW_CASE_INSENSITIVE_MATCH) {
+            return "Case-insensitive exact matching is accepted for this card.";
+        }
+        return "Exact capitalization, wording, and spacing are required for this card.";
+    }
+
     private void setRatingButtonsDisabled(boolean disabled) {
         againButton.setDisable(disabled);
         hardButton.setDisable(disabled);
         goodButton.setDisable(disabled);
         easyButton.setDisable(disabled);
+    }
+
+    private enum AttemptValidationResult {
+        EMPTY(null),
+        EXACT(ReviewRating.EASY),
+        CLOSE_SPACING(ReviewRating.GOOD),
+        DIFFERENT(ReviewRating.AGAIN);
+
+        private final ReviewRating recommendedRating;
+
+        AttemptValidationResult(ReviewRating recommendedRating) {
+            this.recommendedRating = recommendedRating;
+        }
+
+        private ReviewRating recommendedRating() {
+            return recommendedRating;
+        }
+
+        private String recommendedRatingLabel() {
+            if (recommendedRating == null) {
+                return "none";
+            }
+            return recommendedRating.name().charAt(0) + recommendedRating.name().substring(1).toLowerCase();
+        }
     }
 }

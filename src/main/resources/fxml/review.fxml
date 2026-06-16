@@ -39,7 +39,10 @@
                             </VBox>
                             <Separator />
                             <VBox spacing="12" styleClass="attempt-section">
-                                <Label text="YOUR ATTEMPT" styleClass="stat-label" />
+                                <HBox spacing="8" alignment="CENTER_LEFT">
+                                    <Label text="YOUR ATTEMPT" styleClass="stat-label" />
+                                    <Label fx:id="matchRequirementLabel" styleClass="muted" wrapText="true" HBox.hgrow="ALWAYS" />
+                                </HBox>
                                 <TextArea fx:id="attemptTextArea" promptText="Type your recall attempt before revealing the answer." wrapText="true" prefRowCount="3" maxWidth="Infinity" />
                             </VBox>
                             <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" />

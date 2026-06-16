@@ -7,7 +7,7 @@ import com.codefit.repository.UserProgressRepository;
 import java.time.LocalDate;
 
 public class ProgressService {
-    private static final int XP_PER_LEVEL = 100;
+    public static final int XP_PER_LEVEL = 100;
     private final UserProgressRepository userProgressRepository = new UserProgressRepository();
 
     public UserProgress getProgress() {

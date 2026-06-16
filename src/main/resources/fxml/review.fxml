@@ -52,19 +52,19 @@
                                 <TilePane hgap="14" vgap="14" prefTileWidth="154" tileAlignment="TOP_LEFT" styleClass="rating-grid">
                                     <VBox spacing="7" styleClass="rating-option">
                                         <Button fx:id="againButton" text="Again" onAction="#rateAgain" styleClass="danger-button rating-button" maxWidth="Infinity" />
-                                        <Label text="Missed it — see soon" styleClass="rating-description" wrapText="true" />
+                                        <Label fx:id="againDescriptionLabel" text="Missed it — review again today" styleClass="rating-description" wrapText="true" />
                                     </VBox>
                                     <VBox spacing="7" styleClass="rating-option">
                                         <Button fx:id="hardButton" text="Hard" onAction="#rateHard" styleClass="warning-button rating-button" maxWidth="Infinity" />
-                                        <Label text="Remembered with effort" styleClass="rating-description" wrapText="true" />
+                                        <Label fx:id="hardDescriptionLabel" text="Remembered with effort — short interval" styleClass="rating-description" wrapText="true" />
                                     </VBox>
                                     <VBox spacing="7" styleClass="rating-option">
                                         <Button fx:id="goodButton" text="Good" onAction="#rateGood" styleClass="success-button rating-button" maxWidth="Infinity" />
-                                        <Label text="Solid recall" styleClass="rating-description" wrapText="true" />
+                                        <Label fx:id="goodDescriptionLabel" text="Solid recall — normal interval" styleClass="rating-description" wrapText="true" />
                                     </VBox>
                                     <VBox spacing="7" styleClass="rating-option">
                                         <Button fx:id="easyButton" text="Easy" onAction="#rateEasy" styleClass="epic-button rating-button" maxWidth="Infinity" />
-                                        <Label text="Instant and confident" styleClass="rating-description" wrapText="true" />
+                                        <Label fx:id="easyDescriptionLabel" text="Instant recall — longer interval" styleClass="rating-description" wrapText="true" />
                                     </VBox>
                                 </TilePane>
                             </VBox>

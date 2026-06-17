@@ -764,6 +764,45 @@
     -fx-font-weight: 800;
 }
 
+.dashboard-top-cards {
+    -fx-min-height: 230;
+}
+
+.dashboard-top-card {
+    -fx-min-height: 230;
+    -fx-padding: 30 32;
+    -fx-background-color:
+        radial-gradient(center 14% 4%, radius 82%, rgba(34, 211, 238, 0.22), transparent 46%),
+        radial-gradient(center 94% 8%, radius 76%, rgba(236, 72, 153, 0.18), transparent 44%),
+        linear-gradient(to bottom right, rgba(30, 27, 75, 0.92) 0%, rgba(13, 18, 43, 0.90) 54%, rgba(5, 10, 26, 0.86) 100%);
+    -fx-border-color: rgba(34, 211, 238, 0.38), rgba(255, 255, 255, 0.10);
+    -fx-border-width: 1, 1;
+    -fx-border-radius: 28, 28;
+    -fx-background-radius: 28, 28, 28;
+    -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.16), 30, 0.22, 0, 14);
+}
+
+.today-review-card {
+    -fx-background-color:
+        radial-gradient(center 14% 2%, radius 88%, rgba(34, 211, 238, 0.28), transparent 46%),
+        radial-gradient(center 82% 96%, radius 78%, rgba(124, 58, 237, 0.22), transparent 48%),
+        linear-gradient(to bottom right, rgba(30, 27, 75, 0.94) 0%, rgba(13, 18, 43, 0.91) 54%, rgba(5, 10, 26, 0.88) 100%);
+}
+
+.quick-review-card {
+    -fx-background-color:
+        radial-gradient(center 92% 0%, radius 84%, rgba(236, 72, 153, 0.24), transparent 44%),
+        radial-gradient(center 12% 100%, radius 72%, rgba(34, 211, 238, 0.18), transparent 46%),
+        linear-gradient(to bottom right, rgba(30, 27, 75, 0.92) 0%, rgba(13, 18, 43, 0.90) 54%, rgba(5, 10, 26, 0.86) 100%);
+}
+
+.quick-review-title {
+    -fx-text-fill: -color-heading;
+    -fx-font-size: 30px;
+    -fx-font-weight: 900;
+    -fx-letter-spacing: -0.04em;
+}
+
 .dashboard-hero {
     -fx-padding: 34 36;
     -fx-min-height: 250;

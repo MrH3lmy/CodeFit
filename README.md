@@ -1,6 +1,18 @@
 # CodeFit
 
-CodeFit is a JavaFX desktop application for tracking fitness information. The application entry point is `com.codefit.CodeFitApplication`, which initializes the database configuration and launches the JavaFX dashboard.
+CodeFit is a JavaFX desktop application for spaced-repetition practice of programming and technical skills. Instead of tracking workouts, it helps learners build fluency with code concepts, command-line workflows, Git, SQL, regex, output prediction, and other technical topics through focused flashcard reviews.
+
+The application entry point is `com.codefit.CodeFitApplication`, which initializes the database configuration and launches the JavaFX dashboard.
+
+## Features
+
+- **Decks** organize practice material by topic or skill area so you can separate subjects such as Java, Git, Linux commands, SQL, or interview prep.
+- **Flashcards** store prompts, answers, accepted responses, hints, skill categories, optional time limits, and card types for different technical-practice formats.
+- **Review queues** surface due cards using spaced-repetition scheduling, helping you revisit skills when they need reinforcement.
+- **Review ratings** let you mark cards Again, Hard, Good, or Easy so future due dates adapt to your recall strength.
+- **XP and streaks** provide lightweight progress feedback and motivation as you complete review sessions.
+- **Technical-skill practice** supports concept recall and code-oriented card types such as commands, SQL queries, regex patterns, and code-output prediction.
+- **Simulated-terminal review mode** is available for command-challenge cards: command cards present a terminal-style answer area, validate typed command attempts against accepted answers, and can show simulated command output during review.
 
 ## Requirements
 

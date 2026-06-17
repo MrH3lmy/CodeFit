@@ -3,6 +3,7 @@ package com.codefit.ui;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -23,6 +24,7 @@ public final class NavigationService {
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(NavigationService.class);
 
     private static Stage primaryStage;
+    private static Scene primaryScene;
     private static String selectedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
 
     private NavigationService() {
@@ -60,12 +62,17 @@ public final class NavigationService {
             URL resource = NavigationService.class.getResource("/fxml/" + fxmlName);
             Parent root = FXMLLoader.load(resource);
             applyTheme(root);
-            Scene scene = new Scene(root, 1100, 720);
-            scene.getStylesheets().add(NavigationService.class.getResource("/css/app.css").toExternalForm());
+            if (primaryScene == null) {
+                primaryScene = new Scene(root, 1100, 720);
+                primaryScene.getStylesheets().add(NavigationService.class.getResource("/css/app.css").toExternalForm());
+                primaryScene.setFill(Color.web("#070b16"));
+                primaryStage.setScene(primaryScene);
+            } else {
+                primaryScene.setRoot(root);
+            }
             primaryStage.setTitle(title);
             primaryStage.setMinWidth(760);
             primaryStage.setMinHeight(560);
-            primaryStage.setScene(scene);
             primaryStage.show();
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to load screen: " + fxmlName, exception);

@@ -79,7 +79,7 @@
                             <ColumnConstraints hgrow="ALWAYS" percentWidth="48" />
                             <ColumnConstraints hgrow="ALWAYS" percentWidth="52" />
                         </columnConstraints>
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="12" styleClass="card progress-card xp-panel" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="12" styleClass="card dashboard-bottom-card xp-panel" GridPane.columnIndex="0" GridPane.rowIndex="0">
                             <Label text="XP PROGRESS" styleClass="stat-label" wrapText="true" />
                             <HBox alignment="CENTER_LEFT" spacing="12">
                                 <Label text="Next Level" styleClass="panel-big-value" wrapText="true" HBox.hgrow="ALWAYS" />
@@ -88,7 +88,7 @@
                             <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" styleClass="level-progress" />
                             <Label text="Complete reviews to fill the bar and unlock the next level." styleClass="helper-text" wrapText="true" />
                         </VBox>
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="12" styleClass="card recent-decks-panel" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="12" styleClass="card dashboard-bottom-card recent-decks-panel" GridPane.columnIndex="1" GridPane.rowIndex="0">
                             <HBox alignment="CENTER_LEFT" spacing="12">
                                 <Label text="RECENT DECKS" styleClass="stat-label" wrapText="true" HBox.hgrow="ALWAYS" />
                                 <Button text="View all decks" onAction="#goDecks" styleClass="ghost-button" />

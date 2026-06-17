@@ -6,6 +6,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
+
+import com.codefit.model.CardType;
+import com.codefit.model.ValidationMode;
 
 public final class DatabaseConfig {
     private static final String DATABASE_URL = "jdbc:sqlite:codefit.db";
@@ -126,33 +130,37 @@ public final class DatabaseConfig {
                 {"SQL & Persistence", "SQLite, JDBC, schema design, and repository fundamentals."},
                 {"Prompt Commands Basics", "Practice reusable assistant prompts for explanations, examples, workflows, debugging, and safe code changes."}
         };
+        String defaultPromptHint = "Start with the task, then specify format and constraints.";
         String[][] flashcards = {
-                {"Java Core", "What Java keyword creates a subclass relationship?", "extends", "extends", "Java Syntax"},
-                {"Java Core", "Which collection keeps insertion order and allows indexed access?", "ArrayList", "ArrayList", "Collections"},
-                {"Java Core", "What does JVM stand for?", "Java Virtual Machine", "Java Virtual Machine", "Java Runtime"},
-                {"JavaFX UI", "Which JavaFX file format describes a scene graph declaratively?", "FXML", "FXML", "JavaFX UI"},
-                {"JavaFX UI", "Which JavaFX class usually owns one application window?", "Stage", "Stage", "JavaFX UI"},
-                {"JavaFX UI", "What method loads an FXML resource?", "FXMLLoader.load()", "FXMLLoader.load()", "JavaFX UI"},
-                {"SQL & Persistence", "What SQL command creates a table?", "CREATE TABLE", "CREATE TABLE", "SQL"},
-                {"SQL & Persistence", "What JDBC object executes parameterized SQL safely?", "PreparedStatement", "PreparedStatement", "JDBC"},
-                {"SQL & Persistence", "What SQLite clause avoids duplicate seed rows?", "INSERT OR IGNORE", "INSERT OR IGNORE", "SQLite"},
-                {"Prompt Commands Basics", "Prompt command: ask for a concise explanation of recursion.", "Explain recursion in 3 concise bullet points.", "Explain recursion in 3 concise bullet points.|Explain recursion briefly in 3 bullets.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask for step-by-step instructions to set up a Java project.", "Give me step-by-step instructions to set up a Java project.", "Give me step-by-step instructions to set up a Java project.|Walk me through setting up a Java project step by step.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask the assistant to generate examples of SQL joins.", "Generate 3 examples of SQL joins with short explanations.", "Generate 3 examples of SQL joins with short explanations.|Show me three SQL join examples and explain each briefly.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask for code review feedback on a method.", "Review this method and suggest specific improvements.", "Review this method and suggest specific improvements.|Give me code review feedback on this method.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask for a command-line workflow for running tests.", "Give me a command-line workflow to build the project and run tests.", "Give me a command-line workflow to build the project and run tests.|Show a terminal workflow for building and testing this project.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask for debugging help with an error message.", "Help me debug this error. Explain likely causes and next checks.", "Help me debug this error. Explain likely causes and next checks.|Debug this error and list likely causes plus next steps.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask for a 7-day study plan for JavaFX.", "Create a 7-day JavaFX study plan with daily practice tasks.", "Create a 7-day JavaFX study plan with daily practice tasks.|Make me a one-week JavaFX study plan with practice tasks.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask for flashcards from a topic.", "Create 10 flashcards about JDBC basics with answers.", "Create 10 flashcards about JDBC basics with answers.|Make ten Q&A flashcards on JDBC basics.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask the assistant to compare alternatives.", "Compare ArrayList and LinkedList, including tradeoffs and when to use each.", "Compare ArrayList and LinkedList, including tradeoffs and when to use each.|Explain the tradeoffs between ArrayList and LinkedList.", "Prompt Commands"},
-                {"Prompt Commands Basics", "Prompt command: ask for safe edits or refactors.", "Suggest a safe refactor for this code without changing behavior.", "Suggest a safe refactor for this code without changing behavior.|Refactor this safely while preserving behavior.", "Prompt Commands"}
+                {"Java Core", "What Java keyword creates a subclass relationship?", "extends", CardType.RECALL.name(), "extends", ValidationMode.CASE_INSENSITIVE.name(), null, null, "Java Syntax", null},
+                {"Java Core", "Which collection keeps insertion order and allows indexed access?", "ArrayList", CardType.RECALL.name(), "ArrayList", ValidationMode.CASE_INSENSITIVE.name(), null, null, "Collections", null},
+                {"Java Core", "What does JVM stand for?", "Java Virtual Machine", CardType.RECALL.name(), "Java Virtual Machine", ValidationMode.CASE_INSENSITIVE.name(), null, null, "Java Runtime", null},
+                {"JavaFX UI", "Which JavaFX file format describes a scene graph declaratively?", "FXML", CardType.RECALL.name(), "FXML", ValidationMode.CASE_INSENSITIVE.name(), null, null, "JavaFX UI", null},
+                {"JavaFX UI", "Which JavaFX class usually owns one application window?", "Stage", CardType.RECALL.name(), "Stage", ValidationMode.CASE_INSENSITIVE.name(), null, null, "JavaFX UI", null},
+                {"JavaFX UI", "What method loads an FXML resource?", "FXMLLoader.load()", CardType.RECALL.name(), "FXMLLoader.load()", ValidationMode.CASE_INSENSITIVE.name(), null, null, "JavaFX UI", null},
+                {"SQL & Persistence", "What SQL command creates a table?", "CREATE TABLE", CardType.RECALL.name(), "CREATE TABLE", ValidationMode.CASE_INSENSITIVE.name(), null, null, "SQL", null},
+                {"SQL & Persistence", "What JDBC object executes parameterized SQL safely?", "PreparedStatement", CardType.RECALL.name(), "PreparedStatement", ValidationMode.CASE_INSENSITIVE.name(), null, null, "JDBC", null},
+                {"SQL & Persistence", "What SQLite clause avoids duplicate seed rows?", "INSERT OR IGNORE", CardType.RECALL.name(), "INSERT OR IGNORE", ValidationMode.CASE_INSENSITIVE.name(), null, null, "SQLite", null},
+                {"Prompt Commands Basics", "Prompt command: ask for a concise explanation of recursion.", "Explain recursion in 3 concise bullet points.", CardType.COMMAND.name(), "Explain recursion in 3 concise bullet points.|Explain recursion briefly in 3 bullets.", ValidationMode.COMMAND_NORMALIZED.name(), "- Recursion is when a function calls itself.\n- It needs a base case to stop.\n- Each call should move closer to that base case.", defaultPromptHint, "Prompt Commands", "60"},
+                {"Prompt Commands Basics", "Prompt command: ask for step-by-step instructions to set up a Java project.", "Give me step-by-step instructions to set up a Java project.", CardType.COMMAND.name(), "Give me step-by-step instructions to set up a Java project.|Walk me through setting up a Java project step by step.", ValidationMode.COMMAND_NORMALIZED.name(), "1. Install a JDK.\n2. Create a project folder.\n3. Add source files and build configuration.\n4. Run tests from the terminal.", defaultPromptHint, "Prompt Commands", "75"},
+                {"Prompt Commands Basics", "Prompt command: ask the assistant to generate examples of SQL joins.", "Generate 3 examples of SQL joins with short explanations.", CardType.COMMAND.name(), "Generate 3 examples of SQL joins with short explanations.|Show me three SQL join examples and explain each briefly.", ValidationMode.COMMAND_NORMALIZED.name(), "INNER JOIN returns matching rows, LEFT JOIN keeps all left-table rows, and CROSS JOIN pairs every row from both tables.", defaultPromptHint, "Prompt Commands", "75"},
+                {"Prompt Commands Basics", "Prompt command: ask for code review feedback on a method.", "Review this method and suggest specific improvements.", CardType.COMMAND.name(), "Review this method and suggest specific improvements.|Give me code review feedback on this method.", ValidationMode.COMMAND_NORMALIZED.name(), "Review notes: clarify naming, validate inputs, simplify branching, and add focused tests for edge cases.", defaultPromptHint, "Prompt Commands", "60"},
+                {"Prompt Commands Basics", "Prompt command: ask for a command-line workflow for running tests.", "Give me a command-line workflow to build the project and run tests.", CardType.COMMAND.name(), "Give me a command-line workflow to build the project and run tests.|Show a terminal workflow for building and testing this project.", ValidationMode.COMMAND_NORMALIZED.name(), "Example workflow: git status, ./mvnw clean test, inspect failures, fix issues, then rerun ./mvnw test.", defaultPromptHint, "Prompt Commands", "75"},
+                {"Prompt Commands Basics", "Prompt command: ask for debugging help with an error message.", "Help me debug this error. Explain likely causes and next checks.", CardType.COMMAND.name(), "Help me debug this error. Explain likely causes and next checks.|Debug this error and list likely causes plus next steps.", ValidationMode.COMMAND_NORMALIZED.name(), "Likely causes: missing dependency, invalid configuration, or bad input. Next checks: read the stack trace and reproduce with minimal data.", defaultPromptHint, "Prompt Commands", "75"},
+                {"Prompt Commands Basics", "Prompt command: ask for a 7-day study plan for JavaFX.", "Create a 7-day JavaFX study plan with daily practice tasks.", CardType.COMMAND.name(), "Create a 7-day JavaFX study plan with daily practice tasks.|Make me a one-week JavaFX study plan with practice tasks.", ValidationMode.COMMAND_NORMALIZED.name(), "Day 1: Scene basics. Day 2: Layouts. Day 3: Controls. Day 4: Events. Day 5: FXML. Day 6: CSS. Day 7: Mini app.", defaultPromptHint, "Prompt Commands", "90"},
+                {"Prompt Commands Basics", "Prompt command: ask for flashcards from a topic.", "Create 10 flashcards about JDBC basics with answers.", CardType.COMMAND.name(), "Create 10 flashcards about JDBC basics with answers.|Make ten Q&A flashcards on JDBC basics.", ValidationMode.COMMAND_NORMALIZED.name(), "Example flashcard: Q: Which JDBC class runs parameterized queries? A: PreparedStatement.", defaultPromptHint, "Prompt Commands", "60"},
+                {"Prompt Commands Basics", "Prompt command: ask the assistant to compare alternatives.", "Compare ArrayList and LinkedList, including tradeoffs and when to use each.", CardType.COMMAND.name(), "Compare ArrayList and LinkedList, including tradeoffs and when to use each.|Explain the tradeoffs between ArrayList and LinkedList.", ValidationMode.COMMAND_NORMALIZED.name(), "ArrayList is usually better for indexed access and iteration; LinkedList can help with frequent deque operations.", defaultPromptHint, "Prompt Commands", "90"},
+                {"Prompt Commands Basics", "Prompt command: ask for safe edits or refactors.", "Suggest a safe refactor for this code without changing behavior.", CardType.COMMAND.name(), "Suggest a safe refactor for this code without changing behavior.|Refactor this safely while preserving behavior.", ValidationMode.COMMAND_NORMALIZED.name(), "Safe refactor plan: add tests, make one small change, run tests, and avoid behavior-changing rewrites.", defaultPromptHint, "Prompt Commands", "75"}
         };
 
         try (PreparedStatement insertDeck = connection.prepareStatement("INSERT OR IGNORE INTO decks (name, description) VALUES (?, ?)");
              PreparedStatement selectDeckId = connection.prepareStatement("SELECT id FROM decks WHERE name = ?");
              PreparedStatement insertFlashcard = connection.prepareStatement("""
-                     INSERT INTO flashcards (deck_id, front, back, accepted_answers, skill_category, due_date)
-                     SELECT ?, ?, ?, ?, ?, date('now')
+                     INSERT INTO flashcards (
+                         deck_id, front, back, card_type, accepted_answers, validation_mode,
+                         simulated_output, hint, skill_category, time_limit_seconds, due_date
+                     )
+                     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, date('now')
                      WHERE NOT EXISTS (
                          SELECT 1 FROM flashcards WHERE deck_id = ? AND front = ?
                      )
@@ -170,8 +178,17 @@ public final class DatabaseConfig {
                 insertFlashcard.setString(3, flashcard[2]);
                 insertFlashcard.setString(4, flashcard[3]);
                 insertFlashcard.setString(5, flashcard[4]);
-                insertFlashcard.setInt(6, deckId);
-                insertFlashcard.setString(7, flashcard[1]);
+                insertFlashcard.setString(6, flashcard[5]);
+                insertFlashcard.setString(7, flashcard[6]);
+                insertFlashcard.setString(8, flashcard[7]);
+                insertFlashcard.setString(9, flashcard[8]);
+                if (flashcard[9] == null) {
+                    insertFlashcard.setNull(10, Types.INTEGER);
+                } else {
+                    insertFlashcard.setInt(10, Integer.parseInt(flashcard[9]));
+                }
+                insertFlashcard.setInt(11, deckId);
+                insertFlashcard.setString(12, flashcard[1]);
                 insertFlashcard.executeUpdate();
             }
         }

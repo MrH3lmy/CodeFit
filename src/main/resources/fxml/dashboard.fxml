@@ -23,21 +23,24 @@
 
                         <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
 
-                        <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="28" styleClass="hero-card dashboard-hero">
-                            <VBox alignment="CENTER_LEFT" spacing="14" HBox.hgrow="ALWAYS">
+                        <GridPane hgap="18" maxWidth="Infinity" vgap="18" styleClass="dashboard-top-cards">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" percentWidth="50" />
+                                <ColumnConstraints hgrow="ALWAYS" percentWidth="50" />
+                            </columnConstraints>
+                            <VBox alignment="CENTER_LEFT" maxWidth="Infinity" minWidth="0" spacing="14" styleClass="dashboard-top-card today-review-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
                                 <Label text="TODAY'S REVIEW" styleClass="stat-label" wrapText="true" />
                                 <Label fx:id="dueCountLabel" styleClass="hero-due-count accent" wrapText="true" />
-                                <Label text="No rush—this queue updates when cards are ready." styleClass="hero-helper" wrapText="true" />
+                                <Label text="Review the cards that are ready now and keep your recall sharp." styleClass="hero-helper" wrapText="true" />
                             </VBox>
-                            <VBox alignment="CENTER" minWidth="310" spacing="18" styleClass="hero-visual-panel">
-                                <StackPane prefHeight="150" maxWidth="Infinity" styleClass="synth-horizon">
-                                    <Region styleClass="synth-sun" />
-                                    <Region styleClass="synth-grid" />
-                                    <Label text="▶" styleClass="hero-play-icon" />
-                                </StackPane>
+                            <VBox alignment="CENTER_LEFT" maxWidth="Infinity" minWidth="0" spacing="16" styleClass="dashboard-top-card quick-review-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                <Label text="QUICK REVIEW" styleClass="stat-label" wrapText="true" />
+                                <Label text="Start a focused session" styleClass="quick-review-title" wrapText="true" />
+                                <Label text="Jump straight into due cards whenever you have a few minutes." styleClass="hero-helper" wrapText="true" />
+                                <Region VBox.vgrow="ALWAYS" />
                                 <Button text="▶  Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button hero-review-button" />
                             </VBox>
-                        </HBox>
+                        </GridPane>
 
                         <GridPane hgap="18" maxWidth="Infinity" vgap="18">
                             <columnConstraints>

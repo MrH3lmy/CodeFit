@@ -764,43 +764,88 @@
     -fx-font-weight: 800;
 }
 
-.dashboard-top-cards {
+.dashboard-top-grid {
     -fx-min-height: 180;
 }
 
-.dashboard-top-card {
+.dashboard-stats-grid, .dashboard-bottom-grid {
+    -fx-alignment: top-center;
+}
+
+.dashboard-card {
+    -fx-min-height: 170;
+    -fx-padding: 22;
+    -fx-background-color:
+        radial-gradient(center 8% 0%, radius 82%, rgba(34, 211, 238, 0.18), transparent 46%),
+        radial-gradient(center 96% 4%, radius 74%, rgba(124, 58, 237, 0.16), transparent 44%),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.070), rgba(255, 255, 255, 0.018)),
+        rgba(6, 10, 24, 0.84);
+    -fx-border-color: rgba(125, 211, 252, 0.24), rgba(255, 255, 255, 0.10);
+    -fx-border-width: 1, 1;
+    -fx-border-radius: 20, 20;
+    -fx-background-radius: 20, 20, 20, 20;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.22), 18, 0.14, 0, 8);
+}
+
+.dashboard-card:hover {
+    -fx-translate-y: -2;
+    -fx-border-color: rgba(125, 211, 252, 0.34), rgba(255, 255, 255, 0.14);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.24), 20, 0.16, 0, 9);
+}
+
+.dashboard-card-hero {
     -fx-min-height: 180;
     -fx-padding: 22 24;
-    -fx-background-color:
-        radial-gradient(center 14% 4%, radius 82%, rgba(34, 211, 238, 0.22), transparent 46%),
-        radial-gradient(center 94% 8%, radius 76%, rgba(236, 72, 153, 0.18), transparent 44%),
-        linear-gradient(to bottom right, rgba(30, 27, 75, 0.92) 0%, rgba(13, 18, 43, 0.90) 54%, rgba(5, 10, 26, 0.86) 100%);
-    -fx-border-color: rgba(34, 211, 238, 0.38), rgba(255, 255, 255, 0.10);
-    -fx-border-width: 1, 1;
-    -fx-border-radius: 28, 28;
-    -fx-background-radius: 28, 28, 28;
-    -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.16), 30, 0.22, 0, 14);
 }
 
-.today-review-card {
-    -fx-background-color:
-        radial-gradient(center 14% 2%, radius 88%, rgba(34, 211, 238, 0.28), transparent 46%),
-        radial-gradient(center 82% 96%, radius 78%, rgba(124, 58, 237, 0.22), transparent 48%),
-        linear-gradient(to bottom right, rgba(30, 27, 75, 0.94) 0%, rgba(13, 18, 43, 0.91) 54%, rgba(5, 10, 26, 0.88) 100%);
+.dashboard-card-compact {
+    -fx-min-height: 132;
+    -fx-padding: 14 16;
+    -fx-border-radius: 18, 18;
+    -fx-background-radius: 18, 18, 18, 18;
 }
 
-.quick-review-card {
-    -fx-background-color:
-        radial-gradient(center 92% 0%, radius 84%, rgba(236, 72, 153, 0.24), transparent 44%),
-        radial-gradient(center 12% 100%, radius 72%, rgba(34, 211, 238, 0.18), transparent 46%),
-        linear-gradient(to bottom right, rgba(30, 27, 75, 0.92) 0%, rgba(13, 18, 43, 0.90) 54%, rgba(5, 10, 26, 0.86) 100%);
+.dashboard-card-title {
+    -fx-text-fill: -color-stat-label;
+    -fx-font-size: 12px;
+    -fx-font-weight: 900;
+    -fx-letter-spacing: 0.20em;
+    -fx-opacity: 0.96;
 }
 
-.quick-review-title {
-    -fx-text-fill: -color-heading;
+.dashboard-card-value {
+    -fx-text-fill: -color-text-strong;
     -fx-font-size: 30px;
     -fx-font-weight: 900;
     -fx-letter-spacing: -0.04em;
+    -fx-line-spacing: 0;
+}
+
+.dashboard-card-hero .dashboard-card-value {
+    -fx-font-size: 72px;
+    -fx-effect: dropshadow(gaussian, rgba(244, 114, 182, 0.28), 18, 0.18, 0, 0);
+}
+
+.dashboard-card-value-medium {
+    -fx-font-size: 28px;
+}
+
+.dashboard-card-hero .dashboard-card-value-medium {
+    -fx-font-size: 30px;
+    -fx-effect: none;
+}
+
+.dashboard-card-helper {
+    -fx-text-fill: -color-helper-text;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-line-spacing: 2;
+    -fx-opacity: 0.92;
+}
+
+.dashboard-card-hero .dashboard-card-helper {
+    -fx-font-size: 15px;
+    -fx-line-spacing: 3;
 }
 
 .dashboard-hero {
@@ -824,21 +869,6 @@
     -fx-font-size: 13px;
     -fx-font-weight: 900;
     -fx-letter-spacing: 0.22em;
-}
-
-.hero-due-count {
-    -fx-text-fill: linear-gradient(to bottom, #ffffff 0%, #ffe4f4 58%, #f0abfc 100%);
-    -fx-font-size: 72px;
-    -fx-font-weight: 900;
-    -fx-letter-spacing: -0.07em;
-    -fx-effect: dropshadow(gaussian, rgba(244, 114, 182, 0.34), 18, 0.18, 0, 0);
-}
-
-.hero-helper {
-    -fx-text-fill: -color-muted;
-    -fx-font-size: 15px;
-    -fx-font-weight: 700;
-    -fx-line-spacing: 3;
 }
 
 .hero-visual-panel, .dashboard-hero-art {
@@ -915,33 +945,6 @@
     -fx-effect: dropshadow(gaussian, rgba(236, 72, 153, 0.36), 22, 0.28, 0, 8);
 }
 
-.dashboard-stat-card {
-    -fx-min-height: 132;
-    -fx-background-color:
-        radial-gradient(center 100% 0%, radius 96%, rgba(34, 211, 238, 0.18), transparent 46%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.080), rgba(255, 255, 255, 0.018)),
-        rgba(15, 23, 42, 0.78);
-    -fx-border-color: rgba(34, 211, 238, 0.28), rgba(244, 114, 182, 0.16);
-    -fx-border-width: 1, 1;
-    -fx-border-radius: 18, 18;
-    -fx-background-radius: 18, 18, 18;
-    -fx-padding: 14 16;
-}
-
-.dashboard-stat-card .stat-label {
-    -fx-font-size: 11px;
-}
-
-.dashboard-stat-card .stat-value {
-    -fx-font-size: 30px;
-    -fx-line-spacing: 0;
-}
-
-.dashboard-stat-card .helper-text {
-    -fx-font-size: 11px;
-    -fx-line-spacing: 1;
-}
-
 .metric-card {
     -fx-min-height: 190;
     -fx-background-color:
@@ -982,30 +985,6 @@
     -fx-font-size: 12px;
     -fx-font-weight: 800;
     -fx-line-spacing: 2;
-}
-
-.dashboard-bottom-card {
-    -fx-min-height: 170;
-    -fx-padding: 22;
-    -fx-border-color: rgba(34, 211, 238, 0.24), rgba(244, 114, 182, 0.16);
-    -fx-border-width: 1, 1;
-    -fx-border-radius: 24, 24;
-    -fx-background-radius: 24, 24;
-}
-
-.dashboard-bottom-card .stat-label {
-    -fx-text-fill: -color-stat-label;
-    -fx-font-size: 12px;
-    -fx-font-weight: 900;
-    -fx-letter-spacing: 0.20em;
-    -fx-opacity: 0.96;
-}
-
-.xp-panel, .recent-decks-panel {
-    -fx-background-color:
-        radial-gradient(center 100% 0%, radius 90%, rgba(124, 58, 237, 0.18), transparent 48%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.060), rgba(255, 255, 255, 0.016)),
-        rgba(15, 23, 42, 0.80);
 }
 
 .panel-big-value {

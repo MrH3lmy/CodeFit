@@ -2,6 +2,7 @@ package com.codefit.config;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -119,41 +120,71 @@ public final class DatabaseConfig {
     }
 
     private static void seedStarterContent(Connection connection) throws SQLException {
-        if (hasRows(connection, "decks")) {
-            return;
-        }
+        String[][] decks = {
+                {"Java Core", "Syntax, OOP, collections, and core Java interview reps."},
+                {"JavaFX UI", "FXML, scenes, controllers, and desktop application patterns."},
+                {"SQL & Persistence", "SQLite, JDBC, schema design, and repository fundamentals."},
+                {"Prompt Commands Basics", "Practice reusable assistant prompts for explanations, examples, workflows, debugging, and safe code changes."}
+        };
+        String[][] flashcards = {
+                {"Java Core", "What Java keyword creates a subclass relationship?", "extends", "extends", "Java Syntax"},
+                {"Java Core", "Which collection keeps insertion order and allows indexed access?", "ArrayList", "ArrayList", "Collections"},
+                {"Java Core", "What does JVM stand for?", "Java Virtual Machine", "Java Virtual Machine", "Java Runtime"},
+                {"JavaFX UI", "Which JavaFX file format describes a scene graph declaratively?", "FXML", "FXML", "JavaFX UI"},
+                {"JavaFX UI", "Which JavaFX class usually owns one application window?", "Stage", "Stage", "JavaFX UI"},
+                {"JavaFX UI", "What method loads an FXML resource?", "FXMLLoader.load()", "FXMLLoader.load()", "JavaFX UI"},
+                {"SQL & Persistence", "What SQL command creates a table?", "CREATE TABLE", "CREATE TABLE", "SQL"},
+                {"SQL & Persistence", "What JDBC object executes parameterized SQL safely?", "PreparedStatement", "PreparedStatement", "JDBC"},
+                {"SQL & Persistence", "What SQLite clause avoids duplicate seed rows?", "INSERT OR IGNORE", "INSERT OR IGNORE", "SQLite"},
+                {"Prompt Commands Basics", "Prompt command: ask for a concise explanation of recursion.", "Explain recursion in 3 concise bullet points.", "Explain recursion in 3 concise bullet points.|Explain recursion briefly in 3 bullets.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask for step-by-step instructions to set up a Java project.", "Give me step-by-step instructions to set up a Java project.", "Give me step-by-step instructions to set up a Java project.|Walk me through setting up a Java project step by step.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask the assistant to generate examples of SQL joins.", "Generate 3 examples of SQL joins with short explanations.", "Generate 3 examples of SQL joins with short explanations.|Show me three SQL join examples and explain each briefly.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask for code review feedback on a method.", "Review this method and suggest specific improvements.", "Review this method and suggest specific improvements.|Give me code review feedback on this method.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask for a command-line workflow for running tests.", "Give me a command-line workflow to build the project and run tests.", "Give me a command-line workflow to build the project and run tests.|Show a terminal workflow for building and testing this project.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask for debugging help with an error message.", "Help me debug this error. Explain likely causes and next checks.", "Help me debug this error. Explain likely causes and next checks.|Debug this error and list likely causes plus next steps.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask for a 7-day study plan for JavaFX.", "Create a 7-day JavaFX study plan with daily practice tasks.", "Create a 7-day JavaFX study plan with daily practice tasks.|Make me a one-week JavaFX study plan with practice tasks.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask for flashcards from a topic.", "Create 10 flashcards about JDBC basics with answers.", "Create 10 flashcards about JDBC basics with answers.|Make ten Q&A flashcards on JDBC basics.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask the assistant to compare alternatives.", "Compare ArrayList and LinkedList, including tradeoffs and when to use each.", "Compare ArrayList and LinkedList, including tradeoffs and when to use each.|Explain the tradeoffs between ArrayList and LinkedList.", "Prompt Commands"},
+                {"Prompt Commands Basics", "Prompt command: ask for safe edits or refactors.", "Suggest a safe refactor for this code without changing behavior.", "Suggest a safe refactor for this code without changing behavior.|Refactor this safely while preserving behavior.", "Prompt Commands"}
+        };
 
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("""
-                    INSERT INTO decks (name, description) VALUES
-                    ('Java Core', 'Syntax, OOP, collections, and core Java interview reps.'),
-                    ('JavaFX UI', 'FXML, scenes, controllers, and desktop application patterns.'),
-                    ('SQL & Persistence', 'SQLite, JDBC, schema design, and repository fundamentals.'),
-                    ('Prompt Commands Basics', 'Practice reusable assistant prompts for explanations, examples, workflows, debugging, and safe code changes.')
-                    """);
-            statement.executeUpdate("""
-                    INSERT INTO flashcards (deck_id, front, back, accepted_answers, skill_category, due_date) VALUES
-                    (1, 'What Java keyword creates a subclass relationship?', 'extends', 'extends', 'Java Syntax', date('now')),
-                    (1, 'Which collection keeps insertion order and allows indexed access?', 'ArrayList', 'ArrayList', 'Collections', date('now')),
-                    (1, 'What does JVM stand for?', 'Java Virtual Machine', 'Java Virtual Machine', 'Java Runtime', date('now')),
-                    (2, 'Which JavaFX file format describes a scene graph declaratively?', 'FXML', 'FXML', 'JavaFX UI', date('now')),
-                    (2, 'Which JavaFX class usually owns one application window?', 'Stage', 'Stage', 'JavaFX UI', date('now')),
-                    (2, 'What method loads an FXML resource?', 'FXMLLoader.load()', 'FXMLLoader.load()', 'JavaFX UI', date('now')),
-                    (3, 'What SQL command creates a table?', 'CREATE TABLE', 'CREATE TABLE', 'SQL', date('now')),
-                    (3, 'What JDBC object executes parameterized SQL safely?', 'PreparedStatement', 'PreparedStatement', 'JDBC', date('now')),
-                    (3, 'What SQLite clause avoids duplicate seed rows?', 'INSERT OR IGNORE', 'INSERT OR IGNORE', 'SQLite', date('now')),
-                    (4, 'Prompt command: ask for a concise explanation of recursion.', 'Explain recursion in 3 concise bullet points.', 'Explain recursion in 3 concise bullet points.|Explain recursion briefly in 3 bullets.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask for step-by-step instructions to set up a Java project.', 'Give me step-by-step instructions to set up a Java project.', 'Give me step-by-step instructions to set up a Java project.|Walk me through setting up a Java project step by step.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask the assistant to generate examples of SQL joins.', 'Generate 3 examples of SQL joins with short explanations.', 'Generate 3 examples of SQL joins with short explanations.|Show me three SQL join examples and explain each briefly.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask for code review feedback on a method.', 'Review this method and suggest specific improvements.', 'Review this method and suggest specific improvements.|Give me code review feedback on this method.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask for a command-line workflow for running tests.', 'Give me a command-line workflow to build the project and run tests.', 'Give me a command-line workflow to build the project and run tests.|Show a terminal workflow for building and testing this project.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask for debugging help with an error message.', 'Help me debug this error. Explain likely causes and next checks.', 'Help me debug this error. Explain likely causes and next checks.|Debug this error and list likely causes plus next steps.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask for a 7-day study plan for JavaFX.', 'Create a 7-day JavaFX study plan with daily practice tasks.', 'Create a 7-day JavaFX study plan with daily practice tasks.|Make me a one-week JavaFX study plan with practice tasks.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask for flashcards from a topic.', 'Create 10 flashcards about JDBC basics with answers.', 'Create 10 flashcards about JDBC basics with answers.|Make ten Q&A flashcards on JDBC basics.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask the assistant to compare alternatives.', 'Compare ArrayList and LinkedList, including tradeoffs and when to use each.', 'Compare ArrayList and LinkedList, including tradeoffs and when to use each.|Explain the tradeoffs between ArrayList and LinkedList.', 'Prompt Commands', date('now')),
-                    (4, 'Prompt command: ask for safe edits or refactors.', 'Suggest a safe refactor for this code without changing behavior.', 'Suggest a safe refactor for this code without changing behavior.|Refactor this safely while preserving behavior.', 'Prompt Commands', date('now'))
-                    """);
+        try (PreparedStatement insertDeck = connection.prepareStatement("INSERT OR IGNORE INTO decks (name, description) VALUES (?, ?)");
+             PreparedStatement selectDeckId = connection.prepareStatement("SELECT id FROM decks WHERE name = ?");
+             PreparedStatement insertFlashcard = connection.prepareStatement("""
+                     INSERT INTO flashcards (deck_id, front, back, accepted_answers, skill_category, due_date)
+                     SELECT ?, ?, ?, ?, ?, date('now')
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM flashcards WHERE deck_id = ? AND front = ?
+                     )
+                     """)) {
+            for (String[] deck : decks) {
+                insertDeck.setString(1, deck[0]);
+                insertDeck.setString(2, deck[1]);
+                insertDeck.executeUpdate();
+            }
+
+            for (String[] flashcard : flashcards) {
+                int deckId = findDeckId(selectDeckId, flashcard[0]);
+                insertFlashcard.setInt(1, deckId);
+                insertFlashcard.setString(2, flashcard[1]);
+                insertFlashcard.setString(3, flashcard[2]);
+                insertFlashcard.setString(4, flashcard[3]);
+                insertFlashcard.setString(5, flashcard[4]);
+                insertFlashcard.setInt(6, deckId);
+                insertFlashcard.setString(7, flashcard[1]);
+                insertFlashcard.executeUpdate();
+            }
         }
+    }
+
+    private static int findDeckId(PreparedStatement selectDeckId, String deckName) throws SQLException {
+        selectDeckId.setString(1, deckName);
+        try (ResultSet resultSet = selectDeckId.executeQuery()) {
+            if (resultSet.next()) {
+                return resultSet.getInt("id");
+            }
+        }
+        throw new SQLException("Unable to find starter deck: " + deckName);
     }
 
     private static boolean hasRows(Connection connection, String tableName) throws SQLException {

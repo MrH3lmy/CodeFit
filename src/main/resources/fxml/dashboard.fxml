@@ -11,94 +11,92 @@
     <center>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
             <content>
-                <StackPane alignment="TOP_CENTER">
-                    <VBox alignment="TOP_CENTER" maxWidth="1100" spacing="24" styleClass="content">
-                        <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
-                            <HBox alignment="CENTER_LEFT" spacing="12">
-                                <Label text="Dashboard" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
-                                <Label text="Daily focus" styleClass="pill" wrapText="true" />
-                            </HBox>
-                            <Label text="Keep your learning streak moving with a quick look at rank, cards due, and deck momentum." styleClass="page-subtitle" wrapText="true" />
-                        </VBox>
-
-                        <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
-
-                        <GridPane hgap="18" maxWidth="Infinity" vgap="18" styleClass="dashboard-top-cards">
-                            <columnConstraints>
-                                <ColumnConstraints hgrow="ALWAYS" percentWidth="50" />
-                                <ColumnConstraints hgrow="ALWAYS" percentWidth="50" />
-                            </columnConstraints>
-                            <VBox alignment="CENTER_LEFT" maxWidth="Infinity" minWidth="0" spacing="14" styleClass="dashboard-top-card today-review-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                                <Label text="TODAY'S REVIEW" styleClass="stat-label" wrapText="true" />
-                                <Label fx:id="dueCountLabel" styleClass="hero-due-count accent" wrapText="true" />
-                                <Label text="Review the cards that are ready now and keep your recall sharp." styleClass="hero-helper" wrapText="true" />
-                            </VBox>
-                            <VBox alignment="CENTER_LEFT" maxWidth="Infinity" minWidth="0" spacing="16" styleClass="dashboard-top-card quick-review-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                                <Label text="QUICK REVIEW" styleClass="stat-label" wrapText="true" />
-                                <Label text="Start a focused session" styleClass="quick-review-title" wrapText="true" />
-                                <Label text="Jump straight into due cards whenever you have a few minutes." styleClass="hero-helper" wrapText="true" />
-                                <Region VBox.vgrow="ALWAYS" />
-                                <Button text="▶  Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button hero-review-button" />
-                            </VBox>
-                        </GridPane>
-
-                        <GridPane hgap="18" maxWidth="Infinity" vgap="18">
-                            <columnConstraints>
-                                <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
-                                <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
-                                <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
-                                <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
-                            </columnConstraints>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card cyan-card dashboard-stat-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                                <Label text="LV" styleClass="stat-icon stat-icon-badge" />
-                                <Label text="RANK" styleClass="stat-label" wrapText="true" />
-                                <Label fx:id="levelLabel" text="Level 1" styleClass="stat-value" wrapText="true" />
-                                <Label text="Climb levels as reviews convert into XP." styleClass="helper-text" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card green-card dashboard-stat-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                                <Label text="ST" styleClass="stat-icon stat-icon-badge" />
-                                <Label text="STREAK" styleClass="stat-label" wrapText="true" />
-                                <Label fx:id="streakLabel" text="1 day" styleClass="stat-value" wrapText="true" />
-                                <Label text="Keep showing up to preserve your daily loop." styleClass="helper-text" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card violet-card dashboard-stat-card" GridPane.columnIndex="2" GridPane.rowIndex="0">
-                                <Label text="DK" styleClass="stat-icon stat-icon-badge" />
-                                <Label text="DECKS" styleClass="stat-label" wrapText="true" />
-                                <Label fx:id="deckCountLabel" text="3" styleClass="stat-value" wrapText="true" />
-                                <Label text="Active decks powering your practice lanes." styleClass="helper-text" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card amber-card dashboard-stat-card" GridPane.columnIndex="3" GridPane.rowIndex="0">
-                                <Label text="CD" styleClass="stat-icon stat-icon-badge" />
-                                <Label text="CARDS" styleClass="stat-label" wrapText="true" />
-                                <Label fx:id="cardCountLabel" text="9" styleClass="stat-value" wrapText="true" />
-                                <Label text="Concept reps waiting across your library." styleClass="helper-text" wrapText="true" />
-                            </VBox>
-                        </GridPane>
-
-                        <GridPane hgap="18" maxWidth="Infinity" vgap="18">
-                            <columnConstraints>
-                                <ColumnConstraints hgrow="ALWAYS" percentWidth="48" />
-                                <ColumnConstraints hgrow="ALWAYS" percentWidth="52" />
-                            </columnConstraints>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="16" styleClass="card progress-card xp-panel" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                                <Label text="XP PROGRESS" styleClass="stat-label" wrapText="true" />
-                                <HBox alignment="CENTER_LEFT" spacing="12">
-                                    <Label text="Next Level" styleClass="panel-big-value" wrapText="true" HBox.hgrow="ALWAYS" />
-                                    <Label fx:id="xpLabel" text="15 / 50 XP" styleClass="xp-chip" wrapText="true" />
-                                </HBox>
-                                <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" styleClass="level-progress" />
-                                <Label text="Complete reviews to fill the bar and unlock the next level." styleClass="helper-text" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="14" styleClass="card recent-decks-panel" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                                <HBox alignment="CENTER_LEFT" spacing="12">
-                                    <Label text="RECENT DECKS" styleClass="stat-label" wrapText="true" HBox.hgrow="ALWAYS" />
-                                    <Button text="View all decks" onAction="#goDecks" styleClass="ghost-button" />
-                                </HBox>
-                                <VBox fx:id="recentDecksList" maxWidth="Infinity" spacing="10" />
-                            </VBox>
-                        </GridPane>
+                <VBox alignment="TOP_CENTER" maxWidth="1100" spacing="16" styleClass="content">
+                    <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="Dashboard" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                            <Label text="Daily focus" styleClass="pill" wrapText="true" />
+                        </HBox>
+                        <Label text="Keep your learning streak moving with a quick look at rank, cards due, and deck momentum." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
-                </StackPane>
+
+                    <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+
+                    <GridPane hgap="14" maxWidth="Infinity" vgap="14" styleClass="dashboard-top-cards">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="50" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="50" />
+                        </columnConstraints>
+                        <VBox alignment="CENTER_LEFT" maxWidth="Infinity" minWidth="0" spacing="10" styleClass="dashboard-top-card today-review-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <Label text="TODAY'S REVIEW" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="dueCountLabel" styleClass="hero-due-count accent" wrapText="true" />
+                            <Label text="Review the cards that are ready now and keep your recall sharp." styleClass="hero-helper" wrapText="true" />
+                        </VBox>
+                        <VBox alignment="CENTER_LEFT" maxWidth="Infinity" minWidth="0" spacing="12" styleClass="dashboard-top-card quick-review-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <Label text="QUICK REVIEW" styleClass="stat-label" wrapText="true" />
+                            <Label text="Start a focused session" styleClass="quick-review-title" wrapText="true" />
+                            <Label text="Jump straight into due cards whenever you have a few minutes." styleClass="hero-helper" wrapText="true" />
+                            <Region VBox.vgrow="ALWAYS" />
+                            <Button text="▶  Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button hero-review-button" />
+                        </VBox>
+                    </GridPane>
+
+                    <GridPane hgap="14" maxWidth="Infinity" vgap="14">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
+                        </columnConstraints>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card cyan-card dashboard-stat-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <Label text="LV" styleClass="stat-icon stat-icon-badge" />
+                            <Label text="RANK" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="levelLabel" text="Level 1" styleClass="stat-value" wrapText="true" />
+                            <Label text="Climb levels as reviews convert into XP." styleClass="helper-text" wrapText="true" />
+                        </VBox>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card green-card dashboard-stat-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <Label text="ST" styleClass="stat-icon stat-icon-badge" />
+                            <Label text="STREAK" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="streakLabel" text="1 day" styleClass="stat-value" wrapText="true" />
+                            <Label text="Keep showing up to preserve your daily loop." styleClass="helper-text" wrapText="true" />
+                        </VBox>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card violet-card dashboard-stat-card" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                            <Label text="DK" styleClass="stat-icon stat-icon-badge" />
+                            <Label text="DECKS" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="deckCountLabel" text="3" styleClass="stat-value" wrapText="true" />
+                            <Label text="Active decks powering your practice lanes." styleClass="helper-text" wrapText="true" />
+                        </VBox>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="card stat-card amber-card dashboard-stat-card" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                            <Label text="CD" styleClass="stat-icon stat-icon-badge" />
+                            <Label text="CARDS" styleClass="stat-label" wrapText="true" />
+                            <Label fx:id="cardCountLabel" text="9" styleClass="stat-value" wrapText="true" />
+                            <Label text="Concept reps waiting across your library." styleClass="helper-text" wrapText="true" />
+                        </VBox>
+                    </GridPane>
+
+                    <GridPane hgap="14" maxWidth="Infinity" vgap="14">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="48" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="52" />
+                        </columnConstraints>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="12" styleClass="card progress-card xp-panel" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <Label text="XP PROGRESS" styleClass="stat-label" wrapText="true" />
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <Label text="Next Level" styleClass="panel-big-value" wrapText="true" HBox.hgrow="ALWAYS" />
+                                <Label fx:id="xpLabel" text="15 / 50 XP" styleClass="xp-chip" wrapText="true" />
+                            </HBox>
+                            <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" styleClass="level-progress" />
+                            <Label text="Complete reviews to fill the bar and unlock the next level." styleClass="helper-text" wrapText="true" />
+                        </VBox>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="12" styleClass="card recent-decks-panel" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <Label text="RECENT DECKS" styleClass="stat-label" wrapText="true" HBox.hgrow="ALWAYS" />
+                                <Button text="View all decks" onAction="#goDecks" styleClass="ghost-button" />
+                            </HBox>
+                            <VBox fx:id="recentDecksList" maxWidth="Infinity" spacing="10" />
+                        </VBox>
+                    </GridPane>
+                </VBox>
             </content>
         </ScrollPane>
     </center>

@@ -765,12 +765,12 @@
 }
 
 .dashboard-top-cards {
-    -fx-min-height: 230;
+    -fx-min-height: 180;
 }
 
 .dashboard-top-card {
-    -fx-min-height: 230;
-    -fx-padding: 30 32;
+    -fx-min-height: 180;
+    -fx-padding: 22 24;
     -fx-background-color:
         radial-gradient(center 14% 4%, radius 82%, rgba(34, 211, 238, 0.22), transparent 46%),
         radial-gradient(center 94% 8%, radius 76%, rgba(236, 72, 153, 0.18), transparent 44%),
@@ -804,8 +804,8 @@
 }
 
 .dashboard-hero {
-    -fx-padding: 34 36;
-    -fx-min-height: 250;
+    -fx-padding: 26 28;
+    -fx-min-height: 200;
     -fx-background-color:
         radial-gradient(center 8% 4%, radius 88%, rgba(34, 211, 238, 0.28), transparent 46%),
         radial-gradient(center 92% 10%, radius 82%, rgba(236, 72, 153, 0.30), transparent 44%),
@@ -916,8 +916,7 @@
 }
 
 .dashboard-stat-card {
-    -fx-min-height: 166;
-    -fx-pref-height: 166;
+    -fx-min-height: 132;
     -fx-background-color:
         radial-gradient(center 100% 0%, radius 96%, rgba(34, 211, 238, 0.18), transparent 46%),
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.080), rgba(255, 255, 255, 0.018)),
@@ -926,7 +925,7 @@
     -fx-border-width: 1, 1;
     -fx-border-radius: 18, 18;
     -fx-background-radius: 18, 18, 18;
-    -fx-padding: 16 18;
+    -fx-padding: 14 16;
 }
 
 .dashboard-stat-card .stat-label {
@@ -986,7 +985,7 @@
 }
 
 .xp-panel, .recent-decks-panel {
-    -fx-min-height: 230;
+    -fx-min-height: 170;
     -fx-background-color:
         radial-gradient(center 100% 0%, radius 90%, rgba(124, 58, 237, 0.18), transparent 48%),
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.060), rgba(255, 255, 255, 0.016)),

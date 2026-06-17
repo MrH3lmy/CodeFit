@@ -984,16 +984,28 @@
     -fx-line-spacing: 2;
 }
 
-.xp-panel, .recent-decks-panel {
+.dashboard-bottom-card {
     -fx-min-height: 170;
+    -fx-padding: 22;
+    -fx-border-color: rgba(34, 211, 238, 0.24), rgba(244, 114, 182, 0.16);
+    -fx-border-width: 1, 1;
+    -fx-border-radius: 24, 24;
+    -fx-background-radius: 24, 24;
+}
+
+.dashboard-bottom-card .stat-label {
+    -fx-text-fill: -color-stat-label;
+    -fx-font-size: 12px;
+    -fx-font-weight: 900;
+    -fx-letter-spacing: 0.20em;
+    -fx-opacity: 0.96;
+}
+
+.xp-panel, .recent-decks-panel {
     -fx-background-color:
         radial-gradient(center 100% 0%, radius 90%, rgba(124, 58, 237, 0.18), transparent 48%),
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.060), rgba(255, 255, 255, 0.016)),
         rgba(15, 23, 42, 0.80);
-    -fx-border-color: rgba(34, 211, 238, 0.24), rgba(244, 114, 182, 0.16);
-    -fx-border-width: 1, 1;
-    -fx-border-radius: 24, 24;
-    -fx-background-radius: 24, 24, 24;
 }
 
 .panel-big-value {
@@ -1026,13 +1038,6 @@
     -fx-background-color: linear-gradient(to right, -color-progress-start, -color-accent, -color-primary);
     -fx-background-radius: 999;
     -fx-background-insets: 0;
-}
-
-.recent-decks-panel {
-    -fx-background-color:
-        radial-gradient(center 100% 0%, radius 86%, rgba(124, 58, 237, 0.18), transparent 48%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.016)),
-        -color-surface-card;
 }
 
 .ghost-button {

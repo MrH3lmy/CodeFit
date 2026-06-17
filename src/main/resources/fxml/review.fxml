@@ -55,9 +55,9 @@
                                         <Label text="●" styleClass="terminal-dot terminal-dot-green" />
                                         <Label text="Practice shell" styleClass="terminal-title" HBox.hgrow="ALWAYS" />
                                     </HBox>
-                                    <TextArea fx:id="terminalHistoryArea" text="$ # output history appears after reveal" editable="false" wrapText="true" prefRowCount="5" focusTraversable="false" styleClass="terminal-history" maxWidth="Infinity" />
+                                    <TextArea fx:id="terminalHistoryArea" text="\$ # output history appears after reveal" editable="false" wrapText="true" prefRowCount="5" focusTraversable="false" styleClass="terminal-history" maxWidth="Infinity" />
                                     <HBox fx:id="commandAttemptBox" spacing="8" alignment="CENTER_LEFT" styleClass="terminal-input" maxWidth="Infinity">
-                                        <Label text="$" styleClass="terminal-prompt" />
+                                        <Label text="\$" styleClass="terminal-prompt" />
                                         <TextField fx:id="commandTextField" promptText="Type the command you would run." HBox.hgrow="ALWAYS" />
                                     </HBox>
                                 </VBox>

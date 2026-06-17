@@ -128,7 +128,8 @@ public final class DatabaseConfig {
                     INSERT INTO decks (name, description) VALUES
                     ('Java Core', 'Syntax, OOP, collections, and core Java interview reps.'),
                     ('JavaFX UI', 'FXML, scenes, controllers, and desktop application patterns.'),
-                    ('SQL & Persistence', 'SQLite, JDBC, schema design, and repository fundamentals.')
+                    ('SQL & Persistence', 'SQLite, JDBC, schema design, and repository fundamentals.'),
+                    ('Prompt Commands Basics', 'Practice reusable assistant prompts for explanations, examples, workflows, debugging, and safe code changes.')
                     """);
             statement.executeUpdate("""
                     INSERT INTO flashcards (deck_id, front, back, accepted_answers, skill_category, due_date) VALUES
@@ -140,7 +141,17 @@ public final class DatabaseConfig {
                     (2, 'What method loads an FXML resource?', 'FXMLLoader.load()', 'FXMLLoader.load()', 'JavaFX UI', date('now')),
                     (3, 'What SQL command creates a table?', 'CREATE TABLE', 'CREATE TABLE', 'SQL', date('now')),
                     (3, 'What JDBC object executes parameterized SQL safely?', 'PreparedStatement', 'PreparedStatement', 'JDBC', date('now')),
-                    (3, 'What SQLite clause avoids duplicate seed rows?', 'INSERT OR IGNORE', 'INSERT OR IGNORE', 'SQLite', date('now'))
+                    (3, 'What SQLite clause avoids duplicate seed rows?', 'INSERT OR IGNORE', 'INSERT OR IGNORE', 'SQLite', date('now')),
+                    (4, 'Prompt command: ask for a concise explanation of recursion.', 'Explain recursion in 3 concise bullet points.', 'Explain recursion in 3 concise bullet points.|Explain recursion briefly in 3 bullets.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask for step-by-step instructions to set up a Java project.', 'Give me step-by-step instructions to set up a Java project.', 'Give me step-by-step instructions to set up a Java project.|Walk me through setting up a Java project step by step.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask the assistant to generate examples of SQL joins.', 'Generate 3 examples of SQL joins with short explanations.', 'Generate 3 examples of SQL joins with short explanations.|Show me three SQL join examples and explain each briefly.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask for code review feedback on a method.', 'Review this method and suggest specific improvements.', 'Review this method and suggest specific improvements.|Give me code review feedback on this method.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask for a command-line workflow for running tests.', 'Give me a command-line workflow to build the project and run tests.', 'Give me a command-line workflow to build the project and run tests.|Show a terminal workflow for building and testing this project.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask for debugging help with an error message.', 'Help me debug this error. Explain likely causes and next checks.', 'Help me debug this error. Explain likely causes and next checks.|Debug this error and list likely causes plus next steps.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask for a 7-day study plan for JavaFX.', 'Create a 7-day JavaFX study plan with daily practice tasks.', 'Create a 7-day JavaFX study plan with daily practice tasks.|Make me a one-week JavaFX study plan with practice tasks.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask for flashcards from a topic.', 'Create 10 flashcards about JDBC basics with answers.', 'Create 10 flashcards about JDBC basics with answers.|Make ten Q&A flashcards on JDBC basics.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask the assistant to compare alternatives.', 'Compare ArrayList and LinkedList, including tradeoffs and when to use each.', 'Compare ArrayList and LinkedList, including tradeoffs and when to use each.|Explain the tradeoffs between ArrayList and LinkedList.', 'Prompt Commands', date('now')),
+                    (4, 'Prompt command: ask for safe edits or refactors.', 'Suggest a safe refactor for this code without changing behavior.', 'Suggest a safe refactor for this code without changing behavior.|Refactor this safely while preserving behavior.', 'Prompt Commands', date('now'))
                     """);
         }
     }

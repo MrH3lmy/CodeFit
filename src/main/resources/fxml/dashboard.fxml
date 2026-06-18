@@ -32,12 +32,12 @@
                             <Label fx:id="dueCountLabel" styleClass="dashboard-card-value accent" wrapText="true" />
                             <Label text="Review the cards that are ready now and keep your recall sharp." styleClass="dashboard-card-helper" wrapText="true" />
                         </VBox>
-                        <VBox alignment="CENTER_LEFT" maxWidth="Infinity" minWidth="0" spacing="12" styleClass="dashboard-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                        <VBox alignment="CENTER_LEFT" maxWidth="Infinity" minWidth="0" spacing="10" styleClass="dashboard-card quick-review-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
                             <Label text="QUICK REVIEW" styleClass="dashboard-card-title" wrapText="true" />
-                            <Label text="Start a focused session" styleClass="dashboard-card-value dashboard-card-value-medium" wrapText="true" />
-                            <Label text="Jump straight into due cards whenever you have a few minutes." styleClass="dashboard-card-helper" wrapText="true" />
+                            <Label text="Ready when you are" styleClass="dashboard-card-value dashboard-card-value-medium" wrapText="true" />
+                            <Label text="Run a focused pass through due cards in just a few minutes." styleClass="dashboard-card-helper" wrapText="true" />
                             <Region VBox.vgrow="ALWAYS" />
-                            <Button text="▶  Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button hero-review-button" />
+                            <Button text="Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button quick-review-button" />
                         </VBox>
                     </GridPane>
 

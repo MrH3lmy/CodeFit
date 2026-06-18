@@ -764,36 +764,36 @@
     -fx-font-weight: 800;
 }
 
-.dashboard-top-grid {
-    -fx-min-height: 180;
+.dashboard-top-grid, .dashboard-stats-grid, .dashboard-bottom-grid {
+    -fx-alignment: top-center;
 }
 
-.dashboard-stats-grid, .dashboard-bottom-grid {
-    -fx-alignment: top-center;
+.dashboard-top-grid {
+    -fx-min-height: 180;
 }
 
 .dashboard-card {
     -fx-min-height: 170;
     -fx-padding: 22;
     -fx-background-color:
-        radial-gradient(center 8% 0%, radius 82%, rgba(34, 211, 238, 0.18), transparent 46%),
-        radial-gradient(center 96% 4%, radius 74%, rgba(124, 58, 237, 0.16), transparent 44%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.070), rgba(255, 255, 255, 0.018)),
-        rgba(6, 10, 24, 0.84);
-    -fx-border-color: rgba(125, 211, 252, 0.24), rgba(255, 255, 255, 0.10);
+        radial-gradient(center 10% 0%, radius 78%, rgba(34, 211, 238, 0.16), transparent 46%),
+        radial-gradient(center 96% 6%, radius 72%, rgba(124, 58, 237, 0.14), transparent 44%),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.018)),
+        rgba(5, 10, 23, 0.86);
+    -fx-border-color: rgba(125, 211, 252, 0.22), rgba(255, 255, 255, 0.09);
     -fx-border-width: 1, 1;
     -fx-border-radius: 20, 20;
     -fx-background-radius: 20, 20, 20, 20;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.22), 18, 0.14, 0, 8);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.24), 18, 0.13, 0, 8);
 }
 
 .dashboard-card:hover {
     -fx-translate-y: -2;
-    -fx-border-color: rgba(125, 211, 252, 0.34), rgba(255, 255, 255, 0.14);
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.24), 20, 0.16, 0, 9);
+    -fx-border-color: rgba(125, 211, 252, 0.32), rgba(255, 255, 255, 0.13);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 20, 0.15, 0, 9);
 }
 
-.dashboard-card-hero {
+.dashboard-top-grid .dashboard-card {
     -fx-min-height: 180;
     -fx-padding: 22 24;
 }
@@ -821,16 +821,16 @@
     -fx-line-spacing: 0;
 }
 
-.dashboard-card-hero .dashboard-card-value {
+.dashboard-top-grid .dashboard-card-value {
     -fx-font-size: 72px;
-    -fx-effect: dropshadow(gaussian, rgba(244, 114, 182, 0.28), 18, 0.18, 0, 0);
+    -fx-effect: dropshadow(gaussian, rgba(244, 114, 182, 0.24), 16, 0.16, 0, 0);
 }
 
 .dashboard-card-value-medium {
     -fx-font-size: 28px;
 }
 
-.dashboard-card-hero .dashboard-card-value-medium {
+.dashboard-top-grid .dashboard-card-value-medium {
     -fx-font-size: 30px;
     -fx-effect: none;
 }
@@ -843,7 +843,7 @@
     -fx-opacity: 0.92;
 }
 
-.dashboard-card-hero .dashboard-card-helper {
+.dashboard-top-grid .dashboard-card-helper {
     -fx-font-size: 15px;
     -fx-line-spacing: 3;
 }

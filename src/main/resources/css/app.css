@@ -931,18 +931,36 @@
     -fx-padding: 12 16;
 }
 
-.hero-review-button {
-    -fx-background-color: linear-gradient(to right, #ec4899 0%, #a855f7 46%, #22d3ee 100%);
-    -fx-border-color: rgba(255, 255, 255, 0.46);
+.quick-review-card {
+    -fx-background-color:
+        radial-gradient(center 92% 12%, radius 42%, rgba(34, 211, 238, 0.14), transparent 54%),
+        radial-gradient(center 100% 0%, radius 34%, rgba(244, 114, 182, 0.12), transparent 58%),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.072), rgba(255, 255, 255, 0.022)),
+        rgba(15, 23, 42, 0.76);
+}
+
+.quick-review-button {
+    -fx-background-color: linear-gradient(to right, #7c3aed 0%, #ec4899 52%, #06b6d4 100%);
+    -fx-border-color: rgba(224, 242, 254, 0.34);
     -fx-border-width: 1;
     -fx-text-fill: white;
-    -fx-font-size: 15px;
+    -fx-font-size: 14px;
     -fx-font-weight: 900;
-    -fx-padding: 16 34;
-    -fx-min-width: 240;
+    -fx-padding: 13 20;
     -fx-background-radius: 16;
     -fx-border-radius: 16;
-    -fx-effect: dropshadow(gaussian, rgba(236, 72, 153, 0.36), 22, 0.28, 0, 8);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.20), 12, 0.12, 0, 4);
+}
+
+.quick-review-button:hover {
+    -fx-background-color: linear-gradient(to right, #8b5cf6 0%, #f472b6 52%, #22d3ee 100%);
+    -fx-border-color: rgba(224, 242, 254, 0.48);
+    -fx-translate-y: -1;
+}
+
+.quick-review-button:pressed {
+    -fx-background-color: linear-gradient(to right, #6d28d9 0%, #db2777 52%, #0891b2 100%);
+    -fx-translate-y: 1;
 }
 
 .metric-card {

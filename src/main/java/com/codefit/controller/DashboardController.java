@@ -115,7 +115,7 @@ public class DashboardController extends BaseController {
         dueColumn.setPercentWidth(18);
         row.getColumnConstraints().addAll(iconColumn, nameColumn, countColumn, percentColumn, dueColumn);
 
-        Label iconLabel = new Label("🗂");
+        Label iconLabel = new Label("D");
         iconLabel.getStyleClass().add("deck-icon");
 
         Label nameLabel = new Label(deck.getName());

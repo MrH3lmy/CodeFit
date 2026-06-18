@@ -1003,6 +1003,27 @@
     -fx-letter-spacing: 0.08em;
 }
 
+
+.metric-badge-rank {
+    -fx-background-color: rgba(129, 140, 248, 0.18);
+    -fx-border-color: rgba(165, 180, 252, 0.34);
+}
+
+.metric-badge-streak {
+    -fx-background-color: rgba(251, 146, 60, 0.18);
+    -fx-border-color: rgba(253, 186, 116, 0.34);
+}
+
+.metric-badge-decks {
+    -fx-background-color: rgba(34, 211, 238, 0.16);
+    -fx-border-color: rgba(103, 232, 249, 0.32);
+}
+
+.metric-badge-cards {
+    -fx-background-color: rgba(244, 114, 182, 0.16);
+    -fx-border-color: rgba(249, 168, 212, 0.32);
+}
+
 .metric-description {
     -fx-text-fill: -color-secondary-text;
     -fx-font-size: 12px;
@@ -1083,7 +1104,19 @@
 }
 
 .deck-icon {
-    -fx-font-size: 16px;
+    -fx-min-width: 24;
+    -fx-pref-width: 24;
+    -fx-min-height: 24;
+    -fx-pref-height: 24;
+    -fx-alignment: center;
+    -fx-background-color: rgba(34, 211, 238, 0.14);
+    -fx-border-color: rgba(103, 232, 249, 0.28);
+    -fx-border-width: 1;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-text-fill: -color-accent-text;
+    -fx-font-size: 11px;
+    -fx-font-weight: 900;
 }
 
 .deck-name {

@@ -49,25 +49,25 @@
                             <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
                         </columnConstraints>
                         <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                            <Label text="LV" styleClass="stat-icon stat-icon-badge" />
+                            <Label text="R" styleClass="stat-icon stat-icon-badge metric-badge-rank" />
                             <Label text="RANK" styleClass="dashboard-card-title" wrapText="true" />
                             <Label fx:id="levelLabel" text="Level 1" styleClass="dashboard-card-value" wrapText="true" />
                             <Label text="Climb levels as reviews convert into XP." styleClass="dashboard-card-helper" wrapText="true" />
                         </VBox>
                         <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                            <Label text="ST" styleClass="stat-icon stat-icon-badge" />
+                            <Label text="S" styleClass="stat-icon stat-icon-badge metric-badge-streak" />
                             <Label text="STREAK" styleClass="dashboard-card-title" wrapText="true" />
                             <Label fx:id="streakLabel" text="1 day" styleClass="dashboard-card-value" wrapText="true" />
                             <Label text="Keep showing up to preserve your daily loop." styleClass="dashboard-card-helper" wrapText="true" />
                         </VBox>
                         <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact" GridPane.columnIndex="2" GridPane.rowIndex="0">
-                            <Label text="DK" styleClass="stat-icon stat-icon-badge" />
+                            <Label text="D" styleClass="stat-icon stat-icon-badge metric-badge-decks" />
                             <Label text="DECKS" styleClass="dashboard-card-title" wrapText="true" />
                             <Label fx:id="deckCountLabel" text="3" styleClass="dashboard-card-value" wrapText="true" />
                             <Label text="Active decks powering your practice lanes." styleClass="dashboard-card-helper" wrapText="true" />
                         </VBox>
                         <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact" GridPane.columnIndex="3" GridPane.rowIndex="0">
-                            <Label text="CD" styleClass="stat-icon stat-icon-badge" />
+                            <Label text="C" styleClass="stat-icon stat-icon-badge metric-badge-cards" />
                             <Label text="CARDS" styleClass="dashboard-card-title" wrapText="true" />
                             <Label fx:id="cardCountLabel" text="9" styleClass="dashboard-card-value" wrapText="true" />
                             <Label text="Concept reps waiting across your library." styleClass="dashboard-card-helper" wrapText="true" />

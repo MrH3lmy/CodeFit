@@ -67,12 +67,20 @@
     -color-progress-start: #06b6d4;
     -color-sidebar-bg: rgba(8, 13, 22, 0.96);
     -color-sidebar-border: rgba(125, 211, 252, 0.18);
+    -color-dashboard-card: rgba(5, 10, 23, 0.86);
+    -color-dashboard-card-border: rgba(125, 211, 252, 0.22);
+    -color-dashboard-card-highlight: rgba(34, 211, 238, 0.16);
+    -color-dashboard-card-highlight-alt: rgba(124, 58, 237, 0.14);
+    -color-dashboard-hero: rgba(5, 10, 26, 0.88);
+    -color-dashboard-hero-highlight: rgba(236, 72, 153, 0.30);
+    -color-dashboard-art-sun: #fb7185;
+    -color-dashboard-synth: rgba(168, 85, 247, 0.18);
     -fx-background-color: -color-app-base;
     -fx-text-fill: -color-text;
 }
 
 .theme-light {
-    -color-primary: #2563eb; -color-primary-strong: #1d4ed8; -color-accent: #0d9488; -color-accent-strong: #0f766e; -color-surface: #f8fafc; -color-surface-elevated: #ffffff; -color-border: rgba(71, 85, 105, 0.22); -color-border-strong: rgba(37, 99, 235, 0.36); -color-danger: #dc2626; -color-warning: #d97706; -color-success: #16a34a; -color-app-base: #eef4ff; -color-text: #1e293b; -color-text-strong: #0f172a; -color-heading: #0f172a; -color-muted: #475569; -color-secondary-text: #64748b; -color-subtitle: #0f766e; -color-bg-start: #f8fbff; -color-bg-mid: #e0f2fe; -color-bg-end: #eef2ff; -color-bg-deep: #ecfeff; -color-brand: #0369a1; -color-brand-muted: #0f766e; -color-pill-text: #0f172a; -color-section-title: #334155; -color-stat-label: #0369a1; -color-accent-text: #047857; -color-banner-text: #075985; -color-progress-text: #075985; -color-green-label: #15803d; -color-violet-label: #6d28d9; -color-amber-label: #b45309; -color-helper-text: #475569; -color-review-answer: #164e63; -color-nav-section: #0d9488; -color-action-start: #2563eb; -color-action-mid: #7c3aed; -color-action-pressed: #1d4ed8; -color-action-pressed-end: #0f766e; -color-danger-dark: #b91c1c; -color-danger-darker: #7f1d1d; -color-danger-text: #fee2e2; -color-danger-hover-end: #dc2626; -color-warning-dark: #d97706; -color-warning-darker: #92400e; -color-warning-text: #fff7ed; -color-success-dark: #16a34a; -color-success-darker: #166534; -color-success-text: #ecfdf5; -color-epic-start: #2563eb; -color-epic-end: #7c3aed; -color-epic-text: #eff6ff; -color-epic-pressed: #1d4ed8; -color-prompt: #64748b; -color-list-text: #1e293b; -color-row-muted: #64748b; -color-badge-text: #0f766e; -color-selected-badge-text: #ffffff; -color-progress-start: #0891b2; -color-sidebar-bg: rgba(248, 250, 252, 0.92); -color-sidebar-border: rgba(37, 99, 235, 0.20); -fx-background-color: -color-app-base; -fx-text-fill: -color-text;
+    -color-primary: #2563eb; -color-primary-strong: #1d4ed8; -color-accent: #0d9488; -color-accent-strong: #0f766e; -color-surface: #f8fafc; -color-surface-elevated: #ffffff; -color-surface-card: rgba(255, 255, 255, 0.86); -color-border: rgba(71, 85, 105, 0.22); -color-border-strong: rgba(37, 99, 235, 0.36); -color-danger: #dc2626; -color-warning: #d97706; -color-success: #16a34a; -color-app-base: #eef4ff; -color-text: #1e293b; -color-text-strong: #0f172a; -color-heading: #0f172a; -color-muted: #475569; -color-secondary-text: #64748b; -color-subtitle: #0f766e; -color-bg-start: #f8fbff; -color-bg-mid: #e0f2fe; -color-bg-end: #eef2ff; -color-bg-deep: #ecfeff; -color-brand: #0369a1; -color-brand-muted: #0f766e; -color-pill-text: #0f172a; -color-section-title: #334155; -color-stat-label: #0369a1; -color-accent-text: #047857; -color-banner-text: #075985; -color-progress-text: #075985; -color-green-label: #15803d; -color-violet-label: #6d28d9; -color-amber-label: #b45309; -color-helper-text: #475569; -color-review-answer: #164e63; -color-nav-section: #0d9488; -color-action-start: #2563eb; -color-action-mid: #7c3aed; -color-action-pressed: #1d4ed8; -color-action-pressed-end: #0f766e; -color-danger-dark: #b91c1c; -color-danger-darker: #7f1d1d; -color-danger-text: #fee2e2; -color-danger-hover-end: #dc2626; -color-warning-dark: #d97706; -color-warning-darker: #92400e; -color-warning-text: #fff7ed; -color-success-dark: #16a34a; -color-success-darker: #166534; -color-success-text: #ecfdf5; -color-epic-start: #2563eb; -color-epic-end: #7c3aed; -color-epic-text: #eff6ff; -color-epic-pressed: #1d4ed8; -color-prompt: #64748b; -color-list-text: #1e293b; -color-row-muted: #64748b; -color-badge-text: #0f766e; -color-selected-badge-text: #ffffff; -color-progress-start: #0891b2; -color-sidebar-bg: rgba(248, 250, 252, 0.92); -color-sidebar-border: rgba(37, 99, 235, 0.20); -color-dashboard-card: -color-surface-card; -color-dashboard-card-border: -color-border-strong; -color-dashboard-card-highlight: rgba(37, 99, 235, 0.12); -color-dashboard-card-highlight-alt: rgba(13, 148, 136, 0.10); -color-dashboard-hero: -color-surface-card; -color-dashboard-hero-highlight: rgba(13, 148, 136, 0.16); -color-dashboard-art-sun: #fb7185; -color-dashboard-synth: rgba(124, 58, 237, 0.12); -fx-background-color: -color-app-base; -fx-text-fill: -color-text;
 }
 
 .theme-ocean { -color-primary: #22d3ee; -color-primary-strong: #0891b2; -color-accent: #38bdf8; -color-accent-strong: #0284c7; -color-brand: #67e8f9; -color-subtitle: #bae6fd; }
@@ -781,11 +789,11 @@
     -fx-min-height: 170;
     -fx-padding: 22;
     -fx-background-color:
-        radial-gradient(center 10% 0%, radius 78%, rgba(34, 211, 238, 0.16), transparent 46%),
-        radial-gradient(center 96% 6%, radius 72%, rgba(124, 58, 237, 0.14), transparent 44%),
+        radial-gradient(center 10% 0%, radius 78%, -color-dashboard-card-highlight, transparent 46%),
+        radial-gradient(center 96% 6%, radius 72%, -color-dashboard-card-highlight-alt, transparent 44%),
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.018)),
-        rgba(5, 10, 23, 0.86);
-    -fx-border-color: rgba(125, 211, 252, 0.22), rgba(255, 255, 255, 0.09);
+        -color-dashboard-card;
+    -fx-border-color: -color-dashboard-card-border, rgba(255, 255, 255, 0.09);
     -fx-border-width: 1, 1;
     -fx-border-radius: 20, 20;
     -fx-background-radius: 20, 20, 20, 20;
@@ -794,7 +802,7 @@
 
 .dashboard-card:hover {
     -fx-translate-y: -2;
-    -fx-border-color: rgba(125, 211, 252, 0.32), rgba(255, 255, 255, 0.13);
+    -fx-border-color: -color-border-strong, rgba(255, 255, 255, 0.13);
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 20, 0.15, 0, 9);
 }
 
@@ -828,7 +836,7 @@
 
 .dashboard-top-grid .dashboard-card-value {
     -fx-font-size: 72px;
-    -fx-effect: dropshadow(gaussian, rgba(244, 114, 182, 0.24), 16, 0.16, 0, 0);
+    -fx-effect: dropshadow(gaussian, -color-dashboard-hero-highlight, 16, 0.16, 0, 0);
 }
 
 .dashboard-card-value-medium {
@@ -857,20 +865,20 @@
     -fx-padding: 26 28;
     -fx-min-height: 200;
     -fx-background-color:
-        radial-gradient(center 8% 4%, radius 88%, rgba(34, 211, 238, 0.28), transparent 46%),
-        radial-gradient(center 92% 10%, radius 82%, rgba(236, 72, 153, 0.30), transparent 44%),
-        radial-gradient(center 72% 106%, radius 92%, rgba(124, 58, 237, 0.30), transparent 50%),
-        linear-gradient(to bottom right, rgba(30, 27, 75, 0.94) 0%, rgba(13, 18, 43, 0.92) 48%, rgba(5, 10, 26, 0.88) 100%);
-    -fx-border-color: rgba(244, 114, 182, 0.58), rgba(34, 211, 238, 0.48), rgba(255, 255, 255, 0.10);
+        radial-gradient(center 8% 4%, radius 88%, -color-border-strong, transparent 46%),
+        radial-gradient(center 92% 10%, radius 82%, -color-dashboard-hero-highlight, transparent 44%),
+        radial-gradient(center 72% 106%, radius 92%, -color-dashboard-card-highlight-alt, transparent 50%),
+        linear-gradient(to bottom right, -color-bg-end 0%, -color-bg-mid 48%, -color-dashboard-hero 100%);
+    -fx-border-color: -color-dashboard-hero-highlight, -color-border-strong, -color-border;
     -fx-border-width: 1.5, 1, 1;
     -fx-border-radius: 34, 34, 34;
     -fx-background-radius: 34, 34, 34, 34;
-    -fx-effect: dropshadow(gaussian, rgba(236, 72, 153, 0.24), 42, 0.25, 0, 18);
+    -fx-effect: dropshadow(gaussian, -color-dashboard-hero-highlight, 42, 0.25, 0, 18);
 }
 
 
 .hero-review-label {
-    -fx-text-fill: #f472b6;
+    -fx-text-fill: -color-accent;
     -fx-font-size: 13px;
     -fx-font-weight: 900;
     -fx-letter-spacing: 0.22em;
@@ -880,12 +888,12 @@
     -fx-padding: 18;
     -fx-min-height: 178;
     -fx-background-color:
-        radial-gradient(center 50% 34%, radius 34%, rgba(251, 191, 36, 0.52), rgba(251, 113, 133, 0.40) 38%, transparent 42%),
-        linear-gradient(to bottom, transparent 0%, rgba(15, 23, 42, 0.18) 42%, rgba(34, 211, 238, 0.22) 43%, rgba(2, 6, 23, 0.72) 56%, rgba(168, 85, 247, 0.18) 100%),
-        linear-gradient(to right, transparent 0%, rgba(34, 211, 238, 0.20) 2%, transparent 4%),
-        linear-gradient(to bottom, transparent 0%, rgba(34, 211, 238, 0.18) 5%, transparent 10%);
+        radial-gradient(center 50% 34%, radius 34%, -color-warning, -color-dashboard-art-sun 38%, transparent 42%),
+        linear-gradient(to bottom, transparent 0%, -color-border 42%, -color-dashboard-card-border 43%, -color-surface-card 56%, -color-dashboard-synth 100%),
+        linear-gradient(to right, transparent 0%, -color-dashboard-card-highlight 2%, transparent 4%),
+        linear-gradient(to bottom, transparent 0%, -color-dashboard-card-highlight 5%, transparent 10%);
     -fx-background-size: auto, auto, 36 100, 100 18;
-    -fx-border-color: rgba(244, 114, 182, 0.32), rgba(34, 211, 238, 0.22);
+    -fx-border-color: -color-dashboard-hero-highlight, -color-dashboard-card-border;
     -fx-border-width: 1, 1;
     -fx-border-radius: 24, 24;
     -fx-background-radius: 24, 24, 24, 24;
@@ -894,9 +902,9 @@
 
 .synth-horizon {
     -fx-background-color:
-        radial-gradient(center 50% 38%, radius 48%, rgba(251, 113, 133, 0.42), transparent 36%),
-        linear-gradient(to bottom, rgba(15, 23, 42, 0.16) 0%, rgba(30, 41, 59, 0.42) 54%, rgba(2, 6, 23, 0.70) 55%, rgba(15, 23, 42, 0.16) 100%);
-    -fx-border-color: rgba(244, 114, 182, 0.30);
+        radial-gradient(center 50% 38%, radius 48%, -color-dashboard-art-sun, transparent 36%),
+        linear-gradient(to bottom, rgba(15, 23, 42, 0.16) 0%, -color-surface-elevated 54%, -color-surface-card 55%, rgba(15, 23, 42, 0.16) 100%);
+    -fx-border-color: -color-dashboard-hero-highlight;
     -fx-border-radius: 22;
     -fx-background-radius: 22;
     -fx-padding: 18;
@@ -909,7 +917,7 @@
     -fx-max-width: 96;
     -fx-max-height: 96;
     -fx-background-radius: 999;
-    -fx-background-color: linear-gradient(to bottom, #facc15 0%, #fb7185 46%, #a855f7 100%);
+    -fx-background-color: linear-gradient(to bottom, -color-warning 0%, -color-dashboard-art-sun 46%, -color-dashboard-card-highlight-alt 100%);
     -fx-opacity: 0.86;
 }
 
@@ -918,18 +926,18 @@
     -fx-max-height: 54;
     -fx-translate-y: 48;
     -fx-background-color:
-        linear-gradient(to right, transparent 0%, rgba(34, 211, 238, 0.38) 3%, transparent 6%),
-        linear-gradient(to bottom, transparent 0%, rgba(34, 211, 238, 0.30) 6%, transparent 12%),
-        linear-gradient(to bottom, rgba(168, 85, 247, 0.16), rgba(14, 165, 233, 0.08));
+        linear-gradient(to right, transparent 0%, -color-border-strong 3%, transparent 6%),
+        linear-gradient(to bottom, transparent 0%, -color-border-strong 6%, transparent 12%),
+        linear-gradient(to bottom, -color-dashboard-synth, -color-dashboard-card-highlight);
     -fx-background-size: 34 54, 100 13, auto;
-    -fx-border-color: rgba(34, 211, 238, 0.28) transparent transparent transparent;
+    -fx-border-color: -color-border-strong transparent transparent transparent;
 }
 
 .hero-play-icon {
     -fx-text-fill: white;
     -fx-font-size: 30px;
     -fx-font-weight: 900;
-    -fx-background-color: rgba(2, 6, 23, 0.44);
+    -fx-background-color: -color-surface-card;
     -fx-background-radius: 999;
     -fx-border-color: rgba(255, 255, 255, 0.32);
     -fx-border-radius: 999;
@@ -938,14 +946,14 @@
 
 .quick-review-card {
     -fx-background-color:
-        radial-gradient(center 92% 12%, radius 42%, rgba(34, 211, 238, 0.14), transparent 54%),
-        radial-gradient(center 100% 0%, radius 34%, rgba(244, 114, 182, 0.12), transparent 58%),
+        radial-gradient(center 92% 12%, radius 42%, -color-dashboard-card-highlight, transparent 54%),
+        radial-gradient(center 100% 0%, radius 34%, -color-dashboard-hero-highlight, transparent 58%),
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.072), rgba(255, 255, 255, 0.022)),
-        rgba(15, 23, 42, 0.76);
+        -color-surface-card;
 }
 
 .quick-review-button {
-    -fx-background-color: linear-gradient(to right, #7c3aed 0%, #ec4899 52%, #06b6d4 100%);
+    -fx-background-color: linear-gradient(to right, -color-action-mid 0%, -color-accent 52%, -color-progress-start 100%);
     -fx-border-color: rgba(224, 242, 254, 0.34);
     -fx-border-width: 1;
     -fx-text-fill: white;
@@ -958,23 +966,23 @@
 }
 
 .quick-review-button:hover {
-    -fx-background-color: linear-gradient(to right, #8b5cf6 0%, #f472b6 52%, #22d3ee 100%);
+    -fx-background-color: linear-gradient(to right, -color-epic-end 0%, -color-accent 52%, -color-primary 100%);
     -fx-border-color: rgba(224, 242, 254, 0.48);
     -fx-translate-y: -1;
 }
 
 .quick-review-button:pressed {
-    -fx-background-color: linear-gradient(to right, #6d28d9 0%, #db2777 52%, #0891b2 100%);
+    -fx-background-color: linear-gradient(to right, -color-epic-end 0%, -color-accent-strong 52%, -color-progress-start 100%);
     -fx-translate-y: 1;
 }
 
 .metric-card {
     -fx-min-height: 190;
     -fx-background-color:
-        radial-gradient(center 100% 0%, radius 96%, rgba(34, 211, 238, 0.18), transparent 46%),
+        radial-gradient(center 100% 0%, radius 96%, -color-dashboard-card-highlight, transparent 46%),
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.080), rgba(255, 255, 255, 0.018)),
-        rgba(15, 23, 42, 0.78);
-    -fx-border-color: rgba(34, 211, 238, 0.28), rgba(244, 114, 182, 0.16);
+        -color-surface-card;
+    -fx-border-color: -color-border-strong, -color-dashboard-hero-highlight;
     -fx-border-width: 1, 1;
     -fx-border-radius: 22, 22;
     -fx-background-radius: 22, 22, 22;
@@ -984,7 +992,7 @@
 .stat-icon, .metric-icon {
     -fx-font-size: 28px;
     -fx-text-fill: -color-text-strong;
-    -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.30), 14, 0.24, 0, 0);
+    -fx-effect: dropshadow(gaussian, -color-border-strong, 14, 0.24, 0, 0);
 }
 
 .stat-icon-badge {
@@ -1015,12 +1023,12 @@
 }
 
 .metric-badge-decks {
-    -fx-background-color: rgba(34, 211, 238, 0.16);
+    -fx-background-color: -color-dashboard-card-highlight;
     -fx-border-color: rgba(103, 232, 249, 0.32);
 }
 
 .metric-badge-cards {
-    -fx-background-color: rgba(244, 114, 182, 0.16);
+    -fx-background-color: -color-dashboard-hero-highlight;
     -fx-border-color: rgba(249, 168, 212, 0.32);
 }
 
@@ -1109,7 +1117,7 @@
     -fx-min-height: 24;
     -fx-pref-height: 24;
     -fx-alignment: center;
-    -fx-background-color: rgba(34, 211, 238, 0.14);
+    -fx-background-color: -color-dashboard-card-highlight;
     -fx-border-color: rgba(103, 232, 249, 0.28);
     -fx-border-width: 1;
     -fx-background-radius: 999;
@@ -1147,7 +1155,7 @@
 }
 
 .terminal-prompt {
-    -fx-text-fill: #22d3ee;
+    -fx-text-fill: -color-primary;
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
     -fx-font-size: 16px;
     -fx-font-weight: 800;
@@ -1163,7 +1171,7 @@
 
 .terminal-panel {
     -fx-background-color:
-        radial-gradient(center 0% 0%, radius 88%, rgba(34, 211, 238, 0.14), transparent 42%),
+        radial-gradient(center 0% 0%, radius 88%, -color-dashboard-card-highlight, transparent 42%),
         linear-gradient(to bottom, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.96));
     -fx-border-color: rgba(56, 189, 248, 0.42), rgba(255, 255, 255, 0.08);
     -fx-border-width: 1.5, 1;
@@ -1182,8 +1190,8 @@
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
 }
 
-.terminal-dot-red { -fx-text-fill: #fb7185; }
-.terminal-dot-yellow { -fx-text-fill: #facc15; }
+.terminal-dot-red { -fx-text-fill: -color-dashboard-art-sun; }
+.terminal-dot-yellow { -fx-text-fill: -color-warning; }
 .terminal-dot-green { -fx-text-fill: #34d399; }
 
 .terminal-title {
@@ -1195,8 +1203,8 @@
 }
 
 .terminal-history {
-    -fx-background-color: rgba(2, 6, 23, 0.72);
-    -fx-control-inner-background: rgba(2, 6, 23, 0.72);
+    -fx-background-color: -color-surface-card;
+    -fx-control-inner-background: -color-surface-card;
     -fx-border-color: rgba(148, 163, 184, 0.18);
     -fx-border-radius: 12;
     -fx-background-radius: 12;
@@ -1208,6 +1216,6 @@
 }
 
 .terminal-history .content {
-    -fx-background-color: rgba(2, 6, 23, 0.72);
+    -fx-background-color: -color-surface-card;
     -fx-background-radius: 12;
 }

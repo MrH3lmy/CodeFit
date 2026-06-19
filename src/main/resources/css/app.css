@@ -101,17 +101,16 @@
         linear-gradient(to bottom, -color-sidebar-bg, rgba(6, 8, 19, 0.95));
     -fx-border-color: transparent -color-sidebar-border transparent transparent;
     -fx-border-width: 0 1 0 0;
-    -fx-padding: 26 18 18 18;
-    -fx-min-width: 280;
-    -fx-pref-width: 288;
-    -fx-max-width: 300;
+    -fx-padding: 24 14 18 14;
+    -fx-min-width: 216;
+    -fx-pref-width: 232;
+    -fx-max-width: 260;
     -fx-effect: dropshadow(gaussian, rgba(2, 6, 23, 0.28), 14, 0.12, 3, 0);
 }
 
 .content {
-    -fx-padding: 28;
+    -fx-padding: 24;
     -fx-fill-width: true;
-    -fx-max-width: 1180;
 }
 
 .content-scroll {
@@ -132,7 +131,7 @@
 
 .sidebar-title {
     -fx-text-fill: linear-gradient(to right, #f0abfc 0%, #f472b6 35%, #67e8f9 100%);
-    -fx-font-size: 38px;
+    -fx-font-size: 32px;
     -fx-font-weight: 900;
     -fx-letter-spacing: -0.05em;
     -fx-effect: dropshadow(gaussian, rgba(244, 114, 182, 0.42), 18, 0.28, 0, 0);
@@ -148,7 +147,7 @@
 
 .page-title {
     -fx-text-fill: -color-heading;
-    -fx-font-size: 34px;
+    -fx-font-size: 32px;
     -fx-font-weight: 900;
     -fx-letter-spacing: -0.03em;
 }
@@ -727,20 +726,17 @@
 .card-tile-grid .stat-card, .card-tile-grid .small-card {
     -fx-min-width: 0;
     -fx-pref-width: 220;
-    -fx-max-width: 360;
 }
 
 .primary-column {
     -fx-spacing: 18;
     -fx-min-width: 0;
-    -fx-pref-width: 500;
-    -fx-max-width: 860;
+    -fx-pref-width: 460;
 }
 
 .side-panel {
     -fx-min-width: 0;
-    -fx-pref-width: 300;
-    -fx-max-width: 420;
+    -fx-pref-width: 280;
 }
 
 .deck-list-panel, .card-list-panel {
@@ -749,7 +745,7 @@
 }
 
 .deck-list-panel .list-view, .card-list-panel .list-view {
-    -fx-min-height: 180;
+    -fx-min-height: 160;
     -fx-pref-height: 240;
 }
 
@@ -786,7 +782,7 @@
 }
 
 .dashboard-card {
-    -fx-min-height: 170;
+    -fx-min-height: 150;
     -fx-padding: 22;
     -fx-background-color:
         radial-gradient(center 10% 0%, radius 78%, -color-dashboard-card-highlight, transparent 46%),
@@ -812,7 +808,7 @@
 }
 
 .dashboard-card-compact {
-    -fx-min-height: 132;
+    -fx-min-height: 124;
     -fx-padding: 14 16;
     -fx-border-radius: 18, 18;
     -fx-background-radius: 18, 18, 18, 18;

@@ -11,7 +11,7 @@
     <center>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
             <content>
-                <VBox alignment="TOP_CENTER" maxWidth="1100" spacing="16" styleClass="content">
+                <VBox alignment="TOP_CENTER" maxWidth="Infinity" spacing="16" styleClass="content" VBox.vgrow="ALWAYS">
                     <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
                         <HBox alignment="CENTER_LEFT" spacing="12">
                             <Label text="Dashboard" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
@@ -41,38 +41,32 @@
                         </VBox>
                     </GridPane>
 
-                    <GridPane hgap="14" maxWidth="Infinity" vgap="14" styleClass="dashboard-stats-grid">
-                        <columnConstraints>
-                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
-                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
-                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
-                            <ColumnConstraints hgrow="ALWAYS" percentWidth="25" />
-                        </columnConstraints>
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <TilePane hgap="14" maxWidth="Infinity" vgap="14" prefTileWidth="190" tileAlignment="TOP_LEFT" styleClass="dashboard-stats-grid">
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact">
                             <Label text="R" styleClass="stat-icon stat-icon-badge metric-badge-rank" />
                             <Label text="RANK" styleClass="dashboard-card-title" wrapText="true" />
                             <Label fx:id="levelLabel" text="Level 1" styleClass="dashboard-card-value" wrapText="true" />
                             <Label text="Climb levels as reviews convert into XP." styleClass="dashboard-card-helper" wrapText="true" />
                         </VBox>
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact">
                             <Label text="S" styleClass="stat-icon stat-icon-badge metric-badge-streak" />
                             <Label text="STREAK" styleClass="dashboard-card-title" wrapText="true" />
                             <Label fx:id="streakLabel" text="1 day" styleClass="dashboard-card-value" wrapText="true" />
                             <Label text="Keep showing up to preserve your daily loop." styleClass="dashboard-card-helper" wrapText="true" />
                         </VBox>
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact">
                             <Label text="D" styleClass="stat-icon stat-icon-badge metric-badge-decks" />
                             <Label text="DECKS" styleClass="dashboard-card-title" wrapText="true" />
                             <Label fx:id="deckCountLabel" text="3" styleClass="dashboard-card-value" wrapText="true" />
                             <Label text="Active decks powering your practice lanes." styleClass="dashboard-card-helper" wrapText="true" />
                         </VBox>
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="8" styleClass="dashboard-card dashboard-card-compact">
                             <Label text="C" styleClass="stat-icon stat-icon-badge metric-badge-cards" />
                             <Label text="CARDS" styleClass="dashboard-card-title" wrapText="true" />
                             <Label fx:id="cardCountLabel" text="9" styleClass="dashboard-card-value" wrapText="true" />
                             <Label text="Concept reps waiting across your library." styleClass="dashboard-card-helper" wrapText="true" />
                         </VBox>
-                    </GridPane>
+                    </TilePane>
 
                     <GridPane hgap="14" maxWidth="Infinity" vgap="14" styleClass="dashboard-bottom-grid">
                         <columnConstraints>
@@ -93,7 +87,7 @@
                                 <Label text="RECENT DECKS" styleClass="dashboard-card-title" wrapText="true" HBox.hgrow="ALWAYS" />
                                 <Button text="View all decks" onAction="#goDecks" styleClass="ghost-button" />
                             </HBox>
-                            <VBox fx:id="recentDecksList" maxWidth="Infinity" spacing="10" />
+                            <VBox fx:id="recentDecksList" maxWidth="Infinity" spacing="10" VBox.vgrow="ALWAYS" />
                         </VBox>
                     </GridPane>
                 </VBox>

@@ -16,8 +16,8 @@
                         <Label text="Organize related prompts into focused decks so each review queue matches what you want to master next." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
-                    <FlowPane hgap="22" vgap="22" prefWrapLength="920" styleClass="workspace-grid" VBox.vgrow="ALWAYS" maxWidth="Infinity">
-                        <VBox spacing="18" styleClass="primary-column" minWidth="0" prefWidth="500" maxWidth="860">
+                    <FlowPane hgap="22" vgap="22" prefWrapLength="720" styleClass="workspace-grid" VBox.vgrow="ALWAYS" maxWidth="Infinity">
+                        <VBox spacing="18" styleClass="primary-column" minWidth="0" prefWidth="460" maxWidth="Infinity">
                             <VBox spacing="10" styleClass="panel deck-list-panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
                                 <Label text="Decks" styleClass="section-title" />
                                 <ListView fx:id="deckListView" prefHeight="260" VBox.vgrow="ALWAYS" />
@@ -27,10 +27,10 @@
                                 <ListView fx:id="cardListView" prefHeight="260" VBox.vgrow="ALWAYS" />
                             </VBox>
                         </VBox>
-                        <VBox spacing="14" styleClass="panel side-panel" minWidth="0" prefWidth="300" maxWidth="420">
+                        <VBox spacing="14" styleClass="panel side-panel" minWidth="0" prefWidth="280" maxWidth="Infinity">
                             <Label text="Create Deck" styleClass="section-title" />
                             <TextField fx:id="deckNameField" promptText="Deck name" maxWidth="Infinity" />
-                            <TextArea fx:id="deckDescriptionArea" promptText="Description" prefRowCount="8" wrapText="true" VBox.vgrow="ALWAYS" />
+                            <TextArea fx:id="deckDescriptionArea" promptText="Description" prefRowCount="8" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
                             <Button text="Create Deck" onAction="#createDeck" styleClass="action-button" maxWidth="Infinity" />
                         </VBox>
                     </FlowPane>

@@ -16,13 +16,13 @@
                         <Label text="Build a stronger learning set one card at a time: capture the prompt, add the answer, and file it into the right deck." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
-                    <FlowPane hgap="20" vgap="20" prefWrapLength="900" styleClass="workspace-grid" maxWidth="Infinity">
-                        <VBox spacing="14" styleClass="composer-card, primary-column" minWidth="0" prefWidth="500" maxWidth="860">
+                    <FlowPane hgap="20" vgap="20" prefWrapLength="720" styleClass="workspace-grid" maxWidth="Infinity" VBox.vgrow="ALWAYS">
+                        <VBox spacing="14" styleClass="composer-card primary-column" minWidth="0" prefWidth="460" maxWidth="Infinity">
                             <Label text="Card Composer" styleClass="section-title" />
                             <Label text="Deck" styleClass="section-title" />
                             <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
                             <Label text="Skill / Category" styleClass="section-title" />
-                            <TextField fx:id="skillCategoryField" promptText="Example: Java Syntax, SQL, JavaFX UI" />
+                            <TextField fx:id="skillCategoryField" promptText="Example: Java Syntax, SQL, JavaFX UI" maxWidth="Infinity" />
                             <Label text="Categories power per-skill stats and weak-area detection." styleClass="helper-text" wrapText="true" />
                             <Label text="Template" styleClass="section-title" />
                             <ComboBox fx:id="cardTypeComboBox" maxWidth="Infinity" />
@@ -41,30 +41,30 @@
                             <Button fx:id="createDeckButton" text="Create a Deck" onAction="#goDecks" styleClass="nav-button-primary" visible="false" managed="false" />
                             <VBox fx:id="frontField" spacing="6" maxWidth="Infinity">
                                 <Label fx:id="frontLabel" text="Prompt" styleClass="section-title" />
-                                <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" />
+                                <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
                                 <Label fx:id="frontHelpLabel" text="Write the cue learners should recognize: a question, term, bug, or code snippet." styleClass="helper-text" wrapText="true" />
                             </VBox>
                             <VBox fx:id="backField" spacing="6" maxWidth="Infinity">
                                 <Label fx:id="backLabel" text="Answer" styleClass="section-title" />
-                                <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" />
+                                <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
                                 <Label fx:id="backHelpLabel" text="Keep it concise, then add the key explanation, edge case, or command that makes the answer stick." styleClass="helper-text" wrapText="true" />
                             </VBox>
                             <VBox fx:id="hintField" spacing="6" maxWidth="Infinity">
                                 <Label text="Hint (optional)" styleClass="section-title" />
-                                <TextArea fx:id="hintArea" promptText="Optional clue shown during review before the answer" prefRowCount="3" wrapText="true" />
+                                <TextArea fx:id="hintArea" promptText="Optional clue shown during review before the answer" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
                                 <Label text="Hints should nudge recall without giving away the full answer." styleClass="helper-text" wrapText="true" />
                             </VBox>
                             <VBox fx:id="acceptedAnswersField" spacing="6" maxWidth="Infinity">
                                 <Label fx:id="acceptedAnswersLabel" text="Accepted Answers" styleClass="section-title" />
-                                <TextArea fx:id="acceptedAnswersArea" promptText="Accepted answers, one per line" prefRowCount="4" wrapText="true" />
+                                <TextArea fx:id="acceptedAnswersArea" promptText="Accepted answers, one per line" prefRowCount="4" wrapText="true" maxWidth="Infinity" />
                             </VBox>
                             <VBox fx:id="simulatedOutputField" spacing="6" maxWidth="Infinity">
                                 <Label fx:id="simulatedOutputLabel" text="Simulated Output" styleClass="section-title" />
-                                <TextArea fx:id="simulatedOutputArea" promptText="Optional simulated output shown after reveal" prefRowCount="4" wrapText="true" />
+                                <TextArea fx:id="simulatedOutputArea" promptText="Optional simulated output shown after reveal" prefRowCount="4" wrapText="true" maxWidth="Infinity" />
                             </VBox>
-                            <Button fx:id="saveCardButton" text="Save Card" onAction="#saveCard" styleClass="action-button" />
+                            <Button fx:id="saveCardButton" text="Save Card" onAction="#saveCard" styleClass="action-button" maxWidth="Infinity" />
                         </VBox>
-                        <VBox spacing="14" styleClass="tips-card, side-panel" minWidth="0">
+                        <VBox spacing="14" styleClass="tips-card side-panel" minWidth="0" prefWidth="280" maxWidth="Infinity">
                             <Label text="Preview &amp; tips" styleClass="section-title" wrapText="true" />
                             <Label text="Front" styleClass="stat-label" />
                             <Label fx:id="frontPreviewLabel" text="Your prompt preview will appear here." styleClass="section-title" wrapText="true" />

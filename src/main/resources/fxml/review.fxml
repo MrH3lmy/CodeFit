@@ -36,7 +36,7 @@
                         <Button fx:id="reviewMissedButton" text="Review missed cards now" onAction="#reviewMissedNow" styleClass="action-button" maxWidth="Infinity" visible="false" managed="false" />
                     </VBox>
                     <StackPane styleClass="review-stage" maxWidth="Infinity">
-                        <VBox spacing="30" styleClass="review-card" maxWidth="900" StackPane.alignment="CENTER">
+                        <VBox spacing="30" styleClass="review-card" maxWidth="Infinity" StackPane.alignment="CENTER">
                             <VBox spacing="12" styleClass="prompt-section">
                                 <Label text="PROMPT" styleClass="stat-label" />
                                 <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />
@@ -72,7 +72,7 @@
                             </VBox>
                             <VBox spacing="14" styleClass="rating-panel" maxWidth="Infinity">
                                 <Label text="How did recall feel?" styleClass="section-title" />
-                                <TilePane hgap="14" vgap="14" prefTileWidth="154" tileAlignment="TOP_LEFT" styleClass="rating-grid">
+                                <TilePane hgap="14" vgap="14" prefTileWidth="154" maxWidth="Infinity" tileAlignment="TOP_LEFT" styleClass="rating-grid">
                                     <VBox spacing="7" styleClass="rating-option">
                                         <Button fx:id="againButton" text="Again" onAction="#rateAgain" styleClass="danger-button rating-button" maxWidth="Infinity" />
                                         <Label fx:id="againDescriptionLabel" text="Missed it — review again today" styleClass="rating-description" wrapText="true" />

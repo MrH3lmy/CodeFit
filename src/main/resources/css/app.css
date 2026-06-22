@@ -89,23 +89,20 @@
 
 .root-layout, .app-root {
     -fx-background-color:
-        radial-gradient(center 18% 10%, radius 75%, rgba(56, 189, 248, 0.22), transparent 48%),
-        radial-gradient(center 88% 8%, radius 60%, rgba(45, 212, 191, 0.16), transparent 42%),
-        radial-gradient(center 74% 92%, radius 72%, rgba(124, 58, 237, 0.14), transparent 50%),
-        linear-gradient(to bottom right, -color-bg-start 0%, -color-bg-mid 42%, -color-bg-end 72%, -color-bg-deep 100%);
+        radial-gradient(center 16% 8%, radius 68%, rgba(56, 189, 248, 0.12), transparent 46%),
+        radial-gradient(center 82% 92%, radius 68%, rgba(124, 58, 237, 0.07), transparent 50%),
+        linear-gradient(to bottom right, -color-bg-start 0%, -color-bg-mid 46%, -color-bg-end 74%, -color-bg-deep 100%);
 }
 
 .sidebar {
-    -fx-background-color:
-        radial-gradient(center 0% 0%, radius 94%, rgba(34, 211, 238, 0.08), transparent 50%),
-        linear-gradient(to bottom, -color-sidebar-bg, rgba(6, 8, 19, 0.95));
+    -fx-background-color: linear-gradient(to bottom, -color-sidebar-bg, rgba(6, 8, 19, 0.95));
     -fx-border-color: transparent -color-sidebar-border transparent transparent;
     -fx-border-width: 0 1 0 0;
     -fx-padding: 24 14 18 14;
     -fx-min-width: 216;
     -fx-pref-width: 232;
     -fx-max-width: 260;
-    -fx-effect: dropshadow(gaussian, rgba(2, 6, 23, 0.28), 14, 0.12, 3, 0);
+    -fx-effect: none;
 }
 
 .content {
@@ -166,11 +163,9 @@
 
 .hero-card {
     -fx-background-color:
-        radial-gradient(center 8% 0%, radius 78%, rgba(56, 189, 248, 0.20), transparent 48%),
-        radial-gradient(center 92% 18%, radius 72%, rgba(45, 212, 191, 0.16), transparent 44%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.090), rgba(255, 255, 255, 0.025)),
-        rgba(15, 23, 42, 0.78);
-    -fx-border-color: rgba(125, 211, 252, 0.24), rgba(255, 255, 255, 0.12);
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.070), rgba(255, 255, 255, 0.020)),
+        -color-surface-card;
+    -fx-border-color: rgba(125, 211, 252, 0.20), rgba(255, 255, 255, 0.10);
     -fx-border-width: 1, 1;
     -fx-border-radius: 24, 24;
     -fx-background-radius: 24, 24;
@@ -276,52 +271,46 @@
     -fx-border-radius: 20, 20;
     -fx-background-radius: 20, 20;
     -fx-padding: 22;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.18), 14, 0.12, 0, 6);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.16), 10, 0.10, 0, 4);
 }
 
 .stat-card {
     -fx-background-color:
-        radial-gradient(center 100% 0%, radius 95%, rgba(56, 189, 248, 0.20), transparent 46%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.090), rgba(255, 255, 255, 0.025)),
-        rgba(15, 23, 42, 0.82);
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)),
+        -color-surface-card;
 }
 
 .small-card {
     -fx-background-color:
-        radial-gradient(center 0% 0%, radius 90%, rgba(45, 212, 191, 0.14), transparent 42%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.070), rgba(255, 255, 255, 0.018)),
-        rgba(15, 23, 42, 0.76);
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.016)),
+        -color-surface-card;
 }
 
 .cyan-card {
     -fx-background-color:
-        radial-gradient(center 100% 0%, radius 95%, rgba(56, 189, 248, 0.24), transparent 48%),
-        linear-gradient(to bottom right, rgba(8, 145, 178, 0.20), rgba(255, 255, 255, 0.024)),
-        rgba(15, 23, 42, 0.84);
+        linear-gradient(to bottom right, rgba(8, 145, 178, 0.10), rgba(255, 255, 255, 0.018)),
+        -color-surface-card;
     -fx-border-color: rgba(103, 232, 249, 0.38), rgba(125, 211, 252, 0.18);
 }
 
 .green-card {
     -fx-background-color:
-        radial-gradient(center 100% 0%, radius 95%, rgba(34, 197, 94, 0.22), transparent 48%),
-        linear-gradient(to bottom right, rgba(20, 184, 166, 0.18), rgba(255, 255, 255, 0.022)),
-        rgba(15, 23, 42, 0.84);
+        linear-gradient(to bottom right, rgba(20, 184, 166, 0.10), rgba(255, 255, 255, 0.018)),
+        -color-surface-card;
     -fx-border-color: rgba(74, 222, 128, 0.36), rgba(134, 239, 172, 0.16);
 }
 
 .violet-card {
     -fx-background-color:
-        radial-gradient(center 100% 0%, radius 95%, rgba(139, 92, 246, 0.24), transparent 48%),
-        linear-gradient(to bottom right, rgba(109, 40, 217, 0.20), rgba(255, 255, 255, 0.024)),
-        rgba(15, 23, 42, 0.84);
+        linear-gradient(to bottom right, rgba(109, 40, 217, 0.10), rgba(255, 255, 255, 0.018)),
+        -color-surface-card;
     -fx-border-color: rgba(196, 181, 253, 0.36), rgba(167, 139, 250, 0.18);
 }
 
 .amber-card {
     -fx-background-color:
-        radial-gradient(center 100% 0%, radius 95%, rgba(245, 158, 11, 0.24), transparent 48%),
-        linear-gradient(to bottom right, rgba(217, 119, 6, 0.18), rgba(255, 255, 255, 0.022)),
-        rgba(15, 23, 42, 0.84);
+        linear-gradient(to bottom right, rgba(217, 119, 6, 0.10), rgba(255, 255, 255, 0.018)),
+        -color-surface-card;
     -fx-border-color: rgba(251, 191, 36, 0.38), rgba(253, 230, 138, 0.16);
 }
 
@@ -339,20 +328,17 @@
 
 .composer-card {
     -fx-background-color:
-        radial-gradient(center 0% 0%, radius 90%, rgba(56, 189, 248, 0.24), transparent 48%),
-        radial-gradient(center 100% 0%, radius 80%, rgba(124, 58, 237, 0.16), transparent 46%),
-        linear-gradient(to bottom right, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.76)),
-        rgba(2, 6, 23, 0.48);
-    -fx-border-color: rgba(125, 211, 252, 0.34), rgba(255, 255, 255, 0.14);
+        linear-gradient(to bottom right, rgba(30, 41, 59, 0.88), rgba(15, 23, 42, 0.74)),
+        rgba(2, 6, 23, 0.42);
+    -fx-border-color: rgba(125, 211, 252, 0.24), rgba(255, 255, 255, 0.12);
     -fx-padding: 26;
-    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.22), 32, 0.24, 0, 14);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.16), 10, 0.10, 0, 4);
 }
 
 .tips-card {
     -fx-background-color:
-        radial-gradient(center 100% 0%, radius 92%, rgba(45, 212, 191, 0.18), transparent 46%),
-        linear-gradient(to bottom right, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.66)),
-        rgba(15, 23, 42, 0.82);
+        linear-gradient(to bottom right, rgba(15, 23, 42, 0.84), rgba(2, 6, 23, 0.64)),
+        rgba(15, 23, 42, 0.78);
     -fx-border-color: rgba(94, 234, 212, 0.28), rgba(148, 163, 184, 0.18);
     -fx-padding: 24;
 }
@@ -368,21 +354,19 @@
 .review-card {
     -fx-padding: 38;
     -fx-background-color:
-        radial-gradient(center 18% 0%, radius 88%, rgba(124, 58, 237, 0.28), transparent 48%),
-        radial-gradient(center 100% 100%, radius 76%, rgba(20, 184, 166, 0.24), transparent 46%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.030)),
-        rgba(15, 23, 42, 0.92);
-    -fx-border-color: rgba(196, 181, 253, 0.46), rgba(125, 211, 252, 0.28);
-    -fx-border-width: 1.5, 1;
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.024)),
+        -color-surface-card;
+    -fx-border-color: rgba(196, 181, 253, 0.24), rgba(125, 211, 252, 0.18);
+    -fx-border-width: 1, 1;
     -fx-border-radius: 28, 28;
     -fx-background-radius: 28, 28;
-    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.30), 42, 0.25, 0, 18);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.16), 10, 0.10, 0, 4);
 }
 
 .card:hover, .stat-card:hover, .small-card:hover, .panel:hover, .review-card:hover, .composer-card:hover, .tips-card:hover, .progress-card:hover {
     -fx-translate-y: -2;
     -fx-border-color: rgba(125, 211, 252, 0.36), rgba(255, 255, 255, 0.16);
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.20), 16, 0.14, 0, 7);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.18), 12, 0.12, 0, 5);
 }
 
 .review-stage {
@@ -785,21 +769,19 @@
     -fx-min-height: 150;
     -fx-padding: 22;
     -fx-background-color:
-        radial-gradient(center 10% 0%, radius 78%, -color-dashboard-card-highlight, transparent 46%),
-        radial-gradient(center 96% 6%, radius 72%, -color-dashboard-card-highlight-alt, transparent 44%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.018)),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.060), rgba(255, 255, 255, 0.018)),
         -color-dashboard-card;
     -fx-border-color: -color-dashboard-card-border, rgba(255, 255, 255, 0.09);
     -fx-border-width: 1, 1;
     -fx-border-radius: 20, 20;
     -fx-background-radius: 20, 20, 20, 20;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.24), 18, 0.13, 0, 8);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.16), 10, 0.10, 0, 4);
 }
 
 .dashboard-card:hover {
     -fx-translate-y: -2;
     -fx-border-color: -color-border-strong, rgba(255, 255, 255, 0.13);
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 20, 0.15, 0, 9);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.18), 12, 0.12, 0, 5);
 }
 
 .dashboard-top-grid .dashboard-card {
@@ -869,7 +851,7 @@
     -fx-border-width: 1.5, 1, 1;
     -fx-border-radius: 34, 34, 34;
     -fx-background-radius: 34, 34, 34, 34;
-    -fx-effect: dropshadow(gaussian, -color-dashboard-hero-highlight, 42, 0.25, 0, 18);
+    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.22), 28, 0.20, 0, 12);
 }
 
 
@@ -942,9 +924,7 @@
 
 .quick-review-card {
     -fx-background-color:
-        radial-gradient(center 92% 12%, radius 42%, -color-dashboard-card-highlight, transparent 54%),
-        radial-gradient(center 100% 0%, radius 34%, -color-dashboard-hero-highlight, transparent 58%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.072), rgba(255, 255, 255, 0.022)),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.020)),
         -color-surface-card;
 }
 
@@ -975,10 +955,9 @@
 .metric-card {
     -fx-min-height: 190;
     -fx-background-color:
-        radial-gradient(center 100% 0%, radius 96%, -color-dashboard-card-highlight, transparent 46%),
-        linear-gradient(to bottom right, rgba(255, 255, 255, 0.080), rgba(255, 255, 255, 0.018)),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.018)),
         -color-surface-card;
-    -fx-border-color: -color-border-strong, -color-dashboard-hero-highlight;
+    -fx-border-color: -color-dashboard-card-border, rgba(255, 255, 255, 0.10);
     -fx-border-width: 1, 1;
     -fx-border-radius: 22, 22;
     -fx-background-radius: 22, 22, 22;

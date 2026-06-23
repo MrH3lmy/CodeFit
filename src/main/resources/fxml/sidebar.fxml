@@ -2,10 +2,10 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<fx:root type="VBox" styleClass="sidebar" spacing="18" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+<fx:root type="VBox" styleClass="sidebar" spacing="14" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
     <VBox styleClass="brand-block" spacing="3">
         <Label text="CodeFit" styleClass="sidebar-title" />
-        <Label text="Train your dev memory" styleClass="sidebar-subtitle" />
+        <Label fx:id="subtitleLabel" text="Train your dev memory" styleClass="sidebar-subtitle" />
     </VBox>
 
     <VBox styleClass="nav-group" spacing="8">
@@ -24,7 +24,7 @@
         <ChoiceBox fx:id="themeChoiceBox" maxWidth="Infinity" />
     </VBox>
 
-    <VBox styleClass="sidebar-footer-card" spacing="4">
+    <VBox fx:id="footerCard" styleClass="sidebar-footer-card" spacing="4">
         <Label text="Keep it warm" styleClass="sidebar-footer-title" />
         <Label text="Review a few cards today to protect your streak." styleClass="sidebar-footer-text" wrapText="true" />
     </VBox>

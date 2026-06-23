@@ -105,8 +105,72 @@
     -fx-effect: none;
 }
 
+.sidebar-compact {
+    -fx-padding: 20 12 16 12;
+    -fx-min-width: 208;
+    -fx-pref-width: 220;
+    -fx-max-width: 220;
+}
+
+.sidebar-compact .brand-block {
+    -fx-padding: 0 5 10 5;
+}
+
+.sidebar-compact .sidebar-title {
+    -fx-font-size: 27px;
+}
+
+.sidebar-compact .sidebar-subtitle {
+    -fx-font-size: 11px;
+}
+
+.sidebar-compact .nav-group {
+    -fx-padding: 10;
+}
+
+.sidebar-compact .nav-item, .sidebar-compact .nav-item-active {
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-padding: 0 12 0 14;
+}
+
+.sidebar-compact .theme-selector-card,
+.sidebar-compact .sidebar-footer-card {
+    -fx-padding: 12;
+}
+
+.sidebar-narrow {
+    -fx-padding: 16 10 14 10;
+    -fx-min-width: 196;
+    -fx-pref-width: 204;
+    -fx-max-width: 204;
+}
+
+.sidebar-narrow .brand-block {
+    -fx-padding: 0 4 8 4;
+}
+
+.sidebar-narrow .sidebar-title {
+    -fx-font-size: 24px;
+}
+
+.sidebar-narrow .nav-group {
+    -fx-padding: 9;
+}
+
+.sidebar-narrow .nav-item, .sidebar-narrow .nav-item-active {
+    -fx-min-height: 38;
+    -fx-pref-height: 38;
+    -fx-font-size: 12px;
+    -fx-padding: 0 10 0 12;
+}
+
+.sidebar-narrow .theme-selector-card {
+    -fx-padding: 10;
+}
+
 .content {
-    -fx-padding: 24;
+    -fx-padding: 22 24 22 22;
     -fx-fill-width: true;
 }
 
@@ -352,7 +416,7 @@
 }
 
 .review-card {
-    -fx-padding: 38;
+    -fx-padding: 32;
     -fx-background-color:
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.024)),
         -color-surface-card;
@@ -720,7 +784,7 @@
 
 .side-panel {
     -fx-min-width: 0;
-    -fx-pref-width: 280;
+    -fx-pref-width: 260;
 }
 
 .deck-list-panel, .card-list-panel {

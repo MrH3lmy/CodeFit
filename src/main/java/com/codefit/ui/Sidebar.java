@@ -2,8 +2,11 @@ package com.codefit.ui;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.beans.value.ChangeListener;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
@@ -12,6 +15,9 @@ import java.util.Locale;
 public class Sidebar extends VBox {
     private static final String DEFAULT_NAV_CLASS = "nav-item";
     private static final String ACTIVE_NAV_CLASS = "nav-item-active";
+    private static final String COMPACT_CLASS = "sidebar-compact";
+    private static final String NARROW_CLASS = "sidebar-narrow";
+    private static final double NARROW_WINDOW_WIDTH = 920;
 
     @FXML private Button dashboardButton;
     @FXML private Button decksButton;
@@ -19,6 +25,11 @@ public class Sidebar extends VBox {
     @FXML private Button reviewButton;
     @FXML private Button statsButton;
     @FXML private ChoiceBox<String> themeChoiceBox;
+    @FXML private Label subtitleLabel;
+    @FXML private VBox footerCard;
+
+    private final ChangeListener<Number> widthListener = (observable, oldWidth, newWidth) ->
+            updateNarrowState(newWidth.doubleValue());
 
     private String activePage = "";
 
@@ -30,6 +41,7 @@ public class Sidebar extends VBox {
         try {
             loader.load();
             configureThemeSelector();
+            configureCompactBehavior();
             updateActiveNavigation();
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to load sidebar component.", exception);
@@ -68,6 +80,52 @@ public class Sidebar extends VBox {
     @FXML
     private void goStats() {
         NavigationService.showStats();
+    }
+
+    private void configureCompactBehavior() {
+        if (!getStyleClass().contains(COMPACT_CLASS)) {
+            getStyleClass().add(COMPACT_CLASS);
+        }
+
+        sceneProperty().addListener((observable, oldScene, newScene) -> {
+            if (oldScene != null) {
+                oldScene.widthProperty().removeListener(widthListener);
+            }
+
+            if (newScene == null) {
+                updateNarrowState(false);
+                return;
+            }
+
+            updateNarrowState(newScene.getWidth());
+            newScene.widthProperty().addListener(widthListener);
+        });
+    }
+
+    private void updateNarrowState(double width) {
+        updateNarrowState(width > 0 && width < NARROW_WINDOW_WIDTH);
+    }
+
+    private void updateNarrowState(boolean narrow) {
+        if (narrow) {
+            if (!getStyleClass().contains(NARROW_CLASS)) {
+                getStyleClass().add(NARROW_CLASS);
+            }
+        } else {
+            getStyleClass().remove(NARROW_CLASS);
+        }
+
+        setNodeVisible(subtitleLabel, !narrow);
+        setNodeVisible(footerCard, !narrow);
+    }
+
+    private void setNodeVisible(Node node, boolean visible) {
+        if (node == null) {
+            return;
+        }
+
+        node.setVisible(visible);
+        node.setManaged(visible);
     }
 
     private void updateActiveNavigation() {

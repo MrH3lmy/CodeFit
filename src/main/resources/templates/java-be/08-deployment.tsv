@@ -1,0 +1,6 @@
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+What Maven command builds the project and runs tests?	mvn test	COMMAND	mvn test	COMMAND_NORMALIZED	Use Maven from the project root.	Deployment	30
+What is a Docker image?	A Docker image is a packaged filesystem and metadata used to create containers.	CONCEPT	packaged filesystem and metadata used to create containers	NORMALIZED_SPACING	Containers are running instances of images.	Deployment	45
+Which environment variable commonly stores the active Spring profile?	SPRING_PROFILES_ACTIVE	RECALL	SPRING_PROFILES_ACTIVE	EXACT	It can switch dev, test, and prod configuration.	Deployment	25
+What is the purpose of a health check endpoint?	It reports whether the application is available for traffic.	CONCEPT	reports whether the application is available for traffic	NORMALIZED_SPACING	Orchestrators use it for routing and restarts.	Deployment	45
+What does CI/CD automate?	Continuous integration and continuous delivery automate building, testing, and releasing software.	CONCEPT	building testing and releasing software	NORMALIZED_SPACING	Pipelines reduce manual release steps.	Deployment	45

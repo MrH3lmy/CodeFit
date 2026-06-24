@@ -1,0 +1,6 @@
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+What does authentication verify?	Authentication verifies who a user or client is.	CONCEPT	verifies who the user is	NORMALIZED_SPACING	It comes before authorization.	Security	30
+What does authorization decide?	Authorization decides what an authenticated user is allowed to do.	CONCEPT	decides what a user is allowed to do	NORMALIZED_SPACING	Think permissions, roles, and policies.	Security	30
+Which HTTP header commonly carries a bearer token?	Authorization	RECALL	Authorization	CASE_INSENSITIVE	The value often starts with Bearer.	Security	20
+Why should passwords be hashed with a slow salted algorithm?	It makes stolen password databases harder to crack.	CONCEPT	makes stolen password databases harder to crack	NORMALIZED_SPACING	BCrypt, scrypt, and Argon2 are common choices.	Security	45
+What does CSRF protection defend against?	Cross-site request forgery	RECALL	Cross-site request forgery	CASE_INSENSITIVE	It prevents unwanted state-changing requests from another site.	Security	30

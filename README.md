@@ -85,3 +85,24 @@ Supported extended fields are:
 8. `time_limit_seconds` - optional positive integer time limit.
 
 Because Anki-style TSV does not use quoting, fields must not contain literal tabs or newlines. CodeFit rejects malformed import rows with line-numbered errors and skips duplicate imports when the same deck already contains a card with the same front text.
+
+### Java BE template decks
+
+Starter Java backend practice templates are available in `src/main/resources/templates/java-be/`. The templates use CodeFit's extended TSV columns:
+
+```tsv
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+```
+
+Available Java BE templates:
+
+- `01-core-java.tsv`
+- `02-collections-streams-generics.tsv`
+- `03-jdbc-sql.tsv`
+- `04-spring-boot-rest.tsv`
+- `05-jpa-hibernate.tsv`
+- `06-testing.tsv`
+- `07-security.tsv`
+- `08-deployment.tsv`
+
+To import a template, open the **Decks** screen, create or select the deck you want to fill, click **Import Cards**, and choose one of the TSV files from `src/main/resources/templates/java-be/`. Repeat this for each module you want to practice.

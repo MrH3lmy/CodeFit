@@ -72,7 +72,10 @@ public final class DatabaseConfig {
                         level INTEGER NOT NULL DEFAULT 1,
                         streak_days INTEGER NOT NULL DEFAULT 0,
                         last_review_date TEXT,
-                        total_reviews INTEGER NOT NULL DEFAULT 0
+                        total_reviews INTEGER NOT NULL DEFAULT 0,
+                        missed_day_count INTEGER NOT NULL DEFAULT 0,
+                        streak_freeze_count INTEGER NOT NULL DEFAULT 0,
+                        recovery_quest_active INTEGER NOT NULL DEFAULT 0
                     )
                     """);
             statement.execute("""
@@ -90,6 +93,7 @@ public final class DatabaseConfig {
                     """);
             ensureFlashcardColumns(connection);
             ensureReviewHistoryColumns(connection);
+            ensureUserProgressColumns(connection);
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");
             seedStarterContent(connection);
         } catch (SQLException exception) {
@@ -113,6 +117,12 @@ public final class DatabaseConfig {
 
     private static void ensureReviewHistoryColumns(Connection connection) throws SQLException {
         addColumnIfMissing(connection, "review_history", "submitted_in_time", "INTEGER NOT NULL DEFAULT 1");
+    }
+
+    private static void ensureUserProgressColumns(Connection connection) throws SQLException {
+        addColumnIfMissing(connection, "user_progress", "missed_day_count", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "user_progress", "streak_freeze_count", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "user_progress", "recovery_quest_active", "INTEGER NOT NULL DEFAULT 0");
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

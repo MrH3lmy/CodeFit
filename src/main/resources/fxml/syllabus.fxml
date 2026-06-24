@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import com.codefit.ui.Sidebar?>
+
+<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.SyllabusController">
+    <left>
+        <Sidebar activePage="syllabus" />
+    </left>
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
+            <content>
+                <VBox alignment="TOP_CENTER" maxWidth="Infinity" spacing="16" styleClass="content" VBox.vgrow="ALWAYS">
+                    <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="Java Backend Syllabus" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                            <Label text="Ordered roadmap" styleClass="pill" wrapText="true" />
+                        </HBox>
+                        <Label text="Follow the Java BE path module by module, with each learning objective linked to its recommended flashcard deck and current review progress." styleClass="page-subtitle" wrapText="true" />
+                    </VBox>
+
+                    <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                            <Label text="MODULES" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label fx:id="moduleCountLabel" text="8" styleClass="dashboard-signal-value" wrapText="true" />
+                        </VBox>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                            <Label text="EST. CARDS" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label fx:id="cardCountLabel" text="0" styleClass="dashboard-signal-value" wrapText="true" />
+                        </VBox>
+                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                            <Label text="REVIEWED" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label fx:id="progressLabel" text="0%" styleClass="dashboard-signal-value" wrapText="true" />
+                        </VBox>
+                    </HBox>
+
+                    <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card">
+                        <Label text="MODULE ROADMAP" styleClass="dashboard-card-title" wrapText="true" />
+                        <ListView fx:id="syllabusListView" prefHeight="520" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
+                    </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </center>
+    <padding><Insets top="0" right="0" bottom="0" left="0" /></padding>
+</BorderPane>

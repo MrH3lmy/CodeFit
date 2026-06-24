@@ -23,6 +23,7 @@ public class Sidebar extends VBox {
     @FXML private Button decksButton;
     @FXML private Button addCardButton;
     @FXML private Button reviewButton;
+    @FXML private Button syllabusButton;
     @FXML private Button statsButton;
     @FXML private ChoiceBox<String> themeChoiceBox;
     @FXML private Label subtitleLabel;
@@ -75,6 +76,11 @@ public class Sidebar extends VBox {
     @FXML
     private void goReview() {
         NavigationService.showReview();
+    }
+
+    @FXML
+    private void goSyllabus() {
+        NavigationService.showSyllabus();
     }
 
     @FXML
@@ -133,6 +139,7 @@ public class Sidebar extends VBox {
         setNavigationStyle(decksButton, "decks");
         setNavigationStyle(addCardButton, "add-card");
         setNavigationStyle(reviewButton, "review");
+        setNavigationStyle(syllabusButton, "syllabus");
         setNavigationStyle(statsButton, "stats");
     }
 

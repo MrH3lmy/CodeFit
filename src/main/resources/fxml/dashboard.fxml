@@ -26,8 +26,8 @@
                         <HBox alignment="CENTER_LEFT" spacing="16">
                             <VBox alignment="CENTER_LEFT" spacing="8" HBox.hgrow="ALWAYS">
                                 <Label text="NEXT BEST ACTION" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label text="Review due cards" styleClass="dashboard-hero-title" wrapText="true" />
-                                <Label text="Start with the cards that need attention now, then build or browse your library after the review queue is clear." styleClass="dashboard-card-helper dashboard-hero-helper" wrapText="true" />
+                                <Label fx:id="nextActionTitleLabel" text="Review due cards" styleClass="dashboard-hero-title" wrapText="true" />
+                                <Label fx:id="nextActionHelperLabel" text="Start with the cards that need attention now, then build or browse your library after the review queue is clear." styleClass="dashboard-card-helper dashboard-hero-helper" wrapText="true" />
                             </VBox>
                             <VBox alignment="CENTER_RIGHT" spacing="4" styleClass="dashboard-streak-signal">
                                 <Label text="STREAK" styleClass="dashboard-card-title" wrapText="true" />
@@ -42,7 +42,7 @@
                                 <Label text="Ready for review" styleClass="dashboard-card-helper" wrapText="true" />
                             </VBox>
                             <VBox alignment="CENTER_RIGHT" spacing="10" styleClass="dashboard-action-stack">
-                                <Button text="Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button quick-review-button dashboard-primary-cta" />
+                                <Button fx:id="primaryActionButton" text="Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button quick-review-button dashboard-primary-cta" />
                                 <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="dashboard-secondary-actions">
                                     <Button text="Add Card" onAction="#goAddCard" styleClass="ghost-button secondary-action-button" />
                                     <Button text="View Decks" onAction="#goDecks" styleClass="ghost-button secondary-action-button" />

@@ -15,6 +15,10 @@
                         <Label text="Stats" styleClass="page-title" wrapText="true" />
                         <Label text="Track progress, spot weak areas, and review activity after the performance summaries." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
+                    <VBox fx:id="statsEmptyStateBox" spacing="10" styleClass="status-banner" maxWidth="Infinity" visible="false" managed="false">
+                        <Label fx:id="statsEmptyStateLabel" wrapText="true" />
+                        <Button text="Start a Review" onAction="#goReview" styleClass="action-button" maxWidth="Infinity" />
+                    </VBox>
                     <TilePane hgap="18" vgap="18" prefColumns="4" prefTileWidth="180" maxWidth="Infinity" tileAlignment="TOP_LEFT" styleClass="card-tile-grid">
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="LEVEL" styleClass="stat-label" /><Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" /><ProgressBar fx:id="xpProgressBar" maxWidth="Infinity" /><Label fx:id="xpLabel" styleClass="muted" wrapText="true" /></VBox>
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="STREAK" styleClass="stat-label" /><Label fx:id="streakLabel" styleClass="stat-value" wrapText="true" /></VBox>

@@ -57,6 +57,7 @@ public class ReviewController extends BaseController {
     @FXML private Button goodButton;
     @FXML private Button easyButton;
     @FXML private Button reviewMissedButton;
+    @FXML private Button emptyStateActionButton;
 
     private final ReviewService reviewService = new ReviewService();
     private final DeckService deckService = new DeckService();
@@ -333,8 +334,8 @@ public class ReviewController extends BaseController {
             currentCard = null;
             queueLabel.setText("0 due");
             hideTimer();
-            promptLabel.setText("No due reviews.");
-            answerLabel.setText("Add cards or come back when scheduled reviews mature.");
+            promptLabel.setText("You're all caught up — no cards are due.");
+            answerLabel.setText("Nice work keeping your queue clear. Next action: add a new card if you want more practice today.");
             clearAttempts();
             latestValidationResult = AttemptValidationResult.EMPTY;
             answerRevealed = false;
@@ -347,6 +348,7 @@ public class ReviewController extends BaseController {
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             updateReviewMissedButton(false);
+            updateEmptyStateAction(true, "Add a Card", this::goAddCard);
             updateSessionFlowVisibility();
             return;
         }
@@ -354,8 +356,8 @@ public class ReviewController extends BaseController {
             currentCard = null;
             queueLabel.setText("Complete");
             hideTimer();
-            promptLabel.setText("Review session complete.");
-            answerLabel.setText("Great work. Your XP, streak, and schedules are updated.");
+            promptLabel.setText("Review session complete — great work!");
+            answerLabel.setText("Your XP, streak, and schedules are updated. Next action: review missed cards now if any were flagged.");
             clearAttempts();
             latestValidationResult = AttemptValidationResult.EMPTY;
             answerRevealed = false;
@@ -368,11 +370,13 @@ public class ReviewController extends BaseController {
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             updateReviewMissedButton(!missedCards.isEmpty());
+            updateEmptyStateAction(missedCards.isEmpty(), "View Stats", this::goStats);
             updateSessionFlowVisibility();
             return;
         }
 
         updateReviewMissedButton(false);
+        updateEmptyStateAction(false, "", this::goDashboard);
         currentCard = dueCards.get(currentIndex);
         queueLabel.setText((currentIndex + 1) + " / " + dueCards.size());
         promptLabel.setText(currentCard.getFront());
@@ -392,6 +396,16 @@ public class ReviewController extends BaseController {
         updateSessionFlowVisibility();
         Platform.runLater(this::focusActiveAttemptInput);
     }
+    private void updateEmptyStateAction(boolean visible, String text, Runnable action) {
+        if (emptyStateActionButton == null) {
+            return;
+        }
+        emptyStateActionButton.setVisible(visible);
+        emptyStateActionButton.setManaged(visible);
+        emptyStateActionButton.setText(text);
+        emptyStateActionButton.setOnAction(event -> action.run());
+    }
+
     private void configureKeyboardShortcuts() {
         if (reviewRoot == null) {
             return;

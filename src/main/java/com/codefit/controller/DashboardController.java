@@ -7,6 +7,7 @@ import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.ColumnConstraints;
@@ -27,6 +28,9 @@ public class DashboardController extends BaseController {
     @FXML private Label cardCountLabel;
     @FXML private Label dueCountLabel;
     @FXML private Label emptyStateLabel;
+    @FXML private Label nextActionTitleLabel;
+    @FXML private Label nextActionHelperLabel;
+    @FXML private Button primaryActionButton;
     @FXML private ProgressBar levelProgressBar;
     @FXML private VBox recentDecksList;
 
@@ -52,15 +56,30 @@ public class DashboardController extends BaseController {
 
         populateRecentDecks(decks);
 
+        configureEmptyState(deckCount, cardCount, dueCount);
+    }
+
+    private void configureEmptyState(int deckCount, int cardCount, int dueCount) {
         if (deckCount == 0) {
-            setStatus(emptyStateLabel, "No decks yet. Create a deck to start your first CodeFit training loop.");
+            setStatus(emptyStateLabel, "Create your first deck to organize what you want to practice. Next action: Create a deck.");
+            configurePrimaryAction("Create your first deck", "Start with one focused topic, then add cards when the deck is ready.", "Create Deck", this::goDecks);
         } else if (cardCount == 0) {
-            setStatus(emptyStateLabel, "Decks are ready. Add cards to begin reviews.");
+            setStatus(emptyStateLabel, "Add your first card so CodeFit can build a review queue. Next action: Add a card.");
+            configurePrimaryAction("Add your first card", "Capture one prompt and answer in an existing deck to unlock reviews.", "Add Card", this::goAddCard);
         } else if (dueCount == 0) {
-            setStatus(emptyStateLabel, "No due reviews. Your queue is clear for now.");
+            setStatus(emptyStateLabel, "No due reviews. Your queue is clear for now. Next action: Add a stretch card.");
+            configurePrimaryAction("Add a stretch card", "Keep momentum by adding one harder card while scheduled reviews mature.", "Add Card", this::goAddCard);
         } else {
-            setStatus(emptyStateLabel, "You have cards ready to review.");
+            setStatus(emptyStateLabel, "You have cards ready to review. Next action: Start Review.");
+            configurePrimaryAction("Review due cards", "Start with the cards that need attention now, then build or browse your library after the review queue is clear.", "Start Review", this::goReview);
         }
+    }
+
+    private void configurePrimaryAction(String title, String helper, String buttonText, Runnable action) {
+        nextActionTitleLabel.setText(title);
+        nextActionHelperLabel.setText(helper);
+        primaryActionButton.setText(buttonText);
+        primaryActionButton.setOnAction(event -> action.run());
     }
 
     private String formatXpProgress(UserProgress progress) {

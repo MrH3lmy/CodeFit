@@ -29,6 +29,8 @@ public class DecksController extends BaseController {
     @FXML private TextField deckNameField;
     @FXML private TextArea deckDescriptionArea;
     @FXML private Label messageLabel;
+    @FXML private Label deckEmptyGuidanceLabel;
+    @FXML private Label cardEmptyGuidanceLabel;
 
     private final DeckService deckService = new DeckService();
     private final FlashcardService flashcardService = new FlashcardService();
@@ -57,24 +59,32 @@ public class DecksController extends BaseController {
     private void loadDecks() {
         deckListView.setItems(FXCollections.observableArrayList(deckService.getDecks()));
         if (deckListView.getItems().isEmpty()) {
-            setStatus(messageLabel, "No decks yet. Build your first training deck.");
-            deckListView.setPlaceholder(new Label("Create a deck to start organizing cards."));
-            cardListView.setPlaceholder(new Label("Select or create a deck to inspect cards."));
+            setStatus(messageLabel, "No decks yet. Next action: create your first deck with a focused topic.");
+            setStatus(deckEmptyGuidanceLabel, "No decks yet. Create your first deck with a focused topic like Java basics or Git commands.");
+            setStatus(cardEmptyGuidanceLabel, "Cards will appear here after you create a deck and add your first card.");
+            deckListView.setPlaceholder(new Label("Next action: enter a deck name, then choose Create Deck."));
+            cardListView.setPlaceholder(new Label("Create a deck first, then add cards from Add Flashcard."));
             cardListView.getItems().clear();
         } else {
+            setStatus(deckEmptyGuidanceLabel, "");
             deckListView.getSelectionModel().selectFirst();
         }
     }
 
     private void loadCards(Deck deck) {
         if (deck == null) {
-            cardListView.setPlaceholder(new Label("No deck selected."));
+            setStatus(cardEmptyGuidanceLabel, "Select a deck to inspect its cards, or create one if your deck list is empty.");
+            cardListView.setPlaceholder(new Label("No deck selected. Next action: select or create a deck."));
             cardListView.getItems().clear();
             return;
         }
 
         var cards = FXCollections.observableArrayList(flashcardService.getCardsForDeck(deck.getId()));
-        cardListView.setPlaceholder(new Label("No cards in this deck yet."));
+        boolean hasCards = !cards.isEmpty();
+        setStatus(cardEmptyGuidanceLabel, hasCards
+                ? ""
+                : "No cards in this deck yet. Next action: add your first card to this deck from Add Flashcard.");
+        cardListView.setPlaceholder(new Label("Next action: choose Add Card and save the first prompt for this deck."));
         cardListView.setItems(cards);
     }
 

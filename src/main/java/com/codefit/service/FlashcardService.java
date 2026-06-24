@@ -27,6 +27,10 @@ public class FlashcardService {
         return flashcardRepository.findById(id);
     }
 
+    public boolean cardExistsInDeck(long deckId, String front) {
+        return flashcardRepository.existsByDeckIdAndFront(deckId, front);
+    }
+
     public Flashcard addCard(long deckId, String front, String back) {
         return addCard(deckId, front, back, CardType.RECALL, back, ValidationMode.CASE_INSENSITIVE, null, null, null, null);
     }

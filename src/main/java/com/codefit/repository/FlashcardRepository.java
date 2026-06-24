@@ -51,6 +51,20 @@ public class FlashcardRepository {
         }
     }
 
+    public boolean existsByDeckIdAndFront(long deckId, String front) {
+        String sql = "SELECT 1 FROM flashcards WHERE deck_id = ? AND lower(front) = lower(?) LIMIT 1";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, deckId);
+            statement.setString(2, front == null ? "" : front.trim());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to check for duplicate card", exception);
+        }
+    }
+
     public Flashcard save(Flashcard flashcard) {
         String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, hint, skill_category, time_limit_seconds, due_date, interval_days, ease_factor, review_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();

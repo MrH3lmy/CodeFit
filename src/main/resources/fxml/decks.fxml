@@ -24,7 +24,11 @@
                                 <ListView fx:id="deckListView" prefHeight="260" VBox.vgrow="ALWAYS" />
                             </VBox>
                             <VBox spacing="10" styleClass="panel card-list-panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
-                                <Label text="Cards" styleClass="section-title" />
+                                <HBox spacing="10" alignment="CENTER_LEFT">
+                                    <Label text="Cards" styleClass="section-title" HBox.hgrow="ALWAYS" />
+                                    <Button text="Import Cards" onAction="#importCards" />
+                                    <Button text="Export Cards" onAction="#exportCards" />
+                                </HBox>
                                 <Label fx:id="cardEmptyGuidanceLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
                                 <ListView fx:id="cardListView" prefHeight="260" VBox.vgrow="ALWAYS" />
                             </VBox>

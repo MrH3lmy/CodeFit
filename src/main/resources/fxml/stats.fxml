@@ -13,7 +13,7 @@
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
                     <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
                         <Label text="Stats" styleClass="page-title" wrapText="true" />
-                        <Label text="Track progress, protect your streaks, and scan your review history to see how every session compounds." styleClass="page-subtitle" wrapText="true" />
+                        <Label text="Track progress, spot weak areas, and review activity after the performance summaries." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <TilePane hgap="18" vgap="18" prefColumns="4" prefTileWidth="180" maxWidth="Infinity" tileAlignment="TOP_LEFT" styleClass="card-tile-grid">
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="LEVEL" styleClass="stat-label" /><Label fx:id="levelLabel" styleClass="stat-value" wrapText="true" /><ProgressBar fx:id="xpProgressBar" maxWidth="Infinity" /><Label fx:id="xpLabel" styleClass="muted" wrapText="true" /></VBox>
@@ -29,18 +29,19 @@
                     <FlowPane hgap="18" vgap="18" prefWrapLength="760" maxWidth="Infinity" VBox.vgrow="ALWAYS" styleClass="workspace-grid">
                         <VBox spacing="10" styleClass="panel primary-column" minWidth="0" prefWidth="360" maxWidth="Infinity">
                             <Label text="Skill Performance" styleClass="section-title" />
-                            <Label text="Accuracy is based on recent GOOD/EASY ratings by skill category. Distribution shows AGAIN, HARD, GOOD, and EASY counts." styleClass="muted" wrapText="true" />
+                            <Label text="Accuracy is the share of recent reviews rated GOOD or EASY for each skill. Weak areas are skills with at least 2 recent reviews and 40% or more AGAIN/HARD ratings." styleClass="muted" wrapText="true" />
                             <ListView fx:id="skillPerformanceListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                         </VBox>
                         <VBox spacing="10" styleClass="panel primary-column" minWidth="0" prefWidth="360" maxWidth="Infinity">
                             <Label text="Needs Practice" styleClass="section-title" />
-                            <Label text="Categories with elevated AGAIN or HARD rates are flagged here as weak areas." styleClass="muted" wrapText="true" />
+                            <Label text="Weak areas prioritize the skills most likely to benefit from review now. Use the action when available to jump straight into due-card practice." styleClass="muted" wrapText="true" />
                             <ListView fx:id="needsPracticeListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                         </VBox>
                     </FlowPane>
                     <VBox spacing="10" styleClass="panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
                         <Label text="Recent Reviews" styleClass="section-title" />
-                        <ListView fx:id="recentReviewsListView" prefHeight="260" VBox.vgrow="ALWAYS" />
+                        <Label text="Lower-priority activity log: most recent review outcomes and interval changes." styleClass="muted" wrapText="true" />
+                        <ListView fx:id="recentReviewsListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                     </VBox>
                 </VBox>
             </content>

@@ -1,0 +1,6 @@
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+Which annotation marks a class as a Spring REST controller?	@RestController	RECALL	@RestController	EXACT	It combines controller behavior with response body serialization.	Spring Boot REST	25
+Which annotation maps an HTTP GET request to a handler method?	@GetMapping	RECALL	@GetMapping	EXACT	There are similar annotations for POST, PUT, PATCH, and DELETE.	Spring Boot REST	25
+What does dependency injection provide in Spring?	It supplies a class with its dependencies instead of the class creating them directly.	CONCEPT	supplies dependencies instead of creating them directly	NORMALIZED_SPACING	This supports loose coupling and testability.	Spring Boot REST	45
+Which annotation binds a path variable from the URL to a method parameter?	@PathVariable	RECALL	@PathVariable	EXACT	Example: /users/{id}.	Spring Boot REST	25
+What response status is commonly returned after creating a resource through POST?	201 Created	RECALL	201 Created	CASE_INSENSITIVE	It indicates successful creation.	Spring Boot REST	20

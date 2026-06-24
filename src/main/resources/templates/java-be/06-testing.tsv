@@ -1,0 +1,6 @@
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+Which JUnit 5 annotation marks a test method?	@Test	RECALL	@Test	EXACT	Import it from org.junit.jupiter.api.	Testing	20
+What Mockito method stubs behavior for a mock call?	when	RECALL	when	CASE_INSENSITIVE	Often paired with thenReturn.	Testing	20
+What is the purpose of an assertion in a test?	An assertion verifies that actual behavior matches expected behavior.	CONCEPT	verifies actual behavior matches expected behavior	NORMALIZED_SPACING	Assertions make tests fail when expectations are not met.	Testing	40
+Which Spring Boot annotation loads an application context for integration tests?	@SpringBootTest	RECALL	@SpringBootTest	EXACT	Use it when you need the Spring context.	Testing	25
+What is the AAA pattern in unit testing?	Arrange Act Assert	CONCEPT	Arrange Act Assert	CASE_INSENSITIVE	It structures setup, execution, and verification.	Testing	30

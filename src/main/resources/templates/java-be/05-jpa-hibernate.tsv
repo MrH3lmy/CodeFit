@@ -1,0 +1,6 @@
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+Which annotation marks a class as a JPA entity?	@Entity	RECALL	@Entity	EXACT	The class is mapped to a database table.	JPA Hibernate	20
+Which annotation identifies the primary key field of an entity?	@Id	RECALL	@Id	EXACT	It is often paired with @GeneratedValue.	JPA Hibernate	20
+What is lazy loading in JPA?	Lazy loading delays fetching related data until it is accessed.	CONCEPT	delays fetching related data until accessed	NORMALIZED_SPACING	It can improve performance but may cause session boundary issues.	JPA Hibernate	45
+Which Spring Data repository method saves a new or updated entity?	save	RECALL	save	CASE_INSENSITIVE	The repository decides insert versus update from entity state.	JPA Hibernate	25
+What does the owning side of a JPA relationship control?	It controls the foreign key update for the relationship.	CONCEPT	controls the foreign key update	NORMALIZED_SPACING	Look for the side without mappedBy in many bidirectional relationships.	JPA Hibernate	45

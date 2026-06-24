@@ -1,0 +1,6 @@
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+What keyword prevents a Java class from being subclassed?	final	RECALL	final	CASE_INSENSITIVE	It can also be used on methods and variables.	Core Java	20
+What is the difference between == and equals for objects?	== compares references while equals compares logical equality when overridden.	CONCEPT	== compares references; equals compares logical equality	NORMALIZED_SPACING	Think identity versus value.	Core Java	45
+Which Java feature lets you run cleanup code automatically for AutoCloseable resources?	try-with-resources	RECALL	try-with-resources	CASE_INSENSITIVE	Commonly used with files, streams, and database resources.	Core Java	30
+What does the static keyword mean on a field?	The field belongs to the class rather than an individual instance.	CONCEPT	belongs to the class not the instance	NORMALIZED_SPACING	One shared value per class loader.	Core Java	45
+What is the output of String s = "code"; System.out.println(s.substring(1, 3));?	od	CODE_OUTPUT	od	EXACT	substring begin index is inclusive and end index is exclusive.	Core Java	30

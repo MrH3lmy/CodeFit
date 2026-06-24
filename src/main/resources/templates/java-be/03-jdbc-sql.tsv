@@ -1,0 +1,6 @@
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+Which JDBC interface is preferred for parameterized SQL queries?	PreparedStatement	RECALL	PreparedStatement	CASE_INSENSITIVE	It helps prevent SQL injection and can be reused.	JDBC SQL	25
+Write a SQL query to select all columns from users with status ACTIVE.	SELECT * FROM users WHERE status = 'ACTIVE';	SQL_QUERY	SELECT * FROM users WHERE status = 'ACTIVE';	NORMALIZED_SPACING	Filter rows with a WHERE clause.	JDBC SQL	60
+What method executes a SELECT query in JDBC?	executeQuery	RECALL	executeQuery	CASE_INSENSITIVE	It returns a ResultSet.	JDBC SQL	25
+Why should JDBC connections be closed?	Closing connections returns database resources to the pool or driver.	CONCEPT	returns database resources to the pool or driver	NORMALIZED_SPACING	Use try-with-resources when possible.	JDBC SQL	45
+What does a database transaction commit do?	It permanently applies the transaction changes.	CONCEPT	permanently applies the transaction changes	NORMALIZED_SPACING	Rollback is the opposite outcome.	JDBC SQL	45

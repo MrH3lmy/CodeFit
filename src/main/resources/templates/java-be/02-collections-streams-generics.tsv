@@ -1,0 +1,6 @@
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+Which Collection implementation preserves insertion order and allows fast lookup by key?	LinkedHashMap	RECALL	LinkedHashMap	CASE_INSENSITIVE	It combines hash table lookup with linked iteration order.	Collections Streams Generics	25
+What is the main difference between List and Set?	List allows duplicates and positional access while Set represents unique elements.	CONCEPT	List allows duplicates; Set stores unique elements	NORMALIZED_SPACING	Think ordered sequence versus uniqueness contract.	Collections Streams Generics	45
+Which Stream operation transforms each element into another value?	map	RECALL	map	CASE_INSENSITIVE	It is an intermediate operation.	Collections Streams Generics	20
+Write a stream terminal operation that collects elements into a List.	collect(Collectors.toList())	RECALL	collect(Collectors.toList())	NORMALIZED_SPACING	Use Collectors from java.util.stream.	Collections Streams Generics	45
+Why use generics in Java collections?	Generics provide compile-time type safety and reduce casts.	CONCEPT	compile-time type safety and fewer casts	NORMALIZED_SPACING	They are erased at runtime but checked at compile time.	Collections Streams Generics	45

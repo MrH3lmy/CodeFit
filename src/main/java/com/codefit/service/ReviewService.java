@@ -13,6 +13,7 @@ public class ReviewService {
     private final ReviewHistoryRepository reviewHistoryRepository = new ReviewHistoryRepository();
     private final SpacedRepetitionService spacedRepetitionService = new SpacedRepetitionService();
     private final ProgressService progressService = new ProgressService();
+    private final DailyQuestService dailyQuestService = new DailyQuestService();
 
     public List<Flashcard> getDueCards() {
         return flashcardRepository.findDueCards();
@@ -28,5 +29,6 @@ public class ReviewService {
         flashcardRepository.updateSchedule(card);
         reviewHistoryRepository.save(new ReviewHistory(0, card.getId(), rating, previousInterval, card.getIntervalDays(), java.time.LocalDateTime.now(), submittedInTime));
         progressService.recordReview(rating);
+        dailyQuestService.recordReview(card);
     }
 }

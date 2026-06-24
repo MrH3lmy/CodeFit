@@ -10,6 +10,7 @@ import java.util.Optional;
 
 public class FlashcardService {
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
+    private final DailyQuestService dailyQuestService = new DailyQuestService();
 
     public List<Flashcard> getAllCards() {
         return flashcardRepository.findAll();
@@ -66,7 +67,9 @@ public class FlashcardService {
                 answers.trim(), validationMode, simulatedOutput == null || simulatedOutput.isBlank() ? null : simulatedOutput.trim(),
                 hint == null || hint.isBlank() ? null : hint.trim(), timeLimitSeconds);
         flashcard.setSkillCategory(skillCategory);
-        return flashcardRepository.save(flashcard);
+        Flashcard savedCard = flashcardRepository.save(flashcard);
+        dailyQuestService.recordCardAdded();
+        return savedCard;
     }
 
     public int countAllCards() {

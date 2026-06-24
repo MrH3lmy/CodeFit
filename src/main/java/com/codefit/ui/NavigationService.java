@@ -114,12 +114,14 @@ public final class NavigationService {
 
     private static void applyTheme(Parent root) {
         root.getStyleClass().removeAll(THEMES.stream().map(ThemeOption::styleClass).toArray(String[]::new));
-        root.getStyleClass().remove(BASE_THEME_CLASS);
 
+        // Always apply the complete base token set first; alternate themes then override the
+        // full semantic checklist documented in app.css so every FXML screen inherits a stable
+        // background/surface/text/status/focus palette without missing-token fallbacks.
+        root.getStyleClass().add(BASE_THEME_CLASS);
         if (!selectedTheme.equals(BASE_THEME_CLASS)) {
-            root.getStyleClass().add(BASE_THEME_CLASS);
+            root.getStyleClass().add(selectedTheme);
         }
-        root.getStyleClass().add(selectedTheme);
     }
 
     private static ThemeOption getThemeOption(String themeClass) {

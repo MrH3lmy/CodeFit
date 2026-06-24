@@ -75,17 +75,21 @@
     -color-dashboard-hero-highlight: rgba(236, 72, 153, 0.30);
     -color-dashboard-art-sun: #fb7185;
     -color-dashboard-synth: rgba(168, 85, 247, 0.18);
+    -color-focus-ring: #fef08a;
+    -color-focus-shadow: rgba(250, 204, 21, 0.34);
+    -color-disabled-text: #cbd5e1;
+    -color-disabled-bg: rgba(71, 85, 105, 0.42);
     -fx-background-color: -color-app-base;
     -fx-text-fill: -color-text;
 }
 
 .theme-light {
-    -color-primary: #2563eb; -color-primary-strong: #1d4ed8; -color-accent: #0d9488; -color-accent-strong: #0f766e; -color-surface: #f8fafc; -color-surface-elevated: #ffffff; -color-surface-card: rgba(255, 255, 255, 0.86); -color-border: rgba(71, 85, 105, 0.22); -color-border-strong: rgba(37, 99, 235, 0.36); -color-danger: #dc2626; -color-warning: #d97706; -color-success: #16a34a; -color-app-base: #eef4ff; -color-text: #1e293b; -color-text-strong: #0f172a; -color-heading: #0f172a; -color-muted: #475569; -color-secondary-text: #64748b; -color-subtitle: #0f766e; -color-bg-start: #f8fbff; -color-bg-mid: #e0f2fe; -color-bg-end: #eef2ff; -color-bg-deep: #ecfeff; -color-brand: #0369a1; -color-brand-muted: #0f766e; -color-pill-text: #0f172a; -color-section-title: #334155; -color-stat-label: #0369a1; -color-accent-text: #047857; -color-banner-text: #075985; -color-progress-text: #075985; -color-green-label: #15803d; -color-violet-label: #6d28d9; -color-amber-label: #b45309; -color-helper-text: #475569; -color-review-answer: #164e63; -color-nav-section: #0d9488; -color-action-start: #2563eb; -color-action-mid: #7c3aed; -color-action-pressed: #1d4ed8; -color-action-pressed-end: #0f766e; -color-danger-dark: #b91c1c; -color-danger-darker: #7f1d1d; -color-danger-text: #fee2e2; -color-danger-hover-end: #dc2626; -color-warning-dark: #d97706; -color-warning-darker: #92400e; -color-warning-text: #fff7ed; -color-success-dark: #16a34a; -color-success-darker: #166534; -color-success-text: #ecfdf5; -color-epic-start: #2563eb; -color-epic-end: #7c3aed; -color-epic-text: #eff6ff; -color-epic-pressed: #1d4ed8; -color-prompt: #64748b; -color-list-text: #1e293b; -color-row-muted: #64748b; -color-badge-text: #0f766e; -color-selected-badge-text: #ffffff; -color-progress-start: #0891b2; -color-sidebar-bg: rgba(248, 250, 252, 0.92); -color-sidebar-border: rgba(37, 99, 235, 0.20); -color-dashboard-card: -color-surface-card; -color-dashboard-card-border: -color-border-strong; -color-dashboard-card-highlight: rgba(37, 99, 235, 0.12); -color-dashboard-card-highlight-alt: rgba(13, 148, 136, 0.10); -color-dashboard-hero: -color-surface-card; -color-dashboard-hero-highlight: rgba(13, 148, 136, 0.16); -color-dashboard-art-sun: #fb7185; -color-dashboard-synth: rgba(124, 58, 237, 0.12); -fx-background-color: -color-app-base; -fx-text-fill: -color-text;
+    -color-primary: #2563eb; -color-primary-strong: #1d4ed8; -color-accent: #0d9488; -color-accent-strong: #0f766e; -color-surface: #f8fafc; -color-surface-elevated: #ffffff; -color-surface-card: rgba(255, 255, 255, 0.86); -color-border: rgba(71, 85, 105, 0.22); -color-border-strong: rgba(37, 99, 235, 0.36); -color-danger: #dc2626; -color-warning: #d97706; -color-success: #16a34a; -color-app-base: #eef4ff; -color-text: #1e293b; -color-text-strong: #0f172a; -color-heading: #0f172a; -color-muted: #475569; -color-secondary-text: #64748b; -color-subtitle: #0f766e; -color-bg-start: #f8fbff; -color-bg-mid: #e0f2fe; -color-bg-end: #eef2ff; -color-bg-deep: #ecfeff; -color-brand: #0369a1; -color-brand-muted: #0f766e; -color-pill-text: #0f172a; -color-section-title: #334155; -color-stat-label: #0369a1; -color-accent-text: #047857; -color-banner-text: #075985; -color-progress-text: #075985; -color-green-label: #15803d; -color-violet-label: #6d28d9; -color-amber-label: #b45309; -color-helper-text: #475569; -color-review-answer: #164e63; -color-nav-section: #0d9488; -color-action-start: #2563eb; -color-action-mid: #7c3aed; -color-action-pressed: #1d4ed8; -color-action-pressed-end: #0f766e; -color-danger-dark: #b91c1c; -color-danger-darker: #7f1d1d; -color-danger-text: #fee2e2; -color-danger-hover-end: #dc2626; -color-warning-dark: #d97706; -color-warning-darker: #92400e; -color-warning-text: #fff7ed; -color-success-dark: #16a34a; -color-success-darker: #166534; -color-success-text: #ecfdf5; -color-epic-start: #2563eb; -color-epic-end: #7c3aed; -color-epic-text: #eff6ff; -color-epic-pressed: #1d4ed8; -color-prompt: #64748b; -color-list-text: #1e293b; -color-row-muted: #64748b; -color-badge-text: #0f766e; -color-selected-badge-text: #ffffff; -color-progress-start: #0891b2; -color-sidebar-bg: rgba(248, 250, 252, 0.92); -color-sidebar-border: rgba(37, 99, 235, 0.20); -color-dashboard-card: -color-surface-card; -color-dashboard-card-border: -color-border-strong; -color-dashboard-card-highlight: rgba(37, 99, 235, 0.12); -color-dashboard-card-highlight-alt: rgba(13, 148, 136, 0.10); -color-dashboard-hero: -color-surface-card; -color-dashboard-hero-highlight: rgba(13, 148, 136, 0.16); -color-dashboard-art-sun: #fb7185; -color-dashboard-synth: rgba(124, 58, 237, 0.12); -color-focus-ring: #92400e; -color-focus-shadow: rgba(146, 64, 14, 0.28); -color-disabled-text: #475569; -color-disabled-bg: rgba(203, 213, 225, 0.74); -fx-background-color: -color-app-base; -fx-text-fill: -color-text;
 }
 
-.theme-ocean { -color-primary: #22d3ee; -color-primary-strong: #0891b2; -color-accent: #38bdf8; -color-accent-strong: #0284c7; -color-brand: #67e8f9; -color-subtitle: #bae6fd; }
-.theme-forest { -color-primary: #86efac; -color-primary-strong: #22c55e; -color-accent: #facc15; -color-accent-strong: #ca8a04; -color-brand: #bbf7d0; -color-subtitle: #fde68a; }
-.theme-synthwave { -color-primary: #f472b6; -color-primary-strong: #db2777; -color-accent: #a78bfa; -color-accent-strong: #7c3aed; -color-brand: #f0abfc; -color-subtitle: #f9a8d4; }
+.theme-ocean { -color-primary: #22d3ee; -color-primary-strong: #0891b2; -color-accent: #38bdf8; -color-accent-strong: #0284c7; -color-brand: #67e8f9; -color-subtitle: #bae6fd; -color-focus-ring: #fde68a; }
+.theme-forest { -color-primary: #86efac; -color-primary-strong: #22c55e; -color-accent: #facc15; -color-accent-strong: #ca8a04; -color-brand: #bbf7d0; -color-subtitle: #fde68a; -color-focus-ring: #fef3c7; }
+.theme-synthwave { -color-primary: #f472b6; -color-primary-strong: #db2777; -color-accent: #a78bfa; -color-accent-strong: #7c3aed; -color-brand: #f0abfc; -color-subtitle: #f9a8d4; -color-focus-ring: #67e8f9; }
 
 .root-layout, .app-root {
     -fx-background-color:
@@ -203,7 +207,7 @@
     -fx-font-size: 12px;
     -fx-font-weight: 800;
     -fx-letter-spacing: 0.06em;
-    -fx-opacity: 0.84;
+    -fx-opacity: 1;
 }
 
 .page-title {
@@ -222,7 +226,7 @@
     -fx-font-size: 15px;
     -fx-font-weight: 700;
     -fx-line-spacing: 3;
-    -fx-opacity: 0.92;
+    -fx-opacity: 1;
 }
 
 .hero-card {
@@ -281,7 +285,8 @@
 
 .status-banner, .pill {
     -fx-background-color: rgba(14, 165, 233, 0.12);
-    -fx-border-color: rgba(125, 211, 252, 0.28);
+    -fx-border-color: -color-primary rgba(125, 211, 252, 0.28) rgba(125, 211, 252, 0.28) -color-primary;
+    -fx-border-width: 1 1 1 5;
     -fx-border-radius: 12;
     -fx-background-radius: 12;
     -fx-text-fill: -color-banner-text;
@@ -412,7 +417,7 @@
     -fx-font-size: 12px;
     -fx-font-weight: 700;
     -fx-line-spacing: 2;
-    -fx-opacity: 0.92;
+    -fx-opacity: 1;
 }
 
 .review-card {
@@ -464,6 +469,30 @@
     -fx-border-radius: 12;
     -fx-font-weight: 800;
     -fx-padding: 11 16;
+}
+
+.button:focused, .toggle-button:focused, .text-field:focused, .text-area:focused,
+.combo-box:focused, .choice-box:focused, .list-view:focused {
+    -fx-border-color: -color-focus-ring, -color-primary;
+    -fx-border-width: 2, 1;
+    -fx-border-insets: -3, 0;
+    -fx-border-radius: 15, 12;
+    -fx-background-insets: 0;
+    -fx-effect: dropshadow(gaussian, -color-focus-shadow, 22, 0.34, 0, 0);
+}
+
+.button:disabled, .text-field:disabled, .text-area:disabled, .combo-box:disabled,
+.choice-box:disabled, .list-view:disabled {
+    -fx-opacity: 1;
+    -fx-background-color: -color-disabled-bg;
+    -fx-border-color: rgba(148, 163, 184, 0.34);
+    -fx-text-fill: -color-disabled-text;
+    -fx-cursor: default;
+}
+
+.button:disabled .text, .choice-box:disabled > .label, .combo-box:disabled .list-cell {
+    -fx-fill: -color-disabled-text;
+    -fx-text-fill: -color-disabled-text;
 }
 
 .nav-group {
@@ -600,6 +629,12 @@
     -fx-font-weight: 800;
     -fx-alignment: center;
     -fx-text-alignment: center;
+    -fx-opacity: 1;
+}
+
+.rating-option:hover {
+    -fx-background-color: rgba(15, 23, 42, 0.54);
+    -fx-border-color: rgba(125, 211, 252, 0.34);
 }
 
 .rating-button {
@@ -622,7 +657,7 @@
 .epic-button:hover { -fx-background-color: linear-gradient(to bottom right, -color-primary, -color-action-mid); -fx-text-fill: -color-text-strong; -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.34), 18, 0.25, 0, 7); -fx-translate-y: -2; }
 .epic-button:pressed { -fx-background-color: linear-gradient(to bottom right, -color-epic-pressed, -color-action-mid); -fx-translate-y: 1; }
 
-.text-field, .text-area, .combo-box, .list-view {
+.text-field, .text-area, .combo-box, .choice-box, .list-view {
     -fx-background-color: rgba(2, 6, 23, 0.74);
     -fx-border-color: rgba(148, 163, 184, 0.28);
     -fx-border-width: 1;
@@ -635,25 +670,35 @@
     -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.32), 10, 0.20, 0, 2);
 }
 
-.text-field:hover, .text-area:hover, .combo-box:hover, .list-view:hover {
+.text-field:hover, .text-area:hover, .combo-box:hover, .choice-box:hover, .list-view:hover {
     -fx-border-color: rgba(125, 211, 252, 0.38);
     -fx-background-color: rgba(8, 13, 27, 0.82);
 }
 
-.text-field:focused, .text-area:focused, .combo-box:focused, .list-view:focused {
-    -fx-border-color: -color-primary;
-    -fx-border-width: 1.5;
+.text-field:focused, .text-area:focused, .combo-box:focused, .choice-box:focused, .list-view:focused {
+    -fx-border-color: -color-focus-ring, -color-primary;
+    -fx-border-width: 2, 1.5;
+    -fx-border-insets: -3, 0;
+    -fx-border-radius: 15, 12;
     -fx-background-color: rgba(15, 23, 42, 0.94);
-    -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.25), 18, 0.25, 0, 0);
+    -fx-effect: dropshadow(gaussian, -color-focus-shadow, 22, 0.34, 0, 0);
 }
 
-.combo-box .list-cell {
+.combo-box .list-cell, .choice-box .label {
     -fx-text-fill: -color-text;
 }
 
-.combo-box-popup .list-view {
+.combo-box-popup .list-view, .choice-box .context-menu {
     -fx-background-color: rgba(15, 23, 42, 0.98);
     -fx-border-color: rgba(125, 211, 252, 0.34);
+}
+
+.choice-box .menu-item:focused {
+    -fx-background-color: linear-gradient(to right, rgba(14, 165, 233, 0.58), rgba(20, 184, 166, 0.36));
+}
+
+.choice-box .menu-item:focused > .label {
+    -fx-text-fill: -color-text-strong;
 }
 
 .text-area {
@@ -674,11 +719,20 @@
 }
 
 .list-cell:hover {
-    -fx-background-color: rgba(56, 189, 248, 0.12);
+    -fx-background-color: rgba(56, 189, 248, 0.14);
+    -fx-border-color: rgba(125, 211, 252, 0.24);
+    -fx-border-width: 0 0 0 3;
 }
 
 .list-cell:selected {
-    -fx-background-color: linear-gradient(to right, rgba(14, 165, 233, 0.38), rgba(20, 184, 166, 0.24));
+    -fx-background-color: linear-gradient(to right, rgba(14, 165, 233, 0.52), rgba(20, 184, 166, 0.34));
+    -fx-border-color: -color-focus-ring -color-primary -color-primary -color-focus-ring;
+    -fx-border-width: 1 1 1 4;
+    -fx-text-fill: -color-text-strong;
+}
+
+.list-cell:selected:hover {
+    -fx-background-color: linear-gradient(to right, rgba(14, 165, 233, 0.62), rgba(20, 184, 166, 0.42));
 }
 
 .list-cell:empty {
@@ -997,7 +1051,7 @@
     -fx-font-size: 12px;
     -fx-font-weight: 700;
     -fx-line-spacing: 2;
-    -fx-opacity: 0.92;
+    -fx-opacity: 1;
 }
 
 .dashboard-top-grid .dashboard-card-helper {

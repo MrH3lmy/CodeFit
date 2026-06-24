@@ -14,6 +14,7 @@
         <Button fx:id="decksButton" text="Decks" onAction="#goDecks" maxWidth="Infinity" />
         <Button fx:id="addCardButton" text="Add Card" onAction="#goAddCard" maxWidth="Infinity" />
         <Button fx:id="reviewButton" text="Review" onAction="#goReview" maxWidth="Infinity" />
+        <Button fx:id="syllabusButton" text="Syllabus" onAction="#goSyllabus" maxWidth="Infinity" />
         <Button fx:id="statsButton" text="Stats" onAction="#goStats" maxWidth="Infinity" />
     </VBox>
 

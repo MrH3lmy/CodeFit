@@ -50,6 +50,10 @@ public final class NavigationService {
         navigate("review.fxml", "CodeFit - Review");
     }
 
+    public static void showSyllabus() {
+        navigate("syllabus.fxml", "CodeFit - Java Backend Syllabus");
+    }
+
     public static void showStats() {
         navigate("stats.fxml", "CodeFit - Stats");
     }

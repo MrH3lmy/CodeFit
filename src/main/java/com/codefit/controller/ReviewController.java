@@ -9,11 +9,16 @@ import com.codefit.service.DeckService;
 import com.codefit.service.ReviewService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
@@ -28,6 +33,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class ReviewController extends BaseController {
+    @FXML private BorderPane reviewRoot;
     @FXML private Label queueLabel;
     @FXML private Label timerLabel;
     @FXML private Label promptLabel;
@@ -40,6 +46,7 @@ public class ReviewController extends BaseController {
     @FXML private Label easyDescriptionLabel;
     @FXML private TextArea attemptTextArea;
     @FXML private VBox commandPracticePanel;
+    @FXML private VBox sessionFlowStrip;
     @FXML private HBox commandAttemptBox;
     @FXML private TextField commandTextField;
     @FXML private TextArea terminalHistoryArea;
@@ -74,7 +81,9 @@ public class ReviewController extends BaseController {
         resetSessionMetrics();
         attemptTextArea.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
         commandTextField.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
+        configureKeyboardShortcuts();
         showCurrentCard();
+        Platform.runLater(this::focusActiveAttemptInput);
     }
 
     @FXML
@@ -88,6 +97,7 @@ public class ReviewController extends BaseController {
         showHintButton.setDisable(true);
         setStatus(messageLabel, "Hint shown. If it helped, avoid marking this card Easy.");
         setRatingDescriptions(currentCard);
+        focusActiveAttemptInput();
     }
 
     @FXML
@@ -102,6 +112,7 @@ public class ReviewController extends BaseController {
             setStatus(messageLabel, "Enter an attempt before revealing the answer.");
             showAnswerButton.setDisable(true);
             updateShowHintButton();
+            updateSessionFlowVisibility();
             return;
         }
 
@@ -116,6 +127,7 @@ public class ReviewController extends BaseController {
         updateShowHintButton();
         setStatus(messageLabel, formatAttemptFeedback(validationResult));
         setRatingDescriptions(currentCard);
+        focusRecommendedRatingButton();
     }
 
     @FXML
@@ -335,6 +347,7 @@ public class ReviewController extends BaseController {
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             updateReviewMissedButton(false);
+            updateSessionFlowVisibility();
             return;
         }
         if (currentIndex >= dueCards.size()) {
@@ -355,6 +368,7 @@ public class ReviewController extends BaseController {
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             updateReviewMissedButton(!missedCards.isEmpty());
+            updateSessionFlowVisibility();
             return;
         }
 
@@ -375,6 +389,99 @@ public class ReviewController extends BaseController {
         updateShowHintButton();
         setRatingButtonsDisabled(true);
         startTimeLimitIfNeeded();
+        updateSessionFlowVisibility();
+        Platform.runLater(this::focusActiveAttemptInput);
+    }
+    private void configureKeyboardShortcuts() {
+        if (reviewRoot == null) {
+            return;
+        }
+
+        reviewRoot.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.isConsumed()) {
+                return;
+            }
+            KeyCode code = event.getCode();
+            if (code == KeyCode.H && !isFocusInTextInput()) {
+                fireIfAvailable(showHintButton);
+                event.consume();
+            } else if (code == KeyCode.SPACE && !isFocusInTextInput()) {
+                fireIfAvailable(showAnswerButton);
+                event.consume();
+            } else if (answerRevealed && code == KeyCode.DIGIT1) {
+                fireIfAvailable(againButton);
+                event.consume();
+            } else if (answerRevealed && code == KeyCode.DIGIT2) {
+                fireIfAvailable(hardButton);
+                event.consume();
+            } else if (answerRevealed && code == KeyCode.DIGIT3) {
+                fireIfAvailable(goodButton);
+                event.consume();
+            } else if (answerRevealed && code == KeyCode.DIGIT4) {
+                fireIfAvailable(easyButton);
+                event.consume();
+            }
+        });
+
+        commandTextField.setOnAction(event -> focusRevealButtonIfReady());
+        attemptTextArea.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ENTER && event.isControlDown()) {
+                focusRevealButtonIfReady();
+                event.consume();
+            }
+        });
+    }
+
+    private void fireIfAvailable(Button button) {
+        if (button != null && button.isVisible() && !button.isDisabled()) {
+            button.fire();
+        }
+    }
+
+    private boolean isFocusInTextInput() {
+        Node focusedNode = reviewRoot.getScene() == null ? null : reviewRoot.getScene().getFocusOwner();
+        return focusedNode == attemptTextArea || focusedNode == commandTextField;
+    }
+
+    private void focusRevealButtonIfReady() {
+        if (showAnswerButton != null && !showAnswerButton.isDisabled()) {
+            showAnswerButton.requestFocus();
+        }
+    }
+
+    private void focusActiveAttemptInput() {
+        if (currentCard == null || answerRevealed) {
+            return;
+        }
+        if (currentCard.getCardType().isCommandTemplate()) {
+            commandTextField.requestFocus();
+        } else {
+            attemptTextArea.requestFocus();
+        }
+    }
+
+    private void focusRecommendedRatingButton() {
+        ReviewRating rating = recommendedRating();
+        Button target = goodButton;
+        if (rating == ReviewRating.AGAIN) {
+            target = againButton;
+        } else if (rating == ReviewRating.HARD) {
+            target = hardButton;
+        } else if (rating == ReviewRating.EASY) {
+            target = easyButton;
+        }
+        if (target != null && !target.isDisabled()) {
+            target.requestFocus();
+        }
+    }
+
+    private void updateSessionFlowVisibility() {
+        if (sessionFlowStrip == null) {
+            return;
+        }
+        boolean activeReviewStarted = reviewedCardCount > 0 || answerRevealed || latestValidationResult != AttemptValidationResult.EMPTY;
+        sessionFlowStrip.setVisible(!activeReviewStarted);
+        sessionFlowStrip.setManaged(!activeReviewStarted);
     }
 
     private void startTimeLimitIfNeeded() {
@@ -417,6 +524,7 @@ public class ReviewController extends BaseController {
         setRatingButtonsDisabled(false);
         setRatingDescriptions(currentCard);
         setStatus(messageLabel, "Time expired. Answer revealed. Recommended rating: " + recommendedRatingLabel(latestValidationResult) + ".");
+        focusRecommendedRatingButton();
     }
 
     private boolean isTimedCardExpired() {
@@ -496,12 +604,14 @@ public class ReviewController extends BaseController {
             latestValidationResult = AttemptValidationResult.EMPTY;
             showAnswerButton.setDisable(true);
             updateShowHintButton();
+            updateSessionFlowVisibility();
             return;
         }
 
         latestValidationResult = validateAttempt();
         showAnswerButton.setDisable(answerRevealed || latestValidationResult == AttemptValidationResult.EMPTY);
         updateShowHintButton();
+        updateSessionFlowVisibility();
         if (latestValidationResult == AttemptValidationResult.EMPTY) {
             setStatus(messageLabel, "Enter an attempt to enable Reveal Answer.");
         } else {

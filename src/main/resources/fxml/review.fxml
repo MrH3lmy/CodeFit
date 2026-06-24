@@ -3,7 +3,7 @@
 <?import javafx.scene.layout.*?>
 <?import com.codefit.ui.Sidebar?>
 
-<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ReviewController">
+<BorderPane fx:id="reviewRoot" styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ReviewController">
     <left>
         <Sidebar activePage="review" />
     </left>
@@ -18,7 +18,7 @@
                             <Label fx:id="timerLabel" styleClass="header-pill" wrapText="true" visible="false" managed="false" />
                         </HBox>
                         <Label text="Clear today&apos;s queue, reinforce the cards that need attention, and turn each rating into smarter progress." styleClass="page-subtitle" wrapText="true" />
-                        <VBox spacing="10" styleClass="queue-strip" maxWidth="Infinity">
+                        <VBox fx:id="sessionFlowStrip" spacing="10" styleClass="queue-strip" maxWidth="Infinity">
                             <HBox spacing="12" alignment="CENTER_LEFT">
                                 <Label text="SESSION FLOW" styleClass="stat-label" />
                                 <Label text="Prompt → Reveal → Rate → Next card" styleClass="pill progress-pill" wrapText="true" HBox.hgrow="ALWAYS" />
@@ -37,12 +37,12 @@
                     </VBox>
                     <StackPane styleClass="review-stage" maxWidth="Infinity">
                         <VBox spacing="30" styleClass="review-card" maxWidth="Infinity" StackPane.alignment="CENTER">
-                            <VBox spacing="12" styleClass="prompt-section">
+                            <VBox spacing="12" styleClass="prompt-section current-action-panel">
                                 <Label text="PROMPT" styleClass="stat-label" />
                                 <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />
                             </VBox>
                             <Separator />
-                            <VBox spacing="12" styleClass="attempt-section">
+                            <VBox spacing="12" styleClass="attempt-section current-action-panel">
                                 <HBox spacing="8" alignment="CENTER_LEFT">
                                     <Label text="YOUR ATTEMPT" styleClass="stat-label" />
                                     <Label fx:id="matchRequirementLabel" styleClass="muted" wrapText="true" HBox.hgrow="ALWAYS" />
@@ -63,8 +63,8 @@
                                 </VBox>
                             </VBox>
                             <HBox spacing="12" alignment="CENTER" maxWidth="Infinity">
-                                <Button fx:id="showHintButton" text="Show Hint" onAction="#showHint" styleClass="nav-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
-                                <Button fx:id="showAnswerButton" text="Reveal Answer" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                                <Button fx:id="showHintButton" text="Show Hint (H)" onAction="#showHint" styleClass="nav-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                                <Button fx:id="showAnswerButton" text="Reveal Answer (Space)" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
                             </HBox>
                             <VBox spacing="12" styleClass="answer-section">
                                 <Label text="ANSWER" styleClass="stat-label" />
@@ -74,19 +74,19 @@
                                 <Label text="How did recall feel?" styleClass="section-title" />
                                 <TilePane hgap="14" vgap="14" prefTileWidth="154" maxWidth="Infinity" tileAlignment="TOP_LEFT" styleClass="rating-grid">
                                     <VBox spacing="7" styleClass="rating-option">
-                                        <Button fx:id="againButton" text="Again" onAction="#rateAgain" styleClass="danger-button rating-button" maxWidth="Infinity" />
+                                        <Button fx:id="againButton" text="Again (1)" onAction="#rateAgain" styleClass="danger-button rating-button" maxWidth="Infinity" />
                                         <Label fx:id="againDescriptionLabel" text="Missed it — review again today" styleClass="rating-description" wrapText="true" />
                                     </VBox>
                                     <VBox spacing="7" styleClass="rating-option">
-                                        <Button fx:id="hardButton" text="Hard" onAction="#rateHard" styleClass="warning-button rating-button" maxWidth="Infinity" />
+                                        <Button fx:id="hardButton" text="Hard (2)" onAction="#rateHard" styleClass="warning-button rating-button" maxWidth="Infinity" />
                                         <Label fx:id="hardDescriptionLabel" text="Remembered with effort — short interval" styleClass="rating-description" wrapText="true" />
                                     </VBox>
                                     <VBox spacing="7" styleClass="rating-option">
-                                        <Button fx:id="goodButton" text="Good" onAction="#rateGood" styleClass="success-button rating-button" maxWidth="Infinity" />
+                                        <Button fx:id="goodButton" text="Good (3)" onAction="#rateGood" styleClass="success-button rating-button" maxWidth="Infinity" />
                                         <Label fx:id="goodDescriptionLabel" text="Solid recall — normal interval" styleClass="rating-description" wrapText="true" />
                                     </VBox>
                                     <VBox spacing="7" styleClass="rating-option">
-                                        <Button fx:id="easyButton" text="Easy" onAction="#rateEasy" styleClass="epic-button rating-button" maxWidth="Infinity" />
+                                        <Button fx:id="easyButton" text="Easy (4)" onAction="#rateEasy" styleClass="epic-button rating-button" maxWidth="Infinity" />
                                         <Label fx:id="easyDescriptionLabel" text="Instant recall — longer interval" styleClass="rating-description" wrapText="true" />
                                     </VBox>
                                 </TilePane>

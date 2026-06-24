@@ -1375,3 +1375,47 @@
     -fx-background-color: -color-surface-card;
     -fx-background-radius: 12;
 }
+
+.current-action-panel {
+    -fx-background-color:
+        radial-gradient(center 0% 0%, radius 90%, rgba(56, 189, 248, 0.15), transparent 48%),
+        rgba(2, 6, 23, 0.26);
+    -fx-border-color: rgba(125, 211, 252, 0.26);
+    -fx-border-radius: 20;
+    -fx-background-radius: 20;
+    -fx-padding: 18;
+}
+
+.prompt-section.current-action-panel {
+    -fx-border-color: rgba(196, 181, 253, 0.34), rgba(125, 211, 252, 0.22);
+    -fx-border-width: 1.5, 1;
+}
+
+.review-prompt {
+    -fx-font-size: 36px;
+    -fx-effect: dropshadow(gaussian, rgba(56, 189, 248, 0.16), 18, 0.20, 0, 0);
+}
+
+.attempt-section.current-action-panel .stat-label,
+.prompt-section.current-action-panel .stat-label {
+    -fx-text-fill: -color-brand;
+    -fx-opacity: 1;
+}
+
+.attempt-section.current-action-panel .text-area,
+.terminal-input {
+    -fx-border-color: rgba(125, 211, 252, 0.52);
+}
+
+.reveal-button {
+    -fx-font-size: 16px;
+    -fx-padding: 17 24;
+}
+
+.rating-button {
+    -fx-font-size: 15px;
+}
+
+.queue-strip {
+    -fx-opacity: 0.84;
+}

@@ -3,7 +3,11 @@ package com.codefit.controller;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.service.DeckService;
+import com.codefit.service.FlashcardImportExportService;
+import com.codefit.service.FlashcardImportExportService.ImportExportException;
+import com.codefit.service.FlashcardImportExportService.ImportSummary;
 import com.codefit.service.FlashcardService;
+import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -17,6 +21,8 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -34,6 +40,7 @@ public class DecksController extends BaseController {
 
     private final DeckService deckService = new DeckService();
     private final FlashcardService flashcardService = new FlashcardService();
+    private final FlashcardImportExportService importExportService = new FlashcardImportExportService(flashcardService);
 
     @FXML
     public void initialize() {
@@ -41,6 +48,55 @@ public class DecksController extends BaseController {
         cardListView.setCellFactory(listView -> new FlashcardCell());
         deckListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, deck) -> loadCards(deck));
         loadDecks();
+    }
+
+
+    @FXML
+    public void importCards() {
+        Deck deck = selectedDeckOrWarn();
+        if (deck == null) {
+            return;
+        }
+        File file = tsvFileChooser("Import Cards").showOpenDialog(window());
+        if (file == null) {
+            return;
+        }
+
+        try {
+            ImportSummary summary = importExportService.importAnkiTsv(deck.getId(), file.toPath());
+            setStatus(messageLabel, summary.message());
+            loadCards(deck);
+            deckListView.refresh();
+        } catch (ImportExportException exception) {
+            ImportSummary summary = exception.getSummary();
+            String prefix = summary == null ? "Import completed with errors." : summary.message();
+            setStatus(messageLabel, prefix + " " + String.join(" ", exception.getRowErrors()));
+            loadCards(deck);
+            deckListView.refresh();
+        } catch (RuntimeException exception) {
+            setStatus(messageLabel, exception.getMessage());
+        }
+    }
+
+    @FXML
+    public void exportCards() {
+        Deck deck = selectedDeckOrWarn();
+        if (deck == null) {
+            return;
+        }
+        FileChooser fileChooser = tsvFileChooser("Export Cards");
+        fileChooser.setInitialFileName(safeFileName(deck.getName()) + "-cards.tsv");
+        File file = fileChooser.showSaveDialog(window());
+        if (file == null) {
+            return;
+        }
+
+        try {
+            importExportService.exportDeckToAnkiTsv(deck.getId(), file.toPath());
+            setStatus(messageLabel, "Exported " + flashcardService.getCardsForDeck(deck.getId()).size() + " cards to " + file.getName() + ".");
+        } catch (RuntimeException exception) {
+            setStatus(messageLabel, exception.getMessage());
+        }
     }
 
     @FXML
@@ -86,6 +142,31 @@ public class DecksController extends BaseController {
                 : "No cards in this deck yet. Next action: add your first card to this deck from Add Flashcard.");
         cardListView.setPlaceholder(new Label("Next action: choose Add Card and save the first prompt for this deck."));
         cardListView.setItems(cards);
+    }
+
+
+    private Deck selectedDeckOrWarn() {
+        Deck deck = deckListView.getSelectionModel().getSelectedItem();
+        if (deck == null) {
+            setStatus(messageLabel, "Select a deck before importing or exporting cards.");
+        }
+        return deck;
+    }
+
+    private FileChooser tsvFileChooser(String title) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title);
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Tab-separated text", "*.tsv", "*.txt"));
+        return fileChooser;
+    }
+
+    private Window window() {
+        return deckListView.getScene() == null ? null : deckListView.getScene().getWindow();
+    }
+
+    private String safeFileName(String value) {
+        String normalized = value == null || value.isBlank() ? "deck" : value.strip().toLowerCase().replaceAll("[^a-z0-9._-]+", "-");
+        return normalized.isBlank() ? "deck" : normalized;
     }
 
     private static String displayText(String value, String fallback) {

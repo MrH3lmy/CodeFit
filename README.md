@@ -54,3 +54,34 @@ For a distributable desktop application, use JavaFX-aware packaging tooling inst
 - A Maven plugin configuration that integrates JavaFX packaging, runtime-image creation, or native packaging for your target platforms.
 
 When adding packaging, ensure the generated artifact includes the JavaFX runtime modules required by the dependencies declared in `pom.xml` and launches `com.codefit.CodeFitApplication`.
+
+## Anki-compatible card import/export
+
+Decks can import and export tab-separated text files (`.tsv` or `.txt`) from the Decks screen with the **Import Cards** and **Export Cards** buttons. Choose a deck first, then select a file.
+
+The required Anki-compatible format is one card per line with the prompt/front in the first field and the answer/back in the second field:
+
+```tsv
+front	back
+What does `git status` show?	The working tree and staging area state.
+```
+
+CodeFit also supports an extended eight-field TSV format. Exported files use this format so CodeFit-specific practice metadata can round-trip:
+
+```tsv
+front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
+What command lists files?	ls	LINUX_COMMAND	ls	COMMAND_NORMALIZED	Remember the common Unix list command.	Linux	30
+```
+
+Supported extended fields are:
+
+1. `front` - required prompt text.
+2. `back` - required answer text.
+3. `card_type` - optional enum value such as `RECALL`, `COMMAND`, `LINUX_COMMAND`, `GIT_COMMAND`, `SQL_QUERY`, `REGEX_PATTERN`, `CODE_OUTPUT`, or `CONCEPT`.
+4. `accepted_answers` - optional accepted response text; defaults to `back` when blank.
+5. `validation_mode` - optional enum value such as `EXACT`, `CASE_INSENSITIVE`, `NORMALIZED_SPACING`, or `COMMAND_NORMALIZED`.
+6. `hint` - optional hint shown during review.
+7. `skill_category` - optional category label; defaults to `General` when blank.
+8. `time_limit_seconds` - optional positive integer time limit.
+
+Because Anki-style TSV does not use quoting, fields must not contain literal tabs or newlines. CodeFit rejects malformed import rows with line-numbered errors and skips duplicate imports when the same deck already contains a card with the same front text.

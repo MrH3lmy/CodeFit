@@ -16,6 +16,8 @@ public class DailyQuestService {
     private static final int REVIEW_QUEST_TARGET = 5;
     private static final int WEAK_SKILL_TARGET = 3;
     private static final int STRETCH_CARD_TARGET = 1;
+    private static final int RECOVERY_WEAK_AREA_TARGET = 10;
+    private static final int RECOVERY_XP_REWARD = 50;
 
     private final DailyQuestRepository dailyQuestRepository = new DailyQuestRepository();
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
@@ -31,7 +33,9 @@ public class DailyQuestService {
         if (quest.isCompleted() || !isReviewObjective(quest)) {
             return quest;
         }
-        if (quest.getObjectiveType() == DailyQuestObjectiveType.PRACTICE_WEAK_SKILL
+        if ((quest.getObjectiveType() == DailyQuestObjectiveType.PRACTICE_WEAK_SKILL
+                || quest.getObjectiveType() == DailyQuestObjectiveType.RECOVERY_WEAK_AREAS)
+                && quest.getSkillCategory() != null
                 && !sameSkill(quest.getSkillCategory(), card.getSkillCategory())) {
             return quest;
         }
@@ -40,6 +44,24 @@ public class DailyQuestService {
         completeAndAwardIfReady(quest);
         dailyQuestRepository.update(quest);
         return quest;
+    }
+
+    public DailyQuest activateRecoveryQuest() {
+        LocalDate today = LocalDate.now();
+        DailyQuest recoveryQuest = buildRecoveryQuest(today);
+        return dailyQuestRepository.findByDate(today)
+                .map(existingQuest -> {
+                    existingQuest.setObjectiveType(recoveryQuest.getObjectiveType());
+                    existingQuest.setSkillCategory(recoveryQuest.getSkillCategory());
+                    existingQuest.setTargetCount(recoveryQuest.getTargetCount());
+                    existingQuest.setCurrentCount(0);
+                    existingQuest.setCompleted(false);
+                    existingQuest.setXpAwarded(false);
+                    existingQuest.setXpReward(recoveryQuest.getXpReward());
+                    dailyQuestRepository.update(existingQuest);
+                    return existingQuest;
+                })
+                .orElseGet(() -> dailyQuestRepository.save(recoveryQuest));
     }
 
     public DailyQuest recordCardAdded() {
@@ -51,6 +73,13 @@ public class DailyQuestService {
         completeAndAwardIfReady(quest);
         dailyQuestRepository.update(quest);
         return quest;
+    }
+
+    private DailyQuest buildRecoveryQuest(LocalDate questDate) {
+        List<StatsSkillPerformance> weakSkills = new StatsService().getNeedsPracticeSkills();
+        String recoverySkill = weakSkills.isEmpty() ? null : weakSkills.getFirst().skillCategory();
+        return new DailyQuest(0, questDate, DailyQuestObjectiveType.RECOVERY_WEAK_AREAS, recoverySkill,
+                RECOVERY_WEAK_AREA_TARGET, 0, false, false, RECOVERY_XP_REWARD);
     }
 
     private DailyQuest generateQuest(LocalDate questDate) {
@@ -72,7 +101,8 @@ public class DailyQuestService {
 
     private boolean isReviewObjective(DailyQuest quest) {
         return quest.getObjectiveType() == DailyQuestObjectiveType.REVIEW_DUE_CARDS
-                || quest.getObjectiveType() == DailyQuestObjectiveType.PRACTICE_WEAK_SKILL;
+                || quest.getObjectiveType() == DailyQuestObjectiveType.PRACTICE_WEAK_SKILL
+                || quest.getObjectiveType() == DailyQuestObjectiveType.RECOVERY_WEAK_AREAS;
     }
 
     private boolean sameSkill(String questSkill, String cardSkill) {
@@ -96,6 +126,10 @@ public class DailyQuestService {
         UserProgress progress = userProgressRepository.getProgress();
         progress.setXp(progress.getXp() + quest.getXpReward());
         progress.setLevel((progress.getXp() / ProgressService.XP_PER_LEVEL) + 1);
+        if (quest.getObjectiveType() == DailyQuestObjectiveType.RECOVERY_WEAK_AREAS) {
+            progress.setRecoveryQuestActive(false);
+            progress.setMissedDayCount(0);
+        }
         userProgressRepository.save(progress);
         quest.setXpAwarded(true);
     }

@@ -68,7 +68,7 @@ public class DashboardController extends BaseController {
 
         levelLabel.setText("Level " + progress.getLevel());
         xpLabel.setText(formatXpProgress(progress));
-        streakLabel.setText(progress.getStreakDays() + " day streak");
+        streakLabel.setText(formatStreakState(progress));
         deckCountLabel.setText(String.valueOf(deckCount));
         cardCountLabel.setText(String.valueOf(cardCount));
         dueCountLabel.setText(dueCount + " cards due");
@@ -80,6 +80,17 @@ public class DashboardController extends BaseController {
         configureEmptyState(decks, deckCount, cardCount, dueCount);
     }
 
+
+    private String formatStreakState(UserProgress progress) {
+        if (progress.isRecoveryQuestActive()) {
+            return "Recovery quest active";
+        }
+        LocalDate lastReviewDate = progress.getLastReviewDate();
+        if (lastReviewDate != null && lastReviewDate.isBefore(LocalDate.now())) {
+            return "Streak at risk";
+        }
+        return progress.getStreakDays() + " day streak";
+    }
 
     private void configureDailyQuest() {
         DailyQuest quest = dailyQuestService.getActiveQuest();
@@ -97,6 +108,10 @@ public class DashboardController extends BaseController {
         }
         if (quest.getObjectiveType() == DailyQuestObjectiveType.PRACTICE_WEAK_SKILL) {
             return "Daily quest: practice " + quest.getSkillCategory();
+        }
+        if (quest.getObjectiveType() == DailyQuestObjectiveType.RECOVERY_WEAK_AREAS) {
+            String skill = quest.getSkillCategory() == null ? "weak areas" : quest.getSkillCategory();
+            return "Recovery quest: review " + quest.getTargetCount() + " cards from " + skill + " today";
         }
         return "Daily quest: add a stretch card";
     }

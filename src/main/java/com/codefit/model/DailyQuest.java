@@ -30,8 +30,11 @@ public class DailyQuest {
     public void setId(long id) { this.id = id; }
     public LocalDate getQuestDate() { return questDate; }
     public DailyQuestObjectiveType getObjectiveType() { return objectiveType; }
+    public void setObjectiveType(DailyQuestObjectiveType objectiveType) { this.objectiveType = objectiveType; }
     public String getSkillCategory() { return skillCategory; }
+    public void setSkillCategory(String skillCategory) { this.skillCategory = skillCategory; }
     public int getTargetCount() { return targetCount; }
+    public void setTargetCount(int targetCount) { this.targetCount = targetCount; }
     public int getCurrentCount() { return currentCount; }
     public void setCurrentCount(int currentCount) { this.currentCount = currentCount; }
     public boolean isCompleted() { return completed; }
@@ -39,4 +42,5 @@ public class DailyQuest {
     public boolean isXpAwarded() { return xpAwarded; }
     public void setXpAwarded(boolean xpAwarded) { this.xpAwarded = xpAwarded; }
     public int getXpReward() { return xpReward; }
+    public void setXpReward(int xpReward) { this.xpReward = xpReward; }
 }

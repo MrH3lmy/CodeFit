@@ -9,14 +9,25 @@ public class UserProgress {
     private int streakDays;
     private LocalDate lastReviewDate;
     private int totalReviews;
+    private int missedDayCount;
+    private int streakFreezeCount;
+    private boolean recoveryQuestActive;
 
     public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews) {
+        this(id, xp, level, streakDays, lastReviewDate, totalReviews, 0, 0, false);
+    }
+
+    public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews,
+                        int missedDayCount, int streakFreezeCount, boolean recoveryQuestActive) {
         this.id = id;
         this.xp = xp;
         this.level = level;
         this.streakDays = streakDays;
         this.lastReviewDate = lastReviewDate;
         this.totalReviews = totalReviews;
+        this.missedDayCount = missedDayCount;
+        this.streakFreezeCount = streakFreezeCount;
+        this.recoveryQuestActive = recoveryQuestActive;
     }
 
     public long getId() { return id; }
@@ -30,4 +41,10 @@ public class UserProgress {
     public void setLastReviewDate(LocalDate lastReviewDate) { this.lastReviewDate = lastReviewDate; }
     public int getTotalReviews() { return totalReviews; }
     public void setTotalReviews(int totalReviews) { this.totalReviews = totalReviews; }
+    public int getMissedDayCount() { return missedDayCount; }
+    public void setMissedDayCount(int missedDayCount) { this.missedDayCount = missedDayCount; }
+    public int getStreakFreezeCount() { return streakFreezeCount; }
+    public void setStreakFreezeCount(int streakFreezeCount) { this.streakFreezeCount = streakFreezeCount; }
+    public boolean isRecoveryQuestActive() { return recoveryQuestActive; }
+    public void setRecoveryQuestActive(boolean recoveryQuestActive) { this.recoveryQuestActive = recoveryQuestActive; }
 }

@@ -14,6 +14,7 @@ import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.VBox;
 
 public class AddCardController extends BaseController {
@@ -32,6 +33,7 @@ public class AddCardController extends BaseController {
     @FXML private TextArea simulatedOutputArea;
     @FXML private Label messageLabel;
     @FXML private Label templateHelpLabel;
+    @FXML private Label templateExampleLabel;
     @FXML private Label frontLabel;
     @FXML private Label frontHelpLabel;
     @FXML private Label backLabel;
@@ -45,6 +47,7 @@ public class AddCardController extends BaseController {
     @FXML private VBox hintField;
     @FXML private VBox acceptedAnswersField;
     @FXML private VBox simulatedOutputField;
+    @FXML private TitledPane practiceSettingsSection;
     @FXML private Label frontPreviewLabel;
     @FXML private Label backPreviewLabel;
     @FXML private Button saveCardButton;
@@ -131,11 +134,14 @@ public class AddCardController extends BaseController {
         boolean sql = template == CardType.SQL_QUERY;
         boolean concept = template == CardType.RECALL || template == CardType.CONCEPT;
 
-        setVisible(validationField, command || regex || sql || codeOutput);
+        boolean hasPracticeSettings = command || regex || sql || codeOutput;
+        setVisible(validationField, hasPracticeSettings);
         setVisible(timeLimitField, command || codeOutput);
         setVisible(acceptedAnswersField, command || regex || sql);
         setVisible(simulatedOutputField, command || codeOutput);
         setVisible(hintField, !regex);
+        practiceSettingsSection.setVisible(hasPracticeSettings);
+        practiceSettingsSection.setManaged(hasPracticeSettings);
 
         if (command) {
             validationModeComboBox.getSelectionModel().select(ValidationMode.COMMAND_NORMALIZED);
@@ -148,36 +154,42 @@ public class AddCardController extends BaseController {
         switch (template) {
             case LINUX_COMMAND -> configureCopy(
                     "Linux command template: practice terminal syntax, aliases, and expected output.",
+                    "Example: Prompt: Compress logs older than 7 days. Answer: find ./logs -mtime +7 -name \"*.log\" -exec gzip {} \\;",
                     "Task", "Describe the Linux task to complete (for example, list hidden files).",
                     "Canonical command", "Enter the preferred command and a short explanation.",
                     "Accepted command variants", "Accepted Linux commands, one per line (for example: ls -la\nls -al)",
                     "Simulated terminal output", "Optional terminal output shown after reveal");
             case GIT_COMMAND -> configureCopy(
                     "Git command template: capture repository tasks and valid command variants.",
+                    "Example: Prompt: Undo staged changes. Answer: git restore --staged .",
                     "Git task", "Describe the Git operation to perform (for example, undo staged changes).",
                     "Canonical Git command", "Enter the preferred Git command and why it works.",
                     "Accepted Git variants", "Accepted Git commands, one per line",
                     "Simulated Git output", "Optional Git output shown after reveal");
             case SQL_QUERY -> configureCopy(
                     "SQL query template: focus on schema, expected query, and equivalent answers.",
+                    "Example: Prompt: users(id, email); find duplicate emails. Answer: SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1;",
                     "Schema or request", "Describe the table schema and the data question to answer.",
                     "Expected query", "Enter the query and a brief explanation of important clauses.",
                     "Accepted query variants", "Accepted SQL queries, one per line",
                     "", "");
             case REGEX_PATTERN -> configureCopy(
                     "Regex template: define matching requirements and accepted patterns.",
+                    "Example: Prompt: Match a 5-digit ZIP code only. Answer: ^\\d{5}$",
                     "Matching requirement", "Describe strings that should match and not match.",
                     "Regex explanation", "Explain the pattern and any flags or anchors.",
                     "Accepted regex patterns", "Accepted regex patterns, one per line",
                     "", "");
             case CODE_OUTPUT -> configureCopy(
                     "Code output template: ask learners to predict a snippet's output.",
+                    "Example: Prompt: for (int i = 0; i < 3; i++) print(i). Answer: 0 1 2",
                     "Code snippet", "Paste the code whose output should be predicted.",
                     "Expected output", "Enter the exact output and explain the execution path.",
                     "", "",
                     "Runtime output", "Optional runtime output shown after reveal");
             default -> configureCopy(
                     concept ? "Concept flashcard template: capture one focused term, question, or idea." : "Command template: practice command syntax and output safely.",
+                    command ? "Example: Prompt: Show disk usage for this folder. Answer: du -sh ." : "",
                     "Prompt", "Write the cue learners should recognize: a question, term, bug, or code snippet.",
                     "Answer", "Keep it concise, then add the key explanation, edge case, or command that makes the answer stick.",
                     "Accepted command answers", "Accepted command answers, one per line",
@@ -185,9 +197,13 @@ public class AddCardController extends BaseController {
         }
     }
 
-    private void configureCopy(String templateHelp, String frontTitle, String frontHelp, String backTitle, String backHelp,
+    private void configureCopy(String templateHelp, String templateExample, String frontTitle, String frontHelp, String backTitle, String backHelp,
                                String acceptedTitle, String acceptedPrompt, String outputTitle, String outputPrompt) {
         templateHelpLabel.setText(templateHelp);
+        templateExampleLabel.setText(templateExample);
+        boolean hasExample = templateExample != null && !templateExample.isBlank();
+        templateExampleLabel.setVisible(hasExample);
+        templateExampleLabel.setManaged(hasExample);
         frontLabel.setText(frontTitle);
         frontHelpLabel.setText(frontHelp);
         backLabel.setText(backTitle);

@@ -20,10 +20,12 @@
                         <VBox spacing="18" styleClass="primary-column" minWidth="0" prefWidth="460" maxWidth="Infinity">
                             <VBox spacing="10" styleClass="panel deck-list-panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
                                 <Label text="Decks" styleClass="section-title" />
+                                <Label fx:id="deckEmptyGuidanceLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
                                 <ListView fx:id="deckListView" prefHeight="260" VBox.vgrow="ALWAYS" />
                             </VBox>
                             <VBox spacing="10" styleClass="panel card-list-panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
                                 <Label text="Cards" styleClass="section-title" />
+                                <Label fx:id="cardEmptyGuidanceLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
                                 <ListView fx:id="cardListView" prefHeight="260" VBox.vgrow="ALWAYS" />
                             </VBox>
                         </VBox>

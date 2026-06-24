@@ -29,7 +29,9 @@ public class StatsController extends BaseController {
     @FXML private Label totalCardsLabel;
     @FXML private Label dueCardsLabel;
     @FXML private Label reviewedTodayLabel;
+    @FXML private Label statsEmptyStateLabel;
     @FXML private ProgressBar xpProgressBar;
+    @FXML private VBox statsEmptyStateBox;
     @FXML private ListView<String> recentReviewsListView;
     @FXML private ListView<StatsSkillPerformance> skillPerformanceListView;
     @FXML private ListView<StatsSkillPerformance> needsPracticeListView;
@@ -50,13 +52,14 @@ public class StatsController extends BaseController {
         dueCardsLabel.setText(String.valueOf(statsService.getDueCards()));
         reviewedTodayLabel.setText(String.valueOf(statsService.getReviewedToday()));
         xpProgressBar.setProgress((progress.getXp() % ProgressService.XP_PER_LEVEL) / (double) ProgressService.XP_PER_LEVEL);
+        configureStatsEmptyState(progress.getTotalReviews());
 
         configureSkillPerformanceList();
         configureNeedsPracticeList();
 
         var recent = statsService.getRecentReviews().stream().map(this::formatReview).toList();
         recentReviewsListView.setItems(recent.isEmpty()
-                ? FXCollections.observableArrayList("No reviews logged yet. Complete a review session to see recent activity.")
+                ? FXCollections.observableArrayList("Stats appear after review sessions. Next action: start a review to create your first activity entry.")
                 : FXCollections.observableArrayList(recent));
 
         var skillPerformance = statsService.getSkillPerformance();
@@ -70,6 +73,15 @@ public class StatsController extends BaseController {
                 : FXCollections.observableArrayList(needsPractice));
     }
 
+    private void configureStatsEmptyState(int totalReviews) {
+        boolean empty = totalReviews == 0;
+        statsEmptyStateBox.setVisible(empty);
+        statsEmptyStateBox.setManaged(empty);
+        if (empty) {
+            statsEmptyStateLabel.setText("Stats appear after review sessions. Complete one review session to unlock accuracy, weak-area, and activity signals.");
+        }
+    }
+
     private void configureSkillPerformanceList() {
         skillPerformanceListView.setCellFactory(listView -> new StatsSkillCell(false));
     }
@@ -79,11 +91,11 @@ public class StatsController extends BaseController {
     }
 
     private StatsSkillPerformance emptySkillPerformance() {
-        return new StatsSkillPerformance("No skill data yet", 0, 0, 0, 0, 0, 0, 0);
+        return new StatsSkillPerformance("Stats appear after reviews", 0, 0, 0, 0, 0, 0, 0);
     }
 
     private StatsSkillPerformance emptyNeedsPractice() {
-        return new StatsSkillPerformance("No weak areas flagged", 0, 0, 0, 0, 0, 0, 0);
+        return new StatsSkillPerformance("No weak areas yet", 0, 0, 0, 0, 0, 0, 0);
     }
 
     private String formatReview(ReviewHistory history) {
@@ -192,7 +204,7 @@ public class StatsController extends BaseController {
 
     private String formatSkillDetail(StatsSkillPerformance performance) {
         if (performance.totalCards() == 0 && performance.recentReviews() == 0) {
-            return "Add categorized cards and complete reviews to populate accuracy, weak-area, and rating distribution signals.";
+            return "Stats appear after review sessions. Next action: start a review once cards are due to populate accuracy and weak-area signals.";
         }
         return String.format("%.0f%% accuracy from %d recent reviews · %.0f%% Again/Hard weak-area signal · %d due of %d cards",
                 performance.accuracyPercent(),

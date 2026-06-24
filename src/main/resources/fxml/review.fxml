@@ -69,6 +69,7 @@
                             <VBox spacing="12" styleClass="answer-section">
                                 <Label text="ANSWER" styleClass="stat-label" />
                                 <Label fx:id="answerLabel" styleClass="review-answer" wrapText="true" />
+                                <Button fx:id="emptyStateActionButton" text="Add a Card" onAction="#goAddCard" styleClass="action-button" maxWidth="Infinity" visible="false" managed="false" />
                             </VBox>
                             <VBox spacing="14" styleClass="rating-panel" maxWidth="Infinity">
                                 <Label text="How did recall feel?" styleClass="section-title" />

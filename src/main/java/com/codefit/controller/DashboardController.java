@@ -1,9 +1,12 @@
 package com.codefit.controller;
 
+import com.codefit.model.DailyQuest;
+import com.codefit.model.DailyQuestObjectiveType;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.SyllabusModule;
 import com.codefit.model.UserProgress;
+import com.codefit.service.DailyQuestService;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
@@ -39,6 +42,9 @@ public class DashboardController extends BaseController {
     @FXML private Label deckCountLabel;
     @FXML private Label cardCountLabel;
     @FXML private Label dueCountLabel;
+    @FXML private Label dailyQuestTitleLabel;
+    @FXML private Label dailyQuestProgressLabel;
+    @FXML private ProgressBar dailyQuestProgressBar;
     @FXML private Label emptyStateLabel;
     @FXML private Label nextActionTitleLabel;
     @FXML private Label nextActionHelperLabel;
@@ -48,6 +54,7 @@ public class DashboardController extends BaseController {
 
     private final ProgressService progressService = new ProgressService();
     private final DeckService deckService = new DeckService();
+    private final DailyQuestService dailyQuestService = new DailyQuestService();
     private final FlashcardService flashcardService = new FlashcardService();
     private final SyllabusService syllabusService = new SyllabusService();
 
@@ -66,10 +73,32 @@ public class DashboardController extends BaseController {
         cardCountLabel.setText(String.valueOf(cardCount));
         dueCountLabel.setText(dueCount + " cards due");
         levelProgressBar.setProgress(calculateLevelProgress(progress));
+        configureDailyQuest();
 
         populateRecentDecks(decks);
 
         configureEmptyState(decks, deckCount, cardCount, dueCount);
+    }
+
+
+    private void configureDailyQuest() {
+        DailyQuest quest = dailyQuestService.getActiveQuest();
+        dailyQuestTitleLabel.setText(formatQuestTitle(quest));
+        dailyQuestProgressLabel.setText(quest.getCurrentCount() + " / " + quest.getTargetCount()
+                + " • " + quest.getXpReward() + " XP" + (quest.isCompleted() ? " • Complete" : ""));
+        dailyQuestProgressBar.setProgress(quest.getTargetCount() == 0
+                ? 0
+                : Math.min(1.0, quest.getCurrentCount() / (double) quest.getTargetCount()));
+    }
+
+    private String formatQuestTitle(DailyQuest quest) {
+        if (quest.getObjectiveType() == DailyQuestObjectiveType.REVIEW_DUE_CARDS) {
+            return "Daily quest: review due cards";
+        }
+        if (quest.getObjectiveType() == DailyQuestObjectiveType.PRACTICE_WEAK_SKILL) {
+            return "Daily quest: practice " + quest.getSkillCategory();
+        }
+        return "Daily quest: add a stretch card";
     }
 
     private void configureEmptyState(List<Deck> decks, int deckCount, int cardCount, int dueCount) {

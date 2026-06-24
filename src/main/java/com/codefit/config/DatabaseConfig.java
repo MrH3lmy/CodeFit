@@ -75,6 +75,19 @@ public final class DatabaseConfig {
                         total_reviews INTEGER NOT NULL DEFAULT 0
                     )
                     """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS daily_quests (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        quest_date TEXT NOT NULL UNIQUE,
+                        objective_type TEXT NOT NULL,
+                        skill_category TEXT,
+                        target_count INTEGER NOT NULL,
+                        current_count INTEGER NOT NULL DEFAULT 0,
+                        completed INTEGER NOT NULL DEFAULT 0,
+                        xp_awarded INTEGER NOT NULL DEFAULT 0,
+                        xp_reward INTEGER NOT NULL DEFAULT 25
+                    )
+                    """);
             ensureFlashcardColumns(connection);
             ensureReviewHistoryColumns(connection);
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");

@@ -7,10 +7,14 @@ import com.codefit.service.FlashcardImportExportService;
 import com.codefit.service.FlashcardImportExportService.ImportExportException;
 import com.codefit.service.FlashcardImportExportService.ImportSummary;
 import com.codefit.service.FlashcardService;
+import com.codefit.service.SyllabusService;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.OptionalInt;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -29,6 +33,7 @@ import javafx.scene.layout.VBox;
 
 public class DecksController extends BaseController {
     private static final DateTimeFormatter DUE_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d");
+    private static final Pattern JAVA_BE_MODULE_PATTERN = Pattern.compile("^\\s*Java\\s+BE\\s+(\\d{1,2})\\b.*", Pattern.CASE_INSENSITIVE);
 
     @FXML private ListView<Deck> deckListView;
     @FXML private ListView<Flashcard> cardListView;
@@ -40,6 +45,7 @@ public class DecksController extends BaseController {
 
     private final DeckService deckService = new DeckService();
     private final FlashcardService flashcardService = new FlashcardService();
+    private final SyllabusService syllabusService = new SyllabusService();
     private final FlashcardImportExportService importExportService = new FlashcardImportExportService(flashcardService);
 
     @FXML
@@ -230,13 +236,52 @@ public class DecksController extends BaseController {
 
             nameLabel.setText(displayText(deck.getName(), "Untitled deck"));
             descriptionLabel.setText(displayText(deck.getDescription(), "No description yet."));
-            metadataLabel.setText(String.format(
+            metadataLabel.setText(formatMetadata(deck, totalCards, dueCards, reviewedPercent));
+            setGraphic(content);
+        }
+
+        private String formatMetadata(Deck deck, long totalCards, long dueCards, long reviewedPercent) {
+            String cardSummary = String.format(
                     "%d %s • %d due • %d%% reviewed",
                     totalCards,
                     totalCards == 1 ? "card" : "cards",
                     dueCards,
-                    reviewedPercent));
-            setGraphic(content);
+                    reviewedPercent);
+            return detectJavaBackendModule(deck)
+                    .stream()
+                    .mapToObj(moduleNumber -> String.format("Module %02d • %s", moduleNumber, cardSummary))
+                    .findFirst()
+                    .orElse(cardSummary);
+        }
+
+        private OptionalInt detectJavaBackendModule(Deck deck) {
+            if (deck == null) {
+                return OptionalInt.empty();
+            }
+
+            OptionalInt syllabusModule = syllabusService.getJavaBackendModules().stream()
+                    .filter(module -> module.getDeckId() == deck.getId()
+                            || module.getDeckName().equalsIgnoreCase(deck.getName()))
+                    .mapToInt(module -> module.getModuleNumber())
+                    .findFirst();
+            if (syllabusModule.isPresent()) {
+                return syllabusModule;
+            }
+
+            return parseJavaBackendModule(deck.getName());
+        }
+
+        private OptionalInt parseJavaBackendModule(String deckName) {
+            if (deckName == null) {
+                return OptionalInt.empty();
+            }
+
+            Matcher matcher = JAVA_BE_MODULE_PATTERN.matcher(deckName);
+            if (!matcher.matches()) {
+                return OptionalInt.empty();
+            }
+
+            return OptionalInt.of(Integer.parseInt(matcher.group(1)));
         }
 
         private long countDueCards(List<Flashcard> cards) {

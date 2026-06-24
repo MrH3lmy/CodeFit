@@ -3,6 +3,7 @@ package com.codefit.controller;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.UserProgress;
+import com.codefit.service.EngineerReadinessStats;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
@@ -29,6 +30,10 @@ public class StatsController extends BaseController {
     @FXML private Label totalCardsLabel;
     @FXML private Label dueCardsLabel;
     @FXML private Label reviewedTodayLabel;
+    @FXML private Label readinessScoreLabel;
+    @FXML private Label timedFluencyLabel;
+    @FXML private Label weakAreaPressureLabel;
+    @FXML private Label consistencyLabel;
     @FXML private Label statsEmptyStateLabel;
     @FXML private ProgressBar xpProgressBar;
     @FXML private VBox statsEmptyStateBox;
@@ -52,6 +57,7 @@ public class StatsController extends BaseController {
         dueCardsLabel.setText(String.valueOf(statsService.getDueCards()));
         reviewedTodayLabel.setText(String.valueOf(statsService.getReviewedToday()));
         xpProgressBar.setProgress((progress.getXp() % ProgressService.XP_PER_LEVEL) / (double) ProgressService.XP_PER_LEVEL);
+        configureReadinessStats(statsService.getEngineerReadinessStats());
         configureStatsEmptyState(progress.getTotalReviews());
 
         configureSkillPerformanceList();
@@ -71,6 +77,25 @@ public class StatsController extends BaseController {
         needsPracticeListView.setItems(needsPractice.isEmpty()
                 ? FXCollections.observableArrayList(emptyNeedsPractice())
                 : FXCollections.observableArrayList(needsPractice));
+    }
+
+    private void configureReadinessStats(EngineerReadinessStats readinessStats) {
+        if (!readinessStats.hasSignal()) {
+            readinessScoreLabel.setText("No signal");
+            timedFluencyLabel.setText("No signal");
+            weakAreaPressureLabel.setText("No signal");
+            consistencyLabel.setText("No signal");
+            return;
+        }
+
+        readinessScoreLabel.setText(formatPercent(readinessStats.readinessScore()));
+        timedFluencyLabel.setText(formatPercent(readinessStats.timedSuccessPercent()));
+        weakAreaPressureLabel.setText(formatPercent(readinessStats.weakAreaRatePercent()));
+        consistencyLabel.setText(formatPercent(readinessStats.consistencyPercent()));
+    }
+
+    private String formatPercent(double value) {
+        return String.format("%.0f%%", value);
     }
 
     private void configureStatsEmptyState(int totalReviews) {

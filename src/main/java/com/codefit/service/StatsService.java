@@ -8,14 +8,18 @@ import com.codefit.repository.FlashcardRepository;
 import com.codefit.repository.ReviewHistoryRepository;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class StatsService {
     private static final int RECENT_SKILL_REVIEW_LIMIT = 100;
+    private static final int READINESS_REVIEW_LIMIT = 50;
+    private static final int CONSISTENCY_WINDOW_DAYS = 7;
 
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
     private final ReviewHistoryRepository reviewHistoryRepository = new ReviewHistoryRepository();
@@ -39,6 +43,82 @@ public class StatsService {
 
     public List<ReviewHistory> getRecentReviews() {
         return reviewHistoryRepository.findRecent(10);
+    }
+
+    public EngineerReadinessStats getEngineerReadinessStats() {
+        List<ReviewHistory> recentReviews = reviewHistoryRepository.findRecent(READINESS_REVIEW_LIMIT);
+        double recentAccuracy = getOverallRecentAccuracy(recentReviews);
+        double timedSuccessRate = getTimedSuccessRate(recentReviews);
+        double weakAreaRate = getWeakAreaRate(recentReviews);
+        double consistencyScore = getConsistencyScore(recentReviews);
+        double readinessScore = recentReviews.isEmpty() ? 0.0
+                : (recentAccuracy * 0.40) + (timedSuccessRate * 0.25)
+                + ((100.0 - weakAreaRate) * 0.20) + (consistencyScore * 0.15);
+
+        return new EngineerReadinessStats(recentReviews.size(), readinessScore, recentAccuracy,
+                timedSuccessRate, weakAreaRate, consistencyScore);
+    }
+
+    public double getOverallRecentAccuracy() {
+        return getOverallRecentAccuracy(reviewHistoryRepository.findRecent(READINESS_REVIEW_LIMIT));
+    }
+
+    public double getTimedSuccessRate() {
+        return getTimedSuccessRate(reviewHistoryRepository.findRecent(READINESS_REVIEW_LIMIT));
+    }
+
+    public double getWeakAreaRate() {
+        return getWeakAreaRate(reviewHistoryRepository.findRecent(READINESS_REVIEW_LIMIT));
+    }
+
+    public double getConsistencyScore() {
+        return getConsistencyScore(reviewHistoryRepository.findRecent(READINESS_REVIEW_LIMIT));
+    }
+
+    private double getOverallRecentAccuracy(List<ReviewHistory> recentReviews) {
+        if (recentReviews.isEmpty()) {
+            return 0.0;
+        }
+        long successfulReviews = recentReviews.stream()
+                .filter(history -> history.getRating() == ReviewRating.GOOD || history.getRating() == ReviewRating.EASY)
+                .count();
+        return successfulReviews * 100.0 / recentReviews.size();
+    }
+
+    private double getTimedSuccessRate(List<ReviewHistory> recentReviews) {
+        if (recentReviews.isEmpty()) {
+            return 0.0;
+        }
+        long submittedInTime = recentReviews.stream()
+                .filter(ReviewHistory::isSubmittedInTime)
+                .count();
+        return submittedInTime * 100.0 / recentReviews.size();
+    }
+
+    private double getWeakAreaRate(List<ReviewHistory> recentReviews) {
+        if (recentReviews.isEmpty()) {
+            return 0.0;
+        }
+        long weakAreaReviews = recentReviews.stream()
+                .filter(history -> history.getRating() == ReviewRating.AGAIN || history.getRating() == ReviewRating.HARD)
+                .count();
+        return weakAreaReviews * 100.0 / recentReviews.size();
+    }
+
+    private double getConsistencyScore(List<ReviewHistory> recentReviews) {
+        if (recentReviews.isEmpty()) {
+            return 0.0;
+        }
+
+        LocalDate today = LocalDate.now();
+        Set<LocalDate> activeReviewDates = recentReviews.stream()
+                .map(ReviewHistory::getReviewedAt)
+                .map(reviewedAt -> reviewedAt == null ? today : reviewedAt.toLocalDate())
+                .filter(reviewDate -> !reviewDate.isAfter(today))
+                .filter(reviewDate -> ChronoUnit.DAYS.between(reviewDate, today) < CONSISTENCY_WINDOW_DAYS)
+                .collect(Collectors.toSet());
+
+        return activeReviewDates.size() * 100.0 / CONSISTENCY_WINDOW_DAYS;
     }
 
     public List<StatsSkillPerformance> getSkillPerformance() {

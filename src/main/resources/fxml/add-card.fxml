@@ -34,13 +34,13 @@
                                 </VBox>
                                 <VBox fx:id="frontField" spacing="6" maxWidth="Infinity">
                                     <Label fx:id="frontLabel" text="Prompt" styleClass="section-title" />
-                                    <TextArea fx:id="frontArea" promptText="Question, code snippet, or concept" prefRowCount="6" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
-                                    <Label fx:id="frontHelpLabel" text="Write the cue learners should recognize: a question, term, bug, or code snippet." styleClass="helper-text" wrapText="true" />
+                                    <TextArea fx:id="frontArea" promptText="Example: What HTTP status should a POST create endpoint return?" prefRowCount="6" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
+                                    <Label fx:id="frontHelpLabel" text="Use Java BE prompts such as REST endpoint behavior, a SQL query task, a Spring annotation question, or an exception scenario." styleClass="helper-text" wrapText="true" />
                                 </VBox>
                                 <VBox fx:id="backField" spacing="6" maxWidth="Infinity">
                                     <Label fx:id="backLabel" text="Answer" styleClass="section-title" />
-                                    <TextArea fx:id="backArea" promptText="Answer, explanation, or expected output" prefRowCount="8" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
-                                    <Label fx:id="backHelpLabel" text="Keep it concise, then add the key explanation, edge case, or command that makes the answer stick." styleClass="helper-text" wrapText="true" />
+                                    <TextArea fx:id="backArea" promptText="Example: 201 Created with a Location header" prefRowCount="8" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
+                                    <Label fx:id="backHelpLabel" text="Answer with the expected HTTP status, annotation purpose, query result, or a short explanation." styleClass="helper-text" wrapText="true" />
                                 </VBox>
                             </VBox>
                             <TitledPane text="Optional details" expanded="false" maxWidth="Infinity">
@@ -48,7 +48,7 @@
                                     <VBox spacing="12" maxWidth="Infinity">
                                         <VBox spacing="6" maxWidth="Infinity">
                                             <Label text="Skill / Category" styleClass="section-title" />
-                                            <TextField fx:id="skillCategoryField" promptText="Example: Java Syntax, SQL, JavaFX UI" maxWidth="Infinity" />
+                                            <TextField fx:id="skillCategoryField" promptText="Example: Spring REST, JPA, SQL, Testing, Security" maxWidth="Infinity" />
                                             <Label text="Categories power per-skill stats and weak-area detection." styleClass="helper-text" wrapText="true" />
                                         </VBox>
                                         <VBox fx:id="hintField" spacing="6" maxWidth="Infinity">

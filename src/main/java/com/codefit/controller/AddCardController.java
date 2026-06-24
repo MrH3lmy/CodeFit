@@ -20,6 +20,10 @@ import javafx.scene.layout.VBox;
 public class AddCardController extends BaseController {
     private static final String FRONT_PREVIEW_FALLBACK = "Your prompt preview will appear here.";
     private static final String BACK_PREVIEW_FALLBACK = "Your answer preview will appear here.";
+    private static final String DEFAULT_JAVA_BE_SKILL_CATEGORY = "Spring REST";
+    private static final String[] JAVA_BE_SKILL_CATEGORIES = {
+            "Spring REST", "JPA", "SQL", "Testing", "Security"
+    };
 
     @FXML private ComboBox<Deck> deckComboBox;
     @FXML private ComboBox<CardType> cardTypeComboBox;
@@ -65,6 +69,7 @@ public class AddCardController extends BaseController {
         validationModeComboBox.getSelectionModel().select(ValidationMode.CASE_INSENSITIVE);
         timeLimitSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 5));
         cardTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applyTemplate(newValue));
+        deckComboBox.valueProperty().addListener((observable, oldValue, newValue) -> suggestJavaBeSkillCategory(newValue));
         frontPreviewLabel.setText(previewText(frontArea.getText(), FRONT_PREVIEW_FALLBACK));
         backPreviewLabel.setText(previewText(backArea.getText(), BACK_PREVIEW_FALLBACK));
         frontArea.textProperty().addListener((observable, oldValue, newValue) ->
@@ -92,6 +97,7 @@ public class AddCardController extends BaseController {
             setStatus(messageLabel, "No decks available. Create a deck before adding cards.");
         } else {
             deckComboBox.getSelectionModel().selectFirst();
+            suggestJavaBeSkillCategory(deckComboBox.getValue());
             setStatus(messageLabel, "");
         }
     }
@@ -168,9 +174,9 @@ public class AddCardController extends BaseController {
                     "Simulated Git output", "Optional Git output shown after reveal");
             case SQL_QUERY -> configureCopy(
                     "SQL query template: focus on schema, expected query, and equivalent answers.",
-                    "Example: Prompt: users(id, email); find duplicate emails. Answer: SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1;",
-                    "Schema or request", "Describe the table schema and the data question to answer.",
-                    "Expected query", "Enter the query and a brief explanation of important clauses.",
+                    "Example: Prompt: Given orders(id, status), count shipped orders. Answer: SELECT COUNT(*) FROM orders WHERE status = 'SHIPPED';",
+                    "SQL query prompt", "Describe the table schema and the query result learners should produce.",
+                    "Expected query or result", "Enter the expected query, query result, and a brief explanation of important clauses.",
                     "Accepted query variants", "Accepted SQL queries, one per line",
                     "", "");
             case REGEX_PATTERN -> configureCopy(
@@ -181,20 +187,38 @@ public class AddCardController extends BaseController {
                     "Accepted regex patterns", "Accepted regex patterns, one per line",
                     "", "");
             case CODE_OUTPUT -> configureCopy(
-                    "Code output template: ask learners to predict a snippet's output.",
-                    "Example: Prompt: for (int i = 0; i < 3; i++) print(i). Answer: 0 1 2",
-                    "Code snippet", "Paste the code whose output should be predicted.",
-                    "Expected output", "Enter the exact output and explain the execution path.",
+                    "Code output template: ask learners to predict Java BE behavior or output.",
+                    "Example: Prompt: What happens when a @Transactional service throws a RuntimeException? Answer: The transaction rolls back by default.",
+                    "Java BE scenario", "Describe REST endpoint behavior, a Spring annotation, SQL query, or exception scenario.",
+                    "Expected behavior", "Enter the expected HTTP status, annotation purpose, query result, or short explanation.",
                     "", "",
                     "Runtime output", "Optional runtime output shown after reveal");
             default -> configureCopy(
-                    concept ? "Concept flashcard template: capture one focused term, question, or idea." : "Command template: practice command syntax and output safely.",
-                    command ? "Example: Prompt: Show disk usage for this folder. Answer: du -sh ." : "",
-                    "Prompt", "Write the cue learners should recognize: a question, term, bug, or code snippet.",
-                    "Answer", "Keep it concise, then add the key explanation, edge case, or command that makes the answer stick.",
+                    concept ? "Java BE concept template: capture one focused REST, Spring, SQL, testing, or security idea." : "Command template: practice command syntax and output safely.",
+                    command ? "Example: Prompt: Show disk usage for this folder. Answer: du -sh ." : "Example: Prompt: Which annotation maps a controller method to POST /orders? Answer: @PostMapping(\"/orders\") declares the POST route.",
+                    "Prompt", "Use Java BE prompts such as REST endpoint behavior, a SQL query task, a Spring annotation question, or an exception scenario.",
+                    "Answer", "Answer with the expected HTTP status, annotation purpose, query result, or a short explanation.",
                     "Accepted command answers", "Accepted command answers, one per line",
                     "Simulated output", "Optional simulated output shown after reveal");
         }
+    }
+
+    private void suggestJavaBeSkillCategory(Deck deck) {
+        if (deck == null || deck.getName() == null || !deck.getName().startsWith("Java BE")) {
+            return;
+        }
+        if (skillCategoryField.getText() == null || skillCategoryField.getText().isBlank()) {
+            skillCategoryField.setText(javaBeSkillCategoryFor(deck.getName()));
+        }
+    }
+
+    private String javaBeSkillCategoryFor(String deckName) {
+        for (String category : JAVA_BE_SKILL_CATEGORIES) {
+            if (deckName.toLowerCase().contains(category.toLowerCase())) {
+                return category;
+            }
+        }
+        return DEFAULT_JAVA_BE_SKILL_CATEGORY;
     }
 
     private void configureCopy(String templateHelp, String templateExample, String frontTitle, String frontHelp, String backTitle, String backHelp,

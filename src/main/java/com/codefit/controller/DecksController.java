@@ -100,6 +100,17 @@ public class DecksController extends BaseController {
     }
 
     @FXML
+    public void createJavaBackendPath() {
+        try {
+            deckService.createJavaBackendPath();
+            loadDecks();
+            setStatus(messageLabel, "Java Backend Engineering path added.");
+        } catch (RuntimeException exception) {
+            setStatus(messageLabel, exception.getMessage());
+        }
+    }
+
+    @FXML
     public void createDeck() {
         try {
             deckService.createDeck(deckNameField.getText(), deckDescriptionArea.getText());

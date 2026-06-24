@@ -38,6 +38,7 @@
                             <TextField fx:id="deckNameField" promptText="Deck name" maxWidth="Infinity" />
                             <TextArea fx:id="deckDescriptionArea" promptText="Description" prefRowCount="8" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
                             <Button text="Create Deck" onAction="#createDeck" styleClass="action-button" maxWidth="Infinity" />
+                            <Button text="Create Java BE Path" onAction="#createJavaBackendPath" maxWidth="Infinity" />
                         </VBox>
                     </FlowPane>
                 </VBox>

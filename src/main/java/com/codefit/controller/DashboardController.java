@@ -128,6 +128,7 @@ public class DashboardController extends BaseController {
         int reviewedToday = statsService.getReviewedToday();
         int timedReviewedToday = countTimedReviewsToday(allCards);
         int cardsCreatedToday = countCardsCreatedToday(allCards);
+        int reflectionCardsCreatedToday = countReflectionCardsCreatedToday(allCards);
 
         List<RoutineItem> routineItems = List.of(
                 new RoutineItem(
@@ -154,7 +155,13 @@ public class DashboardController extends BaseController {
                         getAddCardProgressText(quest, cardsCreatedToday),
                         "Keep your deck fresh with one new or improved prompt",
                         isAddCardRoutineComplete(quest, cardsCreatedToday),
-                        this::goAddCard)
+                        this::goAddCard),
+                new RoutineItem(
+                        "Optional reflection card",
+                        reflectionCardsCreatedToday + " / 1 reflection today",
+                        "Capture one bug, searched command, or missed concept from real work",
+                        reflectionCardsCreatedToday > 0,
+                        () -> NavigationService.showAddCardReflection("concept"))
         );
 
         routineItems.stream()
@@ -227,6 +234,15 @@ public class DashboardController extends BaseController {
         return (int) allCards.stream()
                 .map(Flashcard::getCreatedAt)
                 .filter(createdAt -> isToday(createdAt, today))
+                .count();
+    }
+
+    private int countReflectionCardsCreatedToday(List<Flashcard> allCards) {
+        LocalDate today = LocalDate.now();
+        return (int) allCards.stream()
+                .filter(card -> isToday(card.getCreatedAt(), today))
+                .map(Flashcard::getSkillCategory)
+                .filter(skillCategory -> skillCategory != null && skillCategory.strip().startsWith("Reflection:"))
                 .count();
     }
 

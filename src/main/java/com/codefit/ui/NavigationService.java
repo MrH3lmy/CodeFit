@@ -26,6 +26,7 @@ public final class NavigationService {
     private static Stage primaryStage;
     private static Scene primaryScene;
     private static boolean weeklyBossModeRequested;
+    private static String pendingReflectionType;
     private static String selectedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
 
     private NavigationService() {
@@ -44,7 +45,19 @@ public final class NavigationService {
     }
 
     public static void showAddCard() {
+        pendingReflectionType = null;
         navigate("add-card.fxml", "CodeFit - Add Card");
+    }
+
+    public static void showAddCardReflection(String reflectionType) {
+        pendingReflectionType = reflectionType;
+        navigate("add-card.fxml", "CodeFit - Add Reflection Card");
+    }
+
+    public static String consumePendingReflectionType() {
+        String reflectionType = pendingReflectionType;
+        pendingReflectionType = null;
+        return reflectionType;
     }
 
     public static void showReview() {

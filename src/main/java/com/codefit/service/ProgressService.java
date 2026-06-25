@@ -5,13 +5,19 @@ import com.codefit.model.UserProgress;
 import com.codefit.repository.UserProgressRepository;
 
 import java.time.LocalDate;
+import java.util.prefs.Preferences;
 
 public class ProgressService {
     public static final int XP_PER_LEVEL = 100;
     private static final int CONSISTENT_STREAK_DAYS = 7;
     private static final int EXPERIENCED_REVIEW_COUNT = 50;
+    public static final int REFLECTION_CARD_XP = 5;
+    public static final int REFLECTION_CARD_DAILY_XP_CAP = 15;
+    private static final String REFLECTION_XP_DATE_KEY = "reflectionXpDate";
+    private static final String REFLECTION_XP_TOTAL_KEY = "reflectionXpTotal";
     private final UserProgressRepository userProgressRepository = new UserProgressRepository();
     private final DailyQuestService dailyQuestService = new DailyQuestService();
+    private final Preferences preferences = Preferences.userNodeForPackage(ProgressService.class);
 
     public UserProgress getProgress() {
         return userProgressRepository.getProgress();
@@ -42,6 +48,31 @@ public class ProgressService {
             return "D-Rank Backend Apprentice";
         }
         return "E-Rank Backend Starter";
+    }
+
+    public int recordReflectionCardCreated() {
+        LocalDate today = LocalDate.now();
+        int awardedToday = getReflectionXpAwardedToday(today);
+        int award = Math.min(REFLECTION_CARD_XP, REFLECTION_CARD_DAILY_XP_CAP - awardedToday);
+        if (award <= 0) {
+            return 0;
+        }
+
+        UserProgress progress = userProgressRepository.getProgress();
+        progress.setXp(progress.getXp() + award);
+        progress.setLevel((progress.getXp() / XP_PER_LEVEL) + 1);
+        userProgressRepository.save(progress);
+        preferences.put(REFLECTION_XP_DATE_KEY, today.toString());
+        preferences.putInt(REFLECTION_XP_TOTAL_KEY, awardedToday + award);
+        return award;
+    }
+
+    private int getReflectionXpAwardedToday(LocalDate today) {
+        String awardDate = preferences.get(REFLECTION_XP_DATE_KEY, "");
+        if (!today.toString().equals(awardDate)) {
+            return 0;
+        }
+        return preferences.getInt(REFLECTION_XP_TOTAL_KEY, 0);
     }
 
     public UserProgress recordReview(ReviewRating rating) {

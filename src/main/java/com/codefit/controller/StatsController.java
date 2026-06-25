@@ -44,12 +44,13 @@ public class StatsController extends BaseController {
     private static final int MAX_PROMPT_LENGTH = 48;
 
     private final StatsService statsService = new StatsService();
+    private final ProgressService progressService = new ProgressService();
     private final FlashcardService flashcardService = new FlashcardService();
 
     @FXML
     public void initialize() {
         UserProgress progress = statsService.getProgress();
-        levelLabel.setText("Level " + progress.getLevel());
+        levelLabel.setText(progress.getLevelRankLabel(progressService.getRankTitle(progress)));
         xpLabel.setText(progress.getXp() + " XP");
         streakLabel.setText(progress.getStreakDays() + " days");
         totalReviewsLabel.setText(String.valueOf(progress.getTotalReviews()));

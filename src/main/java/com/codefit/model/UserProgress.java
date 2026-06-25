@@ -35,6 +35,10 @@ public class UserProgress {
     public void setXp(int xp) { this.xp = xp; }
     public int getLevel() { return level; }
     public void setLevel(int level) { this.level = level; }
+    public String getLevelRankLabel(String rankTitle) {
+        String normalizedRankTitle = rankTitle == null || rankTitle.isBlank() ? "Unranked" : rankTitle.strip();
+        return "Level " + level + " · " + normalizedRankTitle;
+    }
     public int getStreakDays() { return streakDays; }
     public void setStreakDays(int streakDays) { this.streakDays = streakDays; }
     public LocalDate getLastReviewDate() { return lastReviewDate; }

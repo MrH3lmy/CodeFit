@@ -72,7 +72,7 @@ public class DashboardController extends BaseController {
         int cardCount = flashcardService.countAllCards();
         int dueCount = flashcardService.countDueCards();
 
-        levelLabel.setText("Level " + progress.getLevel());
+        levelLabel.setText(progress.getLevelRankLabel(progressService.getRankTitle(progress)));
         xpLabel.setText(formatXpProgress(progress));
         streakLabel.setText(formatStreakState(progress));
         deckCountLabel.setText(String.valueOf(deckCount));

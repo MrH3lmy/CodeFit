@@ -12,13 +12,15 @@ public class UserProgress {
     private int missedDayCount;
     private int streakFreezeCount;
     private boolean recoveryQuestActive;
+    private DailyWorkloadMode dailyWorkloadMode;
 
     public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews) {
-        this(id, xp, level, streakDays, lastReviewDate, totalReviews, 0, 0, false);
+        this(id, xp, level, streakDays, lastReviewDate, totalReviews, 0, 0, false, DailyWorkloadMode.NORMAL);
     }
 
     public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews,
-                        int missedDayCount, int streakFreezeCount, boolean recoveryQuestActive) {
+                        int missedDayCount, int streakFreezeCount, boolean recoveryQuestActive,
+                        DailyWorkloadMode dailyWorkloadMode) {
         this.id = id;
         this.xp = xp;
         this.level = level;
@@ -28,6 +30,7 @@ public class UserProgress {
         this.missedDayCount = missedDayCount;
         this.streakFreezeCount = streakFreezeCount;
         this.recoveryQuestActive = recoveryQuestActive;
+        this.dailyWorkloadMode = dailyWorkloadMode == null ? DailyWorkloadMode.NORMAL : dailyWorkloadMode;
     }
 
     public long getId() { return id; }
@@ -51,4 +54,8 @@ public class UserProgress {
     public void setStreakFreezeCount(int streakFreezeCount) { this.streakFreezeCount = streakFreezeCount; }
     public boolean isRecoveryQuestActive() { return recoveryQuestActive; }
     public void setRecoveryQuestActive(boolean recoveryQuestActive) { this.recoveryQuestActive = recoveryQuestActive; }
+    public DailyWorkloadMode getDailyWorkloadMode() { return dailyWorkloadMode; }
+    public void setDailyWorkloadMode(DailyWorkloadMode dailyWorkloadMode) {
+        this.dailyWorkloadMode = dailyWorkloadMode == null ? DailyWorkloadMode.NORMAL : dailyWorkloadMode;
+    }
 }

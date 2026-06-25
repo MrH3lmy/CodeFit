@@ -76,7 +76,8 @@ public final class DatabaseConfig {
                         total_reviews INTEGER NOT NULL DEFAULT 0,
                         missed_day_count INTEGER NOT NULL DEFAULT 0,
                         streak_freeze_count INTEGER NOT NULL DEFAULT 0,
-                        recovery_quest_active INTEGER NOT NULL DEFAULT 0
+                        recovery_quest_active INTEGER NOT NULL DEFAULT 0,
+                        daily_workload_mode TEXT NOT NULL DEFAULT 'NORMAL'
                     )
                     """);
             statement.execute("""
@@ -125,6 +126,7 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "user_progress", "missed_day_count", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "user_progress", "streak_freeze_count", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "user_progress", "recovery_quest_active", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "user_progress", "daily_workload_mode", "TEXT NOT NULL DEFAULT 'NORMAL'");
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

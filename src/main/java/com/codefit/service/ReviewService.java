@@ -1,10 +1,12 @@
 package com.codefit.service;
 
+import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.ReviewRating;
 import com.codefit.repository.FlashcardRepository;
 import com.codefit.repository.ReviewHistoryRepository;
+import com.codefit.repository.UserProgressRepository;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -18,12 +20,20 @@ public class ReviewService {
     private static final int WEEKLY_BOSS_CARD_LIMIT = 12;
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
     private final ReviewHistoryRepository reviewHistoryRepository = new ReviewHistoryRepository();
+    private final UserProgressRepository userProgressRepository = new UserProgressRepository();
     private final SpacedRepetitionService spacedRepetitionService = new SpacedRepetitionService();
     private final ProgressService progressService = new ProgressService();
     private final DailyQuestService dailyQuestService = new DailyQuestService();
 
+    public DailyWorkloadMode getDailyWorkloadMode() {
+        return userProgressRepository.getProgress().getDailyWorkloadMode();
+    }
+
     public List<Flashcard> getDueCards() {
-        return flashcardRepository.findDueCards();
+        DailyWorkloadMode mode = getDailyWorkloadMode();
+        return flashcardRepository.findDueCards().stream()
+                .limit(mode.getReviewSessionLimit())
+                .toList();
     }
 
     public List<Flashcard> getWeeklyBossCards() {

@@ -38,6 +38,7 @@ public class DashboardController extends BaseController {
     @FXML private Label deckCountLabel;
     @FXML private Label cardCountLabel;
     @FXML private Label dueCountLabel;
+    @FXML private Label workloadModeLabel;
     @FXML private Label dailyQuestTitleLabel;
     @FXML private Label dailyQuestProgressLabel;
     @FXML private ProgressBar dailyQuestProgressBar;
@@ -70,6 +71,7 @@ public class DashboardController extends BaseController {
         deckCountLabel.setText(String.valueOf(deckCount));
         cardCountLabel.setText(String.valueOf(cardCount));
         dueCountLabel.setText(dueCount + " cards due");
+        workloadModeLabel.setText(progress.getDailyWorkloadMode().getSummary());
         levelProgressBar.setProgress(calculateLevelProgress(progress));
         DailyQuest dailyQuest = configureDailyQuest();
 
@@ -133,7 +135,7 @@ public class DashboardController extends BaseController {
         List<RoutineItem> routineItems = List.of(
                 new RoutineItem(
                         "Review due cards",
-                        dueCount == 0 ? "Queue clear" : dueCount + " due now",
+                        dueCount == 0 ? "Queue clear" : Math.min(dueCount, progressService.getProgress().getDailyWorkloadMode().getReviewSessionLimit()) + " planned of " + dueCount + " due",
                         reviewedToday + " reviewed today",
                         dueCount == 0,
                         this::goReview),

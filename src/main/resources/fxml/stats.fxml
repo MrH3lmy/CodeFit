@@ -30,6 +30,12 @@
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="CONSISTENCY" styleClass="stat-label" /><Label fx:id="consistencyLabel" styleClass="stat-value" wrapText="true" /><Label text="Active days in the last week" styleClass="muted" wrapText="true" /></VBox>
                     </TilePane>
                     <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
+                        <Label text="Daily Training Intensity" styleClass="section-title" />
+                        <Label text="Choose how much CodeFit should plan for today's quests, dashboard routine, and review-session queue." styleClass="muted" wrapText="true" />
+                        <ChoiceBox fx:id="workloadModeChoiceBox" maxWidth="Infinity" />
+                        <Label fx:id="workloadModeDetailLabel" styleClass="dashboard-card-helper" wrapText="true" />
+                    </VBox>
+                    <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
                         <Label text="Weekly Boss Battle" styleClass="section-title" />
                         <Label fx:id="weeklyBossScoreLabel" styleClass="stat-value accent" wrapText="true" />
                         <Label fx:id="weeklyBossWeakAreasLabel" styleClass="muted" wrapText="true" />

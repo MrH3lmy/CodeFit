@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 public class ReviewController extends BaseController {
     @FXML private BorderPane reviewRoot;
     @FXML private Label queueLabel;
+    @FXML private Label workloadModeLabel;
     @FXML private Label timerLabel;
     @FXML private Label promptLabel;
     @FXML private Label answerLabel;
@@ -84,6 +85,11 @@ public class ReviewController extends BaseController {
     @FXML
     public void initialize() {
         weeklyBossMode = NavigationService.consumeWeeklyBossModeRequest();
+        if (workloadModeLabel != null) {
+            workloadModeLabel.setText(reviewService.getDailyWorkloadMode().getSummary());
+            workloadModeLabel.setVisible(!weeklyBossMode);
+            workloadModeLabel.setManaged(!weeklyBossMode);
+        }
         dueCards = new ArrayList<>(weeklyBossMode ? reviewService.getWeeklyBossCards() : reviewService.getDueCards());
         currentIndex = 0;
         resetSessionMetrics();

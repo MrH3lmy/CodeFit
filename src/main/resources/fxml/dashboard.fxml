@@ -41,6 +41,7 @@
                                     <Label text="DUE NOW" styleClass="dashboard-card-title" wrapText="true" />
                                     <Label fx:id="dueCountLabel" styleClass="dashboard-card-value accent due-value" wrapText="true" />
                                     <Label text="Ready for review" styleClass="dashboard-card-helper" wrapText="true" />
+                                    <Label fx:id="workloadModeLabel" text="Normal · up to 10 review cards" styleClass="pill" wrapText="true" />
                                 </VBox>
                                 <VBox alignment="CENTER_LEFT" spacing="5" maxWidth="Infinity">
                                     <Label fx:id="dailyQuestTitleLabel" text="Daily quest: review due cards" styleClass="dashboard-card-title" wrapText="true" />

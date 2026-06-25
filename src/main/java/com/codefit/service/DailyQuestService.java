@@ -2,6 +2,7 @@ package com.codefit.service;
 
 import com.codefit.model.DailyQuest;
 import com.codefit.model.DailyQuestObjectiveType;
+import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.Flashcard;
 import com.codefit.model.UserProgress;
 import com.codefit.repository.DailyQuestRepository;
@@ -13,9 +14,6 @@ import java.util.List;
 
 public class DailyQuestService {
     private static final int DEFAULT_XP_REWARD = 25;
-    private static final int REVIEW_QUEST_TARGET = 5;
-    private static final int WEAK_SKILL_TARGET = 3;
-    private static final int STRETCH_CARD_TARGET = 1;
     private static final int RECOVERY_WEAK_AREA_TARGET = 10;
     private static final int RECOVERY_XP_REWARD = 50;
 
@@ -78,25 +76,28 @@ public class DailyQuestService {
     private DailyQuest buildRecoveryQuest(LocalDate questDate) {
         List<StatsSkillPerformance> weakSkills = new StatsService().getNeedsPracticeSkills();
         String recoverySkill = weakSkills.isEmpty() ? null : weakSkills.getFirst().skillCategory();
+        DailyWorkloadMode mode = userProgressRepository.getProgress().getDailyWorkloadMode();
+        int targetCount = Math.min(RECOVERY_WEAK_AREA_TARGET, Math.max(mode.getWeakSkillQuestTarget(), mode.getReviewSessionLimit()));
         return new DailyQuest(0, questDate, DailyQuestObjectiveType.RECOVERY_WEAK_AREAS, recoverySkill,
-                RECOVERY_WEAK_AREA_TARGET, 0, false, false, RECOVERY_XP_REWARD);
+                targetCount, 0, false, false, RECOVERY_XP_REWARD);
     }
 
     private DailyQuest generateQuest(LocalDate questDate) {
+        DailyWorkloadMode mode = userProgressRepository.getProgress().getDailyWorkloadMode();
         int dueCards = flashcardRepository.countDue();
         if (dueCards > 0) {
             return new DailyQuest(0, questDate, DailyQuestObjectiveType.REVIEW_DUE_CARDS, null,
-                    Math.min(REVIEW_QUEST_TARGET, dueCards), 0, false, false, DEFAULT_XP_REWARD);
+                    Math.min(mode.getDueReviewQuestTarget(), dueCards), 0, false, false, DEFAULT_XP_REWARD);
         }
 
         List<StatsSkillPerformance> weakSkills = new StatsService().getNeedsPracticeSkills();
         if (!weakSkills.isEmpty()) {
             return new DailyQuest(0, questDate, DailyQuestObjectiveType.PRACTICE_WEAK_SKILL,
-                    weakSkills.getFirst().skillCategory(), WEAK_SKILL_TARGET, 0, false, false, DEFAULT_XP_REWARD);
+                    weakSkills.getFirst().skillCategory(), mode.getWeakSkillQuestTarget(), 0, false, false, DEFAULT_XP_REWARD);
         }
 
         return new DailyQuest(0, questDate, DailyQuestObjectiveType.ADD_STRETCH_CARDS, null,
-                STRETCH_CARD_TARGET, 0, false, false, DEFAULT_XP_REWARD);
+                mode.getStretchCardQuestTarget(), 0, false, false, DEFAULT_XP_REWARD);
     }
 
     private boolean isReviewObjective(DailyQuest quest) {

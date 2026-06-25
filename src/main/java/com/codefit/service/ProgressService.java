@@ -23,6 +23,10 @@ public class ProgressService {
         return userProgressRepository.getProgress();
     }
 
+    public void saveProgress(UserProgress progress) {
+        userProgressRepository.save(progress);
+    }
+
     public String getRankTitle(UserProgress progress) {
         if (progress == null) {
             return "E-Rank Backend Starter";

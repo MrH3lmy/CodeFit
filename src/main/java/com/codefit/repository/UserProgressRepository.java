@@ -1,6 +1,7 @@
 package com.codefit.repository;
 
 import com.codefit.config.DatabaseConfig;
+import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.UserProgress;
 
 import java.sql.Connection;
@@ -11,7 +12,7 @@ import java.time.LocalDate;
 
 public class UserProgressRepository {
     public UserProgress getProgress() {
-        String sql = "SELECT id, xp, level, streak_days, last_review_date, total_reviews, missed_day_count, streak_freeze_count, recovery_quest_active FROM user_progress WHERE id = 1";
+        String sql = "SELECT id, xp, level, streak_days, last_review_date, total_reviews, missed_day_count, streak_freeze_count, recovery_quest_active, daily_workload_mode FROM user_progress WHERE id = 1";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
@@ -26,7 +27,8 @@ public class UserProgressRepository {
                         resultSet.getInt("total_reviews"),
                         resultSet.getInt("missed_day_count"),
                         resultSet.getInt("streak_freeze_count"),
-                        resultSet.getInt("recovery_quest_active") == 1
+                        resultSet.getInt("recovery_quest_active") == 1,
+                        DailyWorkloadMode.fromDatabaseValue(resultSet.getString("daily_workload_mode"))
                 );
             }
             return new UserProgress(1, 0, 1, 0, null, 0);
@@ -38,7 +40,7 @@ public class UserProgressRepository {
     public void save(UserProgress progress) {
         String sql = """
                 UPDATE user_progress
-                SET xp = ?, level = ?, streak_days = ?, last_review_date = ?, total_reviews = ?, missed_day_count = ?, streak_freeze_count = ?, recovery_quest_active = ?
+                SET xp = ?, level = ?, streak_days = ?, last_review_date = ?, total_reviews = ?, missed_day_count = ?, streak_freeze_count = ?, recovery_quest_active = ?, daily_workload_mode = ?
                 WHERE id = 1
                 """;
         try (Connection connection = DatabaseConfig.getConnection();
@@ -55,6 +57,7 @@ public class UserProgressRepository {
             statement.setInt(6, progress.getMissedDayCount());
             statement.setInt(7, progress.getStreakFreezeCount());
             statement.setInt(8, progress.isRecoveryQuestActive() ? 1 : 0);
+            statement.setString(9, progress.getDailyWorkloadMode().name());
             statement.executeUpdate();
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to save user progress", exception);

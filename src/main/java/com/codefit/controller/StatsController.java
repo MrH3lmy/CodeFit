@@ -1,5 +1,6 @@
 package com.codefit.controller;
 
+import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.UserProgress;
@@ -14,6 +15,7 @@ import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -39,7 +41,9 @@ public class StatsController extends BaseController {
     @FXML private Label weeklyBossScoreLabel;
     @FXML private Label weeklyBossWeakAreasLabel;
     @FXML private Label weeklyBossFocusLabel;
+    @FXML private Label workloadModeDetailLabel;
     @FXML private Button weeklyBossButton;
+    @FXML private ChoiceBox<DailyWorkloadMode> workloadModeChoiceBox;
     @FXML private ProgressBar xpProgressBar;
     @FXML private VBox statsEmptyStateBox;
     @FXML private ListView<String> recentReviewsListView;
@@ -66,6 +70,7 @@ public class StatsController extends BaseController {
         configureReadinessStats(statsService.getEngineerReadinessStats());
         configureStatsEmptyState(progress.getTotalReviews());
         configureWeeklyBossResult(statsService.getLatestWeeklyBossResult());
+        configureWorkloadMode(progress);
 
         configureSkillPerformanceList();
         configureNeedsPracticeList();
@@ -84,6 +89,37 @@ public class StatsController extends BaseController {
         needsPracticeListView.setItems(needsPractice.isEmpty()
                 ? FXCollections.observableArrayList(emptyNeedsPractice())
                 : FXCollections.observableArrayList(needsPractice));
+    }
+
+
+    private void configureWorkloadMode(UserProgress progress) {
+        workloadModeChoiceBox.setItems(FXCollections.observableArrayList(DailyWorkloadMode.values()));
+        workloadModeChoiceBox.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(DailyWorkloadMode mode) {
+                return mode == null ? "Normal" : mode.getDisplayName();
+            }
+
+            @Override
+            public DailyWorkloadMode fromString(String value) {
+                return DailyWorkloadMode.fromDatabaseValue(value);
+            }
+        });
+        workloadModeChoiceBox.setValue(progress.getDailyWorkloadMode());
+        updateWorkloadModeDetail(progress.getDailyWorkloadMode());
+        workloadModeChoiceBox.getSelectionModel().selectedItemProperty().addListener((observable, oldMode, newMode) -> {
+            if (newMode == null || newMode == oldMode) {
+                return;
+            }
+            UserProgress latestProgress = progressService.getProgress();
+            latestProgress.setDailyWorkloadMode(newMode);
+            progressService.saveProgress(latestProgress);
+            updateWorkloadModeDetail(newMode);
+        });
+    }
+
+    private void updateWorkloadModeDetail(DailyWorkloadMode mode) {
+        workloadModeDetailLabel.setText(mode.getSummary() + " · quest target " + mode.getDueReviewQuestTarget() + " due reviews");
     }
 
     private void configureReadinessStats(EngineerReadinessStats readinessStats) {

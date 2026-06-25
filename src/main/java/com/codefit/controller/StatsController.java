@@ -8,6 +8,7 @@ import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
+import com.codefit.service.WeeklyBossResult;
 import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -35,6 +36,10 @@ public class StatsController extends BaseController {
     @FXML private Label weakAreaPressureLabel;
     @FXML private Label consistencyLabel;
     @FXML private Label statsEmptyStateLabel;
+    @FXML private Label weeklyBossScoreLabel;
+    @FXML private Label weeklyBossWeakAreasLabel;
+    @FXML private Label weeklyBossFocusLabel;
+    @FXML private Button weeklyBossButton;
     @FXML private ProgressBar xpProgressBar;
     @FXML private VBox statsEmptyStateBox;
     @FXML private ListView<String> recentReviewsListView;
@@ -60,6 +65,7 @@ public class StatsController extends BaseController {
         xpProgressBar.setProgress((progress.getXp() % ProgressService.XP_PER_LEVEL) / (double) ProgressService.XP_PER_LEVEL);
         configureReadinessStats(statsService.getEngineerReadinessStats());
         configureStatsEmptyState(progress.getTotalReviews());
+        configureWeeklyBossResult(statsService.getLatestWeeklyBossResult());
 
         configureSkillPerformanceList();
         configureNeedsPracticeList();
@@ -106,6 +112,27 @@ public class StatsController extends BaseController {
         if (empty) {
             statsEmptyStateLabel.setText("Stats appear after review sessions. Complete one review session to unlock accuracy, weak-area, and activity signals.");
         }
+    }
+
+    private void configureWeeklyBossResult(WeeklyBossResult result) {
+        if (!result.hasSignal()) {
+            weeklyBossScoreLabel.setText("No weekly result yet");
+            weeklyBossWeakAreasLabel.setText("Weak areas appear after your first boss battle.");
+            weeklyBossFocusLabel.setText(result.recommendedFocus());
+        } else {
+            weeklyBossScoreLabel.setText(formatPercent(result.scorePercent()) + " score across " + result.reviewedCards() + " cards");
+            weeklyBossWeakAreasLabel.setText(result.weakAreas().isEmpty()
+                    ? "Weak areas: none detected in the latest battle."
+                    : "Weak areas: " + String.join(", ", result.weakAreas()));
+            weeklyBossFocusLabel.setText("Recommended training focus: " + result.recommendedFocus());
+        }
+        weeklyBossButton.setDisable(!statsService.isWeeklyBossAvailable());
+        weeklyBossButton.setText(statsService.isWeeklyBossAvailable() ? "Start Weekly Boss Battle" : "Boss Battle Complete This Week");
+    }
+
+    @FXML
+    public void startWeeklyBossBattle() {
+        NavigationService.showWeeklyBossBattle();
     }
 
     private void configureSkillPerformanceList() {

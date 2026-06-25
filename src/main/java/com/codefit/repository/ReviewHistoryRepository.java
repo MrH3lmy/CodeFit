@@ -15,7 +15,7 @@ import java.util.List;
 
 public class ReviewHistoryRepository {
     public ReviewHistory save(ReviewHistory history) {
-        String sql = "INSERT INTO review_history (flashcard_id, rating, previous_interval_days, new_interval_days, submitted_in_time) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO review_history (flashcard_id, rating, previous_interval_days, new_interval_days, submitted_in_time, boss_battle) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, history.getFlashcardId());
@@ -23,6 +23,7 @@ public class ReviewHistoryRepository {
             statement.setInt(3, history.getPreviousIntervalDays());
             statement.setInt(4, history.getNewIntervalDays());
             statement.setInt(5, history.isSubmittedInTime() ? 1 : 0);
+            statement.setInt(6, history.isBossBattle() ? 1 : 0);
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -36,7 +37,7 @@ public class ReviewHistoryRepository {
     }
 
     public List<ReviewHistory> findRecent(int limit) {
-        String sql = "SELECT * FROM review_history ORDER BY reviewed_at DESC LIMIT ?";
+        String sql = "SELECT * FROM review_history WHERE boss_battle = 0 ORDER BY reviewed_at DESC LIMIT ?";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, limit);
@@ -53,13 +54,43 @@ public class ReviewHistoryRepository {
     }
 
     public int countReviewedToday() {
-        String sql = "SELECT COUNT(*) FROM review_history WHERE date(reviewed_at) = date('now')";
+        String sql = "SELECT COUNT(*) FROM review_history WHERE boss_battle = 0 AND date(reviewed_at) = date('now')";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             return resultSet.next() ? resultSet.getInt(1) : 0;
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to count today's reviews", exception);
+        }
+    }
+
+    public List<ReviewHistory> findRecentBossBattles(int limit) {
+        String sql = "SELECT * FROM review_history WHERE boss_battle = 1 ORDER BY reviewed_at DESC LIMIT ?";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, limit);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<ReviewHistory> history = new ArrayList<>();
+                while (resultSet.next()) {
+                    history.add(mapReviewHistory(resultSet));
+                }
+                return history;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load boss battle history", exception);
+        }
+    }
+
+    public boolean hasBossBattleSince(java.time.LocalDate since) {
+        String sql = "SELECT 1 FROM review_history WHERE boss_battle = 1 AND date(reviewed_at) >= date(?) LIMIT 1";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, since.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to check boss battle availability", exception);
         }
     }
 
@@ -71,7 +102,8 @@ public class ReviewHistoryRepository {
                 resultSet.getInt("previous_interval_days"),
                 resultSet.getInt("new_interval_days"),
                 LocalDateTime.parse(resultSet.getString("reviewed_at").replace(' ', 'T')),
-                resultSet.getInt("submitted_in_time") == 1
+                resultSet.getInt("submitted_in_time") == 1,
+                resultSet.getInt("boss_battle") == 1
         );
     }
 }

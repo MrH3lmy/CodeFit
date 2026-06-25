@@ -62,6 +62,7 @@ public final class DatabaseConfig {
                         new_interval_days INTEGER NOT NULL,
                         reviewed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         submitted_in_time INTEGER NOT NULL DEFAULT 1,
+                        boss_battle INTEGER NOT NULL DEFAULT 0,
                         FOREIGN KEY(flashcard_id) REFERENCES flashcards(id) ON DELETE CASCADE
                     )
                     """);
@@ -117,6 +118,7 @@ public final class DatabaseConfig {
 
     private static void ensureReviewHistoryColumns(Connection connection) throws SQLException {
         addColumnIfMissing(connection, "review_history", "submitted_in_time", "INTEGER NOT NULL DEFAULT 1");
+        addColumnIfMissing(connection, "review_history", "boss_battle", "INTEGER NOT NULL DEFAULT 0");
     }
 
     private static void ensureUserProgressColumns(Connection connection) throws SQLException {

@@ -48,6 +48,7 @@ public class ReviewController extends BaseController {
     @FXML private TextArea attemptTextArea;
     @FXML private VBox commandPracticePanel;
     @FXML private VBox sessionFlowStrip;
+    @FXML private VBox reflectionPromptPanel;
     @FXML private HBox commandAttemptBox;
     @FXML private TextField commandTextField;
     @FXML private TextArea terminalHistoryArea;
@@ -58,6 +59,9 @@ public class ReviewController extends BaseController {
     @FXML private Button goodButton;
     @FXML private Button easyButton;
     @FXML private Button reviewMissedButton;
+    @FXML private Button addFixedBugButton;
+    @FXML private Button addSearchedCommandButton;
+    @FXML private Button addMissedConceptButton;
     @FXML private Button emptyStateActionButton;
 
     private final ReviewService reviewService = new ReviewService();
@@ -156,6 +160,18 @@ public class ReviewController extends BaseController {
     @FXML public void rateGood() { rate(ReviewRating.GOOD); }
     @FXML public void rateEasy() { rate(ReviewRating.EASY); }
 
+    @FXML public void addFixedBugReflection() {
+        NavigationService.showAddCardReflection("bug");
+    }
+
+    @FXML public void addSearchedCommandReflection() {
+        NavigationService.showAddCardReflection("command");
+    }
+
+    @FXML public void addMissedConceptReflection() {
+        NavigationService.showAddCardReflection("concept");
+    }
+
     private void rate(ReviewRating rating) {
         if (currentCard == null) {
             return;
@@ -209,6 +225,7 @@ public class ReviewController extends BaseController {
             summary.append("\n").append(missedCardGroups);
         }
 
+        summary.append("\nReflection prompt: add one card from today’s real work while it is still fresh. Pick a bug you fixed, a command you searched, or a concept you missed.");
         summary.append("\nNext action: ").append(formatSuggestedNextAction());
         return summary.toString();
     }
@@ -355,6 +372,7 @@ public class ReviewController extends BaseController {
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             updateReviewMissedButton(false);
+            updateReflectionActions(false);
             updateEmptyStateAction(true, "Add a Card", this::goAddCard);
             updateSessionFlowVisibility();
             return;
@@ -377,12 +395,14 @@ public class ReviewController extends BaseController {
             setRatingDescriptions(null);
             setRatingButtonsDisabled(true);
             updateReviewMissedButton(!missedCards.isEmpty());
-            updateEmptyStateAction(missedCards.isEmpty(), "View Stats", this::goStats);
+            updateReflectionActions(true);
+            updateEmptyStateAction(false, "View Stats", this::goStats);
             updateSessionFlowVisibility();
             return;
         }
 
         updateReviewMissedButton(false);
+        updateReflectionActions(false);
         updateEmptyStateAction(false, "", this::goDashboard);
         currentCard = dueCards.get(currentIndex);
         queueLabel.setText((weeklyBossMode ? "Boss " : "") + (currentIndex + 1) + " / " + dueCards.size());
@@ -403,6 +423,25 @@ public class ReviewController extends BaseController {
         updateSessionFlowVisibility();
         Platform.runLater(this::focusActiveAttemptInput);
     }
+    private void updateReflectionActions(boolean visible) {
+        if (reflectionPromptPanel != null) {
+            reflectionPromptPanel.setVisible(visible);
+            reflectionPromptPanel.setManaged(visible);
+        }
+        setReflectionActionVisible(addFixedBugButton, visible);
+        setReflectionActionVisible(addSearchedCommandButton, visible);
+        setReflectionActionVisible(addMissedConceptButton, visible);
+    }
+
+    private void setReflectionActionVisible(Button button, boolean visible) {
+        if (button == null) {
+            return;
+        }
+        button.setVisible(visible);
+        button.setManaged(visible);
+        button.setDisable(!visible);
+    }
+
     private void updateEmptyStateAction(boolean visible, String text, Runnable action) {
         if (emptyStateActionButton == null) {
             return;

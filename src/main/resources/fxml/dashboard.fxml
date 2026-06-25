@@ -73,6 +73,18 @@
                         </VBox>
                     </HBox>
 
+
+                    <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card daily-routine-card">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <VBox alignment="CENTER_LEFT" spacing="4" HBox.hgrow="ALWAYS">
+                                <Label text="DAILY ROUTINE" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label text="Move through today’s essentials using your review history, due queue, weak-area signal, and quest state." styleClass="dashboard-card-helper" wrapText="true" />
+                            </VBox>
+                            <Button text="Open Review" onAction="#goReview" styleClass="ghost-button" />
+                        </HBox>
+                        <VBox fx:id="dailyRoutineList" maxWidth="Infinity" spacing="10" />
+                    </VBox>
+
                     <GridPane hgap="14" maxWidth="Infinity" vgap="14" styleClass="dashboard-bottom-grid">
                         <columnConstraints>
                             <ColumnConstraints hgrow="ALWAYS" percentWidth="58" />

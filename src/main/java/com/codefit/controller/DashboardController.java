@@ -10,17 +10,21 @@ import com.codefit.service.DailyQuestService;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
+import com.codefit.service.StatsService;
+import com.codefit.service.StatsSkillPerformance;
 import com.codefit.service.SyllabusService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -51,12 +55,14 @@ public class DashboardController extends BaseController {
     @FXML private Button primaryActionButton;
     @FXML private ProgressBar levelProgressBar;
     @FXML private VBox recentDecksList;
+    @FXML private VBox dailyRoutineList;
 
     private final ProgressService progressService = new ProgressService();
     private final DeckService deckService = new DeckService();
     private final DailyQuestService dailyQuestService = new DailyQuestService();
     private final FlashcardService flashcardService = new FlashcardService();
     private final SyllabusService syllabusService = new SyllabusService();
+    private final StatsService statsService = new StatsService();
 
     @FXML
     public void initialize() {
@@ -73,8 +79,9 @@ public class DashboardController extends BaseController {
         cardCountLabel.setText(String.valueOf(cardCount));
         dueCountLabel.setText(dueCount + " cards due");
         levelProgressBar.setProgress(calculateLevelProgress(progress));
-        configureDailyQuest();
+        DailyQuest dailyQuest = configureDailyQuest();
 
+        populateDailyRoutine(dailyQuest, dueCount);
         populateRecentDecks(decks);
 
         configureEmptyState(decks, deckCount, cardCount, dueCount);
@@ -92,7 +99,7 @@ public class DashboardController extends BaseController {
         return progress.getStreakDays() + " day streak";
     }
 
-    private void configureDailyQuest() {
+    private DailyQuest configureDailyQuest() {
         DailyQuest quest = dailyQuestService.getActiveQuest();
         dailyQuestTitleLabel.setText(formatQuestTitle(quest));
         dailyQuestProgressLabel.setText(quest.getCurrentCount() + " / " + quest.getTargetCount()
@@ -100,6 +107,135 @@ public class DashboardController extends BaseController {
         dailyQuestProgressBar.setProgress(quest.getTargetCount() == 0
                 ? 0
                 : Math.min(1.0, quest.getCurrentCount() / (double) quest.getTargetCount()));
+        return quest;
+    }
+
+
+    private void populateDailyRoutine(DailyQuest quest, int dueCount) {
+        dailyRoutineList.getChildren().clear();
+
+        List<Flashcard> allCards = flashcardService.getAllCards();
+        List<StatsSkillPerformance> weakSkills = statsService.getNeedsPracticeSkills();
+        Optional<StatsSkillPerformance> weakestSkill = weakSkills.stream().findFirst();
+        int reviewedToday = statsService.getReviewedToday();
+        int timedReviewedToday = countTimedReviewsToday(allCards);
+        int cardsCreatedToday = countCardsCreatedToday(allCards);
+
+        List<RoutineItem> routineItems = List.of(
+                new RoutineItem(
+                        "Review due cards",
+                        dueCount == 0 ? "Queue clear" : dueCount + " due now",
+                        reviewedToday + " reviewed today",
+                        dueCount == 0,
+                        this::goReview),
+                new RoutineItem(
+                        "Practice weakest skill",
+                        weakestSkill.map(StatsSkillPerformance::skillCategory).orElse("No weak-area signal"),
+                        weakestSkill.map(skill -> skill.dueCards() + " due • " + Math.round(skill.needsPracticeRate()) + "% Again/Hard")
+                                .orElse("Complete reviews to unlock weak-area stats"),
+                        weakestSkill.isEmpty(),
+                        getWeakSkillRoutineAction(weakestSkill)),
+                new RoutineItem(
+                        "Complete one timed card",
+                        timedReviewedToday + " / 1 timed today",
+                        countTimedCards(allCards) + " timed cards available",
+                        timedReviewedToday > 0,
+                        this::goReview),
+                new RoutineItem(
+                        "Add or refine one card",
+                        getAddCardProgressText(quest, cardsCreatedToday),
+                        "Keep your deck fresh with one new or improved prompt",
+                        isAddCardRoutineComplete(quest, cardsCreatedToday),
+                        this::goAddCard)
+        );
+
+        routineItems.stream()
+                .map(this::createRoutineRow)
+                .forEach(row -> dailyRoutineList.getChildren().add(row));
+    }
+
+    private Runnable getWeakSkillRoutineAction(Optional<StatsSkillPerformance> weakestSkill) {
+        if (weakestSkill.isPresent() && weakestSkill.get().dueCards() > 0) {
+            return this::goReview;
+        }
+        return this::goSyllabus;
+    }
+
+    private HBox createRoutineRow(RoutineItem item) {
+        HBox row = new HBox(12);
+        row.setMaxWidth(Double.MAX_VALUE);
+        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        row.getStyleClass().add("deck-progress-row");
+
+        Label statusLabel = new Label(item.completed() ? "✓" : "•");
+        statusLabel.getStyleClass().add(item.completed() ? "skill-status-strong" : "deck-icon");
+
+        VBox textColumn = new VBox(3);
+        textColumn.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(textColumn, Priority.ALWAYS);
+
+        Label titleLabel = new Label(item.title());
+        titleLabel.getStyleClass().add("deck-name");
+        titleLabel.setWrapText(true);
+
+        Label progressLabel = new Label(item.progressText());
+        progressLabel.getStyleClass().add("deck-count");
+        progressLabel.setWrapText(true);
+
+        Label helperLabel = new Label(item.helperText());
+        helperLabel.getStyleClass().add("dashboard-card-helper");
+        helperLabel.setWrapText(true);
+
+        textColumn.getChildren().addAll(titleLabel, progressLabel, helperLabel);
+
+        Button actionButton = new Button(item.completed() ? "View" : "Go");
+        actionButton.getStyleClass().add("ghost-button");
+        actionButton.setOnAction(event -> item.action().run());
+
+        row.getChildren().addAll(statusLabel, textColumn, actionButton);
+        return row;
+    }
+
+    private int countTimedReviewsToday(List<Flashcard> allCards) {
+        Set<Long> timedCardIds = allCards.stream()
+                .filter(card -> card.getTimeLimitSeconds() != null && card.getTimeLimitSeconds() > 0)
+                .map(Flashcard::getId)
+                .collect(Collectors.toSet());
+        LocalDate today = LocalDate.now();
+        return (int) statsService.getRecentReviews().stream()
+                .filter(history -> history.getReviewedAt() != null && history.getReviewedAt().toLocalDate().equals(today))
+                .filter(history -> timedCardIds.contains(history.getFlashcardId()))
+                .count();
+    }
+
+    private int countTimedCards(List<Flashcard> allCards) {
+        return (int) allCards.stream()
+                .filter(card -> card.getTimeLimitSeconds() != null && card.getTimeLimitSeconds() > 0)
+                .count();
+    }
+
+    private int countCardsCreatedToday(List<Flashcard> allCards) {
+        LocalDate today = LocalDate.now();
+        return (int) allCards.stream()
+                .map(Flashcard::getCreatedAt)
+                .filter(createdAt -> isToday(createdAt, today))
+                .count();
+    }
+
+    private boolean isToday(LocalDateTime dateTime, LocalDate today) {
+        return dateTime != null && dateTime.toLocalDate().equals(today);
+    }
+
+    private String getAddCardProgressText(DailyQuest quest, int cardsCreatedToday) {
+        if (quest.getObjectiveType() == DailyQuestObjectiveType.ADD_STRETCH_CARDS) {
+            return quest.getCurrentCount() + " / " + quest.getTargetCount() + " quest progress";
+        }
+        return cardsCreatedToday + " created today";
+    }
+
+    private boolean isAddCardRoutineComplete(DailyQuest quest, int cardsCreatedToday) {
+        return (quest.getObjectiveType() == DailyQuestObjectiveType.ADD_STRETCH_CARDS && quest.isCompleted())
+                || cardsCreatedToday > 0;
     }
 
     private String formatQuestTitle(DailyQuest quest) {
@@ -351,6 +487,9 @@ public class DashboardController extends BaseController {
                 .filter(card -> card.getReviewCount() > 0)
                 .count();
         return (int) Math.round((reviewedCards * 100.0) / deckCards.size());
+    }
+
+    private record RoutineItem(String title, String progressText, String helperText, boolean completed, Runnable action) {
     }
 
     private record JavaBackendDeckProgress(Deck deck, int moduleNumber, int cardCount, long dueCount,

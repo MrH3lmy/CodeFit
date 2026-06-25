@@ -45,6 +45,41 @@ public class StatsService {
         return reviewHistoryRepository.findRecent(10);
     }
 
+    public WeeklyBossResult getLatestWeeklyBossResult() {
+        List<ReviewHistory> bossReviews = reviewHistoryRepository.findRecentBossBattles(50);
+        if (bossReviews.isEmpty()) {
+            return WeeklyBossResult.empty();
+        }
+        LocalDate latestDate = bossReviews.getFirst().getReviewedAt().toLocalDate();
+        List<ReviewHistory> latestSession = bossReviews.stream()
+                .filter(history -> history.getReviewedAt().toLocalDate().equals(latestDate))
+                .toList();
+        double score = getOverallRecentAccuracy(latestSession);
+        Map<Long, Flashcard> cardsById = flashcardRepository.findAll().stream()
+                .collect(Collectors.toMap(Flashcard::getId, card -> card));
+        Map<String, SkillAccumulator> bySkill = new HashMap<>();
+        latestSession.forEach(history -> {
+            Flashcard card = cardsById.get(history.getFlashcardId());
+            String skill = card == null ? "Deleted cards" : normalizeSkill(card.getSkillCategory());
+            bySkill.computeIfAbsent(skill, SkillAccumulator::new).record(history.getRating());
+        });
+        List<String> weakAreas = bySkill.values().stream()
+                .map(SkillAccumulator::toPerformance)
+                .filter(performance -> performance.needsPracticeRate() > 0)
+                .sorted(Comparator.comparingDouble(StatsSkillPerformance::needsPracticeRate).reversed())
+                .limit(3)
+                .map(StatsSkillPerformance::skillCategory)
+                .toList();
+        String focus = weakAreas.isEmpty()
+                ? "Maintain strength with mixed timed practice and one stretch card."
+                : "Prioritize " + String.join(", ", weakAreas) + " with due-card drills and new targeted prompts.";
+        return new WeeklyBossResult(true, latestSession.size(), score, weakAreas, focus);
+    }
+
+    public boolean isWeeklyBossAvailable() {
+        return new ReviewService().isWeeklyBossAvailable();
+    }
+
     public EngineerReadinessStats getEngineerReadinessStats() {
         List<ReviewHistory> recentReviews = reviewHistoryRepository.findRecent(READINESS_REVIEW_LIMIT);
         double recentAccuracy = getOverallRecentAccuracy(recentReviews);

@@ -25,6 +25,7 @@ public final class NavigationService {
 
     private static Stage primaryStage;
     private static Scene primaryScene;
+    private static boolean weeklyBossModeRequested;
     private static String selectedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
 
     private NavigationService() {
@@ -47,7 +48,19 @@ public final class NavigationService {
     }
 
     public static void showReview() {
+        weeklyBossModeRequested = false;
         navigate("review.fxml", "CodeFit - Review");
+    }
+
+    public static void showWeeklyBossBattle() {
+        weeklyBossModeRequested = true;
+        navigate("review.fxml", "CodeFit - Weekly Boss Battle");
+    }
+
+    public static boolean consumeWeeklyBossModeRequest() {
+        boolean requested = weeklyBossModeRequested;
+        weeklyBossModeRequested = false;
+        return requested;
     }
 
     public static void showSyllabus() {

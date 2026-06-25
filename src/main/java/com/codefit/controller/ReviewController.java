@@ -7,6 +7,7 @@ import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewRating;
 import com.codefit.service.DeckService;
 import com.codefit.service.ReviewService;
+import com.codefit.ui.NavigationService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -74,10 +75,12 @@ public class ReviewController extends BaseController {
     private int remainingTimeSeconds;
     private boolean submittedInTime = true;
     private boolean hintUsed;
+    private boolean weeklyBossMode;
 
     @FXML
     public void initialize() {
-        dueCards = new ArrayList<>(reviewService.getDueCards());
+        weeklyBossMode = NavigationService.consumeWeeklyBossModeRequest();
+        dueCards = new ArrayList<>(weeklyBossMode ? reviewService.getWeeklyBossCards() : reviewService.getDueCards());
         currentIndex = 0;
         resetSessionMetrics();
         attemptTextArea.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
@@ -161,7 +164,11 @@ public class ReviewController extends BaseController {
         LocalDate previousDueDate = currentCard.getDueDate();
         stopTimeLimitTimeline();
         Flashcard reviewedCard = currentCard;
-        reviewService.review(reviewedCard, rating, submittedInTime);
+        if (weeklyBossMode) {
+            reviewService.reviewBossBattle(reviewedCard, rating, submittedInTime);
+        } else {
+            reviewService.review(reviewedCard, rating, submittedInTime);
+        }
         reviewedCardCount++;
         earnedXp += rating.getXp();
         ratingCounts.merge(rating, 1, Integer::sum);
@@ -184,7 +191,7 @@ public class ReviewController extends BaseController {
     }
 
     private String formatSessionSummary() {
-        StringBuilder summary = new StringBuilder("Session complete: ")
+        StringBuilder summary = new StringBuilder(weeklyBossMode ? "Weekly boss battle complete: " : "Session complete: ")
                 .append(reviewedCardCount).append(" ").append(pluralize(reviewedCardCount, "card")).append(" reviewed, ")
                 .append(earnedXp).append(" XP earned, ")
                 .append(formatRatingCount(ReviewRating.AGAIN)).append(" marked Again, ")
@@ -332,10 +339,10 @@ public class ReviewController extends BaseController {
         if (dueCards.isEmpty()) {
             stopTimeLimitTimeline();
             currentCard = null;
-            queueLabel.setText("0 due");
+            queueLabel.setText(weeklyBossMode ? "Boss unavailable" : "0 due");
             hideTimer();
-            promptLabel.setText("You're all caught up — no cards are due.");
-            answerLabel.setText("Nice work keeping your queue clear. Next action: add a new card if you want more practice today.");
+            promptLabel.setText(weeklyBossMode ? "Weekly boss battle is not available yet." : "You're all caught up — no cards are due.");
+            answerLabel.setText(weeklyBossMode ? "Complete normal reviews or check back next week for the next mixed assessment." : "Nice work keeping your queue clear. Next action: add a new card if you want more practice today.");
             clearAttempts();
             latestValidationResult = AttemptValidationResult.EMPTY;
             answerRevealed = false;
@@ -378,7 +385,7 @@ public class ReviewController extends BaseController {
         updateReviewMissedButton(false);
         updateEmptyStateAction(false, "", this::goDashboard);
         currentCard = dueCards.get(currentIndex);
-        queueLabel.setText((currentIndex + 1) + " / " + dueCards.size());
+        queueLabel.setText((weeklyBossMode ? "Boss " : "") + (currentIndex + 1) + " / " + dueCards.size());
         promptLabel.setText(currentCard.getFront());
         latestValidationResult = AttemptValidationResult.EMPTY;
         answerRevealed = false;

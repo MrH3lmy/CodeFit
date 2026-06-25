@@ -13,6 +13,7 @@ import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
 import com.codefit.service.SyllabusService;
+import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -85,6 +86,22 @@ public class DashboardController extends BaseController {
         populateRecentDecks(decks);
 
         configureEmptyState(decks, deckCount, cardCount, dueCount);
+        configureWeeklyBossCallout();
+    }
+
+    private void configureWeeklyBossCallout() {
+        if (!statsService.isWeeklyBossAvailable()) {
+            return;
+        }
+        setStatus(emptyStateLabel, "Weekly boss battle available: take a mixed assessment across decks and weak skills.");
+        configurePrimaryAction("Weekly boss battle ready",
+                "Face a mixed set that prioritizes overdue cards, low accuracy, and Again/Hard pressure from multiple skills.",
+                "Start Boss Battle", this::goWeeklyBossBattle);
+    }
+
+    @FXML
+    public void goWeeklyBossBattle() {
+        NavigationService.showWeeklyBossBattle();
     }
 
 

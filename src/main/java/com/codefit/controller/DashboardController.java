@@ -4,7 +4,6 @@ import com.codefit.model.DailyQuest;
 import com.codefit.model.DailyQuestObjectiveType;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
-import com.codefit.model.SyllabusModule;
 import com.codefit.model.UserProgress;
 import com.codefit.service.DailyQuestService;
 import com.codefit.service.DeckService;
@@ -12,7 +11,7 @@ import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
-import com.codefit.service.SyllabusService;
+import com.codefit.service.TrainingPathService;
 import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -26,21 +25,13 @@ import javafx.scene.layout.VBox;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class DashboardController extends BaseController {
-    private static final Pattern JAVA_BE_MODULE_PATTERN = Pattern.compile("^\\s*Java\\s+BE\\s+(\\d{1,2})\\b.*", Pattern.CASE_INSENSITIVE);
-    private static final int EARLY_JAVA_BE_MODULE_LIMIT = 3;
-    private static final double MOSTLY_REVIEWED_PROGRESS = 0.8;
-
     @FXML private Label levelLabel;
     @FXML private Label xpLabel;
     @FXML private Label streakLabel;
@@ -62,8 +53,8 @@ public class DashboardController extends BaseController {
     private final DeckService deckService = new DeckService();
     private final DailyQuestService dailyQuestService = new DailyQuestService();
     private final FlashcardService flashcardService = new FlashcardService();
-    private final SyllabusService syllabusService = new SyllabusService();
     private final StatsService statsService = new StatsService();
+    private final TrainingPathService trainingPathService = new TrainingPathService();
 
     @FXML
     public void initialize() {
@@ -270,7 +261,7 @@ public class DashboardController extends BaseController {
     }
 
     private void configureEmptyState(List<Deck> decks, int deckCount, int cardCount, int dueCount) {
-        if (configureJavaBackendPrimaryAction(decks)) {
+        if (configureTrainingPathPrimaryAction(decks)) {
             return;
         }
         if (deckCount == 0) {
@@ -288,52 +279,44 @@ public class DashboardController extends BaseController {
         }
     }
 
-    private boolean configureJavaBackendPrimaryAction(List<Deck> decks) {
-        List<JavaBackendDeckProgress> javaBackendDecks = javaBackendDeckProgress(decks);
-        if (javaBackendDecks.isEmpty()) {
+    private boolean configureTrainingPathPrimaryAction(List<Deck> decks) {
+        Optional<TrainingPathService.TrainingPathRecommendation> recommendation = trainingPathService.recommendNextModule(decks);
+        if (recommendation.isEmpty()) {
             return false;
         }
 
-        Optional<JavaBackendDeckProgress> emptyEarlyModule = javaBackendDecks.stream()
-                .filter(progress -> progress.moduleNumber() <= EARLY_JAVA_BE_MODULE_LIMIT)
-                .filter(progress -> progress.cardCount() == 0)
-                .min(Comparator.comparingInt(JavaBackendDeckProgress::moduleNumber));
-        if (emptyEarlyModule.isPresent()) {
-            JavaBackendDeckProgress progress = emptyEarlyModule.get();
-            setStatus(emptyStateLabel, "Java Backend Module " + formatModuleNumber(progress.moduleNumber())
+        TrainingPathService.TrainingPathRecommendation nextAction = recommendation.get();
+        TrainingPathService.TrainingPathModuleProgress current = nextAction.current();
+        String pathName = nextAction.path().getName();
+        String moduleNumber = formatModuleNumber(current.module().getOrder());
+
+        if (nextAction.action() == TrainingPathService.TrainingPathAction.ADD_STARTER_CARDS) {
+            setStatus(emptyStateLabel, pathName + " Module " + moduleNumber
                     + " is ready but has no cards. Next action: add or import starter cards.");
-            configurePrimaryAction("Add starter Java BE cards",
-                    "Start " + progress.deck().getName() + " by adding one card or importing starter prompts from Decks.",
+            configurePrimaryAction("Add starter " + pathName + " cards",
+                    "Start " + current.deck().getName() + " by adding one card or importing starter prompts from Decks.",
                     "Open Decks", this::goDecks);
             return true;
         }
 
-        Optional<JavaBackendDeckProgress> weakestDueModule = javaBackendDecks.stream()
-                .filter(progress -> progress.dueCount() > 0)
-                .min(Comparator.comparingInt(JavaBackendDeckProgress::progressPercent)
-                        .thenComparing(JavaBackendDeckProgress::dueCount, Comparator.reverseOrder())
-                        .thenComparingInt(JavaBackendDeckProgress::moduleNumber));
-        if (weakestDueModule.isPresent()) {
-            JavaBackendDeckProgress progress = weakestDueModule.get();
-            setStatus(emptyStateLabel, progress.dueCount() + " Java BE cards are due. Next action: review the weakest due module.");
-            configurePrimaryAction("Review Module " + formatModuleNumber(progress.moduleNumber()),
-                    progress.deck().getName() + " has " + progress.dueCount() + " due and "
-                            + progress.progressPercent() + "% reviewed, making it the weakest Java BE module right now.",
+        if (nextAction.action() == TrainingPathService.TrainingPathAction.REVIEW_DUE_MODULE) {
+            setStatus(emptyStateLabel, current.dueCount() + " " + pathName
+                    + " cards are due. Next action: review the weakest due module.");
+            configurePrimaryAction("Review Module " + moduleNumber,
+                    current.deck().getName() + " has " + current.dueCount() + " due and "
+                            + current.progressPercent() + "% reviewed, making it the weakest " + pathName
+                            + " module right now.",
                     "Start Review", this::goReview);
             return true;
         }
 
-        Optional<JavaBackendDeckProgress> mostlyReviewedModule = javaBackendDecks.stream()
-                .filter(progress -> progress.cardCount() > 0)
-                .filter(progress -> progress.reviewProgress() >= MOSTLY_REVIEWED_PROGRESS)
-                .filter(progress -> nextJavaBackendModule(progress.moduleNumber(), javaBackendDecks).isPresent())
-                .max(Comparator.comparingInt(JavaBackendDeckProgress::moduleNumber));
-        if (mostlyReviewedModule.isPresent()) {
-            JavaBackendDeckProgress current = mostlyReviewedModule.get();
-            JavaBackendDeckProgress next = nextJavaBackendModule(current.moduleNumber(), javaBackendDecks).get();
-            setStatus(emptyStateLabel, "Java BE Module " + formatModuleNumber(current.moduleNumber())
-                    + " is mostly reviewed. Next action: move to Module " + formatModuleNumber(next.moduleNumber()) + ".");
-            configurePrimaryAction("Move to Module " + formatModuleNumber(next.moduleNumber()),
+        if (nextAction.action() == TrainingPathService.TrainingPathAction.MOVE_TO_NEXT_MODULE
+                && nextAction.next() != null) {
+            TrainingPathService.TrainingPathModuleProgress next = nextAction.next();
+            String nextModuleNumber = formatModuleNumber(next.module().getOrder());
+            setStatus(emptyStateLabel, pathName + " Module " + moduleNumber
+                    + " is mostly reviewed. Next action: move to Module " + nextModuleNumber + ".");
+            configurePrimaryAction("Move to Module " + nextModuleNumber,
                     "You have reviewed " + current.progressPercent() + "% of " + current.deck().getName()
                             + ". Continue the path with " + next.deck().getName() + ".",
                     next.cardCount() == 0 ? "Add Cards" : "Open Syllabus",
@@ -342,70 +325,6 @@ public class DashboardController extends BaseController {
         }
 
         return false;
-    }
-
-    private List<JavaBackendDeckProgress> javaBackendDeckProgress(List<Deck> decks) {
-        List<SyllabusModule> modules = syllabusService.getJavaBackendModules();
-        return decks.stream()
-                .map(deck -> javaBackendModuleNumber(deck, modules)
-                        .stream()
-                        .mapToObj(moduleNumber -> toJavaBackendDeckProgress(deck, moduleNumber))
-                        .findFirst()
-                        .orElse(null))
-                .filter(progress -> progress != null)
-                .sorted(Comparator.comparingInt(JavaBackendDeckProgress::moduleNumber))
-                .toList();
-    }
-
-    private JavaBackendDeckProgress toJavaBackendDeckProgress(Deck deck, int moduleNumber) {
-        List<Flashcard> cards = flashcardService.getCardsForDeck(deck.getId());
-        long dueCount = countDueCards(cards);
-        int progressPercent = calculateProgressPercent(cards);
-        return new JavaBackendDeckProgress(deck, moduleNumber, cards.size(), dueCount, progressPercent);
-    }
-
-    private Optional<JavaBackendDeckProgress> nextJavaBackendModule(int currentModuleNumber,
-                                                                   List<JavaBackendDeckProgress> javaBackendDecks) {
-        return javaBackendDecks.stream()
-                .filter(progress -> progress.moduleNumber() > currentModuleNumber)
-                .min(Comparator.comparingInt(JavaBackendDeckProgress::moduleNumber));
-    }
-
-    private OptionalInt javaBackendModuleNumber(Deck deck, List<SyllabusModule> modules) {
-        if (deck == null) {
-            return OptionalInt.empty();
-        }
-
-        OptionalInt syllabusModule = modules.stream()
-                .filter(module -> isJavaBackendSyllabusModule(deck, module))
-                .mapToInt(SyllabusModule::getModuleNumber)
-                .findFirst();
-        return syllabusModule.isPresent() ? syllabusModule : parseJavaBackendModule(deck.getName());
-    }
-
-    private boolean isJavaBackendSyllabusModule(Deck deck, SyllabusModule module) {
-        return module.getDeckId() == deck.getId()
-                || module.getDeckName().equalsIgnoreCase(deck.getName());
-    }
-
-    private OptionalInt parseJavaBackendModule(String deckName) {
-        if (deckName == null) {
-            return OptionalInt.empty();
-        }
-
-        Matcher matcher = JAVA_BE_MODULE_PATTERN.matcher(deckName);
-        if (!matcher.matches()) {
-            return OptionalInt.empty();
-        }
-
-        return OptionalInt.of(Integer.parseInt(matcher.group(1)));
-    }
-
-    private long countDueCards(List<Flashcard> cards) {
-        LocalDate today = LocalDate.now();
-        return cards.stream()
-                .filter(card -> card.getDueDate() != null && !card.getDueDate().isAfter(today))
-                .count();
     }
 
     private String formatModuleNumber(int moduleNumber) {
@@ -507,13 +426,6 @@ public class DashboardController extends BaseController {
     }
 
     private record RoutineItem(String title, String progressText, String helperText, boolean completed, Runnable action) {
-    }
-
-    private record JavaBackendDeckProgress(Deck deck, int moduleNumber, int cardCount, long dueCount,
-                                           int progressPercent) {
-        private double reviewProgress() {
-            return progressPercent / 100.0;
-        }
     }
 
 }

@@ -21,6 +21,7 @@
                     </VBox>
 
                     <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+                    <Label fx:id="systemMessageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
 
                     <VBox maxWidth="Infinity" spacing="18" styleClass="dashboard-card dashboard-learning-hero">
                         <HBox alignment="CENTER_LEFT" spacing="16">

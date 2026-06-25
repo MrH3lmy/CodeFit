@@ -8,6 +8,7 @@ import com.codefit.service.EngineerReadinessStats;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
+import com.codefit.service.SystemMessageService;
 import com.codefit.service.StatsSkillPerformance;
 import com.codefit.service.WeeklyBossResult;
 import com.codefit.ui.NavigationService;
@@ -55,6 +56,7 @@ public class StatsController extends BaseController {
     private final StatsService statsService = new StatsService();
     private final ProgressService progressService = new ProgressService();
     private final FlashcardService flashcardService = new FlashcardService();
+    private final SystemMessageService systemMessageService = new SystemMessageService();
 
     @FXML
     public void initialize() {
@@ -151,19 +153,24 @@ public class StatsController extends BaseController {
     }
 
     private void configureWeeklyBossResult(WeeklyBossResult result) {
+        boolean weeklyBossAvailable = statsService.isWeeklyBossAvailable();
         if (!result.hasSignal()) {
             weeklyBossScoreLabel.setText("No weekly result yet");
             weeklyBossWeakAreasLabel.setText("Weak areas appear after your first boss battle.");
-            weeklyBossFocusLabel.setText(result.recommendedFocus());
+            weeklyBossFocusLabel.setText(weeklyBossAvailable
+                    ? systemMessageService.formatBossBattleUnlockMessage()
+                    : result.recommendedFocus());
         } else {
             weeklyBossScoreLabel.setText(formatPercent(result.scorePercent()) + " score across " + result.reviewedCards() + " cards");
             weeklyBossWeakAreasLabel.setText(result.weakAreas().isEmpty()
                     ? "Weak areas: none detected in the latest battle."
                     : "Weak areas: " + String.join(", ", result.weakAreas()));
-            weeklyBossFocusLabel.setText("Recommended training focus: " + result.recommendedFocus());
+            weeklyBossFocusLabel.setText(weeklyBossAvailable
+                    ? systemMessageService.formatBossBattleUnlockMessage() + " Recommended training focus: " + result.recommendedFocus()
+                    : "Recommended training focus: " + result.recommendedFocus());
         }
-        weeklyBossButton.setDisable(!statsService.isWeeklyBossAvailable());
-        weeklyBossButton.setText(statsService.isWeeklyBossAvailable() ? "Start Weekly Boss Battle" : "Boss Battle Complete This Week");
+        weeklyBossButton.setDisable(!weeklyBossAvailable);
+        weeklyBossButton.setText(weeklyBossAvailable ? "Start Weekly Boss Battle" : "Boss Battle Complete This Week");
     }
 
     @FXML

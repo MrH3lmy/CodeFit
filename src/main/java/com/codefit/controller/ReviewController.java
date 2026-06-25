@@ -7,6 +7,7 @@ import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewRating;
 import com.codefit.service.DeckService;
 import com.codefit.service.ReviewService;
+import com.codefit.service.SystemMessageService;
 import com.codefit.ui.NavigationService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -67,6 +68,7 @@ public class ReviewController extends BaseController {
 
     private final ReviewService reviewService = new ReviewService();
     private final DeckService deckService = new DeckService();
+    private final SystemMessageService systemMessageService = new SystemMessageService();
     private List<Flashcard> dueCards = new ArrayList<>();
     private int currentIndex;
     private Flashcard currentCard;
@@ -220,6 +222,9 @@ public class ReviewController extends BaseController {
                 .append(formatRatingCount(ReviewRating.HARD)).append(" marked Hard, ")
                 .append(formatRatingCount(ReviewRating.GOOD)).append(" marked Good, and ")
                 .append(formatRatingCount(ReviewRating.EASY)).append(" marked Easy.");
+
+        summary.append("\n").append(systemMessageService.formatSessionCompletionMessage(
+                reviewedCardCount, earnedXp, missedCards.size(), weeklyBossMode));
 
         String weakAreaSignal = formatWeakAreaSignal();
         if (!weakAreaSignal.isBlank()) {

@@ -11,6 +11,8 @@ import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
+import com.codefit.service.SystemMessage;
+import com.codefit.service.SystemMessageService;
 import com.codefit.service.TrainingPathService;
 import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
@@ -43,6 +45,7 @@ public class DashboardController extends BaseController {
     @FXML private Label dailyQuestProgressLabel;
     @FXML private ProgressBar dailyQuestProgressBar;
     @FXML private Label emptyStateLabel;
+    @FXML private Label systemMessageLabel;
     @FXML private Label nextActionTitleLabel;
     @FXML private Label nextActionHelperLabel;
     @FXML private Button primaryActionButton;
@@ -56,6 +59,7 @@ public class DashboardController extends BaseController {
     private final FlashcardService flashcardService = new FlashcardService();
     private final StatsService statsService = new StatsService();
     private final TrainingPathService trainingPathService = new TrainingPathService();
+    private final SystemMessageService systemMessageService = new SystemMessageService();
 
     @FXML
     public void initialize() {
@@ -75,11 +79,26 @@ public class DashboardController extends BaseController {
         levelProgressBar.setProgress(calculateLevelProgress(progress));
         DailyQuest dailyQuest = configureDailyQuest();
 
+        configureSystemMessage(progress, dailyQuest);
         populateDailyRoutine(dailyQuest, dueCount);
         populateRecentDecks(decks);
 
         configureEmptyState(decks, deckCount, cardCount, dueCount);
         configureWeeklyBossCallout();
+    }
+
+
+    private void configureSystemMessage(UserProgress progress, DailyQuest dailyQuest) {
+        String rankTitle = progressService.getRankTitle(progress);
+        systemMessageService.highestPriorityDashboardMessage(
+                        progress,
+                        dailyQuest,
+                        statsService.getNeedsPracticeSkills(),
+                        statsService.isWeeklyBossAvailable(),
+                        rankTitle)
+                .map(SystemMessage::text)
+                .ifPresentOrElse(message -> setStatus(systemMessageLabel, message),
+                        () -> setStatus(systemMessageLabel, ""));
     }
 
     private void configureWeeklyBossCallout() {

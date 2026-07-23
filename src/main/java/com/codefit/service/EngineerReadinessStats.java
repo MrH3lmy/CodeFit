@@ -6,9 +6,16 @@ public record EngineerReadinessStats(
         double recentAccuracyPercent,
         double timedSuccessPercent,
         double weakAreaRatePercent,
-        double consistencyPercent
+        double consistencyPercent,
+        double subjectiveSelfAssessmentPercent,
+        double confidenceCalibrationPercent,
+        int confidenceSampleCount
 ) {
     public boolean hasSignal() {
         return recentReviewCount > 0;
+    }
+
+    public boolean hasConfidenceSignal() {
+        return confidenceSampleCount > 0;
     }
 }

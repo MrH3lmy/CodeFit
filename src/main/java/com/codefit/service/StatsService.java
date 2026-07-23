@@ -86,12 +86,16 @@ public class StatsService {
         double timedSuccessRate = getTimedSuccessRate(recentReviews);
         double weakAreaRate = getWeakAreaRate(recentReviews);
         double consistencyScore = getConsistencyScore(recentReviews);
+        double subjectiveSelfAssessmentRate = getSubjectiveSelfAssessmentRate(recentReviews);
+        double confidenceCalibrationScore = getConfidenceCalibrationScore(recentReviews);
+        int confidenceSampleCount = getConfidenceSampleCount(recentReviews);
         double readinessScore = recentReviews.isEmpty() ? 0.0
                 : (recentAccuracy * 0.40) + (timedSuccessRate * 0.25)
                 + ((100.0 - weakAreaRate) * 0.20) + (consistencyScore * 0.15);
 
         return new EngineerReadinessStats(recentReviews.size(), readinessScore, recentAccuracy,
-                timedSuccessRate, weakAreaRate, consistencyScore);
+                timedSuccessRate, weakAreaRate, consistencyScore, subjectiveSelfAssessmentRate,
+                confidenceCalibrationScore, confidenceSampleCount);
     }
 
     public double getOverallRecentAccuracy() {
@@ -152,6 +156,39 @@ public class StatsService {
                 .filter(history -> history.getRating() == ReviewRating.GOOD || history.getRating() == ReviewRating.EASY)
                 .count();
         return selfRatedGood * 100.0 / subjectiveReviews.size();
+    }
+
+    /**
+     * % of confidently-rated (HIGH or LOW), objectively-graded attempts where the learner's stated
+     * confidence matched the actual outcome (HIGH + correct, or LOW + incorrect). The scheduler
+     * rating never feeds this — confidence is recorded independently precisely so it can be
+     * checked against reality instead of assumed from the rating. MEDIUM confidence and subjective
+     * (CONCEPT) attempts are excluded since there is no clear "should have known better" signal.
+     */
+    static double getConfidenceCalibrationScore(List<ReviewHistory> recentReviews) {
+        List<ReviewHistory> calibratable = confidenceCalibratableReviews(recentReviews);
+        if (calibratable.isEmpty()) {
+            return 0.0;
+        }
+        long calibrated = calibratable.stream().filter(StatsService::isConfidenceCalibrated).count();
+        return calibrated * 100.0 / calibratable.size();
+    }
+
+    static int getConfidenceSampleCount(List<ReviewHistory> recentReviews) {
+        return confidenceCalibratableReviews(recentReviews).size();
+    }
+
+    private static List<ReviewHistory> confidenceCalibratableReviews(List<ReviewHistory> recentReviews) {
+        return recentReviews.stream()
+                .filter(history -> !history.isSubjective())
+                .filter(history -> "HIGH".equals(history.getConfidence()) || "LOW".equals(history.getConfidence()))
+                .toList();
+    }
+
+    private static boolean isConfidenceCalibrated(ReviewHistory history) {
+        boolean correct = history.isObjectivelyCorrect();
+        return ("HIGH".equals(history.getConfidence()) && correct)
+                || ("LOW".equals(history.getConfidence()) && !correct);
     }
 
     private double getWeakAreaRate(List<ReviewHistory> recentReviews) {

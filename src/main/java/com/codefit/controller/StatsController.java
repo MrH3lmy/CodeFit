@@ -38,6 +38,8 @@ public class StatsController extends BaseController {
     @FXML private Label timedFluencyLabel;
     @FXML private Label weakAreaPressureLabel;
     @FXML private Label consistencyLabel;
+    @FXML private Label subjectiveSelfAssessmentLabel;
+    @FXML private Label confidenceCalibrationLabel;
     @FXML private Label statsEmptyStateLabel;
     @FXML private Label weeklyBossScoreLabel;
     @FXML private Label weeklyBossWeakAreasLabel;
@@ -130,6 +132,8 @@ public class StatsController extends BaseController {
             timedFluencyLabel.setText("No signal");
             weakAreaPressureLabel.setText("No signal");
             consistencyLabel.setText("No signal");
+            subjectiveSelfAssessmentLabel.setText("No signal");
+            confidenceCalibrationLabel.setText("No signal");
             return;
         }
 
@@ -137,6 +141,10 @@ public class StatsController extends BaseController {
         timedFluencyLabel.setText(formatPercent(readinessStats.timedSuccessPercent()));
         weakAreaPressureLabel.setText(formatPercent(readinessStats.weakAreaRatePercent()));
         consistencyLabel.setText(formatPercent(readinessStats.consistencyPercent()));
+        subjectiveSelfAssessmentLabel.setText(formatPercent(readinessStats.subjectiveSelfAssessmentPercent()));
+        confidenceCalibrationLabel.setText(readinessStats.hasConfidenceSignal()
+                ? formatPercent(readinessStats.confidenceCalibrationPercent())
+                : "No signal");
     }
 
     private String formatPercent(double value) {

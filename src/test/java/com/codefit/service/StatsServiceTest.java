@@ -21,6 +21,11 @@ class StatsServiceTest {
                 "SUBJECTIVE", "my own explanation in different words", 4000, false, "session");
     }
 
+    private ReviewHistory objectiveWithConfidence(String validationResult, String confidence) {
+        return new ReviewHistory(0, 1, ReviewRating.GOOD, 0, 1, LocalDateTime.now(), true, false,
+                validationResult, "attempt", 1000, false, "session", confidence);
+    }
+
     @Test
     void subjectiveCardsDoNotReduceObjectiveAccuracy() {
         // Two objective reviews, both correct, plus a subjective review rated Good with different
@@ -73,5 +78,48 @@ class StatsServiceTest {
         assertEquals(0.0, StatsService.getOverallRecentAccuracy(List.of()));
         assertEquals(0.0, StatsService.getTimedSuccessRate(List.of()));
         assertEquals(0.0, StatsService.getSubjectiveSelfAssessmentRate(List.of()));
+    }
+
+    @Test
+    void highConfidenceCorrectAndLowConfidenceIncorrectAreCalibrated() {
+        List<ReviewHistory> reviews = List.of(
+                objectiveWithConfidence("EXACT", "HIGH"),    // confident and right: calibrated
+                objectiveWithConfidence("DIFFERENT", "LOW")  // unsure and wrong: calibrated
+        );
+
+        assertEquals(100.0, StatsService.getConfidenceCalibrationScore(reviews));
+        assertEquals(2, StatsService.getConfidenceSampleCount(reviews));
+    }
+
+    @Test
+    void highConfidenceIncorrectAndLowConfidenceCorrectAreMiscalibrated() {
+        List<ReviewHistory> reviews = List.of(
+                objectiveWithConfidence("DIFFERENT", "HIGH"), // confident but wrong: overconfident
+                objectiveWithConfidence("EXACT", "LOW")       // unsure but right: underconfident
+        );
+
+        assertEquals(0.0, StatsService.getConfidenceCalibrationScore(reviews));
+        assertEquals(2, StatsService.getConfidenceSampleCount(reviews));
+    }
+
+    @Test
+    void confidenceCalibrationExcludesMediumConfidenceAndSubjectiveAttempts() {
+        List<ReviewHistory> reviews = List.of(
+                objectiveWithConfidence("EXACT", "MEDIUM"),
+                objectiveWithConfidence("EXACT", null),
+                subjective(ReviewRating.GOOD)
+        );
+
+        assertEquals(0.0, StatsService.getConfidenceCalibrationScore(reviews));
+        assertEquals(0, StatsService.getConfidenceSampleCount(reviews));
+    }
+
+    @Test
+    void confidenceCalibrationScoreNeverDerivedFromSchedulerRatingAlone() {
+        // Scheduler rating is GOOD in every case (see objectiveWithConfidence); only the recorded
+        // validation result and confidence should drive the calibration outcome.
+        List<ReviewHistory> reviews = List.of(objectiveWithConfidence("DIFFERENT", "HIGH"));
+
+        assertEquals(0.0, StatsService.getConfidenceCalibrationScore(reviews));
     }
 }

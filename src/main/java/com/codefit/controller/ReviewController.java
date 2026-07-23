@@ -8,6 +8,7 @@ import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewRating;
 import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.DeckService;
+import com.codefit.service.RatingGuardrail;
 import com.codefit.service.ReviewService;
 import com.codefit.service.SystemMessageService;
 import com.codefit.ui.NavigationService;
@@ -31,9 +32,11 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -145,7 +148,7 @@ public class ReviewController extends BaseController {
         answerRevealed = true;
         answerLabel.setText(formatRevealedAnswer());
         renderTerminalSubmission(validationResult);
-        setRatingButtonsDisabled(false);
+        updateRatingButtonAvailability();
         showAnswerButton.setDisable(true);
         updateShowHintButton();
         setStatus(messageLabel, formatAttemptFeedback(validationResult));
@@ -188,7 +191,11 @@ public class ReviewController extends BaseController {
     }
 
     private void rate(ReviewRating rating) {
-        if (currentCard == null) {
+        if (currentCard == null || !answerRevealed) {
+            return;
+        }
+        if (!allowedRatings().contains(rating)) {
+            setStatus(messageLabel, ratingBlockedReason(rating));
             return;
         }
         int previousInterval = currentCard.getIntervalDays();
@@ -391,7 +398,7 @@ public class ReviewController extends BaseController {
             showAnswerButton.setDisable(true);
             updateShowHintButton();
             setRatingDescriptions(null);
-            setRatingButtonsDisabled(true);
+            updateRatingButtonAvailability();
             updateReviewMissedButton(false);
             updateReflectionActions(false);
             updateEmptyStateAction(true, "Add a Card", this::goAddCard);
@@ -414,7 +421,7 @@ public class ReviewController extends BaseController {
             showAnswerButton.setDisable(true);
             updateShowHintButton();
             setRatingDescriptions(null);
-            setRatingButtonsDisabled(true);
+            updateRatingButtonAvailability();
             updateReviewMissedButton(!missedCards.isEmpty());
             updateReflectionActions(true);
             updateEmptyStateAction(false, "View Stats", this::goStats);
@@ -441,7 +448,7 @@ public class ReviewController extends BaseController {
         setRatingDescriptions(currentCard);
         showAnswerButton.setDisable(true);
         updateShowHintButton();
-        setRatingButtonsDisabled(true);
+        updateRatingButtonAvailability();
         startTimeLimitIfNeeded();
         updateSessionFlowVisibility();
         Platform.runLater(this::focusActiveAttemptInput);
@@ -605,7 +612,7 @@ public class ReviewController extends BaseController {
         renderTerminalSubmission(latestValidationResult);
         showAnswerButton.setDisable(true);
         updateShowHintButton();
-        setRatingButtonsDisabled(false);
+        updateRatingButtonAvailability();
         setRatingDescriptions(currentCard);
         setStatus(messageLabel, "Time expired. Answer revealed. Recommended rating: " + recommendedRatingLabel(latestValidationResult) + ".");
         focusRecommendedRatingButton();
@@ -875,11 +882,23 @@ public class ReviewController extends BaseController {
         };
     }
 
-    private void setRatingButtonsDisabled(boolean disabled) {
-        againButton.setDisable(disabled);
-        hardButton.setDisable(disabled);
-        goodButton.setDisable(disabled);
-        easyButton.setDisable(disabled);
+    private void updateRatingButtonAvailability() {
+        Set<ReviewRating> allowed = allowedRatings();
+        againButton.setDisable(!allowed.contains(ReviewRating.AGAIN));
+        hardButton.setDisable(!allowed.contains(ReviewRating.HARD));
+        goodButton.setDisable(!allowed.contains(ReviewRating.GOOD));
+        easyButton.setDisable(!allowed.contains(ReviewRating.EASY));
+    }
+
+    private Set<ReviewRating> allowedRatings() {
+        if (!answerRevealed) {
+            return EnumSet.noneOf(ReviewRating.class);
+        }
+        return RatingGuardrail.allowedRatings(currentCard.getCardType(), latestValidationResult.name(), hintUsed);
+    }
+
+    private String ratingBlockedReason(ReviewRating rating) {
+        return RatingGuardrail.blockedReason(rating, currentCard.getCardType(), latestValidationResult.name(), hintUsed);
     }
 
     private void updateReviewMissedButton(boolean visible) {

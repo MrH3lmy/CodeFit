@@ -62,10 +62,11 @@ class JavaConcurrencyTemplateTest {
                 if (line.isBlank()) {
                     continue;
                 }
+                int currentLine = lineNumber;
 
                 String[] fields = line.split("\\t", -1);
                 assertEquals(8, fields.length,
-                        () -> resourcePath + ":" + lineNumber + " must have exactly eight TSV fields");
+                        () -> resourcePath + ":" + currentLine + " must have exactly eight TSV fields");
 
                 String front = fields[0];
                 String back = fields[1];
@@ -74,25 +75,25 @@ class JavaConcurrencyTemplateTest {
                 String skillCategory = fields[6];
                 String timeLimit = fields[7];
 
-                assertFalse(front.isBlank(), () -> resourcePath + ":" + lineNumber + " has a blank prompt");
-                assertFalse(back.isBlank(), () -> resourcePath + ":" + lineNumber + " has a blank answer");
+                assertFalse(front.isBlank(), () -> resourcePath + ":" + currentLine + " has a blank prompt");
+                assertFalse(back.isBlank(), () -> resourcePath + ":" + currentLine + " has a blank answer");
                 assertFalse(acceptedAnswers.isBlank(),
-                        () -> resourcePath + ":" + lineNumber + " has blank accepted answers");
-                assertFalse(hint.isBlank(), () -> resourcePath + ":" + lineNumber + " has a blank hint");
+                        () -> resourcePath + ":" + currentLine + " has blank accepted answers");
+                assertFalse(hint.isBlank(), () -> resourcePath + ":" + currentLine + " has a blank hint");
                 assertTrue(skillCategory.startsWith("JCIP Ch"),
-                        () -> resourcePath + ":" + lineNumber + " has an unexpected skill category");
+                        () -> resourcePath + ":" + currentLine + " has an unexpected skill category");
 
                 CardType.valueOf(fields[2]);
                 ValidationMode.valueOf(fields[4]);
                 assertFalse(AcceptedAnswerCodec.decode(acceptedAnswers).isEmpty(),
-                        () -> resourcePath + ":" + lineNumber + " has undecodable accepted answers");
+                        () -> resourcePath + ":" + currentLine + " has undecodable accepted answers");
 
                 int seconds = Integer.parseInt(timeLimit);
                 assertTrue(seconds > 0,
-                        () -> resourcePath + ":" + lineNumber + " must use a positive time limit");
+                        () -> resourcePath + ":" + currentLine + " must use a positive time limit");
 
                 assertFalse(line.contains("\r"),
-                        () -> resourcePath + ":" + lineNumber + " contains a carriage return");
+                        () -> resourcePath + ":" + currentLine + " contains a carriage return");
                 String normalizedPrompt = front.strip().toLowerCase(Locale.ROOT);
                 assertTrue(normalizedPrompts.add(normalizedPrompt),
                         () -> "Duplicate prompt: " + front);

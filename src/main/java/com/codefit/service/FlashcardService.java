@@ -62,9 +62,10 @@ public class FlashcardService {
         if (front == null || front.isBlank() || back == null || back.isBlank()) {
             throw new IllegalArgumentException("Both prompt and answer are required.");
         }
-        String answers = acceptedAnswers == null || acceptedAnswers.isBlank() ? back : acceptedAnswers;
+        String rawAnswers = acceptedAnswers == null || acceptedAnswers.isBlank() ? back : acceptedAnswers;
+        String answers = AcceptedAnswerCodec.normalize(rawAnswers);
         Flashcard flashcard = new Flashcard(deckId, front.trim(), back.trim(), cardType,
-                answers.trim(), validationMode, simulatedOutput == null || simulatedOutput.isBlank() ? null : simulatedOutput.trim(),
+                answers, validationMode, simulatedOutput == null || simulatedOutput.isBlank() ? null : simulatedOutput.trim(),
                 hint == null || hint.isBlank() ? null : hint.trim(), timeLimitSeconds);
         flashcard.setSkillCategory(skillCategory);
         Flashcard savedCard = flashcardRepository.save(flashcard);

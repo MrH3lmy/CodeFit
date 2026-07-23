@@ -5,6 +5,7 @@ import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewRating;
+import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.DeckService;
 import com.codefit.service.ReviewService;
 import com.codefit.service.SystemMessageService;
@@ -282,8 +283,8 @@ public class ReviewController extends BaseController {
     }
 
     private String commandFamily(Flashcard card) {
-        String answer = card.getAcceptedAnswers() == null || card.getAcceptedAnswers().isBlank() ? card.getBack() : card.getAcceptedAnswers();
-        String command = answer.lines()
+        String rawAnswers = card.getAcceptedAnswers() == null || card.getAcceptedAnswers().isBlank() ? card.getBack() : card.getAcceptedAnswers();
+        String command = AcceptedAnswerCodec.decode(rawAnswers).stream()
                 .map(this::firstToken)
                 .filter(token -> !token.isBlank())
                 .findFirst()
@@ -300,7 +301,8 @@ public class ReviewController extends BaseController {
     }
 
     private String commandPracticeFocus(Flashcard card) {
-        String answers = card.getAcceptedAnswers() == null || card.getAcceptedAnswers().isBlank() ? card.getBack() : card.getAcceptedAnswers();
+        String rawAnswers = card.getAcceptedAnswers() == null || card.getAcceptedAnswers().isBlank() ? card.getBack() : card.getAcceptedAnswers();
+        String answers = String.join(" ", AcceptedAnswerCodec.decode(rawAnswers));
         String skill = commandSkillLabel(card).toLowerCase();
         if (answers.contains(" -") || answers.contains("--")) {
             return skill.replace(" commands", " flags");
@@ -717,10 +719,7 @@ public class ReviewController extends BaseController {
         String rawAnswers = currentCard == null || currentCard.getAcceptedAnswers() == null || currentCard.getAcceptedAnswers().isBlank()
                 ? currentCard == null ? "" : currentCard.getBack()
                 : currentCard.getAcceptedAnswers();
-        return rawAnswers.lines()
-                .map(String::strip)
-                .filter(answer -> !answer.isEmpty())
-                .toList();
+        return AcceptedAnswerCodec.decode(rawAnswers);
     }
 
     private boolean matchesByMode(String attempt, String expectedAnswer, ValidationMode validationMode) {

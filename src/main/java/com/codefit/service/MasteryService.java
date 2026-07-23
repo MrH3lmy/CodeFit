@@ -1,5 +1,6 @@
 package com.codefit.service;
 
+import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.ReviewRating;
@@ -57,10 +58,10 @@ public class MasteryService {
         if (card.getReviewCount() <= 0 || recentReviewsNewestFirst == null || recentReviewsNewestFirst.isEmpty()) {
             return CardMasteryState.NOT_SEEN;
         }
-        if (isMastered(card, recentReviewsNewestFirst, thresholds)) {
-            return CardMasteryState.MASTERED;
-        }
-        return CardMasteryState.LEARNING;
+        boolean mastered = card.getCardType() == CardType.CONCEPT
+                ? isSubjectivelyMastered(card, recentReviewsNewestFirst, thresholds)
+                : isMastered(card, recentReviewsNewestFirst, thresholds);
+        return mastered ? CardMasteryState.MASTERED : CardMasteryState.LEARNING;
     }
 
     private static boolean isMastered(Flashcard card, List<ReviewHistory> recentReviewsNewestFirst,
@@ -89,6 +90,23 @@ public class MasteryService {
             }
         }
         return true;
+    }
+
+    /**
+     * Subjective (CONCEPT) cards are never text-matched, so mastery can't rely on objective
+     * correctness. Instead require a run of consecutive self-rated Good/Easy passes (no Again or
+     * Hard in that window) alongside the same mature-interval bar used for objective cards.
+     */
+    private static boolean isSubjectivelyMastered(Flashcard card, List<ReviewHistory> recentReviewsNewestFirst,
+                                                   MasteryThresholds thresholds) {
+        if (card.getIntervalDays() < thresholds.minIntervalDays()) {
+            return false;
+        }
+        if (recentReviewsNewestFirst.size() < thresholds.minConsecutiveCorrect()) {
+            return false;
+        }
+        return recentReviewsNewestFirst.subList(0, thresholds.minConsecutiveCorrect()).stream()
+                .allMatch(history -> history.getRating() == ReviewRating.GOOD || history.getRating() == ReviewRating.EASY);
     }
 
     public enum CardMasteryState {

@@ -187,15 +187,15 @@ public class StatsController extends BaseController {
     }
 
     private StatsSkillPerformance emptySkillPerformance() {
-        return new StatsSkillPerformance("Stats appear after reviews", 0, 0, 0, 0, 0, 0, 0, 0);
+        return new StatsSkillPerformance("Stats appear after reviews", 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     private StatsSkillPerformance emptyNeedsPractice() {
-        return new StatsSkillPerformance("No weak areas yet", 0, 0, 0, 0, 0, 0, 0, 0);
+        return new StatsSkillPerformance("No weak areas yet", 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     private String formatReview(ReviewHistory history) {
-        String objectiveAccuracy = history.isObjectivelyCorrect() ? "Correct" : "Missed";
+        String objectiveAccuracy = history.isSubjective() ? "Self-rated" : history.isObjectivelyCorrect() ? "Correct" : "Missed";
         return history.getReviewedAt().toLocalDate() + " • " + getCardPrompt(history.getFlashcardId())
                 + " • " + objectiveAccuracy + " (rated " + history.getRating() + ")"
                 + " • " + history.getPreviousIntervalDays() + "d → " + history.getNewIntervalDays() + "d";

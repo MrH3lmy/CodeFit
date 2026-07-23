@@ -15,7 +15,7 @@ import java.util.List;
 
 public class ReviewHistoryRepository {
     public ReviewHistory save(ReviewHistory history) {
-        String sql = "INSERT INTO review_history (flashcard_id, rating, previous_interval_days, new_interval_days, submitted_in_time, boss_battle, validation_result, submitted_answer, response_time_ms, hint_used, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO review_history (flashcard_id, rating, previous_interval_days, new_interval_days, submitted_in_time, boss_battle, validation_result, submitted_answer, response_time_ms, hint_used, session_id, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, history.getFlashcardId());
@@ -33,6 +33,7 @@ public class ReviewHistoryRepository {
             }
             statement.setInt(10, history.isHintUsed() ? 1 : 0);
             statement.setString(11, history.getSessionId());
+            statement.setString(12, history.getConfidence());
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -139,7 +140,8 @@ public class ReviewHistoryRepository {
                 resultSet.getString("submitted_answer"),
                 responseTimeMs,
                 resultSet.getInt("hint_used") == 1,
-                resultSet.getString("session_id")
+                resultSet.getString("session_id"),
+                resultSet.getString("confidence")
         );
     }
 }

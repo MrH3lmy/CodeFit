@@ -131,6 +131,7 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "review_history", "response_time_ms", "INTEGER");
         addColumnIfMissing(connection, "review_history", "hint_used", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "review_history", "session_id", "TEXT");
+        addColumnIfMissing(connection, "review_history", "confidence", "TEXT");
     }
 
     private static void ensureUserProgressColumns(Connection connection) throws SQLException {

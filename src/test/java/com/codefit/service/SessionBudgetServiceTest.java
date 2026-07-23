@@ -82,4 +82,33 @@ class SessionBudgetServiceTest {
         // card1=50s, card2=5s -> 55s fits in 60s budget; card3 would push to 60s exactly (still fits).
         assertEquals(3, selected.size());
     }
+
+    @Test
+    void aVeryLargeCardDoesNotBlockSmallerCardsThatStillFitLaterInTheQueue() {
+        // card2 (mid-queue, not the forced-first card) is oversized relative to the budget; it
+        // should be skipped rather than stopping the scan, so the smaller card3 later in the
+        // priority order still gets included. card4 no longer fits once card3 fills the budget.
+        List<Flashcard> cards = List.of(card(1), card(2), card(3), card(4));
+        List<Flashcard> selected = SessionBudgetService.selectWithinBudgetSeconds(cards, 20,
+                flashcard -> flashcard.getId() == 2 ? 500 : 10);
+
+        assertEquals(List.of(1L, 3L), selected.stream().map(Flashcard::getId).toList());
+    }
+
+    @Test
+    void oversizedFirstCardIsStillIncludedAloneWhenNothingElseFits() {
+        List<Flashcard> cards = List.of(card(1));
+        List<Flashcard> selected = SessionBudgetService.selectWithinBudgetSeconds(cards, 20, ignored -> 500);
+
+        assertEquals(1, selected.size());
+    }
+
+    @Test
+    void selectWithinBudgetSecondsExcludesCardsOnceBudgetIsFullyUsed() {
+        List<Flashcard> cards = List.of(card(1), card(2), card(3));
+        List<Flashcard> selected = SessionBudgetService.selectWithinBudgetSeconds(cards, 10, ignored -> 10);
+
+        // card1 exactly fills the budget; card2/card3 no longer fit and are excluded.
+        assertEquals(1, selected.size());
+    }
 }

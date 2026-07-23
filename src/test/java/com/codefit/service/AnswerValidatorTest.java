@@ -1,5 +1,6 @@
 package com.codefit.service;
 
+import com.codefit.model.CardType;
 import com.codefit.model.ValidationMode;
 import org.junit.jupiter.api.Test;
 
@@ -8,6 +9,47 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class AnswerValidatorTest {
+
+    @Test
+    void conceptCardWithAnswerInDifferentWordingIsSubjectiveNotDifferent() {
+        // The accepted answer is a canonical explanation, but the learner wrote it in their own
+        // words. A CONCEPT card must never be text-matched, so this is SUBJECTIVE, not DIFFERENT
+        // even though the wording doesn't match any accepted alternative.
+        AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(CardType.CONCEPT,
+                "It separates the API shape from how data is stored in the database",
+                List.of("DTOs are API contracts and entities are persistence models"),
+                ValidationMode.CASE_INSENSITIVE);
+
+        assertEquals(AnswerValidator.Outcome.SUBJECTIVE, outcome);
+    }
+
+    @Test
+    void conceptCardWithEmptyAttemptIsStillEmpty() {
+        AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(CardType.CONCEPT, "",
+                List.of("any accepted answer"), ValidationMode.CASE_INSENSITIVE);
+
+        assertEquals(AnswerValidator.Outcome.EMPTY, outcome);
+    }
+
+    @Test
+    void conceptCardIsSubjectiveEvenWhenAttemptExactlyMatchesAcceptedAnswer() {
+        // Even a word-for-word match must not be reported as an objective EXACT for a concept
+        // card — grading always defers to the learner's self-rating.
+        AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(CardType.CONCEPT,
+                "DTOs are API contracts and entities are persistence models",
+                List.of("DTOs are API contracts and entities are persistence models"),
+                ValidationMode.CASE_INSENSITIVE);
+
+        assertEquals(AnswerValidator.Outcome.SUBJECTIVE, outcome);
+    }
+
+    @Test
+    void nonConceptCardTypesAreStillTextGradedObjectively() {
+        AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(CardType.RECALL,
+                "extends", List.of("extends"), ValidationMode.CASE_INSENSITIVE);
+
+        assertEquals(AnswerValidator.Outcome.EXACT, outcome);
+    }
 
     @Test
     void emptyAttemptIsAlwaysEmpty() {

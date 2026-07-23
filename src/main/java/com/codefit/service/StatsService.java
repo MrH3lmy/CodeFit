@@ -110,24 +110,48 @@ public class StatsService {
         return getConsistencyScore(reviewHistoryRepository.findRecent(READINESS_REVIEW_LIMIT));
     }
 
-    private double getOverallRecentAccuracy(List<ReviewHistory> recentReviews) {
-        if (recentReviews.isEmpty()) {
+    /**
+     * Objective accuracy is computed only over objectively-graded (non-subjective) attempts.
+     * Subjective (CONCEPT) attempts have no text-match signal and must be excluded from both the
+     * numerator and the denominator rather than counted as incorrect. Package-private (not
+     * private) and static so this pure aggregation logic is directly unit testable.
+     */
+    static double getOverallRecentAccuracy(List<ReviewHistory> recentReviews) {
+        List<ReviewHistory> objectiveReviews = recentReviews.stream().filter(history -> !history.isSubjective()).toList();
+        if (objectiveReviews.isEmpty()) {
             return 0.0;
         }
-        long correctReviews = recentReviews.stream()
+        long correctReviews = objectiveReviews.stream()
                 .filter(ReviewHistory::isObjectivelyCorrect)
                 .count();
-        return correctReviews * 100.0 / recentReviews.size();
+        return correctReviews * 100.0 / objectiveReviews.size();
     }
 
-    private double getTimedSuccessRate(List<ReviewHistory> recentReviews) {
-        if (recentReviews.isEmpty()) {
+    static double getTimedSuccessRate(List<ReviewHistory> recentReviews) {
+        List<ReviewHistory> objectiveReviews = recentReviews.stream().filter(history -> !history.isSubjective()).toList();
+        if (objectiveReviews.isEmpty()) {
             return 0.0;
         }
-        long timedSuccesses = recentReviews.stream()
+        long timedSuccesses = objectiveReviews.stream()
                 .filter(ReviewHistory::isTimedSuccess)
                 .count();
-        return timedSuccesses * 100.0 / recentReviews.size();
+        return timedSuccesses * 100.0 / objectiveReviews.size();
+    }
+
+    /** % of subjective (CONCEPT) self-graded attempts the learner rated Good or Easy. */
+    public double getSubjectiveSelfAssessmentRate() {
+        return getSubjectiveSelfAssessmentRate(reviewHistoryRepository.findRecent(READINESS_REVIEW_LIMIT));
+    }
+
+    static double getSubjectiveSelfAssessmentRate(List<ReviewHistory> recentReviews) {
+        List<ReviewHistory> subjectiveReviews = recentReviews.stream().filter(ReviewHistory::isSubjective).toList();
+        if (subjectiveReviews.isEmpty()) {
+            return 0.0;
+        }
+        long selfRatedGood = subjectiveReviews.stream()
+                .filter(history -> history.getRating() == ReviewRating.GOOD || history.getRating() == ReviewRating.EASY)
+                .count();
+        return selfRatedGood * 100.0 / subjectiveReviews.size();
     }
 
     private double getWeakAreaRate(List<ReviewHistory> recentReviews) {
@@ -198,6 +222,7 @@ public class StatsService {
         private final String skill;
         private int totalCards;
         private int dueCards;
+        private int objectiveReviewCount;
         private int correctCount;
         private int againCount;
         private int hardCount;
@@ -219,14 +244,17 @@ public class StatsService {
                 case GOOD -> goodCount++;
                 case EASY -> easyCount++;
             }
-            if (history.isObjectivelyCorrect()) {
-                correctCount++;
+            if (!history.isSubjective()) {
+                objectiveReviewCount++;
+                if (history.isObjectivelyCorrect()) {
+                    correctCount++;
+                }
             }
         }
 
         private StatsSkillPerformance toPerformance() {
             return new StatsSkillPerformance(skill, totalCards, dueCards,
-                    againCount + hardCount + goodCount + easyCount, correctCount,
+                    againCount + hardCount + goodCount + easyCount, objectiveReviewCount, correctCount,
                     againCount, hardCount, goodCount, easyCount);
         }
     }

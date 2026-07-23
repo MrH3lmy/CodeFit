@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SchemaMigratorTest {
@@ -71,6 +72,36 @@ class SchemaMigratorTest {
     }
 
     @Test
+    void leavesLinuxPipelineCommandsUntouched() throws SQLException {
+        long id = insertCard("LINUX_COMMAND", "ps aux | grep java");
+
+        SchemaMigrator.migrate(connection);
+
+        assertEquals("ps aux | grep java", acceptedAnswers(id));
+    }
+
+    @Test
+    void leavesSqlConcatenationUntouched() throws SQLException {
+        long id = insertCard("SQL_QUERY", "SELECT first_name || ' ' || last_name FROM users");
+
+        SchemaMigrator.migrate(connection);
+
+        assertEquals("SELECT first_name || ' ' || last_name FROM users", acceptedAnswers(id));
+    }
+
+    @Test
+    void leavesUnknownPipeContainingValuesUntouchedEvenIfTheyLookLikeAlternatives() throws SQLException {
+        // Only the fixed set of known pre-#90 seeded values may be migrated. A user-authored card
+        // that happens to contain "|" but isn't one of those exact known values must never be
+        // rewritten, even though it superficially looks like "alt1|alt2".
+        long id = insertCard("RECALL", "foo|bar");
+
+        SchemaMigrator.migrate(connection);
+
+        assertEquals("foo|bar", acceptedAnswers(id));
+    }
+
+    @Test
     void migrationIsIdempotent() throws SQLException {
         long id = insertCard("RECALL", "mvn test|./mvnw test");
 
@@ -81,6 +112,34 @@ class SchemaMigratorTest {
 
         assertEquals(afterFirstRun, afterSecondRun);
         assertEquals("[\"mvn test\",\"./mvnw test\"]", afterSecondRun);
+    }
+
+    @Test
+    void migrationRollsBackAllChangesWhenARowFailsPartway() throws SQLException {
+        // A trigger that rejects long accepted_answers values forces the second row's UPDATE to
+        // fail partway through the migration, so we can prove the whole migration is atomic: the
+        // first row's already-applied update must roll back too, and no migration is recorded.
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TRIGGER reject_long_answers BEFORE UPDATE ON flashcards
+                    WHEN length(NEW.accepted_answers) > 30
+                    BEGIN SELECT RAISE(ABORT, 'accepted_answers too long'); END
+                    """);
+        }
+
+        long shortRowId = insertCard("RECALL", "when|Mockito.when");
+        long longRowId = insertCard("RECALL", "@ControllerAdvice|@RestControllerAdvice");
+
+        assertThrows(SQLException.class, () -> SchemaMigrator.migrate(connection));
+
+        assertEquals("when|Mockito.when", acceptedAnswers(shortRowId));
+        assertEquals("@ControllerAdvice|@RestControllerAdvice", acceptedAnswers(longRowId));
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM schema_migrations")) {
+            assertTrue(resultSet.next());
+            assertEquals(0, resultSet.getInt(1));
+        }
     }
 
     @Test

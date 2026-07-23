@@ -100,6 +100,7 @@ public final class DatabaseConfig {
             ensureReviewHistoryColumns(connection);
             ensureUserProgressColumns(connection);
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");
+            SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to initialize CodeFit database", exception);

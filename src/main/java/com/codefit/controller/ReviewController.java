@@ -7,6 +7,7 @@ import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewRating;
 import com.codefit.service.AcceptedAnswerCodec;
+import com.codefit.service.AnswerValidator;
 import com.codefit.service.DeckService;
 import com.codefit.service.RatingGuardrail;
 import com.codefit.service.ReviewService;
@@ -718,19 +719,14 @@ public class ReviewController extends BaseController {
     }
 
     private AttemptValidationResult validateAttempt() {
-        String attempt = getAttemptText();
-        if (attempt.isEmpty()) {
-            return AttemptValidationResult.EMPTY;
-        }
-        for (String expectedAnswer : acceptedAnswers()) {
-            if (matchesByMode(attempt, expectedAnswer, currentCard.getValidationMode())) {
-                return AttemptValidationResult.EXACT;
-            }
-            if (normalizeSpacing(attempt).equalsIgnoreCase(normalizeSpacing(expectedAnswer))) {
-                return AttemptValidationResult.CLOSE_SPACING;
-            }
-        }
-        return AttemptValidationResult.DIFFERENT;
+        AnswerValidator.Outcome outcome = AnswerValidator.validate(getAttemptText(), acceptedAnswers(),
+                currentCard.getValidationMode());
+        return switch (outcome) {
+            case EMPTY -> AttemptValidationResult.EMPTY;
+            case EXACT -> AttemptValidationResult.EXACT;
+            case CLOSE_SPACING -> AttemptValidationResult.CLOSE_SPACING;
+            case DIFFERENT -> AttemptValidationResult.DIFFERENT;
+        };
     }
 
     private String getAttemptText() {
@@ -745,19 +741,6 @@ public class ReviewController extends BaseController {
                 ? currentCard == null ? "" : currentCard.getBack()
                 : currentCard.getAcceptedAnswers();
         return AcceptedAnswerCodec.decode(rawAnswers);
-    }
-
-    private boolean matchesByMode(String attempt, String expectedAnswer, ValidationMode validationMode) {
-        return switch (validationMode == null ? ValidationMode.CASE_INSENSITIVE : validationMode) {
-            case EXACT -> attempt.equals(expectedAnswer);
-            case CASE_INSENSITIVE -> attempt.equalsIgnoreCase(expectedAnswer);
-            case NORMALIZED_SPACING -> normalizeSpacing(attempt).equalsIgnoreCase(normalizeSpacing(expectedAnswer));
-            case COMMAND_NORMALIZED -> normalizeCommand(attempt).equalsIgnoreCase(normalizeCommand(expectedAnswer));
-        };
-    }
-
-    private String normalizeCommand(String value) {
-        return normalizeSpacing(value).replaceAll("\\s*=\\s*", "=");
     }
 
     private String formatRevealedAnswer() {
@@ -788,10 +771,6 @@ public class ReviewController extends BaseController {
         commandTextField.clear();
         commandTextField.setDisable(false);
         resetTerminalHistory();
-    }
-
-    private String normalizeSpacing(String value) {
-        return value.replaceAll("\\s+", " ").strip();
     }
 
     private void resetTerminalHistory() {
@@ -827,9 +806,9 @@ public class ReviewController extends BaseController {
     }
 
     private String formatSafeCommandFeedback() {
-        String attempt = normalizeCommand(getAttemptText()).toLowerCase();
+        String attempt = AnswerValidator.normalizeCommand(getAttemptText()).toLowerCase();
         String expected = acceptedAnswers().stream()
-                .map(this::normalizeCommand)
+                .map(AnswerValidator::normalizeCommand)
                 .map(String::toLowerCase)
                 .findFirst()
                 .orElse("");

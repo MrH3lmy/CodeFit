@@ -8,6 +8,7 @@ import com.codefit.model.UserProgress;
 import com.codefit.service.DailyQuestService;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
+import com.codefit.service.MasteryService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
@@ -60,6 +61,7 @@ public class DashboardController extends BaseController {
     private final StatsService statsService = new StatsService();
     private final TrainingPathService trainingPathService = new TrainingPathService();
     private final SystemMessageService systemMessageService = new SystemMessageService();
+    private final MasteryService masteryService = new MasteryService();
 
     @FXML
     public void initialize() {
@@ -455,11 +457,7 @@ public class DashboardController extends BaseController {
         if (deckCards.isEmpty()) {
             return 0;
         }
-
-        long reviewedCards = deckCards.stream()
-                .filter(card -> card.getReviewCount() > 0)
-                .count();
-        return (int) Math.round((reviewedCards * 100.0) / deckCards.size());
+        return (int) Math.round(masteryService.summarize(deckCards).masteredPercent());
     }
 
     private record RoutineItem(String title, String progressText, String helperText, boolean completed, Runnable action) {

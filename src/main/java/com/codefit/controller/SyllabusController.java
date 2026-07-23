@@ -31,10 +31,10 @@ public class SyllabusController extends BaseController {
         syllabusListView.setPlaceholder(new Label("No syllabus modules are available yet."));
 
         int totalCards = modules.stream().mapToInt(SyllabusModule::getEstimatedCardCount).sum();
-        int reviewedCards = modules.stream().mapToInt(SyllabusModule::getReviewedCardCount).sum();
+        int masteredCards = modules.stream().mapToInt(SyllabusModule::getMasteredCardCount).sum();
         moduleCountLabel.setText(String.valueOf(modules.size()));
         cardCountLabel.setText(String.valueOf(totalCards));
-        progressLabel.setText(totalCards == 0 ? "0%" : Math.round(reviewedCards * 100.0 / totalCards) + "%");
+        progressLabel.setText(totalCards == 0 ? "0%" : Math.round(masteredCards * 100.0 / totalCards) + "%");
     }
 
     private static final class SyllabusModuleCell extends ListCell<SyllabusModule> {

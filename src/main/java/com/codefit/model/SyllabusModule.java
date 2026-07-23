@@ -7,17 +7,22 @@ public class SyllabusModule {
     private final long deckId;
     private final String deckName;
     private final int estimatedCardCount;
-    private final int reviewedCardCount;
+    private final int seenCardCount;
+    private final int learningCardCount;
+    private final int masteredCardCount;
 
     public SyllabusModule(int moduleNumber, String title, String learningObjective, long deckId,
-                          String deckName, int estimatedCardCount, int reviewedCardCount) {
+                          String deckName, int estimatedCardCount, int seenCardCount, int learningCardCount,
+                          int masteredCardCount) {
         this.moduleNumber = moduleNumber;
         this.title = title;
         this.learningObjective = learningObjective;
         this.deckId = deckId;
         this.deckName = deckName;
         this.estimatedCardCount = estimatedCardCount;
-        this.reviewedCardCount = reviewedCardCount;
+        this.seenCardCount = seenCardCount;
+        this.learningCardCount = learningCardCount;
+        this.masteredCardCount = masteredCardCount;
     }
 
     public int getModuleNumber() { return moduleNumber; }
@@ -26,22 +31,25 @@ public class SyllabusModule {
     public long getDeckId() { return deckId; }
     public String getDeckName() { return deckName; }
     public int getEstimatedCardCount() { return estimatedCardCount; }
-    public int getReviewedCardCount() { return reviewedCardCount; }
+    public int getSeenCardCount() { return seenCardCount; }
+    public int getLearningCardCount() { return learningCardCount; }
+    public int getMasteredCardCount() { return masteredCardCount; }
 
+    /** Progress reflects durable mastery, not a single attempt. */
     public double getProgress() {
-        return estimatedCardCount == 0 ? 0 : reviewedCardCount / (double) estimatedCardCount;
+        return estimatedCardCount == 0 ? 0 : masteredCardCount / (double) estimatedCardCount;
     }
 
     public String getReviewStatus() {
         if (estimatedCardCount == 0) {
             return "No cards available yet";
         }
-        if (reviewedCardCount == 0) {
+        if (seenCardCount == 0) {
             return "Not started";
         }
-        if (reviewedCardCount >= estimatedCardCount) {
-            return "Reviewed all cards";
+        if (masteredCardCount >= estimatedCardCount) {
+            return "Mastered all cards";
         }
-        return reviewedCardCount + " of " + estimatedCardCount + " reviewed";
+        return masteredCardCount + " mastered, " + learningCardCount + " learning, of " + estimatedCardCount + " cards";
     }
 }

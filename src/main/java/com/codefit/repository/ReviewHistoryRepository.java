@@ -45,6 +45,24 @@ public class ReviewHistoryRepository {
         }
     }
 
+    public List<ReviewHistory> findRecentForFlashcard(long flashcardId, int limit) {
+        String sql = "SELECT * FROM review_history WHERE flashcard_id = ? AND boss_battle = 0 ORDER BY reviewed_at DESC LIMIT ?";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, flashcardId);
+            statement.setInt(2, limit);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<ReviewHistory> history = new ArrayList<>();
+                while (resultSet.next()) {
+                    history.add(mapReviewHistory(resultSet));
+                }
+                return history;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load review history for card", exception);
+        }
+    }
+
     public List<ReviewHistory> findRecent(int limit) {
         String sql = "SELECT * FROM review_history WHERE boss_battle = 0 ORDER BY reviewed_at DESC LIMIT ?";
         try (Connection connection = DatabaseConfig.getConnection();

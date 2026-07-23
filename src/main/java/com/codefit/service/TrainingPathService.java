@@ -29,6 +29,7 @@ public class TrainingPathService {
     );
 
     private final FlashcardService flashcardService = new FlashcardService();
+    private final MasteryService masteryService = new MasteryService();
 
     public List<TrainingPath> getTrainingPaths() {
         return List.of(JAVA_BACKEND_PATH);
@@ -119,8 +120,7 @@ public class TrainingPathService {
         if (cards.isEmpty()) {
             return 0;
         }
-        long reviewedCards = cards.stream().filter(card -> card.getReviewCount() > 0).count();
-        return (int) Math.round((reviewedCards * 100.0) / cards.size());
+        return (int) Math.round(masteryService.summarize(cards).masteredPercent());
     }
 
     public enum TrainingPathAction {

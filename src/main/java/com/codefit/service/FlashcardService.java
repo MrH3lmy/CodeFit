@@ -80,4 +80,8 @@ public class FlashcardService {
     public int countDueCards() {
         return flashcardRepository.countDue();
     }
+
+    public int countNewCards() {
+        return flashcardRepository.countNew();
+    }
 }

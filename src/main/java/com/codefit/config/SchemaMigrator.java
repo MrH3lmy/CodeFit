@@ -32,7 +32,10 @@ final class SchemaMigrator {
     private static final List<VersionedMigration> MIGRATIONS = List.of(
             new VersionedMigration(1,
                     "Convert legacy pipe-delimited accepted answers to the structured codec format",
-                    SchemaMigrator::migrateLegacyAcceptedAnswers)
+                    SchemaMigrator::migrateLegacyAcceptedAnswers),
+            new VersionedMigration(2,
+                    "Backfill card lifecycle state for cards created before card_state existed",
+                    SchemaMigrator::backfillCardLifecycleState)
     );
 
     static void migrate(Connection connection) throws SQLException {
@@ -121,6 +124,23 @@ final class SchemaMigrator {
                 update.setLong(2, row.id());
                 update.executeUpdate();
             }
+        }
+    }
+
+    /**
+     * The card_state/introduced_at columns default new rows to NEW, which is wrong for cards
+     * that already had reviews before lifecycle states existed. Move those into REVIEW so they
+     * don't count against the daily new-card limit, using their creation date as a best-effort
+     * introduced_at since the real introduction date wasn't recorded.
+     */
+    private static void backfillCardLifecycleState(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    UPDATE flashcards
+                    SET card_state = 'REVIEW',
+                        introduced_at = COALESCE(introduced_at, created_at)
+                    WHERE review_count > 0 AND card_state = 'NEW'
+                    """);
         }
     }
 

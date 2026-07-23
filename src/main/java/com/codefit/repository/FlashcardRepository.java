@@ -1,6 +1,7 @@
 package com.codefit.repository;
 
 import com.codefit.config.DatabaseConfig;
+import com.codefit.model.CardState;
 import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
@@ -35,7 +36,16 @@ public class FlashcardRepository {
     }
 
     public List<Flashcard> findDueCards() {
-        return query("SELECT * FROM flashcards WHERE due_date <= date('now') ORDER BY due_date, created_at");
+        return query("SELECT * FROM flashcards WHERE due_date <= date('now') "
+                + "AND card_state IN ('REVIEW', 'RELEARNING') ORDER BY due_date, created_at");
+    }
+
+    public List<Flashcard> findNewCards() {
+        return query("SELECT * FROM flashcards WHERE card_state = 'NEW' ORDER BY deck_id, created_at");
+    }
+
+    public int countIntroducedToday() {
+        return count("SELECT COUNT(*) FROM flashcards WHERE introduced_at IS NOT NULL AND date(introduced_at) = date('now')");
     }
 
     public Optional<Flashcard> findById(long id) {
@@ -66,7 +76,7 @@ public class FlashcardRepository {
     }
 
     public Flashcard save(Flashcard flashcard) {
-        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, hint, skill_category, time_limit_seconds, due_date, interval_days, ease_factor, review_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, hint, skill_category, time_limit_seconds, due_date, interval_days, ease_factor, review_count, card_state, introduced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, flashcard.getDeckId());
@@ -87,6 +97,8 @@ public class FlashcardRepository {
             statement.setInt(12, flashcard.getIntervalDays());
             statement.setDouble(13, flashcard.getEaseFactor());
             statement.setInt(14, flashcard.getReviewCount());
+            statement.setString(15, flashcard.getCardState().name());
+            statement.setString(16, flashcard.getIntroducedAt() == null ? null : flashcard.getIntroducedAt().toString());
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -100,14 +112,17 @@ public class FlashcardRepository {
     }
 
     public void updateSchedule(Flashcard flashcard) {
-        String sql = "UPDATE flashcards SET due_date = ?, interval_days = ?, ease_factor = ?, review_count = ? WHERE id = ?";
+        String sql = "UPDATE flashcards SET due_date = ?, interval_days = ?, ease_factor = ?, review_count = ?, "
+                + "card_state = ?, introduced_at = ? WHERE id = ?";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, flashcard.getDueDate().toString());
             statement.setInt(2, flashcard.getIntervalDays());
             statement.setDouble(3, flashcard.getEaseFactor());
             statement.setInt(4, flashcard.getReviewCount());
-            statement.setLong(5, flashcard.getId());
+            statement.setString(5, flashcard.getCardState().name());
+            statement.setString(6, flashcard.getIntroducedAt() == null ? null : flashcard.getIntroducedAt().toString());
+            statement.setLong(7, flashcard.getId());
             statement.executeUpdate();
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to update card schedule", exception);
@@ -119,7 +134,12 @@ public class FlashcardRepository {
     }
 
     public int countDue() {
-        return count("SELECT COUNT(*) FROM flashcards WHERE due_date <= date('now')");
+        return count("SELECT COUNT(*) FROM flashcards WHERE due_date <= date('now') "
+                + "AND card_state IN ('REVIEW', 'RELEARNING')");
+    }
+
+    public int countNew() {
+        return count("SELECT COUNT(*) FROM flashcards WHERE card_state = 'NEW'");
     }
 
     private List<Flashcard> query(String sql) {
@@ -151,7 +171,7 @@ public class FlashcardRepository {
     }
 
     private Flashcard mapFlashcard(ResultSet resultSet) throws SQLException {
-        return new Flashcard(
+        Flashcard flashcard = new Flashcard(
                 resultSet.getLong("id"),
                 resultSet.getLong("deck_id"),
                 resultSet.getString("front"),
@@ -169,11 +189,19 @@ public class FlashcardRepository {
                 LocalDateTime.parse(resultSet.getString("created_at").replace(' ', 'T')),
                 nullableInteger(resultSet, "time_limit_seconds")
         );
+        flashcard.setCardState(enumValue(CardState.class, resultSet.getString("card_state"), CardState.NEW));
+        flashcard.setIntroducedAt(nullableDateTime(resultSet, "introduced_at"));
+        return flashcard;
     }
 
     private Integer nullableInteger(ResultSet resultSet, String columnName) throws SQLException {
         int value = resultSet.getInt(columnName);
         return resultSet.wasNull() ? null : value;
+    }
+
+    private LocalDateTime nullableDateTime(ResultSet resultSet, String columnName) throws SQLException {
+        String value = resultSet.getString(columnName);
+        return value == null ? null : LocalDateTime.parse(value.replace(' ', 'T'));
     }
 
     private <T extends Enum<T>> T enumValue(Class<T> enumClass, String value, T fallback) {

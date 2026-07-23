@@ -20,6 +20,8 @@ public class Flashcard {
     private int reviewCount;
     private LocalDateTime createdAt;
     private Integer timeLimitSeconds;
+    private CardState cardState = CardState.NEW;
+    private LocalDateTime introducedAt;
 
     public Flashcard(long id, long deckId, String front, String back, LocalDate dueDate,
                      int intervalDays, double easeFactor, int reviewCount, LocalDateTime createdAt) {
@@ -120,6 +122,10 @@ public class Flashcard {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Integer getTimeLimitSeconds() { return timeLimitSeconds; }
     public void setTimeLimitSeconds(Integer timeLimitSeconds) { this.timeLimitSeconds = timeLimitSeconds; }
+    public CardState getCardState() { return cardState; }
+    public void setCardState(CardState cardState) { this.cardState = cardState == null ? CardState.NEW : cardState; }
+    public LocalDateTime getIntroducedAt() { return introducedAt; }
+    public void setIntroducedAt(LocalDateTime introducedAt) { this.introducedAt = introducedAt; }
 
     private String normalizeSkillCategory(String skillCategory) {
         return skillCategory == null || skillCategory.isBlank() ? "General" : skillCategory.strip();

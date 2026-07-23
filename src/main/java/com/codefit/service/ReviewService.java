@@ -1,5 +1,6 @@
 package com.codefit.service;
 
+import com.codefit.model.CardState;
 import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewAttempt;
@@ -10,8 +11,10 @@ import com.codefit.repository.ReviewHistoryRepository;
 import com.codefit.repository.UserProgressRepository;
 
 import java.time.LocalDate;
+import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,22 +22,77 @@ import java.util.Map;
 
 public class ReviewService {
     private static final int WEEKLY_BOSS_CARD_LIMIT = 12;
+    public static final int DEFAULT_DAILY_NEW_CARD_LIMIT = 2;
+
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
     private final ReviewHistoryRepository reviewHistoryRepository = new ReviewHistoryRepository();
     private final UserProgressRepository userProgressRepository = new UserProgressRepository();
     private final SpacedRepetitionService spacedRepetitionService = new SpacedRepetitionService();
     private final ProgressService progressService = new ProgressService();
     private final DailyQuestService dailyQuestService = new DailyQuestService();
+    private final MasteryService masteryService = new MasteryService();
+    private final CardLifecycleService cardLifecycleService = new CardLifecycleService();
+    private final int dailyNewCardLimit;
+
+    public ReviewService() {
+        this(DEFAULT_DAILY_NEW_CARD_LIMIT);
+    }
+
+    public ReviewService(int dailyNewCardLimit) {
+        this.dailyNewCardLimit = dailyNewCardLimit;
+    }
 
     public DailyWorkloadMode getDailyWorkloadMode() {
         return userProgressRepository.getProgress().getDailyWorkloadMode();
     }
 
+    /**
+     * Due and relearning cards always take precedence; new cards (capped by the daily new-card
+     * limit and mixed across decks/modules rather than creation order) only fill remaining room
+     * in the workload mode's session size.
+     */
     public List<Flashcard> getDueCards() {
         DailyWorkloadMode mode = getDailyWorkloadMode();
-        return flashcardRepository.findDueCards().stream()
-                .limit(mode.getReviewSessionLimit())
-                .toList();
+        List<Flashcard> dueAndRelearning = flashcardRepository.findDueCards();
+        int remainingNewCardBudget = dailyNewCardLimit - flashcardRepository.countIntroducedToday();
+        List<Flashcard> newCards = selectNewCardsMixedAcrossDecks(Math.max(0, remainingNewCardBudget));
+
+        List<Flashcard> combined = new ArrayList<>(dueAndRelearning);
+        combined.addAll(newCards);
+        return combined.stream().limit(mode.getReviewSessionLimit()).toList();
+    }
+
+    private List<Flashcard> selectNewCardsMixedAcrossDecks(int limit) {
+        if (limit <= 0) {
+            return List.of();
+        }
+        Map<Long, Deque<Flashcard>> byDeck = new LinkedHashMap<>();
+        for (Flashcard card : flashcardRepository.findNewCards()) {
+            byDeck.computeIfAbsent(card.getDeckId(), ignored -> new ArrayDeque<>()).add(card);
+        }
+
+        List<Flashcard> selected = new ArrayList<>();
+        boolean addedAny = true;
+        while (selected.size() < limit && addedAny) {
+            addedAny = false;
+            for (Deque<Flashcard> deckQueue : byDeck.values()) {
+                if (selected.size() >= limit) {
+                    break;
+                }
+                Flashcard next = deckQueue.poll();
+                if (next != null) {
+                    selected.add(next);
+                    addedAny = true;
+                }
+            }
+        }
+        return selected;
+    }
+
+    /** How many new cards can still be introduced today, respecting the daily new-card limit. */
+    public int getAvailableNewCardBudget() {
+        int remaining = dailyNewCardLimit - flashcardRepository.countIntroducedToday();
+        return Math.max(0, Math.min(remaining, flashcardRepository.countNew()));
     }
 
     public List<Flashcard> getWeeklyBossCards() {
@@ -53,6 +111,7 @@ public class ReviewService {
         });
 
         List<Flashcard> prioritizedCards = flashcardRepository.findAll().stream()
+                .filter(card -> card.getCardState() != CardState.SUSPENDED)
                 .sorted(Comparator.comparingDouble((Flashcard card) -> -weeklyBossPriority(card, pressureByCardId.get(card.getId()), today))
                         .thenComparing(Flashcard::getSkillCategory, Comparator.nullsLast(String::compareToIgnoreCase))
                         .thenComparingLong(Flashcard::getDeckId)
@@ -78,11 +137,14 @@ public class ReviewService {
                               ReviewAttempt attempt) {
         int previousInterval = card.getIntervalDays();
         spacedRepetitionService.applyReview(card, rating);
-        flashcardRepository.updateSchedule(card);
         reviewHistoryRepository.save(new ReviewHistory(0, card.getId(), rating, previousInterval,
                 card.getIntervalDays(), java.time.LocalDateTime.now(), submittedInTime, bossBattle,
                 attempt.validationResult(), attempt.submittedAnswer(), attempt.responseTimeMs(),
                 attempt.hintUsed(), attempt.sessionId()));
+        // Evaluated after saving history so this review counts toward the mastery decision.
+        MasteryService.CardMasteryState masteryState = masteryService.getMasteryState(card);
+        cardLifecycleService.applyReviewOutcome(card, rating, masteryState);
+        flashcardRepository.updateSchedule(card);
         if (!bossBattle) {
             progressService.recordReview(rating);
             dailyQuestService.recordReview(card);

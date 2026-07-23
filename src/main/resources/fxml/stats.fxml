@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.codefit.ui.Sidebar?>
 
-<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.StatsController">
-    <left>
-        <Sidebar activePage="stats" />
-    </left>
-    <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.StatsController">
+    <content>
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
                     <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
-                        <Label text="Stats" styleClass="page-title" wrapText="true" />
+                        <Label text="Progress" styleClass="page-title" wrapText="true" />
                         <Label text="Track progress, spot weak areas, and review activity after the performance summaries." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <VBox fx:id="statsEmptyStateBox" spacing="10" styleClass="status-banner" maxWidth="Infinity" visible="false" managed="false">
@@ -67,7 +61,5 @@
                         <ListView fx:id="recentReviewsListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                     </VBox>
                 </VBox>
-            </content>
-        </ScrollPane>
-    </center>
-</BorderPane>
+    </content>
+</ScrollPane>

@@ -25,6 +25,7 @@ public final class NavigationService {
 
     private static Stage primaryStage;
     private static Scene primaryScene;
+    private static AppShellController shellController;
     private static boolean weeklyBossModeRequested;
     private static Integer pendingSessionMinutes;
     private static String pendingReflectionType;
@@ -38,21 +39,21 @@ public final class NavigationService {
     }
 
     public static void showDashboard() {
-        navigate("dashboard.fxml", "CodeFit - Dashboard");
+        navigate(Route.TODAY);
     }
 
     public static void showDecks() {
-        navigate("decks.fxml", "CodeFit - Decks");
+        navigate(Route.LIBRARY);
     }
 
     public static void showAddCard() {
         pendingReflectionType = null;
-        navigate("add-card.fxml", "CodeFit - Add Card");
+        navigate(Route.ADD_CARD);
     }
 
     public static void showAddCardReflection(String reflectionType) {
         pendingReflectionType = reflectionType;
-        navigate("add-card.fxml", "CodeFit - Add Reflection Card");
+        navigate(Route.ADD_CARD);
     }
 
     public static String consumePendingReflectionType() {
@@ -64,20 +65,20 @@ public final class NavigationService {
     public static void showReview() {
         weeklyBossModeRequested = false;
         pendingSessionMinutes = null;
-        navigate("review.fxml", "CodeFit - Review");
+        navigate(Route.REVIEW);
     }
 
     /** Starts a time-budgeted adaptive session instead of the card-count workload mode. */
     public static void showTimedReview(int minutes) {
         weeklyBossModeRequested = false;
         pendingSessionMinutes = minutes;
-        navigate("review.fxml", "CodeFit - Review");
+        navigate(Route.REVIEW);
     }
 
     public static void showWeeklyBossBattle() {
         weeklyBossModeRequested = true;
         pendingSessionMinutes = null;
-        navigate("review.fxml", "CodeFit - Weekly Boss Battle");
+        navigate(Route.REVIEW);
     }
 
     public static boolean consumeWeeklyBossModeRequest() {
@@ -94,35 +95,44 @@ public final class NavigationService {
     }
 
     public static void showSyllabus() {
-        navigate("syllabus.fxml", "CodeFit - Java Backend Syllabus");
+        navigate(Route.SYLLABUS);
     }
 
     public static void showStats() {
-        navigate("stats.fxml", "CodeFit - Stats");
+        navigate(Route.PROGRESS);
     }
 
-    public static void navigate(String fxmlName, String title) {
+    /** Navigates to a route, building the persistent shell on first use. Only the shell's content
+     *  host is swapped on subsequent calls, so the sidebar and top bar are never reconstructed. */
+    public static void navigate(Route route) {
         if (primaryStage == null) {
             throw new IllegalStateException("Primary stage has not been configured.");
         }
+        ensureShell();
+        shellController.showRoute(route);
+        primaryStage.setTitle(route.title());
+        primaryStage.show();
+    }
+
+    private static void ensureShell() {
+        if (primaryScene != null) {
+            return;
+        }
         try {
-            URL resource = NavigationService.class.getResource("/fxml/" + fxmlName);
-            Parent root = FXMLLoader.load(resource);
-            applyTheme(root);
-            if (primaryScene == null) {
-                primaryScene = new Scene(root, 1100, 720);
-                primaryScene.getStylesheets().add(NavigationService.class.getResource("/css/app.css").toExternalForm());
-                primaryScene.setFill(Color.web("#070b16"));
-                primaryStage.setScene(primaryScene);
-            } else {
-                primaryScene.setRoot(root);
-            }
-            primaryStage.setTitle(title);
+            URL shellResource = NavigationService.class.getResource("/fxml/app-shell.fxml");
+            FXMLLoader loader = new FXMLLoader(shellResource);
+            Parent shellRoot = loader.load();
+            shellController = loader.getController();
+            applyTheme(shellRoot);
+
+            primaryScene = new Scene(shellRoot, 1100, 720);
+            primaryScene.getStylesheets().add(NavigationService.class.getResource("/css/app.css").toExternalForm());
+            primaryScene.setFill(Color.web("#070b16"));
+            primaryStage.setScene(primaryScene);
             primaryStage.setMinWidth(760);
             primaryStage.setMinHeight(560);
-            primaryStage.show();
         } catch (IOException exception) {
-            throw new IllegalStateException("Unable to load screen: " + fxmlName, exception);
+            throw new IllegalStateException("Unable to load application shell.", exception);
         }
     }
 

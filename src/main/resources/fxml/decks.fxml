@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.codefit.ui.Sidebar?>
 
-<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.DecksController">
-    <left>
-        <Sidebar activePage="decks" />
-    </left>
-    <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.DecksController">
+    <content>
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
                     <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
-                        <Label text="Decks" styleClass="page-title" wrapText="true" />
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="Library" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                            <Button text="Syllabus" onAction="#goSyllabus" styleClass="ghost-button" />
+                        </HBox>
                         <Label text="Organize related prompts into focused decks so each review queue matches what you want to master next." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
@@ -42,7 +39,5 @@
                         </VBox>
                     </FlowPane>
                 </VBox>
-            </content>
-        </ScrollPane>
-    </center>
-</BorderPane>
+    </content>
+</ScrollPane>

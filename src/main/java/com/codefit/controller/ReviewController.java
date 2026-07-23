@@ -23,6 +23,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Toggle;
@@ -30,7 +31,6 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
@@ -48,7 +48,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class ReviewController extends BaseController {
-    @FXML private BorderPane reviewRoot;
+    @FXML private ScrollPane reviewRoot;
     @FXML private Label queueLabel;
     @FXML private Label workloadModeLabel;
     @FXML private Label sessionTimeLabel;

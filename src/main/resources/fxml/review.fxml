@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.codefit.ui.Sidebar?>
 
-<BorderPane fx:id="reviewRoot" styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ReviewController">
-    <left>
-        <Sidebar activePage="review" />
-    </left>
-    <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
+<ScrollPane fx:id="reviewRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ReviewController">
+    <content>
                 <VBox spacing="24" styleClass="content" maxWidth="Infinity">
                     <VBox spacing="16" styleClass="hero-card" maxWidth="Infinity">
                         <HBox spacing="12" alignment="CENTER_LEFT">
@@ -117,7 +111,5 @@
                         </VBox>
                     </StackPane>
                 </VBox>
-            </content>
-        </ScrollPane>
-    </center>
-</BorderPane>
+    </content>
+</ScrollPane>

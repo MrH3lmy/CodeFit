@@ -209,6 +209,24 @@
     -fx-background-color: transparent;
 }
 
+.content-host {
+    -fx-background-color: transparent;
+}
+
+.app-topbar {
+    -fx-padding: 14 24 14 24;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -color-border transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.topbar-title {
+    -fx-text-fill: -color-heading;
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: -0.02em;
+}
+
 
 .brand-block {
     -fx-padding: 0 6 12 6;

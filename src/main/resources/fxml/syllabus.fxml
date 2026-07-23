@@ -1,20 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.codefit.ui.Sidebar?>
 
-<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.SyllabusController">
-    <left>
-        <Sidebar activePage="syllabus" />
-    </left>
-    <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.SyllabusController">
+    <content>
                 <VBox alignment="TOP_CENTER" maxWidth="Infinity" spacing="16" styleClass="content" VBox.vgrow="ALWAYS">
                     <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
                         <HBox alignment="CENTER_LEFT" spacing="12">
                             <Label text="Java Backend Syllabus" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                            <Button text="Back to Library" onAction="#goDecks" styleClass="ghost-button" />
                             <Label text="Ordered roadmap" styleClass="pill" wrapText="true" />
                         </HBox>
                         <Label text="Follow the Java BE path module by module, with each learning objective linked to its recommended flashcard deck and current review progress." styleClass="page-subtitle" wrapText="true" />
@@ -40,8 +34,5 @@
                         <ListView fx:id="syllabusListView" prefHeight="520" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
                     </VBox>
                 </VBox>
-            </content>
-        </ScrollPane>
-    </center>
-    <padding><Insets top="0" right="0" bottom="0" left="0" /></padding>
-</BorderPane>
+    </content>
+</ScrollPane>

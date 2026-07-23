@@ -1,16 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.codefit.ui.Sidebar?>
 
-<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.DashboardController">
-    <left>
-        <Sidebar activePage="dashboard" />
-    </left>
-    <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.DashboardController">
+    <content>
                 <VBox alignment="TOP_CENTER" maxWidth="Infinity" spacing="16" styleClass="content" VBox.vgrow="ALWAYS">
                     <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
                         <HBox alignment="CENTER_LEFT" spacing="12">
@@ -116,8 +109,5 @@
                         </VBox>
                     </GridPane>
                 </VBox>
-            </content>
-        </ScrollPane>
-    </center>
-    <padding><Insets top="0" right="0" bottom="0" left="0" /></padding>
-</BorderPane>
+    </content>
+</ScrollPane>

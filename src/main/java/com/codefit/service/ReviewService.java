@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.ToIntFunction;
 
 public class ReviewService {
     private static final int WEEKLY_BOSS_CARD_LIMIT = 12;
@@ -65,11 +66,16 @@ public class ReviewService {
     }
 
     private List<Flashcard> selectNewCardsMixedAcrossDecks(int limit) {
+        return selectNewCardsMixedAcrossDecks(flashcardRepository.findNewCards(), limit);
+    }
+
+    /** Package-private/static so the daily-limit-respecting selection is directly unit testable without a database. */
+    static List<Flashcard> selectNewCardsMixedAcrossDecks(List<Flashcard> candidates, int limit) {
         if (limit <= 0) {
             return List.of();
         }
         Map<Long, Deque<Flashcard>> byDeck = new LinkedHashMap<>();
-        for (Flashcard card : flashcardRepository.findNewCards()) {
+        for (Flashcard card : candidates) {
             byDeck.computeIfAbsent(card.getDeckId(), ignored -> new ArrayDeque<>()).add(card);
         }
 
@@ -93,62 +99,97 @@ public class ReviewService {
 
     /** How many new cards can still be introduced today, respecting the daily new-card limit. */
     public int getAvailableNewCardBudget() {
-        int remaining = dailyNewCardLimit - flashcardRepository.countIntroducedToday();
-        return Math.max(0, Math.min(remaining, flashcardRepository.countNew()));
+        return computeAvailableNewCardBudget(dailyNewCardLimit, flashcardRepository.countIntroducedToday(),
+                flashcardRepository.countNew());
+    }
+
+    static int computeAvailableNewCardBudget(int dailyNewCardLimit, int introducedToday, int totalNewCards) {
+        int remaining = dailyNewCardLimit - introducedToday;
+        return Math.max(0, Math.min(remaining, totalNewCards));
     }
 
     /**
-     * Builds a time-budgeted session: due/relearning, weakest-skill, and recently-failed cards
-     * are mixed ahead of new/stretch cards (60/20/10/10 target ratio) so due work is never
-     * displaced by optional new content, then trimmed to fit the chosen time budget using each
-     * card's own historical response time.
+     * Builds a time-budgeted session. Due and relearning cards are never displaced by optional
+     * new content: the full time budget is offered to the due/relearning queue (relearning
+     * first, then weakest-skill due cards, then the rest ordered by forgetting risk) before any
+     * new/stretch card is even considered, and new cards only fill genuinely leftover budget.
      */
     public AdaptiveSessionPlan getAdaptiveSessionCards(int budgetMinutes) {
         List<Flashcard> dueAndRelearning = flashcardRepository.findDueCards();
-
-        List<Flashcard> forgettingRiskOrder = dueAndRelearning.stream()
-                .sorted(Comparator.comparing(Flashcard::getDueDate).thenComparingDouble(Flashcard::getEaseFactor))
-                .toList();
-
         List<String> weakSkills = statsService.getNeedsPracticeSkills().stream()
                 .map(StatsSkillPerformance::skillCategory)
                 .toList();
-        List<Flashcard> weakestSkillOrder = dueAndRelearning.stream()
-                .filter(card -> weakSkills.contains(normalizeSkillCategory(card.getSkillCategory())))
-                .toList();
-
-        List<Flashcard> recentlyFailedOrder = dueAndRelearning.stream()
-                .filter(card -> card.getCardState() == CardState.RELEARNING)
-                .toList();
-
         List<Flashcard> newCardOrder = selectNewCardsMixedAcrossDecks(getAvailableNewCardBudget());
 
-        List<AdaptiveQueueMixer.Bucket> buckets = List.of(
-                new AdaptiveQueueMixer.Bucket("Highest forgetting risk", forgettingRiskOrder, 0.6),
-                new AdaptiveQueueMixer.Bucket("Weakest skill", weakestSkillOrder, 0.2),
-                new AdaptiveQueueMixer.Bucket("Recently failed", recentlyFailedOrder, 0.1),
-                new AdaptiveQueueMixer.Bucket("New / stretch", newCardOrder, 0.1)
-        );
-        int candidatePoolCap = dueAndRelearning.size() + newCardOrder.size();
-        List<AdaptiveQueueMixer.MixedCard> mixed = new AdaptiveQueueMixer().mix(buckets, candidatePoolCap);
-
-        Map<Long, String> bucketLabelByCardId = new HashMap<>();
-        List<Flashcard> mixedCards = new ArrayList<>();
-        for (AdaptiveQueueMixer.MixedCard entry : mixed) {
-            bucketLabelByCardId.put(entry.card().getId(), entry.bucketLabel());
-            mixedCards.add(entry.card());
-        }
-
-        List<Flashcard> selected = sessionBudgetService.selectWithinBudget(mixedCards, budgetMinutes);
-        Map<String, Integer> composition = new LinkedHashMap<>();
-        for (Flashcard card : selected) {
-            composition.merge(bucketLabelByCardId.getOrDefault(card.getId(), "Other"), 1, Integer::sum);
-        }
-        int estimatedSeconds = sessionBudgetService.estimateTotalSeconds(selected);
-        return new AdaptiveSessionPlan(selected, composition, estimatedSeconds);
+        return buildAdaptiveSessionPlan(dueAndRelearning, weakSkills, newCardOrder, budgetMinutes,
+                sessionBudgetService::estimateCardSeconds);
     }
 
-    private String normalizeSkillCategory(String skillCategory) {
+    static AdaptiveSessionPlan buildAdaptiveSessionPlan(List<Flashcard> dueAndRelearning, List<String> weakSkills,
+                                                        List<Flashcard> newCardOrder, int budgetMinutes,
+                                                        ToIntFunction<Flashcard> estimator) {
+        int budgetSeconds = Math.max(0, budgetMinutes) * 60;
+        List<Flashcard> duePriorityOrder = orderDueQueue(dueAndRelearning, weakSkills);
+
+        List<Flashcard> selectedDue = SessionBudgetService.selectWithinBudgetSeconds(duePriorityOrder, budgetSeconds, estimator);
+        int usedSeconds = selectedDue.stream().mapToInt(estimator::applyAsInt).sum();
+        int remainingSeconds = Math.max(0, budgetSeconds - usedSeconds);
+
+        // When there are due cards, selectedDue already guarantees the session isn't empty, so
+        // leftover budget must only go to new cards that genuinely fit — never force one in.
+        // When there are no due cards at all, new cards carry the "never start empty" guarantee.
+        List<Flashcard> selectedNew;
+        if (selectedDue.isEmpty()) {
+            selectedNew = SessionBudgetService.selectWithinBudgetSeconds(newCardOrder, remainingSeconds, estimator);
+        } else {
+            selectedNew = remainingSeconds > 0
+                    ? SessionBudgetService.selectFittingWithinBudgetSeconds(newCardOrder, remainingSeconds, estimator)
+                    : List.of();
+        }
+
+        Map<String, Integer> composition = new LinkedHashMap<>();
+        for (Flashcard card : selectedDue) {
+            composition.merge(classifyDueCard(card, weakSkills), 1, Integer::sum);
+        }
+        if (!selectedNew.isEmpty()) {
+            composition.merge("New / stretch", selectedNew.size(), Integer::sum);
+        }
+
+        List<Flashcard> allSelected = new ArrayList<>(selectedDue);
+        allSelected.addAll(selectedNew);
+        int estimatedSeconds = allSelected.stream().mapToInt(estimator::applyAsInt).sum();
+        return new AdaptiveSessionPlan(allSelected, composition, estimatedSeconds);
+    }
+
+    /** Relearning cards are highest priority, then due cards in weak skills, then the rest by forgetting risk (most overdue, lowest ease first). */
+    private static List<Flashcard> orderDueQueue(List<Flashcard> dueAndRelearning, List<String> weakSkills) {
+        List<Flashcard> relearning = dueAndRelearning.stream()
+                .filter(card -> card.getCardState() == CardState.RELEARNING)
+                .sorted(Comparator.comparing(Flashcard::getDueDate))
+                .toList();
+        List<Flashcard> rest = dueAndRelearning.stream()
+                .filter(card -> card.getCardState() != CardState.RELEARNING)
+                .sorted(Comparator
+                        .comparing((Flashcard card) -> !weakSkills.contains(normalizeSkillCategory(card.getSkillCategory())))
+                        .thenComparing(Flashcard::getDueDate)
+                        .thenComparingDouble(Flashcard::getEaseFactor))
+                .toList();
+        List<Flashcard> ordered = new ArrayList<>(relearning);
+        ordered.addAll(rest);
+        return ordered;
+    }
+
+    private static String classifyDueCard(Flashcard card, List<String> weakSkills) {
+        if (card.getCardState() == CardState.RELEARNING) {
+            return "Recently failed";
+        }
+        if (weakSkills.contains(normalizeSkillCategory(card.getSkillCategory()))) {
+            return "Weakest skill";
+        }
+        return "Highest forgetting risk";
+    }
+
+    private static String normalizeSkillCategory(String skillCategory) {
         return skillCategory == null || skillCategory.isBlank() ? "General" : skillCategory.strip();
     }
 
@@ -200,7 +241,8 @@ public class ReviewService {
         reviewHistoryRepository.save(new ReviewHistory(0, card.getId(), rating, previousInterval,
                 card.getIntervalDays(), java.time.LocalDateTime.now(), submittedInTime, bossBattle,
                 attempt.validationResult(), attempt.submittedAnswer(), attempt.responseTimeMs(),
-                attempt.hintUsed(), attempt.sessionId()));
+                attempt.hintUsed(), attempt.sessionId(),
+                attempt.confidence() == null ? null : attempt.confidence().name()));
         // Evaluated after saving history so this review counts toward the mastery decision.
         MasteryService.CardMasteryState masteryState = masteryService.getMasteryState(card);
         cardLifecycleService.applyReviewOutcome(card, rating, masteryState);

@@ -28,6 +28,8 @@
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="TIMED FLUENCY" styleClass="stat-label" /><Label fx:id="timedFluencyLabel" styleClass="stat-value" wrapText="true" /><Label text="Recent answers that were both correct and submitted in time" styleClass="muted" wrapText="true" /></VBox>
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="WEAK-AREA PRESSURE" styleClass="stat-label" /><Label fx:id="weakAreaPressureLabel" styleClass="stat-value" wrapText="true" /><Label text="Recent Again/Hard scheduling ratings (self-assessed difficulty)" styleClass="muted" wrapText="true" /></VBox>
                         <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="CONSISTENCY" styleClass="stat-label" /><Label fx:id="consistencyLabel" styleClass="stat-value" wrapText="true" /><Label text="Active days in the last week" styleClass="muted" wrapText="true" /></VBox>
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="SELF-ASSESSMENT" styleClass="stat-label" /><Label fx:id="subjectiveSelfAssessmentLabel" styleClass="stat-value" wrapText="true" /><Label text="Concept cards self-rated Good/Easy (excluded from objective accuracy)" styleClass="muted" wrapText="true" /></VBox>
+                        <VBox styleClass="stat-card" minWidth="0" maxWidth="Infinity"><Label text="CONFIDENCE CALIBRATION" styleClass="stat-label" /><Label fx:id="confidenceCalibrationLabel" styleClass="stat-value" wrapText="true" /><Label text="How often stated confidence (High/Low) matched the actual outcome" styleClass="muted" wrapText="true" /></VBox>
                     </TilePane>
                     <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
                         <Label text="Daily Training Intensity" styleClass="section-title" />
@@ -50,7 +52,7 @@
                     <FlowPane hgap="18" vgap="18" prefWrapLength="760" maxWidth="Infinity" VBox.vgrow="ALWAYS" styleClass="workspace-grid">
                         <VBox spacing="10" styleClass="panel primary-column" minWidth="0" prefWidth="360" maxWidth="Infinity">
                             <Label text="Skill Performance" styleClass="section-title" />
-                            <Label text="Accuracy is the share of recent reviews with an objectively correct answer for each skill, not the self-selected rating. Weak areas are skills with at least 2 recent reviews and 40% or more AGAIN/HARD scheduling ratings." styleClass="muted" wrapText="true" />
+                            <Label text="Accuracy is the share of objectively text-graded reviews with a correct answer for each skill, not the self-selected rating. Self-graded concept cards are excluded from accuracy and shown separately. Weak areas are skills with at least 2 recent reviews and 40% or more AGAIN/HARD scheduling ratings." styleClass="muted" wrapText="true" />
                             <ListView fx:id="skillPerformanceListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                         </VBox>
                         <VBox spacing="10" styleClass="panel primary-column" minWidth="0" prefWidth="360" maxWidth="Infinity">

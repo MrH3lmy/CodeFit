@@ -10,14 +10,16 @@ public record StatsSkillPerformance(
         int totalCards,
         int dueCards,
         int recentReviews,
+        int objectiveReviewCount,
         int correctCount,
         int againCount,
         int hardCount,
         int goodCount,
         int easyCount
 ) {
+    /** Objective accuracy excludes subjective (CONCEPT) attempts from both numerator and denominator. */
     public double accuracyPercent() {
-        return recentReviews == 0 ? 0.0 : correctCount * 100.0 / recentReviews;
+        return objectiveReviewCount == 0 ? 0.0 : correctCount * 100.0 / objectiveReviewCount;
     }
 
     public double needsPracticeRate() {

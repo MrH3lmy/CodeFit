@@ -32,6 +32,20 @@ class MasteryServiceTest {
                 validationResult, "attempt", responseTimeMs, false, "session");
     }
 
+    private Flashcard conceptCard(int intervalDays, int reviewCount) {
+        Flashcard flashcard = new Flashcard(1, "front", "back", CardType.CONCEPT, "back",
+                ValidationMode.CASE_INSENSITIVE, null);
+        flashcard.setId(1);
+        flashcard.setIntervalDays(intervalDays);
+        flashcard.setReviewCount(reviewCount);
+        return flashcard;
+    }
+
+    private ReviewHistory subjectiveReview(ReviewRating rating) {
+        return new ReviewHistory(0, 1, rating, 0, 0, LocalDateTime.now(), true, false,
+                "SUBJECTIVE", "explanation in my own words", 8000, false, "session");
+    }
+
     @Test
     void newCardWithNoReviewsIsNotSeen() {
         Flashcard newCard = card(0, 0, null);
@@ -120,6 +134,67 @@ class MasteryServiceTest {
                 review(ReviewRating.GOOD, "EXACT", 5_000)
         );
         assertEquals(CardMasteryState.MASTERED, MasteryService.evaluate(timedCard, history, THRESHOLDS));
+    }
+
+    @Test
+    void conceptCardWithDifferentWordingIsSubjectiveNotObjectivelyWrong() {
+        // A concept answer written in the learner's own words is never text-matched: the stored
+        // validation result is SUBJECTIVE, not DIFFERENT, regardless of wording.
+        ReviewHistory differentWording = subjectiveReview(ReviewRating.GOOD);
+        assertEquals(true, differentWording.isSubjective());
+        assertEquals(false, differentWording.isObjectivelyCorrect());
+    }
+
+    @Test
+    void subjectiveConceptCardReachesMasteryViaConsecutiveGoodOrEasyRatings() {
+        Flashcard concept = conceptCard(14, 3);
+        List<ReviewHistory> history = List.of(
+                subjectiveReview(ReviewRating.GOOD),
+                subjectiveReview(ReviewRating.EASY)
+        );
+        assertEquals(CardMasteryState.MASTERED, MasteryService.evaluate(concept, history, THRESHOLDS));
+    }
+
+    @Test
+    void subjectiveConceptCardBelowIntervalThresholdIsNotMastered() {
+        Flashcard concept = conceptCard(5, 3);
+        List<ReviewHistory> history = List.of(
+                subjectiveReview(ReviewRating.GOOD),
+                subjectiveReview(ReviewRating.EASY)
+        );
+        assertEquals(CardMasteryState.LEARNING, MasteryService.evaluate(concept, history, THRESHOLDS));
+    }
+
+    @Test
+    void subjectiveAgainRatingBlocksMastery() {
+        Flashcard concept = conceptCard(20, 3);
+        List<ReviewHistory> history = List.of(
+                subjectiveReview(ReviewRating.AGAIN),
+                subjectiveReview(ReviewRating.GOOD)
+        );
+        assertEquals(CardMasteryState.LEARNING, MasteryService.evaluate(concept, history, THRESHOLDS));
+    }
+
+    @Test
+    void subjectiveHardRatingBlocksMastery() {
+        Flashcard concept = conceptCard(20, 3);
+        List<ReviewHistory> history = List.of(
+                subjectiveReview(ReviewRating.HARD),
+                subjectiveReview(ReviewRating.EASY)
+        );
+        assertEquals(CardMasteryState.LEARNING, MasteryService.evaluate(concept, history, THRESHOLDS));
+    }
+
+    @Test
+    void subjectiveConceptCardNeverUsesObjectiveMasteryRule() {
+        // Even if the (irrelevant) validation_result happened to look "correct", concept cards
+        // must go through the subjective rule, which only cares about the rating.
+        Flashcard concept = conceptCard(14, 2);
+        List<ReviewHistory> allEasySubjective = List.of(
+                subjectiveReview(ReviewRating.EASY),
+                subjectiveReview(ReviewRating.EASY)
+        );
+        assertEquals(CardMasteryState.MASTERED, MasteryService.evaluate(concept, allEasySubjective, THRESHOLDS));
     }
 
     @Test

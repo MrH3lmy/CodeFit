@@ -1,6 +1,7 @@
 package com.codefit.controller;
 
 import com.codefit.model.CardType;
+import com.codefit.model.ConfidenceLevel;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
@@ -24,6 +25,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Toggle;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
@@ -71,6 +75,10 @@ public class ReviewController extends BaseController {
     @FXML private Button goodButton;
     @FXML private Button easyButton;
     @FXML private Button reviewMissedButton;
+    @FXML private ToggleGroup confidenceToggleGroup;
+    @FXML private ToggleButton confidenceLowButton;
+    @FXML private ToggleButton confidenceMediumButton;
+    @FXML private ToggleButton confidenceHighButton;
     @FXML private Button addFixedBugButton;
     @FXML private Button addSearchedCommandButton;
     @FXML private Button addMissedConceptButton;
@@ -230,7 +238,7 @@ public class ReviewController extends BaseController {
         stopTimeLimitTimeline();
         Flashcard reviewedCard = currentCard;
         ReviewAttempt attempt = new ReviewAttempt(latestValidationResult.name(), getAttemptText(),
-                lastResponseTimeMs, hintUsed, sessionId);
+                lastResponseTimeMs, hintUsed, sessionId, selectedConfidence());
         if (weeklyBossMode) {
             reviewService.reviewBossBattle(reviewedCard, rating, submittedInTime, attempt);
         } else {
@@ -537,6 +545,7 @@ public class ReviewController extends BaseController {
         submittedInTime = true;
         cardShownAtMillis = System.currentTimeMillis();
         lastResponseTimeMs = null;
+        resetConfidenceSelection();
         matchRequirementLabel.setText(formatMatchRequirement());
         clearAttempts();
         configureAttemptInput();
@@ -696,7 +705,10 @@ public class ReviewController extends BaseController {
         submittedInTime = false;
         lastResponseTimeMs = computeResponseTimeMs();
         latestValidationResult = validateAttempt();
-        if (latestValidationResult == AttemptValidationResult.EXACT || latestValidationResult == AttemptValidationResult.CLOSE_SPACING) {
+        if (latestValidationResult == AttemptValidationResult.SUBJECTIVE) {
+            // Concept cards are never given a time limit today, but guard against
+            // misclassifying a subjective attempt as an objective timeout if that changes.
+        } else if (latestValidationResult == AttemptValidationResult.EXACT || latestValidationResult == AttemptValidationResult.CLOSE_SPACING) {
             latestValidationResult = AttemptValidationResult.TIMED_OUT_WITH_ATTEMPT;
         } else {
             latestValidationResult = AttemptValidationResult.TIMED_OUT;
@@ -814,13 +826,14 @@ public class ReviewController extends BaseController {
     }
 
     private AttemptValidationResult validateAttempt() {
-        AnswerValidator.Outcome outcome = AnswerValidator.validate(getAttemptText(), acceptedAnswers(),
-                currentCard.getValidationMode());
+        AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(currentCard.getCardType(),
+                getAttemptText(), acceptedAnswers(), currentCard.getValidationMode());
         return switch (outcome) {
             case EMPTY -> AttemptValidationResult.EMPTY;
             case EXACT -> AttemptValidationResult.EXACT;
             case CLOSE_SPACING -> AttemptValidationResult.CLOSE_SPACING;
             case DIFFERENT -> AttemptValidationResult.DIFFERENT;
+            case SUBJECTIVE -> AttemptValidationResult.SUBJECTIVE;
         };
     }
 
@@ -829,6 +842,34 @@ public class ReviewController extends BaseController {
                 ? commandTextField.getText()
                 : attemptTextArea.getText();
         return attempt == null ? "" : attempt.strip();
+    }
+
+    /**
+     * The learner's optional self-reported confidence, kept entirely separate from the scheduler
+     * rating (Again/Hard/Good/Easy) picked in {@link #rate(ReviewRating)}. Most useful when set
+     * before revealing the answer, for later confidence-calibration statistics.
+     */
+    private ConfidenceLevel selectedConfidence() {
+        if (confidenceToggleGroup == null) {
+            return null;
+        }
+        Toggle selected = confidenceToggleGroup.getSelectedToggle();
+        if (selected == confidenceLowButton) {
+            return ConfidenceLevel.LOW;
+        }
+        if (selected == confidenceMediumButton) {
+            return ConfidenceLevel.MEDIUM;
+        }
+        if (selected == confidenceHighButton) {
+            return ConfidenceLevel.HIGH;
+        }
+        return null;
+    }
+
+    private void resetConfidenceSelection() {
+        if (confidenceToggleGroup != null) {
+            confidenceToggleGroup.selectToggle(null);
+        }
     }
 
     private List<String> acceptedAnswers() {
@@ -942,12 +983,17 @@ public class ReviewController extends BaseController {
             case DIFFERENT -> "Different from expected answer. Recommended rating: " + recommendedRatingLabel(result) + ".";
             case TIMED_OUT -> "Time expired with no matching attempt. Recommended rating: " + recommendedRatingLabel(result) + ".";
             case TIMED_OUT_WITH_ATTEMPT -> "Time expired after an attempt. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case SUBJECTIVE -> "Self-graded card. Compare your answer with the explanation, then rate yourself honestly — there's no recommended rating.";
         };
     }
 
     private String formatMatchRequirement() {
         if (currentCard != null && currentCard.getCardType().isCommandTemplate()) {
             return "Enter a command. Any listed accepted answer is valid (for example, ls -la or ls -al).";
+        }
+        if (currentCard != null && currentCard.getCardType() == CardType.CONCEPT) {
+            return "This is a self-graded card. Your wording is not text-matched — compare your answer with the "
+                    + "revealed explanation, then rate yourself honestly.";
         }
         return switch (currentCard == null || currentCard.getValidationMode() == null ? ValidationMode.CASE_INSENSITIVE : currentCard.getValidationMode()) {
             case EXACT -> "Exact capitalization, wording, and spacing are required for this card.";
@@ -1012,7 +1058,9 @@ public class ReviewController extends BaseController {
         CLOSE_SPACING(ReviewRating.GOOD),
         DIFFERENT(ReviewRating.AGAIN),
         TIMED_OUT(ReviewRating.AGAIN),
-        TIMED_OUT_WITH_ATTEMPT(ReviewRating.HARD);
+        TIMED_OUT_WITH_ATTEMPT(ReviewRating.HARD),
+        /** Concept/reflection cards are self-assessed, never text-matched against an answer key. */
+        SUBJECTIVE(null);
 
         private final ReviewRating recommendedRating;
 

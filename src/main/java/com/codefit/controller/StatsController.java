@@ -38,6 +38,8 @@ public class StatsController extends BaseController {
     @FXML private Label timedFluencyLabel;
     @FXML private Label weakAreaPressureLabel;
     @FXML private Label consistencyLabel;
+    @FXML private Label subjectiveSelfAssessmentLabel;
+    @FXML private Label confidenceCalibrationLabel;
     @FXML private Label statsEmptyStateLabel;
     @FXML private Label weeklyBossScoreLabel;
     @FXML private Label weeklyBossWeakAreasLabel;
@@ -130,6 +132,8 @@ public class StatsController extends BaseController {
             timedFluencyLabel.setText("No signal");
             weakAreaPressureLabel.setText("No signal");
             consistencyLabel.setText("No signal");
+            subjectiveSelfAssessmentLabel.setText("No signal");
+            confidenceCalibrationLabel.setText("No signal");
             return;
         }
 
@@ -137,6 +141,10 @@ public class StatsController extends BaseController {
         timedFluencyLabel.setText(formatPercent(readinessStats.timedSuccessPercent()));
         weakAreaPressureLabel.setText(formatPercent(readinessStats.weakAreaRatePercent()));
         consistencyLabel.setText(formatPercent(readinessStats.consistencyPercent()));
+        subjectiveSelfAssessmentLabel.setText(formatPercent(readinessStats.subjectiveSelfAssessmentPercent()));
+        confidenceCalibrationLabel.setText(readinessStats.hasConfidenceSignal()
+                ? formatPercent(readinessStats.confidenceCalibrationPercent())
+                : "No signal");
     }
 
     private String formatPercent(double value) {
@@ -187,15 +195,15 @@ public class StatsController extends BaseController {
     }
 
     private StatsSkillPerformance emptySkillPerformance() {
-        return new StatsSkillPerformance("Stats appear after reviews", 0, 0, 0, 0, 0, 0, 0, 0);
+        return new StatsSkillPerformance("Stats appear after reviews", 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     private StatsSkillPerformance emptyNeedsPractice() {
-        return new StatsSkillPerformance("No weak areas yet", 0, 0, 0, 0, 0, 0, 0, 0);
+        return new StatsSkillPerformance("No weak areas yet", 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     private String formatReview(ReviewHistory history) {
-        String objectiveAccuracy = history.isObjectivelyCorrect() ? "Correct" : "Missed";
+        String objectiveAccuracy = history.isSubjective() ? "Self-rated" : history.isObjectivelyCorrect() ? "Correct" : "Missed";
         return history.getReviewedAt().toLocalDate() + " • " + getCardPrompt(history.getFlashcardId())
                 + " • " + objectiveAccuracy + " (rated " + history.getRating() + ")"
                 + " • " + history.getPreviousIntervalDays() + "d → " + history.getNewIntervalDays() + "d";

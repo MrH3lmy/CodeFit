@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReviewHistoryTest {
@@ -47,5 +49,41 @@ class ReviewHistoryTest {
         assertTrue(history(ReviewRating.EASY, true, "").isObjectivelyCorrect());
         assertFalse(history(ReviewRating.HARD, true, null).isObjectivelyCorrect());
         assertFalse(history(ReviewRating.AGAIN, true, null).isObjectivelyCorrect());
+    }
+
+    @Test
+    void subjectiveValidationResultIsNeitherCorrectNorIncorrect() {
+        ReviewHistory subjective = history(ReviewRating.GOOD, true, "SUBJECTIVE");
+        assertTrue(subjective.isSubjective());
+        assertFalse(subjective.isObjectivelyCorrect());
+        assertFalse(subjective.isTimedSuccess());
+    }
+
+    @Test
+    void nonSubjectiveValidationResultsAreNotFlaggedSubjective() {
+        assertFalse(history(ReviewRating.GOOD, true, "EXACT").isSubjective());
+        assertFalse(history(ReviewRating.GOOD, true, "DIFFERENT").isSubjective());
+        assertFalse(history(ReviewRating.GOOD, true, null).isSubjective());
+    }
+
+    @Test
+    void confidenceIsStoredIndependentlyAndNeverInferredFromRating() {
+        // High confidence but an objectively incorrect answer: confidence must be exactly what
+        // was recorded, not derived from (or overloaded onto) the scheduler rating.
+        ReviewHistory highConfidenceWrong = new ReviewHistory(1, 1, ReviewRating.AGAIN, 0, 0,
+                LocalDateTime.now(), true, false, "DIFFERENT", "attempt", 1000, false, "session", "HIGH");
+        assertEquals("HIGH", highConfidenceWrong.getConfidence());
+        assertFalse(highConfidenceWrong.isObjectivelyCorrect());
+
+        // Low confidence but objectively correct: again, confidence is independent of correctness.
+        ReviewHistory lowConfidenceCorrect = new ReviewHistory(1, 1, ReviewRating.GOOD, 0, 1,
+                LocalDateTime.now(), true, false, "EXACT", "attempt", 1000, false, "session", "LOW");
+        assertEquals("LOW", lowConfidenceCorrect.getConfidence());
+        assertTrue(lowConfidenceCorrect.isObjectivelyCorrect());
+    }
+
+    @Test
+    void confidenceDefaultsToNullWhenNotProvided() {
+        assertNull(history(ReviewRating.GOOD, true, "EXACT").getConfidence());
     }
 }

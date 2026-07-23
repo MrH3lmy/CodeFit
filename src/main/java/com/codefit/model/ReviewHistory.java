@@ -16,6 +16,7 @@ public class ReviewHistory {
     private Integer responseTimeMs;
     private boolean hintUsed;
     private String sessionId;
+    private String confidence;
 
     public ReviewHistory(long id, long flashcardId, ReviewRating rating, int previousIntervalDays,
                          int newIntervalDays, LocalDateTime reviewedAt) {
@@ -37,6 +38,14 @@ public class ReviewHistory {
                          int newIntervalDays, LocalDateTime reviewedAt, boolean submittedInTime, boolean bossBattle,
                          String validationResult, String submittedAnswer, Integer responseTimeMs,
                          boolean hintUsed, String sessionId) {
+        this(id, flashcardId, rating, previousIntervalDays, newIntervalDays, reviewedAt, submittedInTime, bossBattle,
+                validationResult, submittedAnswer, responseTimeMs, hintUsed, sessionId, null);
+    }
+
+    public ReviewHistory(long id, long flashcardId, ReviewRating rating, int previousIntervalDays,
+                         int newIntervalDays, LocalDateTime reviewedAt, boolean submittedInTime, boolean bossBattle,
+                         String validationResult, String submittedAnswer, Integer responseTimeMs,
+                         boolean hintUsed, String sessionId, String confidence) {
         this.id = id;
         this.flashcardId = flashcardId;
         this.rating = rating;
@@ -50,6 +59,7 @@ public class ReviewHistory {
         this.responseTimeMs = responseTimeMs;
         this.hintUsed = hintUsed;
         this.sessionId = sessionId;
+        this.confidence = confidence;
     }
 
     public ReviewHistory(long flashcardId, ReviewRating rating, int previousIntervalDays, int newIntervalDays) {
@@ -70,12 +80,23 @@ public class ReviewHistory {
     public Integer getResponseTimeMs() { return responseTimeMs; }
     public boolean isHintUsed() { return hintUsed; }
     public String getSessionId() { return sessionId; }
+    public String getConfidence() { return confidence; }
+
+    /** Concept/reflection cards are self-assessed rather than text-matched against an answer key. */
+    public boolean isSubjective() {
+        return "SUBJECTIVE".equals(validationResult);
+    }
 
     /**
-     * Whether the attempt was objectively validated as correct. Legacy rows saved before
+     * Whether the attempt was objectively validated as correct. Subjective attempts have no
+     * objective signal at all (see {@link #isSubjective()}) and must be excluded from objective
+     * accuracy calculations rather than counted as incorrect. Legacy rows saved before
      * validation_result existed fall back to the self-selected rating so old data stays readable.
      */
     public boolean isObjectivelyCorrect() {
+        if (isSubjective()) {
+            return false;
+        }
         if (validationResult == null || validationResult.isBlank()) {
             return rating == ReviewRating.GOOD || rating == ReviewRating.EASY;
         }

@@ -1,5 +1,6 @@
 package com.codefit.service;
 
+import com.codefit.model.CardType;
 import com.codefit.model.ValidationMode;
 
 import java.util.List;
@@ -11,10 +12,25 @@ import java.util.List;
 public final class AnswerValidator {
 
     public enum Outcome {
-        EMPTY, EXACT, CLOSE_SPACING, DIFFERENT
+        EMPTY, EXACT, CLOSE_SPACING, DIFFERENT, SUBJECTIVE
     }
 
     private AnswerValidator() {
+    }
+
+    /**
+     * Concept/reflection cards ({@link CardType#CONCEPT}) are never text-matched against an
+     * answer key — a correct explanation in different wording must not be graded DIFFERENT.
+     * They resolve to {@link Outcome#SUBJECTIVE} once any attempt is entered, leaving grading to
+     * the learner's own self-rating. Every other card type is graded objectively as before.
+     */
+    public static Outcome validateForCardType(CardType cardType, String attempt, List<String> acceptedAnswers,
+                                              ValidationMode validationMode) {
+        if (cardType == CardType.CONCEPT) {
+            String trimmedAttempt = attempt == null ? "" : attempt.strip();
+            return trimmedAttempt.isEmpty() ? Outcome.EMPTY : Outcome.SUBJECTIVE;
+        }
+        return validate(attempt, acceptedAnswers, validationMode);
     }
 
     public static Outcome validate(String attempt, List<String> acceptedAnswers, ValidationMode validationMode) {

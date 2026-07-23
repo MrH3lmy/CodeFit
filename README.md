@@ -106,3 +106,14 @@ Available Java BE templates:
 - `08-deployment.tsv`
 
 To import a template, open the **Decks** screen, create or select the deck you want to fill, click **Import Cards**, and choose one of the TSV files from `src/main/resources/templates/java-be/`. Repeat this for each module you want to practice.
+
+### Java Concurrency in Practice template decks
+
+A deeper concurrency curriculum is available in `src/main/resources/templates/java-concurrency-in-practice/`. It contains **160 original, paraphrased cards** organized into four progressive decks:
+
+- `01-fundamentals.tsv` — thread safety, atomicity, visibility, publication, confinement, immutability, composition, concurrent collections, queues, and synchronizers.
+- `02-task-execution-cancellation.tsv` — executors, futures, parallel task design, cancellation, interruption, shutdown, thread pools, saturation, and single-threaded subsystems.
+- `03-liveness-performance-testing.tsv` — deadlock, lock ordering, open calls, starvation, livelock, scalability, contention, benchmarking, and concurrent testing.
+- `04-locks-atomics-memory-model.tsv` — explicit locks, conditions, AQS, CAS, nonblocking algorithms, happens-before, safe initialization, and publication.
+
+The curriculum favors explanation and production diagnosis over trivia: 108 `CONCEPT` cards, 46 `RECALL` cards, and 6 deterministic `CODE_OUTPUT` cards. See the template directory's `README.md` for suggested deck names, counts, scope, and a recommended training sequence.

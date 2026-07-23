@@ -4,6 +4,7 @@ import com.codefit.model.CardType;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
+import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewRating;
 import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.DeckService;
@@ -33,6 +34,7 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class ReviewController extends BaseController {
@@ -84,6 +86,9 @@ public class ReviewController extends BaseController {
     private boolean submittedInTime = true;
     private boolean hintUsed;
     private boolean weeklyBossMode;
+    private final String sessionId = UUID.randomUUID().toString();
+    private long cardShownAtMillis;
+    private Integer lastResponseTimeMs;
 
     @FXML
     public void initialize() {
@@ -136,6 +141,7 @@ public class ReviewController extends BaseController {
         latestValidationResult = validationResult;
         stopTimeLimitTimeline();
         submittedInTime = !isTimedCardExpired();
+        lastResponseTimeMs = computeResponseTimeMs();
         answerRevealed = true;
         answerLabel.setText(formatRevealedAnswer());
         renderTerminalSubmission(validationResult);
@@ -189,10 +195,12 @@ public class ReviewController extends BaseController {
         LocalDate previousDueDate = currentCard.getDueDate();
         stopTimeLimitTimeline();
         Flashcard reviewedCard = currentCard;
+        ReviewAttempt attempt = new ReviewAttempt(latestValidationResult.name(), getAttemptText(),
+                lastResponseTimeMs, hintUsed, sessionId);
         if (weeklyBossMode) {
-            reviewService.reviewBossBattle(reviewedCard, rating, submittedInTime);
+            reviewService.reviewBossBattle(reviewedCard, rating, submittedInTime, attempt);
         } else {
-            reviewService.review(reviewedCard, rating, submittedInTime);
+            reviewService.review(reviewedCard, rating, submittedInTime, attempt);
         }
         reviewedCardCount++;
         earnedXp += rating.getXp();
@@ -424,6 +432,8 @@ public class ReviewController extends BaseController {
         answerRevealed = false;
         hintUsed = false;
         submittedInTime = true;
+        cardShownAtMillis = System.currentTimeMillis();
+        lastResponseTimeMs = null;
         matchRequirementLabel.setText(formatMatchRequirement());
         clearAttempts();
         configureAttemptInput();
@@ -581,6 +591,7 @@ public class ReviewController extends BaseController {
     private void handleTimeExpired() {
         stopTimeLimitTimeline();
         submittedInTime = false;
+        lastResponseTimeMs = computeResponseTimeMs();
         latestValidationResult = validateAttempt();
         if (latestValidationResult == AttemptValidationResult.EXACT || latestValidationResult == AttemptValidationResult.CLOSE_SPACING) {
             latestValidationResult = AttemptValidationResult.TIMED_OUT_WITH_ATTEMPT;
@@ -602,6 +613,13 @@ public class ReviewController extends BaseController {
 
     private boolean isTimedCardExpired() {
         return currentCard != null && currentCard.getTimeLimitSeconds() != null && remainingTimeSeconds <= 0;
+    }
+
+    private Integer computeResponseTimeMs() {
+        if (cardShownAtMillis <= 0) {
+            return null;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, System.currentTimeMillis() - cardShownAtMillis);
     }
 
     private void stopTimeLimitTimeline() {

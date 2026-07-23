@@ -124,6 +124,11 @@ public final class DatabaseConfig {
     private static void ensureReviewHistoryColumns(Connection connection) throws SQLException {
         addColumnIfMissing(connection, "review_history", "submitted_in_time", "INTEGER NOT NULL DEFAULT 1");
         addColumnIfMissing(connection, "review_history", "boss_battle", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "review_history", "validation_result", "TEXT");
+        addColumnIfMissing(connection, "review_history", "submitted_answer", "TEXT");
+        addColumnIfMissing(connection, "review_history", "response_time_ms", "INTEGER");
+        addColumnIfMissing(connection, "review_history", "hint_used", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "review_history", "session_id", "TEXT");
     }
 
     private static void ensureUserProgressColumns(Connection connection) throws SQLException {

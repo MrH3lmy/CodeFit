@@ -2,6 +2,7 @@ package com.codefit.service;
 
 import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.Flashcard;
+import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.ReviewRating;
 import com.codefit.repository.FlashcardRepository;
@@ -65,24 +66,23 @@ public class ReviewService {
                 && !reviewHistoryRepository.hasBossBattleSince(LocalDate.now().minusDays(6));
     }
 
-    public void reviewBossBattle(Flashcard card, ReviewRating rating, boolean submittedInTime) {
-        recordReview(card, rating, submittedInTime, true);
+    public void reviewBossBattle(Flashcard card, ReviewRating rating, boolean submittedInTime, ReviewAttempt attempt) {
+        recordReview(card, rating, submittedInTime, true, attempt);
     }
 
-    public void review(Flashcard card, ReviewRating rating) {
-        review(card, rating, true);
+    public void review(Flashcard card, ReviewRating rating, boolean submittedInTime, ReviewAttempt attempt) {
+        recordReview(card, rating, submittedInTime, false, attempt);
     }
 
-    public void review(Flashcard card, ReviewRating rating, boolean submittedInTime) {
-        recordReview(card, rating, submittedInTime, false);
-    }
-
-    private void recordReview(Flashcard card, ReviewRating rating, boolean submittedInTime, boolean bossBattle) {
+    private void recordReview(Flashcard card, ReviewRating rating, boolean submittedInTime, boolean bossBattle,
+                              ReviewAttempt attempt) {
         int previousInterval = card.getIntervalDays();
         spacedRepetitionService.applyReview(card, rating);
         flashcardRepository.updateSchedule(card);
         reviewHistoryRepository.save(new ReviewHistory(0, card.getId(), rating, previousInterval,
-                card.getIntervalDays(), java.time.LocalDateTime.now(), submittedInTime, bossBattle));
+                card.getIntervalDays(), java.time.LocalDateTime.now(), submittedInTime, bossBattle,
+                attempt.validationResult(), attempt.submittedAnswer(), attempt.responseTimeMs(),
+                attempt.hintUsed(), attempt.sessionId()));
         if (!bossBattle) {
             progressService.recordReview(rating);
             dailyQuestService.recordReview(card);

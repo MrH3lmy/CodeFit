@@ -10,13 +10,14 @@ public record StatsSkillPerformance(
         int totalCards,
         int dueCards,
         int recentReviews,
+        int correctCount,
         int againCount,
         int hardCount,
         int goodCount,
         int easyCount
 ) {
     public double accuracyPercent() {
-        return recentReviews == 0 ? 0.0 : (goodCount + easyCount) * 100.0 / recentReviews;
+        return recentReviews == 0 ? 0.0 : correctCount * 100.0 / recentReviews;
     }
 
     public double needsPracticeRate() {

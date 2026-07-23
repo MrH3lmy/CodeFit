@@ -3,10 +3,21 @@ package com.codefit.service;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewRating;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 public class SpacedRepetitionService {
     private static final double MIN_EASE = 1.3;
+
+    private final Clock clock;
+
+    public SpacedRepetitionService() {
+        this(Clock.systemDefaultZone());
+    }
+
+    public SpacedRepetitionService(Clock clock) {
+        this.clock = clock;
+    }
 
     public Flashcard applyReview(Flashcard card, ReviewRating rating) {
         int interval = card.getIntervalDays();
@@ -32,7 +43,7 @@ public class SpacedRepetitionService {
 
         card.setIntervalDays(nextInterval);
         card.setEaseFactor(roundEase(ease));
-        card.setDueDate(LocalDate.now().plusDays(nextInterval));
+        card.setDueDate(LocalDate.now(clock).plusDays(nextInterval));
         card.setReviewCount(card.getReviewCount() + 1);
         return card;
     }

@@ -52,6 +52,12 @@
                             </VBox>
                             <VBox alignment="CENTER_RIGHT" spacing="10" styleClass="dashboard-action-stack">
                                 <Button fx:id="primaryActionButton" text="Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button quick-review-button dashboard-primary-cta" />
+                                <HBox alignment="CENTER_RIGHT" spacing="8" styleClass="dashboard-timed-session-row">
+                                    <Label text="Timed session:" styleClass="dashboard-card-helper" wrapText="true" />
+                                    <Button text="Quick (5m)" onAction="#goReviewQuick" styleClass="ghost-button secondary-action-button" />
+                                    <Button text="Standard (15m)" onAction="#goReviewStandard" styleClass="ghost-button secondary-action-button" />
+                                    <Button text="Deep (30m)" onAction="#goReviewDeep" styleClass="ghost-button secondary-action-button" />
+                                </HBox>
                                 <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="dashboard-secondary-actions">
                                     <Button text="Add Card" onAction="#goAddCard" styleClass="ghost-button secondary-action-button" />
                                     <Button text="View Decks" onAction="#goDecks" styleClass="ghost-button secondary-action-button" />

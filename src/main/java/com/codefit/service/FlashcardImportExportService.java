@@ -125,12 +125,12 @@ public class FlashcardImportExportService {
         }
     }
 
-    private boolean isHeaderRow(String line) {
+    static boolean isHeaderRow(String line) {
         String normalized = line.toLowerCase(Locale.ROOT);
         return normalized.equals("front\tback") || normalized.startsWith("front\tback\tcard_type");
     }
 
-    private String toTsvRow(List<String> fields) {
+    static String toTsvRow(List<String> fields) {
         for (String field : fields) {
             if (field.contains("\t") || field.contains("\n") || field.contains("\r")) {
                 throw new IllegalArgumentException("unsupported tab or newline in field: " + preview(field));
@@ -139,27 +139,27 @@ public class FlashcardImportExportService {
         return String.join("\t", fields);
     }
 
-    private String preview(String value) {
+    static String preview(String value) {
         return value.length() <= 30 ? value : value.substring(0, 27) + "...";
     }
 
-    private String field(String value) {
+    static String field(String value) {
         return value == null ? "" : value;
     }
 
-    private String get(String[] fields, int index) {
+    static String get(String[] fields, int index) {
         return index < fields.length ? fields[index] : "";
     }
 
-    private String blankToNull(String value) {
+    static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
     }
 
-    private String blankToDefault(String value, String fallback) {
+    static String blankToDefault(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
     }
 
-    private Integer parseTimeLimit(String value, int lineNumber) {
+    static Integer parseTimeLimit(String value, int lineNumber) {
         if (value == null || value.isBlank()) {
             return null;
         }
@@ -174,7 +174,7 @@ public class FlashcardImportExportService {
         }
     }
 
-    private <T extends Enum<T>> T parseEnum(Class<T> enumClass, String value, T fallback, String fieldName, int lineNumber) {
+    static <T extends Enum<T>> T parseEnum(Class<T> enumClass, String value, T fallback, String fieldName, int lineNumber) {
         if (value == null || value.isBlank()) {
             return fallback;
         }

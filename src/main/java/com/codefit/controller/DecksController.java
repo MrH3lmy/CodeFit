@@ -7,6 +7,7 @@ import com.codefit.service.FlashcardImportExportService;
 import com.codefit.service.FlashcardImportExportService.ImportExportException;
 import com.codefit.service.FlashcardImportExportService.ImportSummary;
 import com.codefit.service.FlashcardService;
+import com.codefit.service.MasteryService;
 import com.codefit.service.SyllabusService;
 import java.io.File;
 import java.time.LocalDate;
@@ -45,6 +46,7 @@ public class DecksController extends BaseController {
 
     private final DeckService deckService = new DeckService();
     private final FlashcardService flashcardService = new FlashcardService();
+    private final MasteryService masteryService = new MasteryService();
     private final SyllabusService syllabusService = new SyllabusService();
     private final FlashcardImportExportService importExportService = new FlashcardImportExportService(flashcardService);
 
@@ -229,24 +231,21 @@ public class DecksController extends BaseController {
             List<Flashcard> cards = flashcardService.getCardsForDeck(deck.getId());
             long totalCards = cards.size();
             long dueCards = countDueCards(cards);
-            long reviewedCards = cards.stream()
-                    .filter(card -> card.getReviewCount() > 0)
-                    .count();
-            long reviewedPercent = totalCards == 0 ? 0 : Math.round(reviewedCards * 100.0 / totalCards);
+            long masteredPercent = Math.round(masteryService.summarize(cards).masteredPercent());
 
             nameLabel.setText(displayText(deck.getName(), "Untitled deck"));
             descriptionLabel.setText(displayText(deck.getDescription(), "No description yet."));
-            metadataLabel.setText(formatMetadata(deck, totalCards, dueCards, reviewedPercent));
+            metadataLabel.setText(formatMetadata(deck, totalCards, dueCards, masteredPercent));
             setGraphic(content);
         }
 
-        private String formatMetadata(Deck deck, long totalCards, long dueCards, long reviewedPercent) {
+        private String formatMetadata(Deck deck, long totalCards, long dueCards, long masteredPercent) {
             String cardSummary = String.format(
-                    "%d %s • %d due • %d%% reviewed",
+                    "%d %s • %d due • %d%% mastered",
                     totalCards,
                     totalCards == 1 ? "card" : "cards",
                     dueCards,
-                    reviewedPercent);
+                    masteredPercent);
             return detectJavaBackendModule(deck)
                     .stream()
                     .mapToObj(moduleNumber -> String.format("Module %02d • %s", moduleNumber, cardSummary))

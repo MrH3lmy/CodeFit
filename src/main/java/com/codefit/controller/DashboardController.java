@@ -8,7 +8,10 @@ import com.codefit.model.UserProgress;
 import com.codefit.service.DailyQuestService;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
+import com.codefit.service.MasteryService;
 import com.codefit.service.ProgressService;
+import com.codefit.service.ReviewService;
+import com.codefit.service.SessionBudgetService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
 import com.codefit.service.SystemMessage;
@@ -60,6 +63,8 @@ public class DashboardController extends BaseController {
     private final StatsService statsService = new StatsService();
     private final TrainingPathService trainingPathService = new TrainingPathService();
     private final SystemMessageService systemMessageService = new SystemMessageService();
+    private final MasteryService masteryService = new MasteryService();
+    private final ReviewService reviewService = new ReviewService();
 
     @FXML
     public void initialize() {
@@ -74,7 +79,9 @@ public class DashboardController extends BaseController {
         streakLabel.setText(formatStreakState(progress));
         deckCountLabel.setText(String.valueOf(deckCount));
         cardCountLabel.setText(String.valueOf(cardCount));
-        dueCountLabel.setText(dueCount + " cards due");
+        int availableNewCards = reviewService.getAvailableNewCardBudget();
+        dueCountLabel.setText(dueCount + " " + (dueCount == 1 ? "card" : "cards") + " due"
+                + (availableNewCards > 0 ? " · " + availableNewCards + " new available" : ""));
         workloadModeLabel.setText(progress.getDailyWorkloadMode().getSummary());
         levelProgressBar.setProgress(calculateLevelProgress(progress));
         DailyQuest dailyQuest = configureDailyQuest();
@@ -86,6 +93,10 @@ public class DashboardController extends BaseController {
         configureEmptyState(decks, deckCount, cardCount, dueCount);
         configureWeeklyBossCallout();
     }
+
+    @FXML public void goReviewQuick() { NavigationService.showTimedReview(SessionBudgetService.QUICK_MINUTES); }
+    @FXML public void goReviewStandard() { NavigationService.showTimedReview(SessionBudgetService.STANDARD_MINUTES); }
+    @FXML public void goReviewDeep() { NavigationService.showTimedReview(SessionBudgetService.DEEP_MINUTES); }
 
 
     private void configureSystemMessage(UserProgress progress, DailyQuest dailyQuest) {
@@ -455,11 +466,7 @@ public class DashboardController extends BaseController {
         if (deckCards.isEmpty()) {
             return 0;
         }
-
-        long reviewedCards = deckCards.stream()
-                .filter(card -> card.getReviewCount() > 0)
-                .count();
-        return (int) Math.round((reviewedCards * 100.0) / deckCards.size());
+        return (int) Math.round(masteryService.summarize(deckCards).masteredPercent());
     }
 
     private record RoutineItem(String title, String progressText, String helperText, boolean completed, Runnable action) {

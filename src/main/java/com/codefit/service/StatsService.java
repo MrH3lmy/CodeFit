@@ -61,7 +61,7 @@ public class StatsService {
         latestSession.forEach(history -> {
             Flashcard card = cardsById.get(history.getFlashcardId());
             String skill = card == null ? "Deleted cards" : normalizeSkill(card.getSkillCategory());
-            bySkill.computeIfAbsent(skill, SkillAccumulator::new).record(history.getRating());
+            bySkill.computeIfAbsent(skill, SkillAccumulator::new).record(history);
         });
         List<String> weakAreas = bySkill.values().stream()
                 .map(SkillAccumulator::toPerformance)
@@ -114,20 +114,20 @@ public class StatsService {
         if (recentReviews.isEmpty()) {
             return 0.0;
         }
-        long successfulReviews = recentReviews.stream()
-                .filter(history -> history.getRating() == ReviewRating.GOOD || history.getRating() == ReviewRating.EASY)
+        long correctReviews = recentReviews.stream()
+                .filter(ReviewHistory::isObjectivelyCorrect)
                 .count();
-        return successfulReviews * 100.0 / recentReviews.size();
+        return correctReviews * 100.0 / recentReviews.size();
     }
 
     private double getTimedSuccessRate(List<ReviewHistory> recentReviews) {
         if (recentReviews.isEmpty()) {
             return 0.0;
         }
-        long submittedInTime = recentReviews.stream()
-                .filter(ReviewHistory::isSubmittedInTime)
+        long timedSuccesses = recentReviews.stream()
+                .filter(ReviewHistory::isTimedSuccess)
                 .count();
-        return submittedInTime * 100.0 / recentReviews.size();
+        return timedSuccesses * 100.0 / recentReviews.size();
     }
 
     private double getWeakAreaRate(List<ReviewHistory> recentReviews) {
@@ -173,7 +173,7 @@ public class StatsService {
         reviewHistoryRepository.findRecent(RECENT_SKILL_REVIEW_LIMIT).forEach(history -> {
             Flashcard card = cardsById.get(history.getFlashcardId());
             String skill = card == null ? "Deleted cards" : normalizeSkill(card.getSkillCategory());
-            bySkill.computeIfAbsent(skill, SkillAccumulator::new).record(history.getRating());
+            bySkill.computeIfAbsent(skill, SkillAccumulator::new).record(history);
         });
 
         return bySkill.values().stream()
@@ -198,6 +198,7 @@ public class StatsService {
         private final String skill;
         private int totalCards;
         private int dueCards;
+        private int correctCount;
         private int againCount;
         private int hardCount;
         private int goodCount;
@@ -207,7 +208,8 @@ public class StatsService {
             this.skill = skill;
         }
 
-        private void record(ReviewRating rating) {
+        private void record(ReviewHistory history) {
+            ReviewRating rating = history == null ? null : history.getRating();
             if (rating == null) {
                 return;
             }
@@ -217,11 +219,14 @@ public class StatsService {
                 case GOOD -> goodCount++;
                 case EASY -> easyCount++;
             }
+            if (history.isObjectivelyCorrect()) {
+                correctCount++;
+            }
         }
 
         private StatsSkillPerformance toPerformance() {
             return new StatsSkillPerformance(skill, totalCards, dueCards,
-                    againCount + hardCount + goodCount + easyCount,
+                    againCount + hardCount + goodCount + easyCount, correctCount,
                     againCount, hardCount, goodCount, easyCount);
         }
     }

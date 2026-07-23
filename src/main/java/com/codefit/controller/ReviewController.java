@@ -11,6 +11,7 @@ import com.codefit.service.AnswerValidator;
 import com.codefit.service.DeckService;
 import com.codefit.service.RatingGuardrail;
 import com.codefit.service.ReviewService;
+import com.codefit.service.SessionQueue;
 import com.codefit.service.SystemMessageService;
 import com.codefit.ui.NavigationService;
 import javafx.animation.KeyFrame;
@@ -73,14 +74,19 @@ public class ReviewController extends BaseController {
     @FXML private Button addMissedConceptButton;
     @FXML private Button emptyStateActionButton;
 
+    private static final int AGAIN_REQUEUE_OFFSET = 3;
+    private static final int HARD_REQUEUE_OFFSET = 6;
+    private static final int SAME_SESSION_RETRY_LIMIT = 3;
+
     private final ReviewService reviewService = new ReviewService();
     private final DeckService deckService = new DeckService();
     private final SystemMessageService systemMessageService = new SystemMessageService();
-    private List<Flashcard> dueCards = new ArrayList<>();
-    private int currentIndex;
+    private SessionQueue sessionQueue = new SessionQueue(new ArrayList<>(), SAME_SESSION_RETRY_LIMIT);
     private Flashcard currentCard;
     private int reviewedCardCount;
     private int earnedXp;
+    private int initialMissCount;
+    private int recoveredMissCount;
     private final Map<ReviewRating, Integer> ratingCounts = new EnumMap<>(ReviewRating.class);
     private final List<Flashcard> missedCards = new ArrayList<>();
     private AttemptValidationResult latestValidationResult = AttemptValidationResult.EMPTY;
@@ -102,8 +108,8 @@ public class ReviewController extends BaseController {
             workloadModeLabel.setVisible(!weeklyBossMode);
             workloadModeLabel.setManaged(!weeklyBossMode);
         }
-        dueCards = new ArrayList<>(weeklyBossMode ? reviewService.getWeeklyBossCards() : reviewService.getDueCards());
-        currentIndex = 0;
+        List<Flashcard> initialCards = weeklyBossMode ? reviewService.getWeeklyBossCards() : reviewService.getDueCards();
+        sessionQueue = new SessionQueue(initialCards, SAME_SESSION_RETRY_LIMIT);
         resetSessionMetrics();
         attemptTextArea.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
         commandTextField.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
@@ -163,8 +169,7 @@ public class ReviewController extends BaseController {
             return;
         }
 
-        dueCards = new ArrayList<>(missedCards);
-        currentIndex = 0;
+        sessionQueue = new SessionQueue(new ArrayList<>(missedCards), SAME_SESSION_RETRY_LIMIT);
         resetSessionMetrics();
         if (reviewMissedButton != null) {
             reviewMissedButton.setVisible(false);
@@ -213,17 +218,41 @@ public class ReviewController extends BaseController {
         reviewedCardCount++;
         earnedXp += rating.getXp();
         ratingCounts.merge(rating, 1, Integer::sum);
+        String feedback = formatReviewFeedback(rating, previousInterval, previousDueDate, reviewedCard);
         if (rating == ReviewRating.AGAIN || rating == ReviewRating.HARD) {
-            missedCards.add(reviewedCard);
+            feedback = feedback + " " + registerMissAndRequeue(reviewedCard, rating);
+        } else {
+            registerRecovery(reviewedCard);
         }
-        setStatus(messageLabel, formatReviewFeedback(rating, previousInterval, previousDueDate, reviewedCard));
-        currentIndex++;
+        setStatus(messageLabel, feedback);
         showCurrentCard();
+    }
+
+    private String registerMissAndRequeue(Flashcard reviewedCard, ReviewRating rating) {
+        boolean wasAlreadyMissed = missedCards.stream().anyMatch(card -> card.getId() == reviewedCard.getId());
+        if (!wasAlreadyMissed) {
+            missedCards.add(reviewedCard);
+            initialMissCount++;
+        }
+        int offset = rating == ReviewRating.AGAIN ? AGAIN_REQUEUE_OFFSET : HARD_REQUEUE_OFFSET;
+        boolean requeued = sessionQueue.requeue(reviewedCard, offset);
+        return requeued
+                ? "It will come back for another try in a few cards."
+                : "Retry limit reached for this session — it stays in relearning and returns on its next scheduled review.";
+    }
+
+    private void registerRecovery(Flashcard reviewedCard) {
+        boolean recovered = missedCards.removeIf(card -> card.getId() == reviewedCard.getId());
+        if (recovered) {
+            recoveredMissCount++;
+        }
     }
 
     private void resetSessionMetrics() {
         reviewedCardCount = 0;
         earnedXp = 0;
+        initialMissCount = 0;
+        recoveredMissCount = 0;
         ratingCounts.clear();
         missedCards.clear();
         for (ReviewRating rating : ReviewRating.values()) {
@@ -242,6 +271,13 @@ public class ReviewController extends BaseController {
 
         summary.append("\n").append(systemMessageService.formatSessionCompletionMessage(
                 reviewedCardCount, earnedXp, missedCards.size(), weeklyBossMode));
+
+        if (initialMissCount > 0) {
+            summary.append("\nRelearning: ").append(initialMissCount).append(" initial ")
+                    .append(pluralize(initialMissCount, "miss")).append(", ")
+                    .append(recoveredMissCount).append(" recovered this session, ")
+                    .append(missedCards.size()).append(" still outstanding.");
+        }
 
         String weakAreaSignal = formatWeakAreaSignal();
         if (!weakAreaSignal.isBlank()) {
@@ -382,7 +418,7 @@ public class ReviewController extends BaseController {
     }
 
     private void showCurrentCard() {
-        if (dueCards.isEmpty()) {
+        if (!sessionQueue.hasNext() && reviewedCardCount == 0) {
             stopTimeLimitTimeline();
             currentCard = null;
             queueLabel.setText(weeklyBossMode ? "Boss unavailable" : "0 due");
@@ -406,7 +442,7 @@ public class ReviewController extends BaseController {
             updateSessionFlowVisibility();
             return;
         }
-        if (currentIndex >= dueCards.size()) {
+        if (!sessionQueue.hasNext()) {
             currentCard = null;
             queueLabel.setText("Complete");
             hideTimer();
@@ -433,8 +469,9 @@ public class ReviewController extends BaseController {
         updateReviewMissedButton(false);
         updateReflectionActions(false);
         updateEmptyStateAction(false, "", this::goDashboard);
-        currentCard = dueCards.get(currentIndex);
-        queueLabel.setText((weeklyBossMode ? "Boss " : "") + (currentIndex + 1) + " / " + dueCards.size());
+        currentCard = sessionQueue.poll();
+        int totalSoFar = reviewedCardCount + 1 + sessionQueue.remainingSize();
+        queueLabel.setText((weeklyBossMode ? "Boss " : "") + (reviewedCardCount + 1) + " / " + totalSoFar);
         promptLabel.setText(currentCard.getFront());
         latestValidationResult = AttemptValidationResult.EMPTY;
         answerRevealed = false;

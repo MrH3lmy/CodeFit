@@ -16,6 +16,7 @@
                             <Label text="Review Queue" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
                             <Label fx:id="queueLabel" styleClass="header-pill" wrapText="true" />
                             <Label fx:id="timerLabel" styleClass="header-pill" wrapText="true" visible="false" managed="false" />
+                            <Label fx:id="sessionTimeLabel" styleClass="header-pill" wrapText="true" visible="false" managed="false" />
                             <Label fx:id="workloadModeLabel" styleClass="header-pill" wrapText="true" />
                         </HBox>
                         <Label text="Clear today&apos;s queue, reinforce the cards that need attention, and turn each rating into smarter progress." styleClass="page-subtitle" wrapText="true" />

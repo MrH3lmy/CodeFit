@@ -32,6 +32,8 @@ public class ReviewService {
     private final DailyQuestService dailyQuestService = new DailyQuestService();
     private final MasteryService masteryService = new MasteryService();
     private final CardLifecycleService cardLifecycleService = new CardLifecycleService();
+    private final SessionBudgetService sessionBudgetService = new SessionBudgetService();
+    private final StatsService statsService = new StatsService();
     private final int dailyNewCardLimit;
 
     public ReviewService() {
@@ -93,6 +95,64 @@ public class ReviewService {
     public int getAvailableNewCardBudget() {
         int remaining = dailyNewCardLimit - flashcardRepository.countIntroducedToday();
         return Math.max(0, Math.min(remaining, flashcardRepository.countNew()));
+    }
+
+    /**
+     * Builds a time-budgeted session: due/relearning, weakest-skill, and recently-failed cards
+     * are mixed ahead of new/stretch cards (60/20/10/10 target ratio) so due work is never
+     * displaced by optional new content, then trimmed to fit the chosen time budget using each
+     * card's own historical response time.
+     */
+    public AdaptiveSessionPlan getAdaptiveSessionCards(int budgetMinutes) {
+        List<Flashcard> dueAndRelearning = flashcardRepository.findDueCards();
+
+        List<Flashcard> forgettingRiskOrder = dueAndRelearning.stream()
+                .sorted(Comparator.comparing(Flashcard::getDueDate).thenComparingDouble(Flashcard::getEaseFactor))
+                .toList();
+
+        List<String> weakSkills = statsService.getNeedsPracticeSkills().stream()
+                .map(StatsSkillPerformance::skillCategory)
+                .toList();
+        List<Flashcard> weakestSkillOrder = dueAndRelearning.stream()
+                .filter(card -> weakSkills.contains(normalizeSkillCategory(card.getSkillCategory())))
+                .toList();
+
+        List<Flashcard> recentlyFailedOrder = dueAndRelearning.stream()
+                .filter(card -> card.getCardState() == CardState.RELEARNING)
+                .toList();
+
+        List<Flashcard> newCardOrder = selectNewCardsMixedAcrossDecks(getAvailableNewCardBudget());
+
+        List<AdaptiveQueueMixer.Bucket> buckets = List.of(
+                new AdaptiveQueueMixer.Bucket("Highest forgetting risk", forgettingRiskOrder, 0.6),
+                new AdaptiveQueueMixer.Bucket("Weakest skill", weakestSkillOrder, 0.2),
+                new AdaptiveQueueMixer.Bucket("Recently failed", recentlyFailedOrder, 0.1),
+                new AdaptiveQueueMixer.Bucket("New / stretch", newCardOrder, 0.1)
+        );
+        int candidatePoolCap = dueAndRelearning.size() + newCardOrder.size();
+        List<AdaptiveQueueMixer.MixedCard> mixed = new AdaptiveQueueMixer().mix(buckets, candidatePoolCap);
+
+        Map<Long, String> bucketLabelByCardId = new HashMap<>();
+        List<Flashcard> mixedCards = new ArrayList<>();
+        for (AdaptiveQueueMixer.MixedCard entry : mixed) {
+            bucketLabelByCardId.put(entry.card().getId(), entry.bucketLabel());
+            mixedCards.add(entry.card());
+        }
+
+        List<Flashcard> selected = sessionBudgetService.selectWithinBudget(mixedCards, budgetMinutes);
+        Map<String, Integer> composition = new LinkedHashMap<>();
+        for (Flashcard card : selected) {
+            composition.merge(bucketLabelByCardId.getOrDefault(card.getId(), "Other"), 1, Integer::sum);
+        }
+        int estimatedSeconds = sessionBudgetService.estimateTotalSeconds(selected);
+        return new AdaptiveSessionPlan(selected, composition, estimatedSeconds);
+    }
+
+    private String normalizeSkillCategory(String skillCategory) {
+        return skillCategory == null || skillCategory.isBlank() ? "General" : skillCategory.strip();
+    }
+
+    public record AdaptiveSessionPlan(List<Flashcard> cards, Map<String, Integer> composition, int estimatedSeconds) {
     }
 
     public List<Flashcard> getWeeklyBossCards() {

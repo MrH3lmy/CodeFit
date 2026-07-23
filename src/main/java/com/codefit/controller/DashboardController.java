@@ -11,6 +11,7 @@ import com.codefit.service.FlashcardService;
 import com.codefit.service.MasteryService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.ReviewService;
+import com.codefit.service.SessionBudgetService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
 import com.codefit.service.SystemMessage;
@@ -92,6 +93,10 @@ public class DashboardController extends BaseController {
         configureEmptyState(decks, deckCount, cardCount, dueCount);
         configureWeeklyBossCallout();
     }
+
+    @FXML public void goReviewQuick() { NavigationService.showTimedReview(SessionBudgetService.QUICK_MINUTES); }
+    @FXML public void goReviewStandard() { NavigationService.showTimedReview(SessionBudgetService.STANDARD_MINUTES); }
+    @FXML public void goReviewDeep() { NavigationService.showTimedReview(SessionBudgetService.DEEP_MINUTES); }
 
 
     private void configureSystemMessage(UserProgress progress, DailyQuest dailyQuest) {

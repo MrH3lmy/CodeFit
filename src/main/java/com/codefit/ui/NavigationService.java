@@ -26,6 +26,7 @@ public final class NavigationService {
     private static Stage primaryStage;
     private static Scene primaryScene;
     private static boolean weeklyBossModeRequested;
+    private static Integer pendingSessionMinutes;
     private static String pendingReflectionType;
     private static String selectedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
 
@@ -62,11 +63,20 @@ public final class NavigationService {
 
     public static void showReview() {
         weeklyBossModeRequested = false;
+        pendingSessionMinutes = null;
+        navigate("review.fxml", "CodeFit - Review");
+    }
+
+    /** Starts a time-budgeted adaptive session instead of the card-count workload mode. */
+    public static void showTimedReview(int minutes) {
+        weeklyBossModeRequested = false;
+        pendingSessionMinutes = minutes;
         navigate("review.fxml", "CodeFit - Review");
     }
 
     public static void showWeeklyBossBattle() {
         weeklyBossModeRequested = true;
+        pendingSessionMinutes = null;
         navigate("review.fxml", "CodeFit - Weekly Boss Battle");
     }
 
@@ -74,6 +84,13 @@ public final class NavigationService {
         boolean requested = weeklyBossModeRequested;
         weeklyBossModeRequested = false;
         return requested;
+    }
+
+    /** Returns the requested session minutes, or null if the learner didn't pick a timed session. */
+    public static Integer consumeSessionMinutesRequest() {
+        Integer minutes = pendingSessionMinutes;
+        pendingSessionMinutes = null;
+        return minutes;
     }
 
     public static void showSyllabus() {

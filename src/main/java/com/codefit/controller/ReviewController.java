@@ -12,6 +12,7 @@ import com.codefit.service.DeckService;
 import com.codefit.service.RatingGuardrail;
 import com.codefit.service.ReviewService;
 import com.codefit.service.SessionQueue;
+import com.codefit.service.SessionBudgetService;
 import com.codefit.service.SystemMessageService;
 import com.codefit.ui.NavigationService;
 import javafx.animation.KeyFrame;
@@ -46,6 +47,7 @@ public class ReviewController extends BaseController {
     @FXML private BorderPane reviewRoot;
     @FXML private Label queueLabel;
     @FXML private Label workloadModeLabel;
+    @FXML private Label sessionTimeLabel;
     @FXML private Label timerLabel;
     @FXML private Label promptLabel;
     @FXML private Label answerLabel;
@@ -87,6 +89,9 @@ public class ReviewController extends BaseController {
     private int earnedXp;
     private int initialMissCount;
     private int recoveredMissCount;
+    private Integer sessionBudgetMinutes;
+    private int sessionElapsedSeconds;
+    private Map<String, Integer> sessionComposition = Map.of();
     private final Map<ReviewRating, Integer> ratingCounts = new EnumMap<>(ReviewRating.class);
     private final List<Flashcard> missedCards = new ArrayList<>();
     private AttemptValidationResult latestValidationResult = AttemptValidationResult.EMPTY;
@@ -103,14 +108,29 @@ public class ReviewController extends BaseController {
     @FXML
     public void initialize() {
         weeklyBossMode = NavigationService.consumeWeeklyBossModeRequest();
+        sessionBudgetMinutes = weeklyBossMode ? null : NavigationService.consumeSessionMinutesRequest();
+
+        List<Flashcard> initialCards;
+        if (weeklyBossMode) {
+            initialCards = reviewService.getWeeklyBossCards();
+        } else if (sessionBudgetMinutes != null) {
+            ReviewService.AdaptiveSessionPlan plan = reviewService.getAdaptiveSessionCards(sessionBudgetMinutes);
+            initialCards = plan.cards();
+            sessionComposition = plan.composition();
+        } else {
+            initialCards = reviewService.getDueCards();
+        }
+
         if (workloadModeLabel != null) {
-            workloadModeLabel.setText(reviewService.getDailyWorkloadMode().getSummary());
+            workloadModeLabel.setText(sessionBudgetMinutes != null
+                    ? "Timed session · " + sessionBudgetMinutes + " min budget"
+                    : reviewService.getDailyWorkloadMode().getSummary());
             workloadModeLabel.setVisible(!weeklyBossMode);
             workloadModeLabel.setManaged(!weeklyBossMode);
         }
-        List<Flashcard> initialCards = weeklyBossMode ? reviewService.getWeeklyBossCards() : reviewService.getDueCards();
         sessionQueue = new SessionQueue(initialCards, SAME_SESSION_RETRY_LIMIT);
         resetSessionMetrics();
+        updateSessionTimeLabel();
         attemptTextArea.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
         commandTextField.textProperty().addListener((observable, oldValue, newValue) -> updateAttemptValidation());
         configureKeyboardShortcuts();
@@ -171,6 +191,7 @@ public class ReviewController extends BaseController {
 
         sessionQueue = new SessionQueue(new ArrayList<>(missedCards), SAME_SESSION_RETRY_LIMIT);
         resetSessionMetrics();
+        updateSessionTimeLabel();
         if (reviewMissedButton != null) {
             reviewMissedButton.setVisible(false);
             reviewMissedButton.setManaged(false);
@@ -217,6 +238,8 @@ public class ReviewController extends BaseController {
         }
         reviewedCardCount++;
         earnedXp += rating.getXp();
+        sessionElapsedSeconds += (lastResponseTimeMs == null ? 15_000 : lastResponseTimeMs) / 1000 + 5;
+        updateSessionTimeLabel();
         ratingCounts.merge(rating, 1, Integer::sum);
         String feedback = formatReviewFeedback(rating, previousInterval, previousDueDate, reviewedCard);
         if (rating == ReviewRating.AGAIN || rating == ReviewRating.HARD) {
@@ -253,11 +276,27 @@ public class ReviewController extends BaseController {
         earnedXp = 0;
         initialMissCount = 0;
         recoveredMissCount = 0;
+        sessionElapsedSeconds = 0;
         ratingCounts.clear();
         missedCards.clear();
         for (ReviewRating rating : ReviewRating.values()) {
             ratingCounts.put(rating, 0);
         }
+    }
+
+    private void updateSessionTimeLabel() {
+        if (sessionTimeLabel == null) {
+            return;
+        }
+        if (sessionBudgetMinutes == null) {
+            sessionTimeLabel.setVisible(false);
+            sessionTimeLabel.setManaged(false);
+            return;
+        }
+        int remainingMinutes = Math.max(0, sessionBudgetMinutes - (sessionElapsedSeconds / 60));
+        sessionTimeLabel.setText("~" + remainingMinutes + " of " + sessionBudgetMinutes + " min remaining (est.)");
+        sessionTimeLabel.setVisible(true);
+        sessionTimeLabel.setManaged(true);
     }
 
     private String formatSessionSummary() {
@@ -279,6 +318,16 @@ public class ReviewController extends BaseController {
                     .append(missedCards.size()).append(" still outstanding.");
         }
 
+        if (sessionBudgetMinutes != null) {
+            summary.append("\nTimed session: ").append(sessionBudgetMinutes).append(" min budget, ~")
+                    .append(Math.round(sessionElapsedSeconds / 60.0)).append(" min used.");
+        }
+
+        String queueComposition = formatQueueComposition();
+        if (!queueComposition.isBlank()) {
+            summary.append("\n").append(queueComposition);
+        }
+
         String weakAreaSignal = formatWeakAreaSignal();
         if (!weakAreaSignal.isBlank()) {
             summary.append("\n").append(weakAreaSignal);
@@ -292,6 +341,15 @@ public class ReviewController extends BaseController {
         summary.append("\nReflection prompt: add one card from today’s real work while it is still fresh. Pick a bug you fixed, a command you searched, or a concept you missed.");
         summary.append("\nNext action: ").append(formatSuggestedNextAction());
         return summary.toString();
+    }
+
+    private String formatQueueComposition() {
+        if (sessionComposition.isEmpty()) {
+            return "";
+        }
+        return "Queue mix: " + sessionComposition.entrySet().stream()
+                .map(entry -> entry.getValue() + " " + entry.getKey())
+                .collect(Collectors.joining(", ")) + ".";
     }
 
     private String formatWeakAreaSignal() {

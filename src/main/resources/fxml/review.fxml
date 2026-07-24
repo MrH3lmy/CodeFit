@@ -1,123 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.codefit.ui.Sidebar?>
 
-<BorderPane fx:id="reviewRoot" styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ReviewController">
-    <left>
-        <Sidebar activePage="review" />
-    </left>
-    <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
-                <VBox spacing="24" styleClass="content" maxWidth="Infinity">
-                    <VBox spacing="16" styleClass="hero-card" maxWidth="Infinity">
-                        <HBox spacing="12" alignment="CENTER_LEFT">
-                            <Label text="Review Queue" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
-                            <Label fx:id="queueLabel" styleClass="header-pill" wrapText="true" />
-                            <Label fx:id="timerLabel" styleClass="header-pill" wrapText="true" visible="false" managed="false" />
-                            <Label fx:id="sessionTimeLabel" styleClass="header-pill" wrapText="true" visible="false" managed="false" />
-                            <Label fx:id="workloadModeLabel" styleClass="header-pill" wrapText="true" />
-                        </HBox>
-                        <Label text="Clear today&apos;s queue, reinforce the cards that need attention, and turn each rating into smarter progress." styleClass="page-subtitle" wrapText="true" />
-                        <VBox fx:id="sessionFlowStrip" spacing="10" styleClass="queue-strip" maxWidth="Infinity">
-                            <HBox spacing="12" alignment="CENTER_LEFT">
-                                <Label text="SESSION FLOW" styleClass="stat-label" />
-                                <Label text="Prompt → Reveal → Rate → Next card" styleClass="pill progress-pill" wrapText="true" HBox.hgrow="ALWAYS" />
-                            </HBox>
-                            <HBox spacing="8" alignment="CENTER" styleClass="progress-strip" maxWidth="Infinity">
-                                <Region styleClass="progress-step progress-step-active" HBox.hgrow="ALWAYS" />
-                                <Region styleClass="progress-step" HBox.hgrow="ALWAYS" />
-                                <Region styleClass="progress-step" HBox.hgrow="ALWAYS" />
-                                <Region styleClass="progress-step" HBox.hgrow="ALWAYS" />
-                            </HBox>
-                        </VBox>
-                    </VBox>
-                    <VBox spacing="12" maxWidth="Infinity">
-                        <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
-                        <Button fx:id="reviewMissedButton" text="Review missed cards now" onAction="#reviewMissedNow" styleClass="action-button" maxWidth="Infinity" visible="false" managed="false" />
-                        <VBox fx:id="reflectionPromptPanel" spacing="8" styleClass="queue-strip" maxWidth="Infinity" visible="false" managed="false">
-                            <Label text="Before you leave: add one card from today’s real work." styleClass="section-title" wrapText="true" />
-                            <Label text="Reflection cards earn a small capped XP bonus and turn fresh context into tomorrow’s practice." styleClass="helper-text" wrapText="true" />
-                            <TilePane hgap="10" vgap="10" prefTileWidth="190" maxWidth="Infinity">
-                                <Button fx:id="addFixedBugButton" text="Add bug I fixed" onAction="#addFixedBugReflection" styleClass="ghost-button" maxWidth="Infinity" visible="false" managed="false" />
-                                <Button fx:id="addSearchedCommandButton" text="Add command I searched" onAction="#addSearchedCommandReflection" styleClass="ghost-button" maxWidth="Infinity" visible="false" managed="false" />
-                                <Button fx:id="addMissedConceptButton" text="Add concept I missed" onAction="#addMissedConceptReflection" styleClass="ghost-button" maxWidth="Infinity" visible="false" managed="false" />
-                            </TilePane>
-                        </VBox>
-                    </VBox>
-                    <StackPane styleClass="review-stage" maxWidth="Infinity">
-                        <VBox spacing="30" styleClass="review-card" maxWidth="Infinity" StackPane.alignment="CENTER">
-                            <VBox spacing="12" styleClass="prompt-section current-action-panel">
-                                <Label text="PROMPT" styleClass="stat-label" />
-                                <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />
-                            </VBox>
-                            <Separator />
-                            <VBox spacing="12" styleClass="attempt-section current-action-panel">
-                                <HBox spacing="8" alignment="CENTER_LEFT">
-                                    <Label text="YOUR ATTEMPT" styleClass="stat-label" />
-                                    <Label fx:id="matchRequirementLabel" styleClass="muted" wrapText="true" HBox.hgrow="ALWAYS" />
-                                </HBox>
-                                <TextArea fx:id="attemptTextArea" promptText="Type your recall attempt before revealing the answer." wrapText="true" prefRowCount="3" maxWidth="Infinity" />
-                                <VBox fx:id="commandPracticePanel" spacing="12" styleClass="terminal-panel" visible="false" managed="false" maxWidth="Infinity">
-                                    <HBox spacing="8" alignment="CENTER_LEFT" styleClass="terminal-titlebar">
-                                        <Label text="●" styleClass="terminal-dot terminal-dot-red" />
-                                        <Label text="●" styleClass="terminal-dot terminal-dot-yellow" />
-                                        <Label text="●" styleClass="terminal-dot terminal-dot-green" />
-                                        <Label text="Practice shell" styleClass="terminal-title" HBox.hgrow="ALWAYS" />
-                                    </HBox>
-                                    <TextArea fx:id="terminalHistoryArea" text="\$ # output history appears after reveal" editable="false" wrapText="true" prefRowCount="5" focusTraversable="false" styleClass="terminal-history" maxWidth="Infinity" />
-                                    <HBox fx:id="commandAttemptBox" spacing="8" alignment="CENTER_LEFT" styleClass="terminal-input" maxWidth="Infinity">
-                                        <Label text="\$" styleClass="terminal-prompt" />
-                                        <TextField fx:id="commandTextField" promptText="Type the command you would run." HBox.hgrow="ALWAYS" />
-                                    </HBox>
-                                </VBox>
-                            </VBox>
-                            <VBox spacing="8" styleClass="confidence-panel" maxWidth="Infinity">
-                                <Label text="How confident are you? (optional — most useful if set before revealing)" styleClass="stat-label" wrapText="true" />
-                                <HBox spacing="10" alignment="CENTER_LEFT">
-                                    <fx:define>
-                                        <ToggleGroup fx:id="confidenceToggleGroup" />
-                                    </fx:define>
-                                    <ToggleButton fx:id="confidenceLowButton" text="Low" toggleGroup="$confidenceToggleGroup" styleClass="ghost-button confidence-button" />
-                                    <ToggleButton fx:id="confidenceMediumButton" text="Medium" toggleGroup="$confidenceToggleGroup" styleClass="ghost-button confidence-button" />
-                                    <ToggleButton fx:id="confidenceHighButton" text="High" toggleGroup="$confidenceToggleGroup" styleClass="ghost-button confidence-button" />
-                                </HBox>
-                            </VBox>
-                            <HBox spacing="12" alignment="CENTER" maxWidth="Infinity">
-                                <Button fx:id="showHintButton" text="Show Hint (H)" onAction="#showHint" styleClass="nav-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
-                                <Button fx:id="showAnswerButton" text="Reveal Answer (Space)" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
-                            </HBox>
-                            <VBox spacing="12" styleClass="answer-section">
-                                <Label text="ANSWER" styleClass="stat-label" />
-                                <Label fx:id="answerLabel" styleClass="review-answer" wrapText="true" />
-                                <Button fx:id="emptyStateActionButton" text="Add a Card" onAction="#goAddCard" styleClass="action-button" maxWidth="Infinity" visible="false" managed="false" />
-                            </VBox>
-                            <VBox spacing="14" styleClass="rating-panel" maxWidth="Infinity">
-                                <Label text="How did recall feel?" styleClass="section-title" />
-                                <TilePane hgap="14" vgap="14" prefTileWidth="154" maxWidth="Infinity" tileAlignment="TOP_LEFT" styleClass="rating-grid">
-                                    <VBox spacing="7" styleClass="rating-option">
-                                        <Button fx:id="againButton" text="✕ Again (1)" onAction="#rateAgain" styleClass="danger-button rating-button" maxWidth="Infinity" />
-                                        <Label fx:id="againDescriptionLabel" text="Missed it — review again today" styleClass="rating-description" wrapText="true" />
-                                    </VBox>
-                                    <VBox spacing="7" styleClass="rating-option">
-                                        <Button fx:id="hardButton" text="▲ Hard (2)" onAction="#rateHard" styleClass="warning-button rating-button" maxWidth="Infinity" />
-                                        <Label fx:id="hardDescriptionLabel" text="Remembered with effort — short interval" styleClass="rating-description" wrapText="true" />
-                                    </VBox>
-                                    <VBox spacing="7" styleClass="rating-option">
-                                        <Button fx:id="goodButton" text="✓ Good (3)" onAction="#rateGood" styleClass="success-button rating-button" maxWidth="Infinity" />
-                                        <Label fx:id="goodDescriptionLabel" text="Solid recall — normal interval" styleClass="rating-description" wrapText="true" />
-                                    </VBox>
-                                    <VBox spacing="7" styleClass="rating-option">
-                                        <Button fx:id="easyButton" text="★ Easy (4)" onAction="#rateEasy" styleClass="epic-button rating-button" maxWidth="Infinity" />
-                                        <Label fx:id="easyDescriptionLabel" text="Instant recall — longer interval" styleClass="rating-description" wrapText="true" />
-                                    </VBox>
-                                </TilePane>
-                            </VBox>
-                        </VBox>
-                    </StackPane>
+<ScrollPane fx:id="reviewRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ReviewController">
+    <content>
+        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+            <HBox spacing="16" alignment="CENTER_LEFT" styleClass="review-topbar" maxWidth="Infinity">
+                <Button text="Exit" onAction="#exitReview" styleClass="ghost-button" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label fx:id="queueLabel" styleClass="pill" wrapText="true" />
+                <Label fx:id="timerLabel" styleClass="pill" wrapText="true" visible="false" managed="false" />
+                <Label fx:id="sessionTimeLabel" styleClass="pill" wrapText="true" visible="false" managed="false" />
+                <Label fx:id="workloadModeLabel" styleClass="pill" wrapText="true" />
+            </HBox>
+            <ProgressBar fx:id="sessionProgressBar" maxWidth="Infinity" styleClass="review-session-progress" />
+
+            <VBox spacing="12" maxWidth="Infinity">
+                <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+                <Button fx:id="reviewMissedButton" text="Review missed cards now" onAction="#reviewMissedNow" styleClass="action-button" maxWidth="Infinity" visible="false" managed="false" />
+                <VBox fx:id="reflectionPromptPanel" spacing="8" styleClass="queue-strip" maxWidth="Infinity" visible="false" managed="false">
+                    <Label text="Before you leave: add one card from today’s real work." styleClass="section-title" wrapText="true" />
+                    <Label text="Reflection cards earn a small capped XP bonus and turn fresh context into tomorrow’s practice." styleClass="helper-text" wrapText="true" />
+                    <TilePane hgap="10" vgap="10" prefTileWidth="190" maxWidth="Infinity">
+                        <Button fx:id="addFixedBugButton" text="Add bug I fixed" onAction="#addFixedBugReflection" styleClass="ghost-button" maxWidth="Infinity" visible="false" managed="false" />
+                        <Button fx:id="addSearchedCommandButton" text="Add command I searched" onAction="#addSearchedCommandReflection" styleClass="ghost-button" maxWidth="Infinity" visible="false" managed="false" />
+                        <Button fx:id="addMissedConceptButton" text="Add concept I missed" onAction="#addMissedConceptReflection" styleClass="ghost-button" maxWidth="Infinity" visible="false" managed="false" />
+                    </TilePane>
                 </VBox>
-            </content>
-        </ScrollPane>
-    </center>
-</BorderPane>
+            </VBox>
+
+            <StackPane styleClass="review-stage" maxWidth="Infinity">
+                <VBox spacing="24" styleClass="review-card" maxWidth="780" StackPane.alignment="CENTER">
+                    <Label fx:id="categoryLabel" styleClass="category-pill" wrapText="true" />
+
+                    <VBox spacing="10" styleClass="prompt-section current-action-panel">
+                        <Label fx:id="promptLabel" styleClass="review-prompt" wrapText="true" />
+                    </VBox>
+
+                    <VBox fx:id="attemptSection" spacing="12" styleClass="attempt-section current-action-panel">
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="YOUR ATTEMPT" styleClass="stat-label" />
+                            <Label fx:id="matchRequirementLabel" styleClass="muted" wrapText="true" HBox.hgrow="ALWAYS" />
+                        </HBox>
+                        <TextArea fx:id="attemptTextArea" promptText="Type your recall attempt before revealing the answer." wrapText="true" prefRowCount="4" maxWidth="Infinity" />
+                        <VBox fx:id="commandPracticePanel" spacing="12" styleClass="terminal-panel" visible="false" managed="false" maxWidth="Infinity">
+                            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="terminal-titlebar">
+                                <Label text="●" styleClass="terminal-dot terminal-dot-red" />
+                                <Label text="●" styleClass="terminal-dot terminal-dot-yellow" />
+                                <Label text="●" styleClass="terminal-dot terminal-dot-green" />
+                                <Label text="Practice shell" styleClass="terminal-title" HBox.hgrow="ALWAYS" />
+                            </HBox>
+                            <TextArea fx:id="terminalHistoryArea" text="\$ # output history appears after reveal" editable="false" wrapText="true" prefRowCount="5" focusTraversable="false" styleClass="terminal-history" maxWidth="Infinity" />
+                            <HBox fx:id="commandAttemptBox" spacing="8" alignment="CENTER_LEFT" styleClass="terminal-input" maxWidth="Infinity">
+                                <Label text="\$" styleClass="terminal-prompt" />
+                                <TextField fx:id="commandTextField" promptText="Type the command you would run." HBox.hgrow="ALWAYS" />
+                            </HBox>
+                        </VBox>
+                    </VBox>
+
+                    <VBox fx:id="confidencePanel" spacing="6" styleClass="confidence-panel" maxWidth="Infinity">
+                        <Label text="How confident are you? (optional)" styleClass="helper-text" wrapText="true" />
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <fx:define>
+                                <ToggleGroup fx:id="confidenceToggleGroup" />
+                            </fx:define>
+                            <ToggleButton fx:id="confidenceLowButton" text="Low" toggleGroup="$confidenceToggleGroup" styleClass="ghost-button confidence-button" />
+                            <ToggleButton fx:id="confidenceMediumButton" text="Medium" toggleGroup="$confidenceToggleGroup" styleClass="ghost-button confidence-button" />
+                            <ToggleButton fx:id="confidenceHighButton" text="High" toggleGroup="$confidenceToggleGroup" styleClass="ghost-button confidence-button" />
+                        </HBox>
+                    </VBox>
+
+                    <HBox fx:id="preRevealActions" spacing="12" alignment="CENTER" maxWidth="Infinity">
+                        <Button fx:id="showHintButton" text="Hint (H)" onAction="#showHint" styleClass="ghost-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                        <Button fx:id="showAnswerButton" text="Reveal Answer (Space)" onAction="#showAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                    </HBox>
+
+                    <VBox fx:id="answerSection" spacing="12" styleClass="answer-section" visible="false" managed="false">
+                        <Label fx:id="answerSectionHeading" text="EXPECTED ANSWER" styleClass="stat-label" />
+                        <Label fx:id="answerLabel" styleClass="review-answer" wrapText="true" />
+                        <Button fx:id="emptyStateActionButton" text="Add a Card" onAction="#goAddCard" styleClass="action-button" maxWidth="Infinity" visible="false" managed="false" />
+                    </VBox>
+
+                    <VBox fx:id="ratingPanel" spacing="14" styleClass="rating-panel" maxWidth="Infinity" visible="false" managed="false">
+                        <TilePane hgap="14" vgap="14" prefTileWidth="164" maxWidth="Infinity" tileAlignment="TOP_LEFT" styleClass="rating-grid">
+                            <VBox spacing="7" styleClass="rating-option">
+                                <Button fx:id="againButton" text="✕ Again (1)" onAction="#rateAgain" styleClass="danger-button rating-button" maxWidth="Infinity" />
+                                <Label fx:id="againDescriptionLabel" text="Missed it — review again today" styleClass="rating-description" wrapText="true" />
+                            </VBox>
+                            <VBox spacing="7" styleClass="rating-option">
+                                <Button fx:id="hardButton" text="▲ Hard (2)" onAction="#rateHard" styleClass="warning-button rating-button" maxWidth="Infinity" />
+                                <Label fx:id="hardDescriptionLabel" text="Remembered with effort — short interval" styleClass="rating-description" wrapText="true" />
+                            </VBox>
+                            <VBox spacing="7" styleClass="rating-option">
+                                <Button fx:id="goodButton" text="✓ Good (3)" onAction="#rateGood" styleClass="success-button rating-button" maxWidth="Infinity" />
+                                <Label fx:id="goodDescriptionLabel" text="Solid recall — normal interval" styleClass="rating-description" wrapText="true" />
+                            </VBox>
+                            <VBox spacing="7" styleClass="rating-option">
+                                <Button fx:id="easyButton" text="★ Easy (4)" onAction="#rateEasy" styleClass="epic-button rating-button" maxWidth="Infinity" />
+                                <Label fx:id="easyDescriptionLabel" text="Instant recall — longer interval" styleClass="rating-description" wrapText="true" />
+                            </VBox>
+                        </TilePane>
+                    </VBox>
+
+                    <VBox fx:id="completionStatStrip" spacing="14" styleClass="completion-stat-strip" maxWidth="Infinity" visible="false" managed="false">
+                        <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                            <VBox maxWidth="Infinity" minWidth="0" spacing="4" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                <Label text="COMPLETED" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label fx:id="completionCardsLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                            </VBox>
+                            <VBox maxWidth="Infinity" minWidth="0" spacing="4" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                <Label text="TIME SPENT" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label fx:id="completionTimeLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                            </VBox>
+                            <VBox maxWidth="Infinity" minWidth="0" spacing="4" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                <Label text="OBJECTIVE" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label fx:id="completionAccuracyLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                            </VBox>
+                            <VBox maxWidth="Infinity" minWidth="0" spacing="4" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                <Label text="MISSED / RELEARNING" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label fx:id="completionMissedLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                            </VBox>
+                        </HBox>
+                    </VBox>
+                </VBox>
+            </StackPane>
+        </VBox>
+    </content>
+</ScrollPane>

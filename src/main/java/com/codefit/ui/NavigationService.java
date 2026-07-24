@@ -12,23 +12,43 @@ import java.util.List;
 import java.util.prefs.Preferences;
 
 public final class NavigationService {
+    /** Only Dark and Light are selectable. Legacy Ocean/Forest/Synthwave preferences are mapped
+     *  onto Dark by {@link #sanitizeThemeClass} so old preference files never fail to start. */
     private static final List<ThemeOption> THEMES = List.of(
             new ThemeOption("Dark", "theme-dark"),
-            new ThemeOption("Light", "theme-light"),
-            new ThemeOption("Ocean", "theme-ocean"),
-            new ThemeOption("Forest", "theme-forest"),
-            new ThemeOption("Synthwave", "theme-synthwave")
+            new ThemeOption("Light", "theme-light")
     );
     private static final String BASE_THEME_CLASS = "theme-dark";
     private static final String THEME_PREFERENCE_KEY = "selectedTheme";
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(NavigationService.class);
+    static final String[] STYLESHEETS = {
+            "/css/tokens.css",
+            "/css/base.css",
+            "/css/controls.css",
+            "/css/shell.css",
+            "/css/review.css",
+            "/css/library.css",
+            "/css/forms.css",
+            "/css/progress.css",
+            "/css/today.css"
+    };
 
     private static Stage primaryStage;
     private static Scene primaryScene;
+    private static AppShellController shellController;
     private static boolean weeklyBossModeRequested;
     private static Integer pendingSessionMinutes;
     private static String pendingReflectionType;
-    private static String selectedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
+    private static Long pendingEditCardId;
+    private static String selectedTheme;
+
+    static {
+        String storedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
+        selectedTheme = sanitizeThemeClass(storedTheme);
+        if (!selectedTheme.equals(storedTheme)) {
+            PREFERENCES.put(THEME_PREFERENCE_KEY, selectedTheme);
+        }
+    }
 
     private NavigationService() {
     }
@@ -38,21 +58,23 @@ public final class NavigationService {
     }
 
     public static void showDashboard() {
-        navigate("dashboard.fxml", "CodeFit - Dashboard");
+        navigate(Route.TODAY);
     }
 
     public static void showDecks() {
-        navigate("decks.fxml", "CodeFit - Decks");
+        navigate(Route.LIBRARY);
     }
 
     public static void showAddCard() {
         pendingReflectionType = null;
-        navigate("add-card.fxml", "CodeFit - Add Card");
+        pendingEditCardId = null;
+        navigate(Route.ADD_CARD);
     }
 
     public static void showAddCardReflection(String reflectionType) {
         pendingReflectionType = reflectionType;
-        navigate("add-card.fxml", "CodeFit - Add Reflection Card");
+        pendingEditCardId = null;
+        navigate(Route.ADD_CARD);
     }
 
     public static String consumePendingReflectionType() {
@@ -61,23 +83,36 @@ public final class NavigationService {
         return reflectionType;
     }
 
+    /** Opens the card composer in edit mode for an existing card. */
+    public static void showEditCard(long cardId) {
+        pendingReflectionType = null;
+        pendingEditCardId = cardId;
+        navigate(Route.ADD_CARD);
+    }
+
+    public static Long consumePendingEditCardId() {
+        Long cardId = pendingEditCardId;
+        pendingEditCardId = null;
+        return cardId;
+    }
+
     public static void showReview() {
         weeklyBossModeRequested = false;
         pendingSessionMinutes = null;
-        navigate("review.fxml", "CodeFit - Review");
+        navigate(Route.REVIEW);
     }
 
     /** Starts a time-budgeted adaptive session instead of the card-count workload mode. */
     public static void showTimedReview(int minutes) {
         weeklyBossModeRequested = false;
         pendingSessionMinutes = minutes;
-        navigate("review.fxml", "CodeFit - Review");
+        navigate(Route.REVIEW);
     }
 
     public static void showWeeklyBossBattle() {
         weeklyBossModeRequested = true;
         pendingSessionMinutes = null;
-        navigate("review.fxml", "CodeFit - Weekly Boss Battle");
+        navigate(Route.REVIEW);
     }
 
     public static boolean consumeWeeklyBossModeRequest() {
@@ -94,35 +129,46 @@ public final class NavigationService {
     }
 
     public static void showSyllabus() {
-        navigate("syllabus.fxml", "CodeFit - Java Backend Syllabus");
+        navigate(Route.SYLLABUS);
     }
 
     public static void showStats() {
-        navigate("stats.fxml", "CodeFit - Stats");
+        navigate(Route.PROGRESS);
     }
 
-    public static void navigate(String fxmlName, String title) {
+    /** Navigates to a route, building the persistent shell on first use. Only the shell's content
+     *  host is swapped on subsequent calls, so the sidebar and top bar are never reconstructed. */
+    public static void navigate(Route route) {
         if (primaryStage == null) {
             throw new IllegalStateException("Primary stage has not been configured.");
         }
+        ensureShell();
+        shellController.showRoute(route);
+        primaryStage.setTitle(route.title());
+        primaryStage.show();
+    }
+
+    private static void ensureShell() {
+        if (primaryScene != null) {
+            return;
+        }
         try {
-            URL resource = NavigationService.class.getResource("/fxml/" + fxmlName);
-            Parent root = FXMLLoader.load(resource);
-            applyTheme(root);
-            if (primaryScene == null) {
-                primaryScene = new Scene(root, 1100, 720);
-                primaryScene.getStylesheets().add(NavigationService.class.getResource("/css/app.css").toExternalForm());
-                primaryScene.setFill(Color.web("#070b16"));
-                primaryStage.setScene(primaryScene);
-            } else {
-                primaryScene.setRoot(root);
+            URL shellResource = NavigationService.class.getResource("/fxml/app-shell.fxml");
+            FXMLLoader loader = new FXMLLoader(shellResource);
+            Parent shellRoot = loader.load();
+            shellController = loader.getController();
+            applyTheme(shellRoot);
+
+            primaryScene = new Scene(shellRoot, 1100, 720);
+            for (String stylesheet : STYLESHEETS) {
+                primaryScene.getStylesheets().add(NavigationService.class.getResource(stylesheet).toExternalForm());
             }
-            primaryStage.setTitle(title);
+            primaryScene.setFill(Color.web("#0B0D12"));
+            primaryStage.setScene(primaryScene);
             primaryStage.setMinWidth(760);
             primaryStage.setMinHeight(560);
-            primaryStage.show();
         } catch (IOException exception) {
-            throw new IllegalStateException("Unable to load screen: " + fxmlName, exception);
+            throw new IllegalStateException("Unable to load application shell.", exception);
         }
     }
 
@@ -162,9 +208,8 @@ public final class NavigationService {
     private static void applyTheme(Parent root) {
         root.getStyleClass().removeAll(THEMES.stream().map(ThemeOption::styleClass).toArray(String[]::new));
 
-        // Always apply the complete base token set first; alternate themes then override the
-        // full semantic checklist documented in app.css so every FXML screen inherits a stable
-        // background/surface/text/status/focus palette without missing-token fallbacks.
+        // Always apply the complete base token set first; the selected theme then overrides the
+        // eleven semantic tokens defined in tokens.css so every screen inherits a stable palette.
         root.getStyleClass().add(BASE_THEME_CLASS);
         if (!selectedTheme.equals(BASE_THEME_CLASS)) {
             root.getStyleClass().add(selectedTheme);
@@ -176,6 +221,16 @@ public final class NavigationService {
                 .filter(theme -> theme.styleClass().equals(themeClass))
                 .findFirst()
                 .orElse(THEMES.getFirst());
+    }
+
+    /** Maps any unrecognized or legacy theme class (Ocean/Forest/Synthwave) onto Dark so an old
+     *  preference file can never prevent startup. */
+    static String sanitizeThemeClass(String themeClass) {
+        return THEMES.stream()
+                .filter(theme -> theme.styleClass().equals(themeClass))
+                .findFirst()
+                .map(ThemeOption::styleClass)
+                .orElse(BASE_THEME_CLASS);
     }
 
     private record ThemeOption(String displayName, String styleClass) {

@@ -2,7 +2,9 @@ package com.codefit.controller;
 
 import com.codefit.model.CardType;
 import com.codefit.model.Deck;
+import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
+import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.ProgressService;
@@ -56,13 +58,17 @@ public class AddCardController extends BaseController {
     @FXML private TitledPane practiceSettingsSection;
     @FXML private Label frontPreviewLabel;
     @FXML private Label backPreviewLabel;
+    @FXML private Label pageTitleLabel;
+    @FXML private Label pageSubtitleLabel;
     @FXML private Button saveCardButton;
+    @FXML private Button saveAndCloseButton;
     @FXML private Button createDeckButton;
 
     private final DeckService deckService = new DeckService();
     private final FlashcardService flashcardService = new FlashcardService();
     private final ProgressService progressService = new ProgressService();
     private String pendingReflectionType;
+    private Long editingCardId;
 
     @FXML
     public void initialize() {
@@ -82,6 +88,7 @@ public class AddCardController extends BaseController {
                 backPreviewLabel.setText(previewText(newValue, BACK_PREVIEW_FALLBACK)));
         applyTemplate(cardTypeComboBox.getValue());
         pendingReflectionType = NavigationService.consumePendingReflectionType();
+        Long editCardId = NavigationService.consumePendingEditCardId();
 
         boolean hasNoDecks = deckComboBox.getItems().isEmpty();
         deckComboBox.setDisable(hasNoDecks);
@@ -95,11 +102,14 @@ public class AddCardController extends BaseController {
         timeLimitSpinner.setDisable(hasNoDecks);
         skillCategoryField.setDisable(hasNoDecks);
         saveCardButton.setDisable(hasNoDecks);
+        saveAndCloseButton.setDisable(hasNoDecks);
         createDeckButton.setVisible(hasNoDecks);
         createDeckButton.setManaged(hasNoDecks);
 
         if (hasNoDecks) {
             setStatus(messageLabel, "No decks available. Create a deck before adding cards.");
+        } else if (editCardId != null) {
+            loadCardForEditing(editCardId);
         } else {
             deckComboBox.getSelectionModel().selectFirst();
             suggestJavaBeSkillCategory(deckComboBox.getValue());
@@ -107,8 +117,49 @@ public class AddCardController extends BaseController {
         }
     }
 
+    private void loadCardForEditing(long cardId) {
+        Flashcard card = flashcardService.getCardById(cardId).orElse(null);
+        if (card == null) {
+            setStatus(messageLabel, "That card could not be found. It may have been deleted.");
+            deckComboBox.getSelectionModel().selectFirst();
+            return;
+        }
+
+        editingCardId = cardId;
+        pageTitleLabel.setText("Edit Card");
+        pageSubtitleLabel.setText("Update the prompt, answer, or advanced settings for this card.");
+        saveCardButton.setVisible(false);
+        saveCardButton.setManaged(false);
+        saveAndCloseButton.setText("Save Changes");
+
+        deckComboBox.getItems().stream()
+                .filter(deck -> deck.getId() == card.getDeckId())
+                .findFirst()
+                .ifPresent(deck -> deckComboBox.getSelectionModel().select(deck));
+        cardTypeComboBox.getSelectionModel().select(card.getCardType());
+        applyTemplate(card.getCardType());
+        frontArea.setText(card.getFront());
+        backArea.setText(card.getBack());
+        hintArea.setText(card.getHint() == null ? "" : card.getHint());
+        acceptedAnswersArea.setText(String.join("\n", AcceptedAnswerCodec.decode(card.getAcceptedAnswers())));
+        simulatedOutputArea.setText(card.getSimulatedOutput() == null ? "" : card.getSimulatedOutput());
+        skillCategoryField.setText(card.getSkillCategory() == null ? "" : card.getSkillCategory());
+        timeLimitSpinner.getValueFactory().setValue(card.getTimeLimitSeconds() == null ? 0 : card.getTimeLimitSeconds());
+        validationModeComboBox.getSelectionModel().select(card.getValidationMode());
+        setStatus(messageLabel, "Editing an existing card. Changes are saved to its current deck.");
+    }
+
     @FXML
     public void saveCard() {
+        persistCard(false);
+    }
+
+    @FXML
+    public void saveAndClose() {
+        persistCard(true);
+    }
+
+    private void persistCard(boolean closeAfterSave) {
         Deck deck = deckComboBox.getValue();
         if (deck == null) {
             setStatus(messageLabel, "Choose or create a deck before saving a card.");
@@ -116,18 +167,21 @@ public class AddCardController extends BaseController {
         }
 
         try {
+            if (editingCardId != null) {
+                flashcardService.updateCard(editingCardId, frontArea.getText(), backArea.getText(),
+                        cardTypeComboBox.getValue(), acceptedAnswersArea.getText(), validationModeComboBox.getValue(),
+                        simulatedOutputArea.getText(), hintArea.getText(), getTimeLimitSeconds(), skillCategoryField.getText());
+                setStatus(messageLabel, "Card updated.");
+                NavigationService.showDecks();
+                return;
+            }
+
             boolean reflectionCard = isReflectionCard();
             flashcardService.addCard(deck.getId(), frontArea.getText(), backArea.getText(),
                     cardTypeComboBox.getValue(), acceptedAnswersArea.getText(), validationModeComboBox.getValue(),
                     simulatedOutputArea.getText(), hintArea.getText(), getTimeLimitSeconds(), skillCategoryField.getText());
             int reflectionXp = reflectionCard ? progressService.recordReflectionCardCreated() : 0;
-            frontArea.clear();
-            backArea.clear();
-            hintArea.clear();
-            acceptedAnswersArea.clear();
-            simulatedOutputArea.clear();
-            timeLimitSpinner.getValueFactory().setValue(0);
-            skillCategoryField.clear();
+            clearComposerFields();
             if (reflectionCard) {
                 pendingReflectionType = null;
                 setStatus(messageLabel, reflectionXp > 0
@@ -136,9 +190,22 @@ public class AddCardController extends BaseController {
             } else {
                 setStatus(messageLabel, "Card added and scheduled for today.");
             }
+            if (closeAfterSave) {
+                NavigationService.showDecks();
+            }
         } catch (RuntimeException exception) {
             setStatus(messageLabel, exception.getMessage());
         }
+    }
+
+    private void clearComposerFields() {
+        frontArea.clear();
+        backArea.clear();
+        hintArea.clear();
+        acceptedAnswersArea.clear();
+        simulatedOutputArea.clear();
+        timeLimitSpinner.getValueFactory().setValue(0);
+        skillCategoryField.clear();
     }
 
     private void applyReflectionPrefillIfRequested() {

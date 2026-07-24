@@ -1,0 +1,115 @@
+/* Today (dashboard): the "next best action" hero, due/streak signals, and recent decks. */
+
+.dashboard-learning-hero {
+    -fx-min-height: 220;
+    -fx-padding: 24 26;
+}
+
+.dashboard-hero-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 30px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: -0.02em;
+}
+
+.dashboard-hero-helper {
+    -fx-font-size: 14px;
+    -fx-line-spacing: 3;
+}
+
+.dashboard-hero-action-row {
+    -fx-padding: 8 0 0 0;
+}
+
+.due-signal {
+    -fx-padding: 16 18;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+.due-value {
+    -fx-font-size: 48px;
+}
+
+.dashboard-streak-signal {
+    -fx-padding: 12 16;
+    -fx-min-width: 96;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+.streak-value {
+    -fx-font-size: 26px;
+}
+
+.dashboard-action-stack {
+    -fx-min-width: 250;
+    -fx-pref-width: 280;
+}
+
+.dashboard-primary-cta {
+    -fx-font-size: 16px;
+    -fx-padding: 16 24;
+}
+
+.dashboard-bottom-grid {
+    -fx-alignment: top-center;
+}
+
+.recent-decks-card {
+    -fx-min-height: 132;
+    -fx-padding: 18;
+}
+
+.deck-progress-row {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 12 14;
+}
+
+.deck-icon {
+    -fx-min-width: 24;
+    -fx-pref-width: 24;
+    -fx-min-height: 24;
+    -fx-pref-height: 24;
+    -fx-alignment: center;
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-text-fill: -color-accent;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.deck-name {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+.deck-count, .deck-percent {
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.deck-count {
+    -fx-text-fill: -color-text-secondary;
+}
+
+.deck-percent {
+    -fx-text-fill: -color-accent;
+}
+
+.deck-due-label {
+    -fx-text-fill: -color-warning;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}

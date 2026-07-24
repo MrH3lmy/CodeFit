@@ -6,6 +6,7 @@ import com.codefit.model.ReviewHistory;
 import com.codefit.model.UserProgress;
 import com.codefit.service.EngineerReadinessStats;
 import com.codefit.service.FlashcardService;
+import com.codefit.service.MasteryService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
 import com.codefit.service.SystemMessageService;
@@ -25,6 +26,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+
+import java.time.LocalDate;
+import java.util.List;
 
 public class StatsController extends BaseController {
     @FXML private Label levelLabel;
@@ -52,12 +56,21 @@ public class StatsController extends BaseController {
     @FXML private ListView<String> recentReviewsListView;
     @FXML private ListView<StatsSkillPerformance> skillPerformanceListView;
     @FXML private ListView<StatsSkillPerformance> needsPracticeListView;
+    @FXML private Label heroRetentionLabel;
+    @FXML private Label heroMasteredLabel;
+    @FXML private Label heroThisWeekLabel;
+    @FXML private VBox weakestSkillsCompactList;
+    @FXML private Label masterySeenLabel;
+    @FXML private Label masteryLearningLabel;
+    @FXML private Label masteryMasteredLabel;
+    @FXML private Label learningEfficiencyLabel;
 
     private static final int MAX_PROMPT_LENGTH = 48;
 
     private final StatsService statsService = new StatsService();
     private final ProgressService progressService = new ProgressService();
     private final FlashcardService flashcardService = new FlashcardService();
+    private final MasteryService masteryService = new MasteryService();
     private final SystemMessageService systemMessageService = new SystemMessageService();
 
     @FXML
@@ -71,10 +84,15 @@ public class StatsController extends BaseController {
         dueCardsLabel.setText(String.valueOf(statsService.getDueCards()));
         reviewedTodayLabel.setText(String.valueOf(statsService.getReviewedToday()));
         xpProgressBar.setProgress((progress.getXp() % ProgressService.XP_PER_LEVEL) / (double) ProgressService.XP_PER_LEVEL);
-        configureReadinessStats(statsService.getEngineerReadinessStats());
+        EngineerReadinessStats readinessStats = statsService.getEngineerReadinessStats();
+        configureReadinessStats(readinessStats);
         configureStatsEmptyState(progress.getTotalReviews());
         configureWeeklyBossResult(statsService.getLatestWeeklyBossResult());
         configureWorkloadMode(progress);
+        populateHeroMetrics(readinessStats);
+        populateMasteryBreakdown();
+        populateWeakestSkillsCompact();
+        populateLearningEfficiency();
 
         configureSkillPerformanceList();
         configureNeedsPracticeList();
@@ -145,6 +163,89 @@ public class StatsController extends BaseController {
         confidenceCalibrationLabel.setText(readinessStats.hasConfidenceSignal()
                 ? formatPercent(readinessStats.confidenceCalibrationPercent())
                 : "No signal");
+    }
+
+    /** Top-line answer to "am I retaining what I learned, and how much is durably mastered?" */
+    private void populateHeroMetrics(EngineerReadinessStats readinessStats) {
+        heroRetentionLabel.setText(readinessStats.hasSignal()
+                ? formatPercent(readinessStats.recentAccuracyPercent())
+                : "No signal");
+
+        int masteredCount = masteryService.summarize(flashcardService.getAllCards()).masteredCards();
+        heroMasteredLabel.setText(masteredCount + " " + (masteredCount == 1 ? "card" : "cards"));
+
+        long reviewsThisWeek = statsService.getRecentReviews().stream()
+                .filter(history -> history.getReviewedAt() != null
+                        && !history.getReviewedAt().toLocalDate().isBefore(LocalDate.now().minusDays(6)))
+                .count();
+        heroThisWeekLabel.setText(reviewsThisWeek + " " + (reviewsThisWeek == 1 ? "review" : "reviews"));
+    }
+
+    /** How much content is durably mastered, out of everything that has been seen at all. */
+    private void populateMasteryBreakdown() {
+        MasteryService.MasteryBreakdown breakdown = masteryService.summarize(flashcardService.getAllCards());
+        if (breakdown.totalCards() == 0) {
+            masterySeenLabel.setText("No cards yet");
+            masteryLearningLabel.setText("No cards yet");
+            masteryMasteredLabel.setText("No cards yet");
+            return;
+        }
+        masterySeenLabel.setText(Math.round(breakdown.seenPercent()) + "% (" + breakdown.seenCards() + ")");
+        masteryLearningLabel.setText(Math.round(breakdown.learningPercent()) + "% (" + breakdown.learningCards() + ")");
+        masteryMasteredLabel.setText(Math.round(breakdown.masteredPercent()) + "% (" + breakdown.masteredCards() + ")");
+    }
+
+    /** Ranked, at-a-glance view of the weakest skills; the full drill-down list with sample size
+     *  and a review action lives in the Needs Practice panel below. */
+    private void populateWeakestSkillsCompact() {
+        weakestSkillsCompactList.getChildren().clear();
+        List<StatsSkillPerformance> weakSkills = statsService.getNeedsPracticeSkills();
+        if (weakSkills.isEmpty()) {
+            Label emptyLabel = new Label("No weak-area signal yet — complete reviews to unlock this.");
+            emptyLabel.getStyleClass().add("dashboard-card-helper");
+            emptyLabel.setWrapText(true);
+            weakestSkillsCompactList.getChildren().add(emptyLabel);
+            return;
+        }
+        weakSkills.stream().limit(3).forEach(skill -> {
+            HBox row = new HBox(12);
+            row.setMaxWidth(Double.MAX_VALUE);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.getStyleClass().add("deck-progress-row");
+
+            Label nameLabel = new Label(skill.skillCategory());
+            nameLabel.getStyleClass().add("deck-name");
+            nameLabel.setWrapText(true);
+            HBox.setHgrow(nameLabel, Priority.ALWAYS);
+
+            Label sampleLabel = new Label(skill.recentReviews() + " reviews");
+            sampleLabel.getStyleClass().add("deck-count");
+
+            Label accuracyLabel = new Label(Math.round(skill.accuracyPercent()) + "%");
+            accuracyLabel.getStyleClass().add("deck-due-label");
+
+            row.getChildren().addAll(nameLabel, sampleLabel, accuracyLabel);
+            weakestSkillsCompactList.getChildren().add(row);
+        });
+    }
+
+    /** Mastered cards per hour of recent training time, when there is enough signal to be
+     *  meaningful. Based on the same recent-review sample as the other readiness stats, not full
+     *  lifetime history. */
+    private void populateLearningEfficiency() {
+        var recentReviews = statsService.getRecentReviews();
+        long totalResponseMs = recentReviews.stream()
+                .map(ReviewHistory::getResponseTimeMs)
+                .filter(java.util.Objects::nonNull)
+                .mapToLong(Integer::longValue)
+                .sum();
+        double hours = totalResponseMs / 3_600_000.0;
+        if (hours < 0.05) {
+            learningEfficiencyLabel.setText("No signal");
+            return;
+        }
+        int masteredCount = masteryService.summarize(flashcardService.getAllCards()).masteredCards();
+        learningEfficiencyLabel.setText(String.format("%.1f mastered/hr", masteredCount / hours));
     }
 
     private String formatPercent(double value) {

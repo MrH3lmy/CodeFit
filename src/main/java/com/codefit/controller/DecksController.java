@@ -1,5 +1,6 @@
 package com.codefit.controller;
 
+import com.codefit.model.CardState;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.service.DeckService;
@@ -9,6 +10,7 @@ import com.codefit.service.FlashcardImportExportService.ImportSummary;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.MasteryService;
 import com.codefit.service.SyllabusService;
+import com.codefit.ui.NavigationService;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +21,7 @@ import java.util.regex.Pattern;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -26,6 +29,8 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.scene.layout.HBox;
@@ -40,6 +45,16 @@ public class DecksController extends BaseController {
     @FXML private ListView<Flashcard> cardListView;
     @FXML private TextField deckNameField;
     @FXML private TextArea deckDescriptionArea;
+    @FXML private TextField searchField;
+    @FXML private ToggleButton deckFilterAllButton;
+    @FXML private ToggleButton deckFilterDueButton;
+    @FXML private ToggleButton deckFilterMasteredButton;
+    @FXML private ToggleButton cardFilterAllButton;
+    @FXML private ToggleButton cardFilterDueButton;
+    @FXML private ToggleButton cardFilterMasteredButton;
+    @FXML private ToggleButton cardFilterSuspendedButton;
+    @FXML private VBox createDeckPanel;
+    @FXML private Button newDeckToggleButton;
     @FXML private Label messageLabel;
     @FXML private Label deckEmptyGuidanceLabel;
     @FXML private Label cardEmptyGuidanceLabel;
@@ -50,12 +65,68 @@ public class DecksController extends BaseController {
     private final SyllabusService syllabusService = new SyllabusService();
     private final FlashcardImportExportService importExportService = new FlashcardImportExportService(flashcardService);
 
+    private enum DeckFilter { ALL, DUE, MASTERED }
+    private enum CardFilter { ALL, DUE, MASTERED, SUSPENDED }
+
+    private DeckFilter deckFilter = DeckFilter.ALL;
+    private CardFilter cardFilter = CardFilter.ALL;
+
     @FXML
     public void initialize() {
         deckListView.setCellFactory(listView -> new DeckCell());
         cardListView.setCellFactory(listView -> new FlashcardCell());
         deckListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, deck) -> loadCards(deck));
+        configureSearchAndFilters();
         loadDecks();
+    }
+
+    private void configureSearchAndFilters() {
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> refreshLists());
+
+        ToggleGroup deckFilterGroup = new ToggleGroup();
+        deckFilterAllButton.setToggleGroup(deckFilterGroup);
+        deckFilterDueButton.setToggleGroup(deckFilterGroup);
+        deckFilterMasteredButton.setToggleGroup(deckFilterGroup);
+        deckFilterGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null) {
+                deckFilterGroup.selectToggle(oldValue == null ? deckFilterAllButton : oldValue);
+                return;
+            }
+            deckFilter = newValue == deckFilterDueButton ? DeckFilter.DUE
+                    : newValue == deckFilterMasteredButton ? DeckFilter.MASTERED
+                    : DeckFilter.ALL;
+            loadDecks();
+        });
+
+        ToggleGroup cardFilterGroup = new ToggleGroup();
+        cardFilterAllButton.setToggleGroup(cardFilterGroup);
+        cardFilterDueButton.setToggleGroup(cardFilterGroup);
+        cardFilterMasteredButton.setToggleGroup(cardFilterGroup);
+        cardFilterSuspendedButton.setToggleGroup(cardFilterGroup);
+        cardFilterGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null) {
+                cardFilterGroup.selectToggle(oldValue == null ? cardFilterAllButton : oldValue);
+                return;
+            }
+            cardFilter = newValue == cardFilterDueButton ? CardFilter.DUE
+                    : newValue == cardFilterMasteredButton ? CardFilter.MASTERED
+                    : newValue == cardFilterSuspendedButton ? CardFilter.SUSPENDED
+                    : CardFilter.ALL;
+            loadCards(deckListView.getSelectionModel().getSelectedItem());
+        });
+    }
+
+    private void refreshLists() {
+        loadDecks();
+        loadCards(deckListView.getSelectionModel().getSelectedItem());
+    }
+
+    @FXML
+    public void toggleCreateDeckPanel() {
+        boolean nowVisible = !createDeckPanel.isVisible();
+        createDeckPanel.setVisible(nowVisible);
+        createDeckPanel.setManaged(nowVisible);
+        newDeckToggleButton.setText(nowVisible ? "Close" : "+ New Deck");
     }
 
 
@@ -132,18 +203,65 @@ public class DecksController extends BaseController {
     }
 
     private void loadDecks() {
-        deckListView.setItems(FXCollections.observableArrayList(deckService.getDecks()));
-        if (deckListView.getItems().isEmpty()) {
+        Deck previouslySelected = deckListView.getSelectionModel().getSelectedItem();
+        List<Deck> allDecks = deckService.getDecks();
+        String search = searchText();
+        List<Deck> filtered = allDecks.stream()
+                .filter(deck -> matchesDeckSearch(deck, search))
+                .filter(this::matchesDeckFilter)
+                .toList();
+
+        deckListView.setItems(FXCollections.observableArrayList(filtered));
+
+        if (allDecks.isEmpty()) {
             setStatus(messageLabel, "No decks yet. Next action: create your first deck with a focused topic.");
             setStatus(deckEmptyGuidanceLabel, "No decks yet. Create your first deck with a focused topic like Java basics or Git commands.");
             setStatus(cardEmptyGuidanceLabel, "Cards will appear here after you create a deck and add your first card.");
             deckListView.setPlaceholder(new Label("Next action: enter a deck name, then choose Create Deck."));
             cardListView.setPlaceholder(new Label("Create a deck first, then add cards from Add Flashcard."));
             cardListView.getItems().clear();
+            return;
+        }
+
+        setStatus(messageLabel, "");
+        if (filtered.isEmpty()) {
+            setStatus(deckEmptyGuidanceLabel, "No decks match your search and filters. Try clearing the search or choosing All.");
+            deckListView.setPlaceholder(new Label("No matching decks. Next action: clear the search or filter."));
+            cardListView.getItems().clear();
+            return;
+        }
+
+        setStatus(deckEmptyGuidanceLabel, "");
+        if (previouslySelected != null && filtered.stream().anyMatch(deck -> deck.getId() == previouslySelected.getId())) {
+            deckListView.getSelectionModel().select(previouslySelected);
         } else {
-            setStatus(deckEmptyGuidanceLabel, "");
             deckListView.getSelectionModel().selectFirst();
         }
+    }
+
+    private boolean matchesDeckSearch(Deck deck, String search) {
+        if (search.isEmpty()) {
+            return true;
+        }
+        if (deck.getName() != null && deck.getName().toLowerCase().contains(search)) {
+            return true;
+        }
+        if (deck.getDescription() != null && deck.getDescription().toLowerCase().contains(search)) {
+            return true;
+        }
+        return flashcardService.getCardsForDeck(deck.getId()).stream()
+                .anyMatch(card -> matchesCardSearch(card, search));
+    }
+
+    private boolean matchesDeckFilter(Deck deck) {
+        if (deckFilter == DeckFilter.ALL) {
+            return true;
+        }
+        List<Flashcard> cards = flashcardService.getCardsForDeck(deck.getId());
+        if (deckFilter == DeckFilter.DUE) {
+            return cards.stream().anyMatch(this::isDue);
+        }
+        return masteryService.summarize(cards).masteredPercent() >= 80.0;
     }
 
     private void loadCards(Deck deck) {
@@ -154,13 +272,50 @@ public class DecksController extends BaseController {
             return;
         }
 
-        var cards = FXCollections.observableArrayList(flashcardService.getCardsForDeck(deck.getId()));
-        boolean hasCards = !cards.isEmpty();
-        setStatus(cardEmptyGuidanceLabel, hasCards
-                ? ""
-                : "No cards in this deck yet. Next action: add your first card to this deck from Add Flashcard.");
-        cardListView.setPlaceholder(new Label("Next action: choose Add Card and save the first prompt for this deck."));
+        List<Flashcard> allCards = flashcardService.getCardsForDeck(deck.getId());
+        String search = searchText();
+        var cards = FXCollections.observableArrayList(allCards.stream()
+                .filter(card -> matchesCardSearch(card, search))
+                .filter(this::matchesCardFilter)
+                .toList());
+        boolean hasCards = !allCards.isEmpty();
+        boolean hasVisibleCards = !cards.isEmpty();
+        if (!hasCards) {
+            setStatus(cardEmptyGuidanceLabel, "No cards in this deck yet. Next action: add your first card to this deck from Add Flashcard.");
+            cardListView.setPlaceholder(new Label("Next action: choose Add Card and save the first prompt for this deck."));
+        } else if (!hasVisibleCards) {
+            setStatus(cardEmptyGuidanceLabel, "No cards match your search and filters in this deck.");
+            cardListView.setPlaceholder(new Label("No matching cards. Next action: clear the search or filter."));
+        } else {
+            setStatus(cardEmptyGuidanceLabel, "");
+        }
         cardListView.setItems(cards);
+    }
+
+    private boolean matchesCardSearch(Flashcard card, String search) {
+        if (search.isEmpty()) {
+            return true;
+        }
+        return (card.getFront() != null && card.getFront().toLowerCase().contains(search))
+                || (card.getBack() != null && card.getBack().toLowerCase().contains(search));
+    }
+
+    private boolean matchesCardFilter(Flashcard card) {
+        return switch (cardFilter) {
+            case ALL -> true;
+            case DUE -> isDue(card);
+            case MASTERED -> masteryService.getMasteryState(card) == MasteryService.CardMasteryState.MASTERED;
+            case SUSPENDED -> card.getCardState() == CardState.SUSPENDED;
+        };
+    }
+
+    private boolean isDue(Flashcard card) {
+        return card.getDueDate() != null && !card.getDueDate().isAfter(LocalDate.now());
+    }
+
+    private String searchText() {
+        String text = searchField == null ? null : searchField.getText();
+        return text == null ? "" : text.strip().toLowerCase();
     }
 
 
@@ -295,8 +450,10 @@ public class DecksController extends BaseController {
         private final Label promptLabel = new Label();
         private final Label answerLabel = new Label();
         private final Label dueBadge = new Label();
+        private final Button editButton = new Button("Edit");
         private final VBox textBlock = new VBox(5, promptLabel, answerLabel);
-        private final HBox content = new HBox(12, textBlock, dueBadge);
+        private final VBox actionColumn = new VBox(6, dueBadge, editButton);
+        private final HBox content = new HBox(12, textBlock, actionColumn);
 
         private FlashcardCell() {
             promptLabel.getStyleClass().add("card-row-prompt");
@@ -312,6 +469,17 @@ public class DecksController extends BaseController {
             dueBadge.getStyleClass().add("due-badge");
             dueBadge.setMinWidth(76);
             dueBadge.setAlignment(Pos.CENTER);
+
+            editButton.getStyleClass().add("ghost-button");
+            editButton.setMinWidth(76);
+            editButton.setOnAction(event -> {
+                Flashcard card = getItem();
+                if (card != null) {
+                    NavigationService.showEditCard(card.getId());
+                }
+            });
+
+            actionColumn.setAlignment(Pos.CENTER);
 
             textBlock.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(textBlock, Priority.ALWAYS);

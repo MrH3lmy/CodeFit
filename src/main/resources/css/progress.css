@@ -1,0 +1,74 @@
+/* Progress (retention, mastery, weak skills, consistency). */
+
+.skill-stat-row {
+    -fx-padding: 4 2 6 2;
+}
+
+.skill-stat-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+.skill-stat-detail {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+}
+
+.skill-status-badge {
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-padding: 4 9;
+    -fx-border-width: 1;
+}
+
+.skill-status-weak {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-danger;
+    -fx-text-fill: -color-danger;
+}
+
+.skill-status-stable {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-warning;
+    -fx-text-fill: -color-warning;
+}
+
+.skill-status-strong {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-success;
+    -fx-text-fill: -color-success;
+}
+
+.rating-distribution-bar {
+    -fx-min-height: 10;
+    -fx-pref-height: 10;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-background-color: -color-border;
+    -fx-spacing: 2;
+    -fx-padding: 2;
+}
+
+.rating-distribution-segment {
+    -fx-min-height: 6;
+    -fx-background-radius: 999;
+}
+
+.rating-again-segment { -fx-background-color: -color-danger; }
+.rating-hard-segment { -fx-background-color: -color-warning; }
+.rating-good-segment { -fx-background-color: -color-accent; }
+.rating-easy-segment { -fx-background-color: -color-success; }
+
+.skill-review-button {
+    -fx-font-size: 12px;
+    -fx-padding: 8 12;
+}
+
+.list-cell:selected .skill-stat-title,
+.list-cell:selected .skill-stat-detail {
+    -fx-text-fill: white;
+}

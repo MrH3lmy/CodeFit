@@ -1,0 +1,47 @@
+/* Library (decks + syllabus): deck/card rows and list-cell selected-state overrides. */
+
+.deck-list-panel, .card-list-panel {
+    -fx-min-height: 220;
+    -fx-pref-height: 300;
+}
+
+.deck-list-panel .list-view, .card-list-panel .list-view {
+    -fx-min-height: 160;
+    -fx-pref-height: 240;
+}
+
+.deck-row, .card-row {
+    -fx-padding: 4 2;
+}
+
+.deck-row-title, .card-row-prompt {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+.deck-row-description, .card-row-answer {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+}
+
+.deck-row-stats {
+    -fx-text-fill: -color-accent;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.list-cell:selected .deck-row-title,
+.list-cell:selected .card-row-prompt,
+.list-cell:selected .deck-row-description,
+.list-cell:selected .card-row-answer,
+.list-cell:selected .deck-row-stats {
+    -fx-text-fill: white;
+}
+
+.list-cell:selected .due-badge {
+    -fx-background-color: rgba(255, 255, 255, 0.20);
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}

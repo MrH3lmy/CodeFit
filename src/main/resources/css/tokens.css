@@ -1,0 +1,39 @@
+/*
+ * Semantic token contract shared by every theme and every screen. A theme only ever needs to
+ * define these eleven custom properties; screens and shared components reference the tokens
+ * below instead of hard-coded colors so switching themes never requires touching screen CSS.
+ */
+
+.theme-dark {
+    -color-background: #0B0D12;
+    -color-surface: #12151C;
+    -color-surface-raised: #191D27;
+    -color-border: #292E3A;
+    -color-text-primary: #F3F4F6;
+    -color-text-secondary: #9CA3AF;
+    -color-accent: #7C5CFC;
+    -color-accent-hover: #6D4CE8;
+    -color-success: #22C55E;
+    -color-warning: #F59E0B;
+    -color-danger: #EF4444;
+
+    -fx-background-color: -color-background;
+    -fx-text-fill: -color-text-primary;
+}
+
+.theme-light {
+    -color-background: #F6F7F9;
+    -color-surface: #FFFFFF;
+    -color-surface-raised: #FFFFFF;
+    -color-border: #E3E5E8;
+    -color-text-primary: #16181D;
+    -color-text-secondary: #667085;
+    -color-accent: #6D4AFF;
+    -color-accent-hover: #5C3DE0;
+    -color-success: #16A34A;
+    -color-warning: #D97706;
+    -color-danger: #DC2626;
+
+    -fx-background-color: -color-background;
+    -fx-text-fill: -color-text-primary;
+}

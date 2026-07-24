@@ -20,6 +20,7 @@ import com.codefit.service.TrainingPathService;
 import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.ColumnConstraints;
@@ -40,8 +41,6 @@ public class DashboardController extends BaseController {
     @FXML private Label levelLabel;
     @FXML private Label xpLabel;
     @FXML private Label streakLabel;
-    @FXML private Label deckCountLabel;
-    @FXML private Label cardCountLabel;
     @FXML private Label dueCountLabel;
     @FXML private Label workloadModeLabel;
     @FXML private Label dailyQuestTitleLabel;
@@ -53,6 +52,10 @@ public class DashboardController extends BaseController {
     @FXML private Label nextActionHelperLabel;
     @FXML private Button primaryActionButton;
     @FXML private ProgressBar levelProgressBar;
+    @FXML private Label dueTodayMetricLabel;
+    @FXML private Label masteredCountLabel;
+    @FXML private Label retentionLabel;
+    @FXML private VBox weakSkillsList;
     @FXML private VBox recentDecksList;
     @FXML private VBox dailyRoutineList;
 
@@ -77,8 +80,6 @@ public class DashboardController extends BaseController {
         levelLabel.setText(progress.getLevelRankLabel(progressService.getRankTitle(progress)));
         xpLabel.setText(formatXpProgress(progress));
         streakLabel.setText(formatStreakState(progress));
-        deckCountLabel.setText(String.valueOf(deckCount));
-        cardCountLabel.setText(String.valueOf(cardCount));
         int availableNewCards = reviewService.getAvailableNewCardBudget();
         dueCountLabel.setText(dueCount + " " + (dueCount == 1 ? "card" : "cards") + " due"
                 + (availableNewCards > 0 ? " · " + availableNewCards + " new available" : ""));
@@ -87,6 +88,8 @@ public class DashboardController extends BaseController {
         DailyQuest dailyQuest = configureDailyQuest();
 
         configureSystemMessage(progress, dailyQuest);
+        populateKeyMetrics(dueCount);
+        populateWeakSkills();
         populateDailyRoutine(dailyQuest, dueCount);
         populateRecentDecks(decks);
 
@@ -94,9 +97,70 @@ public class DashboardController extends BaseController {
         configureWeeklyBossCallout();
     }
 
-    @FXML public void goReviewQuick() { NavigationService.showTimedReview(SessionBudgetService.QUICK_MINUTES); }
-    @FXML public void goReviewStandard() { NavigationService.showTimedReview(SessionBudgetService.STANDARD_MINUTES); }
-    @FXML public void goReviewDeep() { NavigationService.showTimedReview(SessionBudgetService.DEEP_MINUTES); }
+    /** Moves the 5/15/30-minute timed-session choices behind the primary "Start Review" action
+     *  instead of competing with it as always-visible buttons. */
+    @FXML
+    public void chooseSessionLength() {
+        String justDue = "Just review due cards";
+        String quick = "Quick · " + SessionBudgetService.QUICK_MINUTES + " min";
+        String standard = "Standard · " + SessionBudgetService.STANDARD_MINUTES + " min";
+        String deep = "Deep · " + SessionBudgetService.DEEP_MINUTES + " min";
+
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(justDue, List.of(justDue, quick, standard, deep));
+        dialog.setTitle("Choose session length");
+        dialog.setHeaderText("How long do you have to review?");
+        dialog.setContentText("Session:");
+        dialog.showAndWait().ifPresent(choice -> {
+            if (choice.equals(quick)) {
+                NavigationService.showTimedReview(SessionBudgetService.QUICK_MINUTES);
+            } else if (choice.equals(standard)) {
+                NavigationService.showTimedReview(SessionBudgetService.STANDARD_MINUTES);
+            } else if (choice.equals(deep)) {
+                NavigationService.showTimedReview(SessionBudgetService.DEEP_MINUTES);
+            } else {
+                NavigationService.showReview();
+            }
+        });
+    }
+
+    private void populateKeyMetrics(int dueCount) {
+        dueTodayMetricLabel.setText(String.valueOf(dueCount));
+        masteredCountLabel.setText(String.valueOf(masteryService.summarize(flashcardService.getAllCards()).masteredCards()));
+        retentionLabel.setText(statsService.getRecentReviews().isEmpty()
+                ? "No signal"
+                : Math.round(statsService.getOverallRecentAccuracy()) + "%");
+    }
+
+    private void populateWeakSkills() {
+        weakSkillsList.getChildren().clear();
+        List<StatsSkillPerformance> weakSkills = statsService.getNeedsPracticeSkills();
+        if (weakSkills.isEmpty()) {
+            Label emptyLabel = new Label("No weak-area signal yet — keep reviewing to unlock this.");
+            emptyLabel.getStyleClass().add("dashboard-card-helper");
+            emptyLabel.setWrapText(true);
+            weakSkillsList.getChildren().add(emptyLabel);
+            return;
+        }
+        weakSkills.stream().limit(3).map(this::createWeakSkillRow).forEach(row -> weakSkillsList.getChildren().add(row));
+    }
+
+    private HBox createWeakSkillRow(StatsSkillPerformance skill) {
+        HBox row = new HBox(12);
+        row.setMaxWidth(Double.MAX_VALUE);
+        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        row.getStyleClass().add("deck-progress-row");
+
+        Label nameLabel = new Label(skill.skillCategory());
+        nameLabel.getStyleClass().add("deck-name");
+        nameLabel.setWrapText(true);
+        HBox.setHgrow(nameLabel, Priority.ALWAYS);
+
+        Label countLabel = new Label(skill.dueCards() + " " + (skill.dueCards() == 1 ? "card" : "cards"));
+        countLabel.getStyleClass().add("deck-due-label");
+
+        row.getChildren().addAll(nameLabel, countLabel);
+        return row;
+    }
 
 
     private void configureSystemMessage(UserProgress progress, DailyQuest dailyQuest) {

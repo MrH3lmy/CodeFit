@@ -1,23 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.codefit.ui.Sidebar?>
 
-<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.DashboardController">
-    <left>
-        <Sidebar activePage="dashboard" />
-    </left>
-    <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.DashboardController">
+    <content>
                 <VBox alignment="TOP_CENTER" maxWidth="Infinity" spacing="16" styleClass="content" VBox.vgrow="ALWAYS">
                     <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
                         <HBox alignment="CENTER_LEFT" spacing="12">
-                            <Label text="Dashboard" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                            <Label text="Today" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
                             <Label text="Daily focus" styleClass="pill" wrapText="true" />
                         </HBox>
-                        <Label text="Keep your learning streak moving with a quick look at rank, cards due, and deck momentum." styleClass="page-subtitle" wrapText="true" />
+                        <Label text="What is the most valuable thing for me to do now?" styleClass="page-subtitle" wrapText="true" />
                     </VBox>
 
                     <Label fx:id="emptyStateLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
@@ -52,35 +45,33 @@
                             </VBox>
                             <VBox alignment="CENTER_RIGHT" spacing="10" styleClass="dashboard-action-stack">
                                 <Button fx:id="primaryActionButton" text="Start Review" onAction="#goReview" maxWidth="Infinity" styleClass="primary-button quick-review-button dashboard-primary-cta" />
-                                <HBox alignment="CENTER_RIGHT" spacing="8" styleClass="dashboard-timed-session-row">
-                                    <Label text="Timed session:" styleClass="dashboard-card-helper" wrapText="true" />
-                                    <Button text="Quick (5m)" onAction="#goReviewQuick" styleClass="ghost-button secondary-action-button" />
-                                    <Button text="Standard (15m)" onAction="#goReviewStandard" styleClass="ghost-button secondary-action-button" />
-                                    <Button text="Deep (30m)" onAction="#goReviewDeep" styleClass="ghost-button secondary-action-button" />
-                                </HBox>
-                                <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="dashboard-secondary-actions">
-                                    <Button text="Add Card" onAction="#goAddCard" styleClass="ghost-button secondary-action-button" />
-                                    <Button text="View Decks" onAction="#goDecks" styleClass="ghost-button secondary-action-button" />
-                                </HBox>
+                                <Button fx:id="chooseSessionLengthButton" text="Choose session length…" onAction="#chooseSessionLength" styleClass="ghost-button secondary-action-button" maxWidth="Infinity" />
                             </VBox>
                         </HBox>
                     </VBox>
 
                     <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
                         <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                            <Label text="RANK" styleClass="dashboard-card-title" wrapText="true" />
-                            <Label fx:id="levelLabel" text="Level 1" styleClass="dashboard-signal-value" wrapText="true" />
+                            <Label text="DUE TODAY" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label fx:id="dueTodayMetricLabel" text="0" styleClass="dashboard-signal-value" wrapText="true" />
                         </VBox>
                         <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                            <Label text="DECKS" styleClass="dashboard-card-title" wrapText="true" />
-                            <Label fx:id="deckCountLabel" text="3" styleClass="dashboard-signal-value" wrapText="true" />
+                            <Label text="MASTERED" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label fx:id="masteredCountLabel" text="0" styleClass="dashboard-signal-value" wrapText="true" />
                         </VBox>
                         <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                            <Label text="CARDS" styleClass="dashboard-card-title" wrapText="true" />
-                            <Label fx:id="cardCountLabel" text="9" styleClass="dashboard-signal-value" wrapText="true" />
+                            <Label text="RETENTION" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label fx:id="retentionLabel" text="No signal" styleClass="dashboard-signal-value" wrapText="true" />
                         </VBox>
                     </HBox>
 
+                    <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card">
+                        <VBox alignment="CENTER_LEFT" spacing="4">
+                            <Label text="NEEDS ATTENTION" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label text="Skills with the most Again/Hard pressure right now." styleClass="dashboard-card-helper" wrapText="true" />
+                        </VBox>
+                        <VBox fx:id="weakSkillsList" maxWidth="Infinity" spacing="10" />
+                    </VBox>
 
                     <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card daily-routine-card">
                         <HBox alignment="CENTER_LEFT" spacing="12">
@@ -101,7 +92,7 @@
                         <VBox maxWidth="Infinity" minWidth="0" spacing="12" styleClass="dashboard-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
                             <Label text="XP PROGRESS" styleClass="dashboard-card-title" wrapText="true" />
                             <HBox alignment="CENTER_LEFT" spacing="12">
-                                <Label text="Next Level" styleClass="dashboard-card-value dashboard-card-value-medium" wrapText="true" HBox.hgrow="ALWAYS" />
+                                <Label fx:id="levelLabel" text="Level 1" styleClass="dashboard-card-value dashboard-card-value-medium" wrapText="true" HBox.hgrow="ALWAYS" />
                                 <Label fx:id="xpLabel" text="15 / 50 XP" styleClass="xp-chip" wrapText="true" />
                             </HBox>
                             <ProgressBar fx:id="levelProgressBar" maxWidth="Infinity" styleClass="level-progress" />
@@ -116,8 +107,5 @@
                         </VBox>
                     </GridPane>
                 </VBox>
-            </content>
-        </ScrollPane>
-    </center>
-    <padding><Insets top="0" right="0" bottom="0" left="0" /></padding>
-</BorderPane>
+    </content>
+</ScrollPane>

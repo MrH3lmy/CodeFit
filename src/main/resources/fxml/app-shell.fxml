@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import com.codefit.ui.Sidebar?>
+
+<BorderPane fx:id="shellRoot" styleClass="app-root app-shell" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.ui.AppShellController">
+    <left>
+        <Sidebar fx:id="sidebar" />
+    </left>
+    <top>
+        <HBox fx:id="topBar" styleClass="app-topbar" alignment="CENTER_LEFT" spacing="12">
+            <Label fx:id="topBarTitleLabel" styleClass="topbar-title" wrapText="true" HBox.hgrow="ALWAYS" />
+            <Button text="+ New Card" onAction="#openNewCard" styleClass="primary-button" />
+        </HBox>
+    </top>
+    <center>
+        <StackPane fx:id="contentHost" styleClass="content-host" />
+    </center>
+</BorderPane>

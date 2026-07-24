@@ -10,7 +10,6 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
-import java.util.Locale;
 
 public class Sidebar extends VBox {
     private static final String DEFAULT_NAV_CLASS = "nav-item";
@@ -19,12 +18,10 @@ public class Sidebar extends VBox {
     private static final String NARROW_CLASS = "sidebar-narrow";
     private static final double NARROW_WINDOW_WIDTH = 920;
 
-    @FXML private Button dashboardButton;
-    @FXML private Button decksButton;
-    @FXML private Button addCardButton;
+    @FXML private Button todayButton;
     @FXML private Button reviewButton;
-    @FXML private Button syllabusButton;
-    @FXML private Button statsButton;
+    @FXML private Button libraryButton;
+    @FXML private Button progressButton;
     @FXML private ChoiceBox<String> themeChoiceBox;
     @FXML private Label subtitleLabel;
     @FXML private VBox footerCard;
@@ -32,7 +29,7 @@ public class Sidebar extends VBox {
     private final ChangeListener<Number> widthListener = (observable, oldWidth, newWidth) ->
             updateNarrowState(newWidth.doubleValue());
 
-    private String activePage = "";
+    private Route.NavItem activeNavItem;
 
     public Sidebar() {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/sidebar.fxml"));
@@ -49,28 +46,27 @@ public class Sidebar extends VBox {
         }
     }
 
-    public String getActivePage() {
-        return activePage;
+    public Route.NavItem getActiveNavItem() {
+        return activeNavItem;
     }
 
-    public void setActivePage(String activePage) {
-        this.activePage = normalize(activePage);
+    /** Highlights the sidebar item for the given route, or clears the highlight for a global action. */
+    public void setActiveRoute(Route.NavItem navItem) {
+        this.activeNavItem = navItem;
         updateActiveNavigation();
     }
 
+    /** Re-reads the current theme so the selector stays correct even if the theme changed elsewhere. */
+    public void syncThemeSelection() {
+        if (themeChoiceBox == null) {
+            return;
+        }
+        themeChoiceBox.setValue(NavigationService.getCurrentThemeDisplayName());
+    }
+
     @FXML
-    private void goDashboard() {
+    private void goToday() {
         NavigationService.showDashboard();
-    }
-
-    @FXML
-    private void goDecks() {
-        NavigationService.showDecks();
-    }
-
-    @FXML
-    private void goAddCard() {
-        NavigationService.showAddCard();
     }
 
     @FXML
@@ -79,12 +75,12 @@ public class Sidebar extends VBox {
     }
 
     @FXML
-    private void goSyllabus() {
-        NavigationService.showSyllabus();
+    private void goLibrary() {
+        NavigationService.showDecks();
     }
 
     @FXML
-    private void goStats() {
+    private void goProgress() {
         NavigationService.showStats();
     }
 
@@ -135,12 +131,10 @@ public class Sidebar extends VBox {
     }
 
     private void updateActiveNavigation() {
-        setNavigationStyle(dashboardButton, "dashboard");
-        setNavigationStyle(decksButton, "decks");
-        setNavigationStyle(addCardButton, "add-card");
-        setNavigationStyle(reviewButton, "review");
-        setNavigationStyle(syllabusButton, "syllabus");
-        setNavigationStyle(statsButton, "stats");
+        setNavigationStyle(todayButton, Route.NavItem.TODAY);
+        setNavigationStyle(reviewButton, Route.NavItem.REVIEW);
+        setNavigationStyle(libraryButton, Route.NavItem.LIBRARY);
+        setNavigationStyle(progressButton, Route.NavItem.PROGRESS);
     }
 
     private void configureThemeSelector() {
@@ -157,20 +151,12 @@ public class Sidebar extends VBox {
         });
     }
 
-    private void setNavigationStyle(Button button, String page) {
+    private void setNavigationStyle(Button button, Route.NavItem navItem) {
         if (button == null) {
             return;
         }
 
         button.getStyleClass().removeAll(DEFAULT_NAV_CLASS, ACTIVE_NAV_CLASS);
-        button.getStyleClass().add(activePage.equals(page) ? ACTIVE_NAV_CLASS : DEFAULT_NAV_CLASS);
-    }
-
-    private String normalize(String page) {
-        if (page == null) {
-            return "";
-        }
-
-        return page.trim().toLowerCase(Locale.ROOT);
+        button.getStyleClass().add(navItem == activeNavItem ? ACTIVE_NAV_CLASS : DEFAULT_NAV_CLASS);
     }
 }

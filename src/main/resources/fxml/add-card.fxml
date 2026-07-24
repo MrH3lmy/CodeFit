@@ -1,19 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import com.codefit.ui.Sidebar?>
 
-<BorderPane styleClass="app-root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.AddCardController">
-    <left>
-        <Sidebar activePage="add-card" />
-    </left>
-    <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll">
-            <content>
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.AddCardController">
+    <content>
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
                     <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
-                        <Label text="Add Flashcard" styleClass="page-title" wrapText="true" />
-                        <Label text="Build a stronger learning set one card at a time: capture the prompt, add the answer, and file it into the right deck." styleClass="page-subtitle" wrapText="true" />
+                        <Label fx:id="pageTitleLabel" text="New Card" styleClass="page-title" wrapText="true" />
+                        <Label fx:id="pageSubtitleLabel" text="Capture one focused prompt and answer, then file it into the right deck." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
                     <FlowPane hgap="20" vgap="20" prefWrapLength="720" styleClass="workspace-grid" maxWidth="Infinity" VBox.vgrow="ALWAYS">
@@ -84,7 +78,10 @@
                                     </VBox>
                                 </content>
                             </TitledPane>
-                            <Button fx:id="saveCardButton" text="Save Card" onAction="#saveCard" styleClass="action-button" maxWidth="Infinity" />
+                            <HBox spacing="10" maxWidth="Infinity">
+                                <Button fx:id="saveCardButton" text="Save &amp; Add Another" onAction="#saveCard" styleClass="action-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                                <Button fx:id="saveAndCloseButton" text="Save &amp; Close" onAction="#saveAndClose" styleClass="primary-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                            </HBox>
                         </VBox>
                         <VBox spacing="14" styleClass="tips-card side-panel" minWidth="0" prefWidth="280" maxWidth="Infinity">
                             <Label text="Preview &amp; tips" styleClass="section-title" wrapText="true" />
@@ -101,7 +98,5 @@
                         </VBox>
                     </FlowPane>
                 </VBox>
-            </content>
-        </ScrollPane>
-    </center>
-</BorderPane>
+    </content>
+</ScrollPane>

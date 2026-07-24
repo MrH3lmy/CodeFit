@@ -9,13 +9,11 @@
     </VBox>
 
     <VBox styleClass="nav-group" spacing="8">
-        <Label text="TRAINING" styleClass="nav-section-label" />
-        <Button fx:id="dashboardButton" text="Dashboard" onAction="#goDashboard" maxWidth="Infinity" />
-        <Button fx:id="decksButton" text="Decks" onAction="#goDecks" maxWidth="Infinity" />
-        <Button fx:id="addCardButton" text="Add Card" onAction="#goAddCard" maxWidth="Infinity" />
+        <Label text="MAIN" styleClass="nav-section-label" />
+        <Button fx:id="todayButton" text="Today" onAction="#goToday" maxWidth="Infinity" />
         <Button fx:id="reviewButton" text="Review" onAction="#goReview" maxWidth="Infinity" />
-        <Button fx:id="syllabusButton" text="Syllabus" onAction="#goSyllabus" maxWidth="Infinity" />
-        <Button fx:id="statsButton" text="Stats" onAction="#goStats" maxWidth="Infinity" />
+        <Button fx:id="libraryButton" text="Library" onAction="#goLibrary" maxWidth="Infinity" />
+        <Button fx:id="progressButton" text="Progress" onAction="#goProgress" maxWidth="Infinity" />
     </VBox>
 
     <Region VBox.vgrow="ALWAYS" />

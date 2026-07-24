@@ -111,6 +111,34 @@ public class FlashcardRepository {
         }
     }
 
+    /** Updates the editable content fields for an existing card; scheduling state (due date,
+     *  interval, ease, review count, card state) is left untouched. */
+    public void updateContent(Flashcard flashcard) {
+        String sql = "UPDATE flashcards SET front = ?, back = ?, card_type = ?, accepted_answers = ?, "
+                + "validation_mode = ?, simulated_output = ?, hint = ?, skill_category = ?, time_limit_seconds = ? "
+                + "WHERE id = ?";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, flashcard.getFront());
+            statement.setString(2, flashcard.getBack());
+            statement.setString(3, flashcard.getCardType().name());
+            statement.setString(4, flashcard.getAcceptedAnswers());
+            statement.setString(5, flashcard.getValidationMode().name());
+            statement.setString(6, flashcard.getSimulatedOutput());
+            statement.setString(7, flashcard.getHint());
+            statement.setString(8, flashcard.getSkillCategory());
+            if (flashcard.getTimeLimitSeconds() == null) {
+                statement.setNull(9, java.sql.Types.INTEGER);
+            } else {
+                statement.setInt(9, flashcard.getTimeLimitSeconds());
+            }
+            statement.setLong(10, flashcard.getId());
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to update card", exception);
+        }
+    }
+
     public void updateSchedule(Flashcard flashcard) {
         String sql = "UPDATE flashcards SET due_date = ?, interval_days = ?, ease_factor = ?, review_count = ?, "
                 + "card_state = ?, introduced_at = ? WHERE id = ?";

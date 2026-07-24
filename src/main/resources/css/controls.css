@@ -1,0 +1,331 @@
+/* Reusable control styles shared by every screen: buttons, form fields, badges, focus/disabled
+ * states, and rating controls. A screen should not need a bespoke button or panel variant. */
+
+.button {
+    -fx-cursor: hand;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-font-weight: 600;
+    -fx-padding: 10 16;
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-text-fill: -color-text-primary;
+}
+
+.button:hover {
+    -fx-border-color: -color-accent;
+}
+
+.button:pressed {
+    -fx-background-color: derive(-color-surface-raised, -8%);
+}
+
+/* Primary: the one dominant call to action on a screen. */
+.primary-button, .action-button, .quick-review-button {
+    -fx-background-color: -color-accent;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-padding: 12 18;
+}
+
+.primary-button:hover, .action-button:hover, .quick-review-button:hover {
+    -fx-background-color: -color-accent-hover;
+}
+
+.primary-button:pressed, .action-button:pressed, .quick-review-button:pressed {
+    -fx-background-color: derive(-color-accent-hover, -10%);
+}
+
+/* Ghost/secondary: low-emphasis actions that sit next to a primary action. */
+.ghost-button, .secondary-action-button {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-padding: 9 12;
+}
+
+.ghost-button:hover, .secondary-action-button:hover {
+    -fx-border-color: -color-accent;
+    -fx-text-fill: -color-text-primary;
+}
+
+.nav-button, .nav-button-primary {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-primary;
+}
+
+/* Selected state for any toggle button (filter chips, confidence picker, segmented controls). */
+.toggle-button:selected {
+    -fx-background-color: -color-accent;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}
+
+.toggle-button:selected:hover {
+    -fx-background-color: -color-accent-hover;
+}
+
+.nav-button-primary {
+    -fx-border-color: -color-accent;
+    -fx-text-fill: -color-accent;
+}
+
+/* Status buttons: shared semantic colors used by rating controls and destructive actions. */
+.danger-button {
+    -fx-background-color: -color-danger;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}
+
+.danger-button:hover {
+    -fx-background-color: derive(-color-danger, -10%);
+}
+
+.warning-button {
+    -fx-background-color: -color-warning;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}
+
+.warning-button:hover {
+    -fx-background-color: derive(-color-warning, -10%);
+}
+
+.success-button {
+    -fx-background-color: -color-success;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}
+
+.success-button:hover {
+    -fx-background-color: derive(-color-success, -10%);
+}
+
+/* "Epic" keeps its historical name (referenced from FXML/controllers) but now maps onto the
+ * shared accent color rather than a bespoke gradient, so it reads as a fourth equal-weight
+ * rating option rather than a decorative one-off. */
+.epic-button {
+    -fx-background-color: -color-accent;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}
+
+.epic-button:hover {
+    -fx-background-color: -color-accent-hover;
+}
+
+.button:disabled, .text-field:disabled, .text-area:disabled, .combo-box:disabled,
+.choice-box:disabled, .list-view:disabled {
+    -fx-opacity: 0.55;
+    -fx-cursor: default;
+}
+
+.button:disabled .text, .choice-box:disabled > .label, .combo-box:disabled .list-cell {
+    -fx-text-fill: -color-text-secondary;
+}
+
+/* Focus ring: a visible, non-decorative accent-colored border on every interactive control. */
+.button:focused, .toggle-button:focused, .text-field:focused, .text-area:focused,
+.combo-box:focused, .choice-box:focused, .list-view:focused {
+    -fx-border-color: -color-accent;
+    -fx-border-width: 2;
+    -fx-border-insets: -2;
+}
+
+/* Form fields. */
+.text-field, .text-area, .combo-box, .choice-box, .list-view {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: -color-text-primary;
+    -fx-control-inner-background: -color-surface;
+    -fx-prompt-text-fill: -color-text-secondary;
+    -fx-padding: 10 12;
+}
+
+.text-field:hover, .text-area:hover, .combo-box:hover, .choice-box:hover, .list-view:hover {
+    -fx-border-color: -color-accent;
+}
+
+.text-field:focused, .text-area:focused, .combo-box:focused, .choice-box:focused, .list-view:focused {
+    -fx-border-color: -color-accent;
+    -fx-border-width: 2;
+    -fx-border-insets: -1;
+}
+
+.combo-box .list-cell, .choice-box .label {
+    -fx-text-fill: -color-text-primary;
+}
+
+.combo-box-popup .list-view, .choice-box .context-menu {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+}
+
+.choice-box .menu-item:focused {
+    -fx-background-color: -color-accent;
+}
+
+.choice-box .menu-item:focused > .label {
+    -fx-text-fill: white;
+}
+
+.text-area .content {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 8;
+    -fx-padding: 10;
+}
+
+/* Lists. */
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-primary;
+    -fx-padding: 10;
+}
+
+.list-cell:hover {
+    -fx-background-color: derive(-color-surface-raised, 6%);
+}
+
+.list-cell:selected {
+    -fx-background-color: -color-accent;
+    -fx-text-fill: white;
+}
+
+.list-cell:selected:hover {
+    -fx-background-color: -color-accent-hover;
+}
+
+.list-cell:empty {
+    -fx-padding: 0;
+}
+
+/* Pills, badges, and status banners. */
+.pill, .xp-chip, .due-badge {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-padding: 6 12;
+    -fx-alignment: center;
+}
+
+.status-banner {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-accent;
+    -fx-border-width: 1 1 1 4;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: -color-text-primary;
+    -fx-padding: 12 16;
+    -fx-font-weight: 500;
+}
+
+/* Progress bars. */
+.progress-bar > .track, .level-progress > .track, .skill-accuracy-bar > .track {
+    -fx-background-color: -color-border;
+    -fx-background-radius: 999;
+}
+
+.progress-bar > .bar, .level-progress > .bar, .skill-accuracy-bar > .bar {
+    -fx-background-color: -color-accent;
+    -fx-background-radius: 999;
+    -fx-background-insets: 0;
+}
+
+.level-progress {
+    -fx-pref-height: 10;
+}
+
+.skill-accuracy-bar {
+    -fx-pref-height: 8;
+}
+
+/* Rating controls: the four review-rating buttons share equal visual weight, distinguished only
+ * by semantic color (danger/warning/success/accent), never by size. */
+.rating-grid {
+    -fx-padding: 2 0 0 0;
+}
+
+.rating-option {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 10;
+}
+
+.rating-option:hover {
+    -fx-border-color: -color-accent;
+}
+
+.rating-description {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
+}
+
+.rating-button {
+    -fx-font-size: 14px;
+    -fx-padding: 12 16;
+}
+
+.reveal-button {
+    -fx-font-size: 15px;
+    -fx-padding: 14 22;
+}
+
+/* Metric/stat typography shared by review, stats, add-card previews, dashboard, and syllabus. */
+.stat-label, .dashboard-card-title {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-letter-spacing: 0.08em;
+}
+
+.stat-value, .dashboard-card-value {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 30px;
+    -fx-font-weight: 800;
+}
+
+.dashboard-card-value-medium {
+    -fx-font-size: 22px;
+}
+
+.dashboard-card-helper {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+    -fx-line-spacing: 2;
+}
+
+.dashboard-signal-strip {
+    -fx-padding: 12;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+.dashboard-signal-item {
+    -fx-padding: 8 12;
+    -fx-background-color: transparent;
+}
+
+.dashboard-signal-value {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+}

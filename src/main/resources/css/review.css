@@ -1,7 +1,23 @@
-/* Review session: queue header, prompt/answer stage, confidence, and the practice terminal. */
+/* Review session: minimal top bar, centered prompt/answer stage, confidence, and the practice
+ * terminal. The standard sidebar/top bar are hidden by the shell while this route is active. */
 
-.hero-card {
-    -fx-padding: 24;
+.review-topbar {
+    -fx-padding: 4 0 0 0;
+}
+
+.review-session-progress {
+    -fx-pref-height: 4;
+}
+
+.review-session-progress > .track {
+    -fx-background-color: -color-border;
+    -fx-background-radius: 999;
+}
+
+.review-session-progress > .bar {
+    -fx-background-color: -color-accent;
+    -fx-background-radius: 999;
+    -fx-background-insets: 0;
 }
 
 .queue-strip {
@@ -12,27 +28,6 @@
     -fx-padding: 14 16;
 }
 
-.progress-pill {
-    -fx-background-color: -color-surface;
-    -fx-border-color: -color-border;
-    -fx-text-fill: -color-text-primary;
-}
-
-.progress-strip {
-    -fx-padding: 2 0 0 0;
-}
-
-.progress-step {
-    -fx-min-height: 6;
-    -fx-pref-height: 6;
-    -fx-background-color: -color-border;
-    -fx-background-radius: 999;
-}
-
-.progress-step-active {
-    -fx-background-color: -color-accent;
-}
-
 .review-stage {
     -fx-alignment: center;
     -fx-padding: 8 0 26 0;
@@ -40,6 +35,19 @@
 
 .prompt-section, .answer-section, .rating-panel {
     -fx-padding: 2 0;
+}
+
+.category-pill {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-letter-spacing: 0.06em;
+    -fx-padding: 4 10;
+    -fx-alignment: center-left;
 }
 
 .review-prompt {
@@ -67,6 +75,15 @@
 .attempt-section.current-action-panel .stat-label,
 .prompt-section.current-action-panel .stat-label {
     -fx-text-fill: -color-text-secondary;
+}
+
+.confidence-panel {
+    -fx-padding: 2 0;
+}
+
+.confidence-button {
+    -fx-font-size: 12px;
+    -fx-padding: 7 14;
 }
 
 .terminal-input {
@@ -140,4 +157,8 @@
 .terminal-history .content {
     -fx-background-color: -color-surface;
     -fx-background-radius: 8;
+}
+
+.completion-stat-strip {
+    -fx-padding: 4 0;
 }

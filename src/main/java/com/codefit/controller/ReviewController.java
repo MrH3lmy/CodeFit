@@ -23,6 +23,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -53,6 +54,7 @@ public class ReviewController extends BaseController {
     @FXML private Label workloadModeLabel;
     @FXML private Label sessionTimeLabel;
     @FXML private Label timerLabel;
+    @FXML private Label categoryLabel;
     @FXML private Label promptLabel;
     @FXML private Label answerLabel;
     @FXML private Label messageLabel;
@@ -61,10 +63,21 @@ public class ReviewController extends BaseController {
     @FXML private Label hardDescriptionLabel;
     @FXML private Label goodDescriptionLabel;
     @FXML private Label easyDescriptionLabel;
+    @FXML private ProgressBar sessionProgressBar;
     @FXML private TextArea attemptTextArea;
+    @FXML private VBox attemptSection;
+    @FXML private VBox confidencePanel;
     @FXML private VBox commandPracticePanel;
-    @FXML private VBox sessionFlowStrip;
     @FXML private VBox reflectionPromptPanel;
+    @FXML private HBox preRevealActions;
+    @FXML private VBox answerSection;
+    @FXML private Label answerSectionHeading;
+    @FXML private VBox ratingPanel;
+    @FXML private VBox completionStatStrip;
+    @FXML private Label completionCardsLabel;
+    @FXML private Label completionTimeLabel;
+    @FXML private Label completionAccuracyLabel;
+    @FXML private Label completionMissedLabel;
     @FXML private HBox commandAttemptBox;
     @FXML private TextField commandTextField;
     @FXML private TextArea terminalHistoryArea;
@@ -172,7 +185,7 @@ public class ReviewController extends BaseController {
             setStatus(messageLabel, "Enter an attempt before revealing the answer.");
             showAnswerButton.setDisable(true);
             updateShowHintButton();
-            updateSessionFlowVisibility();
+            updateRevealVisibility();
             return;
         }
 
@@ -188,6 +201,7 @@ public class ReviewController extends BaseController {
         updateShowHintButton();
         setStatus(messageLabel, formatAttemptFeedback(validationResult));
         setRatingDescriptions(currentCard);
+        updateRevealVisibility();
         focusRecommendedRatingButton();
     }
 
@@ -489,6 +503,7 @@ public class ReviewController extends BaseController {
             currentCard = null;
             queueLabel.setText(weeklyBossMode ? "Boss unavailable" : "0 due");
             hideTimer();
+            setCategoryText(null);
             promptLabel.setText(weeklyBossMode ? "Weekly boss battle is not available yet." : "You're all caught up — no cards are due.");
             answerLabel.setText(weeklyBossMode ? "Complete normal reviews or check back next week for the next mixed assessment." : "Nice work keeping your queue clear. Next action: add a new card if you want more practice today.");
             clearAttempts();
@@ -505,13 +520,16 @@ public class ReviewController extends BaseController {
             updateReviewMissedButton(false);
             updateReflectionActions(false);
             updateEmptyStateAction(true, "Add a Card", this::goAddCard);
-            updateSessionFlowVisibility();
+            updateCompletionStats(false);
+            updateSessionProgressBar(false, 0);
+            updateRevealVisibility();
             return;
         }
         if (!sessionQueue.hasNext()) {
             currentCard = null;
             queueLabel.setText("Complete");
             hideTimer();
+            setCategoryText(null);
             promptLabel.setText("Review session complete — great work!");
             answerLabel.setText("Your XP, streak, and schedules are updated. Next action: review missed cards now if any were flagged.");
             clearAttempts();
@@ -528,16 +546,21 @@ public class ReviewController extends BaseController {
             updateReviewMissedButton(!missedCards.isEmpty());
             updateReflectionActions(true);
             updateEmptyStateAction(false, "View Stats", this::goStats);
-            updateSessionFlowVisibility();
+            updateCompletionStats(true);
+            updateSessionProgressBar(true, 1.0);
+            updateRevealVisibility();
             return;
         }
 
         updateReviewMissedButton(false);
         updateReflectionActions(false);
         updateEmptyStateAction(false, "", this::goDashboard);
+        updateCompletionStats(false);
         currentCard = sessionQueue.poll();
         int totalSoFar = reviewedCardCount + 1 + sessionQueue.remainingSize();
         queueLabel.setText((weeklyBossMode ? "Boss " : "") + (reviewedCardCount + 1) + " / " + totalSoFar);
+        updateSessionProgressBar(true, totalSoFar == 0 ? 0 : (double) reviewedCardCount / totalSoFar);
+        setCategoryText(currentCard.getSkillCategory());
         promptLabel.setText(currentCard.getFront());
         latestValidationResult = AttemptValidationResult.EMPTY;
         answerRevealed = false;
@@ -555,9 +578,51 @@ public class ReviewController extends BaseController {
         updateShowHintButton();
         updateRatingButtonAvailability();
         startTimeLimitIfNeeded();
-        updateSessionFlowVisibility();
+        updateRevealVisibility();
         Platform.runLater(this::focusActiveAttemptInput);
     }
+
+    private void setCategoryText(String category) {
+        if (categoryLabel == null) {
+            return;
+        }
+        boolean hasCategory = category != null && !category.isBlank();
+        categoryLabel.setText(hasCategory ? category : "");
+        categoryLabel.setVisible(hasCategory);
+        categoryLabel.setManaged(hasCategory);
+    }
+
+    private void updateSessionProgressBar(boolean visible, double progress) {
+        if (sessionProgressBar == null) {
+            return;
+        }
+        sessionProgressBar.setVisible(visible);
+        sessionProgressBar.setManaged(visible);
+        sessionProgressBar.setProgress(Math.max(0, Math.min(1, progress)));
+    }
+
+    private void updateCompletionStats(boolean visible) {
+        if (completionStatStrip == null) {
+            return;
+        }
+        completionStatStrip.setVisible(visible);
+        completionStatStrip.setManaged(visible);
+        if (!visible) {
+            return;
+        }
+
+        completionCardsLabel.setText(reviewedCardCount + " " + pluralize(reviewedCardCount, "card"));
+        int minutesSpent = (int) Math.round(sessionElapsedSeconds / 60.0);
+        completionTimeLabel.setText(sessionElapsedSeconds < 30 ? "< 1 min" : minutesSpent + " " + pluralize(minutesSpent, "min"));
+
+        int good = ratingCounts.getOrDefault(ReviewRating.GOOD, 0);
+        int easy = ratingCounts.getOrDefault(ReviewRating.EASY, 0);
+        int totalRated = ratingCounts.values().stream().mapToInt(Integer::intValue).sum();
+        completionAccuracyLabel.setText(totalRated == 0 ? "No signal" : Math.round(100.0 * (good + easy) / totalRated) + "% Good/Easy");
+
+        completionMissedLabel.setText(missedCards.isEmpty() ? "None" : missedCards.size() + " outstanding");
+    }
+
     private void updateReflectionActions(boolean visible) {
         if (reflectionPromptPanel != null) {
             reflectionPromptPanel.setVisible(visible);
@@ -670,13 +735,61 @@ public class ReviewController extends BaseController {
         }
     }
 
-    private void updateSessionFlowVisibility() {
-        if (sessionFlowStrip == null) {
-            return;
+    /** Keeps the pre-reveal (attempt/hint/reveal) and post-reveal (answer/rating) layouts
+     *  mutually exclusive, and locks confidence and the attempt input once revealed. */
+    private void updateRevealVisibility() {
+        boolean hasCard = currentCard != null;
+        boolean showPreReveal = hasCard && !answerRevealed;
+        boolean showAnswerArea = answerRevealed || !hasCard;
+
+        if (attemptSection != null) {
+            attemptSection.setVisible(hasCard);
+            attemptSection.setManaged(hasCard);
         }
-        boolean activeReviewStarted = reviewedCardCount > 0 || answerRevealed || latestValidationResult != AttemptValidationResult.EMPTY;
-        sessionFlowStrip.setVisible(!activeReviewStarted);
-        sessionFlowStrip.setManaged(!activeReviewStarted);
+        if (confidencePanel != null) {
+            confidencePanel.setVisible(hasCard);
+            confidencePanel.setManaged(hasCard);
+        }
+        if (preRevealActions != null) {
+            preRevealActions.setVisible(showPreReveal);
+            preRevealActions.setManaged(showPreReveal);
+        }
+        if (answerSection != null) {
+            answerSection.setVisible(showAnswerArea);
+            answerSection.setManaged(showAnswerArea);
+        }
+        if (answerSectionHeading != null) {
+            answerSectionHeading.setText(hasCard ? "EXPECTED ANSWER" : "SESSION SUMMARY");
+        }
+        if (ratingPanel != null) {
+            ratingPanel.setVisible(answerRevealed);
+            ratingPanel.setManaged(answerRevealed);
+        }
+        setConfidenceLocked(answerRevealed);
+
+        // Lock the attempt once revealed: editing it afterward would silently desync the
+        // rating-guardrail check (re-evaluated from the live attempt) from the buttons shown here.
+        if (hasCard) {
+            attemptTextArea.setDisable(answerRevealed);
+            commandTextField.setDisable(answerRevealed);
+        }
+    }
+
+    private void setConfidenceLocked(boolean locked) {
+        if (confidenceLowButton != null) {
+            confidenceLowButton.setDisable(locked);
+        }
+        if (confidenceMediumButton != null) {
+            confidenceMediumButton.setDisable(locked);
+        }
+        if (confidenceHighButton != null) {
+            confidenceHighButton.setDisable(locked);
+        }
+    }
+
+    @FXML
+    public void exitReview() {
+        goDashboard();
     }
 
     private void startTimeLimitIfNeeded() {
@@ -723,6 +836,7 @@ public class ReviewController extends BaseController {
         updateRatingButtonAvailability();
         setRatingDescriptions(currentCard);
         setStatus(messageLabel, "Time expired. Answer revealed. Recommended rating: " + recommendedRatingLabel(latestValidationResult) + ".");
+        updateRevealVisibility();
         focusRecommendedRatingButton();
     }
 
@@ -810,14 +924,14 @@ public class ReviewController extends BaseController {
             latestValidationResult = AttemptValidationResult.EMPTY;
             showAnswerButton.setDisable(true);
             updateShowHintButton();
-            updateSessionFlowVisibility();
+            updateRevealVisibility();
             return;
         }
 
         latestValidationResult = validateAttempt();
         showAnswerButton.setDisable(answerRevealed || latestValidationResult == AttemptValidationResult.EMPTY);
         updateShowHintButton();
-        updateSessionFlowVisibility();
+        updateRevealVisibility();
         if (latestValidationResult == AttemptValidationResult.EMPTY) {
             setStatus(messageLabel, "Enter an attempt to enable Reveal Answer.");
         } else {

@@ -33,7 +33,6 @@ public class AppShellController {
         if (route.navItem() != null) {
             sidebar.setActiveRoute(route.navItem());
         }
-        sidebar.syncThemeSelection();
         if (topBarTitleLabel != null) {
             topBarTitleLabel.setText(route.shortLabel());
         }

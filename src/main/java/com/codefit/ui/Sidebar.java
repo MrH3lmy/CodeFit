@@ -1,11 +1,10 @@
 package com.codefit.ui;
 
+import javafx.beans.value.ChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.beans.value.ChangeListener;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
@@ -23,9 +22,7 @@ public class Sidebar extends VBox {
     @FXML private Button libraryButton;
     @FXML private Button progressButton;
     @FXML private Button settingsButton;
-    @FXML private ChoiceBox<String> themeChoiceBox;
     @FXML private Label subtitleLabel;
-    @FXML private VBox footerCard;
 
     private final ChangeListener<Number> widthListener = (observable, oldWidth, newWidth) ->
             updateNarrowState(newWidth.doubleValue());
@@ -39,7 +36,6 @@ public class Sidebar extends VBox {
 
         try {
             loader.load();
-            configureThemeSelector();
             configureCompactBehavior();
             updateActiveNavigation();
         } catch (IOException exception) {
@@ -55,14 +51,6 @@ public class Sidebar extends VBox {
     public void setActiveRoute(Route.NavItem navItem) {
         this.activeNavItem = navItem;
         updateActiveNavigation();
-    }
-
-    /** Re-reads the current theme so the selector stays correct even if the theme changed elsewhere. */
-    public void syncThemeSelection() {
-        if (themeChoiceBox == null) {
-            return;
-        }
-        themeChoiceBox.setValue(NavigationService.getCurrentThemeDisplayName());
     }
 
     @FXML
@@ -124,7 +112,6 @@ public class Sidebar extends VBox {
         }
 
         setNodeVisible(subtitleLabel, !narrow);
-        setNodeVisible(footerCard, !narrow);
     }
 
     private void setNodeVisible(Node node, boolean visible) {
@@ -141,20 +128,6 @@ public class Sidebar extends VBox {
         setNavigationStyle(reviewButton, Route.NavItem.REVIEW);
         setNavigationStyle(libraryButton, Route.NavItem.LIBRARY);
         setNavigationStyle(progressButton, Route.NavItem.PROGRESS);
-    }
-
-    private void configureThemeSelector() {
-        if (themeChoiceBox == null) {
-            return;
-        }
-
-        themeChoiceBox.getItems().setAll(NavigationService.getThemeDisplayNames());
-        themeChoiceBox.setValue(NavigationService.getCurrentThemeDisplayName());
-        themeChoiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null) {
-                NavigationService.setTheme(NavigationService.getThemeClassByDisplayName(newValue));
-            }
-        });
     }
 
     private void setNavigationStyle(Button button, Route.NavItem navItem) {

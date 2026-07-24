@@ -5,8 +5,14 @@
 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.SettingsController">
     <content>
         <VBox spacing="18" styleClass="content" maxWidth="Infinity">
-            <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
+            <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
                 <Label text="Settings" styleClass="page-title" wrapText="true" />
+            </VBox>
+
+            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
+                <Label text="Appearance" styleClass="section-title" />
+                <Label text="Choose the interface theme used across CodeFit." styleClass="muted" wrapText="true" />
+                <ChoiceBox fx:id="themeChoiceBox" maxWidth="Infinity" />
             </VBox>
 
             <VBox spacing="8" styleClass="panel" maxWidth="Infinity">

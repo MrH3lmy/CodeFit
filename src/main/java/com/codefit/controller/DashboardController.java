@@ -16,8 +16,9 @@ import com.codefit.service.SystemMessageService;
 import com.codefit.service.TrainingPathService;
 import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.SplitMenuButton;
+import javafx.scene.control.MenuButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -29,11 +30,12 @@ import java.util.Optional;
 public class DashboardController extends BaseController {
     @FXML private Label streakQuestStatusLabel;
     @FXML private Label dueCountLabel;
-    @FXML private Label emptyStateLabel;
-    @FXML private Label systemMessageLabel;
+    @FXML private Label contextBannerLabel;
     @FXML private Label nextActionTitleLabel;
     @FXML private Label nextActionHelperLabel;
-    @FXML private SplitMenuButton primaryActionButton;
+    @FXML private Button primaryActionButton;
+    @FXML private MenuButton reviewSessionMenuButton;
+    @FXML private Button weeklyBossButton;
     @FXML private VBox weakSkillsList;
 
     private final DeckService deckService = new DeckService();
@@ -58,10 +60,9 @@ public class DashboardController extends BaseController {
                 + (availableNewCards > 0 ? " · " + availableNewCards + " new available" : ""));
         DailyQuest dailyQuest = configureStreakAndQuest(progress);
 
-        configureSystemMessage(progress, dailyQuest);
         populateWeakSkills();
-
-        configureEmptyState(decks, deckCount, cardCount, dueCount);
+        configurePrimaryState(decks, deckCount, cardCount, dueCount);
+        configureContextMessage(progress, dailyQuest);
         configureWeeklyBossCallout();
     }
 
@@ -111,35 +112,33 @@ public class DashboardController extends BaseController {
         return row;
     }
 
+    private void configureContextMessage(UserProgress progress, DailyQuest dailyQuest) {
+        if (contextBannerLabel.isVisible()) {
+            return;
+        }
 
-    private void configureSystemMessage(UserProgress progress, DailyQuest dailyQuest) {
         String rankTitle = progressService.getRankTitle(progress);
         systemMessageService.highestPriorityDashboardMessage(
                         progress,
                         dailyQuest,
-                        statsService.getNeedsPracticeSkills(),
-                        statsService.isWeeklyBossAvailable(),
+                        List.of(),
+                        false,
                         rankTitle)
                 .map(SystemMessage::text)
-                .ifPresentOrElse(message -> setStatus(systemMessageLabel, message),
-                        () -> setStatus(systemMessageLabel, ""));
+                .ifPresentOrElse(message -> setStatus(contextBannerLabel, message),
+                        () -> setStatus(contextBannerLabel, ""));
     }
 
     private void configureWeeklyBossCallout() {
-        if (!statsService.isWeeklyBossAvailable()) {
-            return;
-        }
-        setStatus(emptyStateLabel, "Weekly boss battle available: take a mixed assessment across decks and weak skills.");
-        configurePrimaryAction("Weekly boss battle ready",
-                "Face a mixed set that prioritizes overdue cards, low accuracy, and Again/Hard pressure from multiple skills.",
-                "Start Boss Battle", this::goWeeklyBossBattle);
+        boolean available = statsService.isWeeklyBossAvailable();
+        weeklyBossButton.setVisible(available);
+        weeklyBossButton.setManaged(available);
     }
 
     @FXML
     public void goWeeklyBossBattle() {
         NavigationService.showWeeklyBossBattle();
     }
-
 
     private String formatStreakState(UserProgress progress) {
         if (progress.isRecoveryQuestActive()) {
@@ -159,22 +158,30 @@ public class DashboardController extends BaseController {
         return quest;
     }
 
-    private void configureEmptyState(List<Deck> decks, int deckCount, int cardCount, int dueCount) {
+    private void configurePrimaryState(List<Deck> decks, int deckCount, int cardCount, int dueCount) {
+        setStatus(contextBannerLabel, "");
         if (configureTrainingPathPrimaryAction(decks)) {
             return;
         }
         if (deckCount == 0) {
-            setStatus(emptyStateLabel, "Create your first deck to organize what you want to practice. Next action: Create a deck.");
-            configurePrimaryAction("Create your first deck", "Start with one focused topic, then add cards when the deck is ready.", "Create Deck", this::goDecks);
+            setStatus(contextBannerLabel, "Create your first deck to organize what you want to practice.");
+            configurePrimaryAction("Create your first deck",
+                    "Start with one focused topic, then add cards when the deck is ready.",
+                    "Create Deck", this::goDecks, false);
         } else if (cardCount == 0) {
-            setStatus(emptyStateLabel, "Add your first card so CodeFit can build a review queue. Next action: Add a card.");
-            configurePrimaryAction("Add your first card", "Capture one prompt and answer in an existing deck to unlock reviews.", "Add Card", this::goAddCard);
+            setStatus(contextBannerLabel, "Add your first card so CodeFit can build a review queue.");
+            configurePrimaryAction("Add your first card",
+                    "Capture one prompt and answer in an existing deck to unlock reviews.",
+                    "Add Card", this::goAddCard, false);
         } else if (dueCount == 0) {
-            setStatus(emptyStateLabel, "No due reviews. Your queue is clear for now. Next action: Add a stretch card.");
-            configurePrimaryAction("Add a stretch card", "Keep momentum by adding one harder card while scheduled reviews mature.", "Add Card", this::goAddCard);
+            setStatus(contextBannerLabel, "No due reviews. Your queue is clear for now.");
+            configurePrimaryAction("Add a stretch card",
+                    "Keep momentum by adding one harder card while scheduled reviews mature.",
+                    "Add Card", this::goAddCard, false);
         } else {
-            setStatus(emptyStateLabel, "You have cards ready to review. Next action: Start Review.");
-            configurePrimaryAction("Review due cards", "Start with the cards that need attention now.", "Start Review", this::goReview);
+            configurePrimaryAction("Review due cards",
+                    "Start with the cards that need attention now.",
+                    "Start Review", this::goReview, true);
         }
     }
 
@@ -190,22 +197,19 @@ public class DashboardController extends BaseController {
         String moduleNumber = formatModuleNumber(current.module().getOrder());
 
         if (nextAction.action() == TrainingPathService.TrainingPathAction.ADD_STARTER_CARDS) {
-            setStatus(emptyStateLabel, pathName + " Module " + moduleNumber
-                    + " is ready but has no cards. Next action: add or import starter cards.");
+            setStatus(contextBannerLabel, pathName + " Module " + moduleNumber + " is ready but has no cards.");
             configurePrimaryAction("Add starter " + pathName + " cards",
                     "Start " + current.deck().getName() + " by adding one card or importing starter prompts from Decks.",
-                    "Open Decks", this::goDecks);
+                    "Open Decks", this::goDecks, false);
             return true;
         }
 
         if (nextAction.action() == TrainingPathService.TrainingPathAction.REVIEW_DUE_MODULE) {
-            setStatus(emptyStateLabel, current.dueCount() + " " + pathName
-                    + " cards are due. Next action: review the weakest due module.");
+            setStatus(contextBannerLabel, current.dueCount() + " " + pathName + " cards are due in the weakest module.");
             configurePrimaryAction("Review Module " + moduleNumber,
                     current.deck().getName() + " has " + current.dueCount() + " due and "
-                            + current.progressPercent() + "% reviewed, making it the weakest " + pathName
-                            + " module right now.",
-                    "Start Review", this::goReview);
+                            + current.progressPercent() + "% reviewed.",
+                    "Start Review", this::goReview, true);
             return true;
         }
 
@@ -213,13 +217,14 @@ public class DashboardController extends BaseController {
                 && nextAction.next() != null) {
             TrainingPathService.TrainingPathModuleProgress next = nextAction.next();
             String nextModuleNumber = formatModuleNumber(next.module().getOrder());
-            setStatus(emptyStateLabel, pathName + " Module " + moduleNumber
-                    + " is mostly reviewed. Next action: move to Module " + nextModuleNumber + ".");
+            setStatus(contextBannerLabel, pathName + " Module " + moduleNumber
+                    + " is mostly reviewed. Continue with Module " + nextModuleNumber + ".");
             configurePrimaryAction("Move to Module " + nextModuleNumber,
                     "You have reviewed " + current.progressPercent() + "% of " + current.deck().getName()
                             + ". Continue the path with " + next.deck().getName() + ".",
                     next.cardCount() == 0 ? "Add Cards" : "Open Syllabus",
-                    next.cardCount() == 0 ? this::goAddCard : this::goSyllabus);
+                    next.cardCount() == 0 ? this::goAddCard : this::goSyllabus,
+                    false);
             return true;
         }
 
@@ -230,11 +235,13 @@ public class DashboardController extends BaseController {
         return String.format("%02d", moduleNumber);
     }
 
-    private void configurePrimaryAction(String title, String helper, String buttonText, Runnable action) {
+    private void configurePrimaryAction(String title, String helper, String buttonText, Runnable action,
+                                        boolean showReviewSessionOptions) {
         nextActionTitleLabel.setText(title);
         nextActionHelperLabel.setText(helper);
         primaryActionButton.setText(buttonText);
         primaryActionButton.setOnAction(event -> action.run());
+        reviewSessionMenuButton.setVisible(showReviewSessionOptions);
+        reviewSessionMenuButton.setManaged(showReviewSessionOptions);
     }
-
 }

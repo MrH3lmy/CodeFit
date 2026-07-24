@@ -4,63 +4,68 @@
 
 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.DecksController">
     <content>
-                <VBox spacing="18" styleClass="content" maxWidth="Infinity">
-                    <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+            <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
 
-                    <!-- LIBRARY OVERVIEW -->
-                    <VBox fx:id="libraryOverviewRoot" spacing="16" maxWidth="Infinity">
-                        <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
-                            <HBox alignment="CENTER_LEFT" spacing="10">
-                                <Label text="Library" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
-                                <MenuButton text="More" styleClass="ghost-button">
-                                    <items>
-                                        <MenuItem text="Open Syllabus" onAction="#goSyllabus" />
-                                        <MenuItem text="Create Java BE Path" onAction="#createJavaBackendPath" />
-                                    </items>
-                                </MenuButton>
-                                <Button fx:id="newDeckToggleButton" text="+ New Deck" onAction="#toggleCreateDeckPanel" styleClass="primary-button" />
-                            </HBox>
-                        </VBox>
-
-                        <TextField fx:id="searchField" promptText="Search decks…" maxWidth="Infinity" />
-
-                        <VBox fx:id="createDeckPanel" spacing="12" styleClass="panel" maxWidth="Infinity" visible="false" managed="false">
-                            <Label text="Create Deck" styleClass="section-title" />
-                            <TextField fx:id="deckNameField" promptText="Deck name" maxWidth="Infinity" />
-                            <TextArea fx:id="deckDescriptionArea" promptText="Description" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
-                            <Button text="Create Deck" onAction="#createDeck" styleClass="action-button" maxWidth="Infinity" />
-                        </VBox>
-
-                        <Label fx:id="deckEmptyGuidanceLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
-                        <VBox fx:id="deckCardsList" spacing="12" maxWidth="Infinity" />
-                    </VBox>
-
-                    <!-- DECK DETAIL -->
-                    <VBox fx:id="deckDetailRoot" spacing="16" maxWidth="Infinity" visible="false" managed="false">
-                        <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
-                            <HBox alignment="CENTER_LEFT" spacing="10">
-                                <Button text="&#8249; Library" onAction="#backToLibrary" styleClass="ghost-button" />
-                                <Label fx:id="deckDetailNameLabel" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
-                                <MenuButton text="Actions" styleClass="ghost-button">
-                                    <items>
-                                        <MenuItem text="Import Cards" onAction="#importCards" />
-                                        <MenuItem text="Export Cards" onAction="#exportCards" />
-                                    </items>
-                                </MenuButton>
-                            </HBox>
-                            <Label fx:id="deckDetailDescriptionLabel" styleClass="page-subtitle" wrapText="true" />
-                        </VBox>
-
-                        <HBox spacing="8" alignment="CENTER_LEFT">
-                            <ToggleButton fx:id="cardFilterAllButton" text="All" styleClass="ghost-button" selected="true" />
-                            <ToggleButton fx:id="cardFilterDueButton" text="Due" styleClass="ghost-button" />
-                            <ToggleButton fx:id="cardFilterMasteredButton" text="Mastered" styleClass="ghost-button" />
-                            <ToggleButton fx:id="cardFilterSuspendedButton" text="Suspended" styleClass="ghost-button" />
-                        </HBox>
-
-                        <Label fx:id="cardEmptyGuidanceLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
-                        <ListView fx:id="cardListView" prefHeight="420" VBox.vgrow="ALWAYS" />
-                    </VBox>
+            <!-- LIBRARY OVERVIEW -->
+            <VBox fx:id="libraryOverviewRoot" spacing="16" maxWidth="Infinity">
+                <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="Library" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                        <MenuButton text="More" styleClass="ghost-button">
+                            <items>
+                                <MenuItem text="Open Syllabus" onAction="#goSyllabus" />
+                                <MenuItem text="Create Java BE Path" onAction="#createJavaBackendPath" />
+                            </items>
+                        </MenuButton>
+                        <Button fx:id="newDeckToggleButton" text="+ New Deck" onAction="#toggleCreateDeckPanel" styleClass="primary-button" />
+                    </HBox>
                 </VBox>
+
+                <TextField fx:id="searchField" promptText="Search decks…" maxWidth="Infinity" />
+
+                <VBox fx:id="createDeckPanel" spacing="12" styleClass="panel" maxWidth="Infinity" visible="false" managed="false">
+                    <Label text="Create Deck" styleClass="section-title" />
+                    <TextField fx:id="deckNameField" promptText="Deck name" maxWidth="Infinity" />
+                    <TextArea fx:id="deckDescriptionArea" promptText="Description" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
+                    <Button text="Create Deck" onAction="#createDeck" styleClass="action-button" maxWidth="Infinity" />
+                </VBox>
+
+                <Label fx:id="deckEmptyGuidanceLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
+                <VBox fx:id="deckCardsList" spacing="12" maxWidth="Infinity" />
+            </VBox>
+
+            <!-- DECK DETAIL -->
+            <VBox fx:id="deckDetailRoot" spacing="16" maxWidth="Infinity" visible="false" managed="false">
+                <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Button text="&#8249; Library" onAction="#backToLibrary" styleClass="ghost-button" />
+                        <Label fx:id="deckDetailNameLabel" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                        <MenuButton text="Actions" styleClass="ghost-button">
+                            <items>
+                                <MenuItem text="Import Cards" onAction="#importCards" />
+                                <MenuItem text="Export Cards" onAction="#exportCards" />
+                            </items>
+                        </MenuButton>
+                    </HBox>
+                    <Label fx:id="deckDetailDescriptionLabel" styleClass="page-subtitle" wrapText="true" />
+                </VBox>
+
+                <HBox spacing="10" alignment="CENTER_LEFT" maxWidth="Infinity">
+                    <TextField fx:id="cardSearchField" promptText="Search cards…" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
+                    <MenuButton fx:id="cardStatusMenuButton" text="Status: All" styleClass="ghost-button">
+                        <items>
+                            <MenuItem text="All cards" onAction="#showAllCards" />
+                            <MenuItem text="Due" onAction="#showDueCards" />
+                            <MenuItem text="Mastered" onAction="#showMasteredCards" />
+                            <MenuItem text="Suspended" onAction="#showSuspendedCards" />
+                        </items>
+                    </MenuButton>
+                </HBox>
+
+                <Label fx:id="cardEmptyGuidanceLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
+                <ListView fx:id="cardListView" prefHeight="420" VBox.vgrow="ALWAYS" />
+            </VBox>
+        </VBox>
     </content>
 </ScrollPane>

@@ -55,6 +55,42 @@ For a distributable desktop application, use JavaFX-aware packaging tooling inst
 
 When adding packaging, ensure the generated artifact includes the JavaFX runtime modules required by the dependencies declared in `pom.xml` and launches `com.codefit.CodeFitApplication`.
 
+## UI architecture
+
+The desktop UI is a persistent application shell rather than a per-screen window stack.
+
+- **Shell**: `AppShellController` (`fxml/app-shell.fxml`) owns the sidebar and top bar for the
+  lifetime of the application. `NavigationService` builds this shell once and, on every
+  navigation, swaps only the shell's content host — the sidebar, top bar, and theme selection are
+  never rebuilt or reset.
+- **Routes**: `com.codefit.ui.Route` is the single source of truth mapping a destination to its
+  FXML resource, window title, and which sidebar item (if any) it highlights. Screens that don't
+  belong in the primary nav (Syllabus, the global Add/Edit Card composer) still have a `Route`
+  entry; they just have no `NavItem` or share one with their parent section.
+- **Distraction-free mode**: the shell hides the sidebar/top bar automatically whenever the active
+  route is `Route.REVIEW`, and restores them on any other navigation — this is derived from the
+  route itself, not managed ad hoc by `ReviewController`.
+- **Theming**: `NavigationService` supports Dark and Light only. Both themes implement the same
+  eleven-token semantic contract defined in `css/tokens.css` (background, surface,
+  surface-raised, border, text-primary, text-secondary, accent, accent-hover, success, warning,
+  danger). Legacy Ocean/Forest/Synthwave preferences are mapped onto Dark by
+  `NavigationService.sanitizeThemeClass` so an old preferences file can never fail to start.
+- **Stylesheets** load in this fixed order (see `NavigationService.STYLESHEETS`), each file scoped
+  to a single responsibility:
+  1. `tokens.css` — theme token definitions only.
+  2. `base.css` — resets, typography, and generic layout helpers.
+  3. `controls.css` — reusable buttons, form fields, badges, focus/disabled states, rating
+     controls; shared by every screen.
+  4. `shell.css` — sidebar, top bar, nav items.
+  5. `review.css`, `library.css`, `forms.css`, `progress.css`, `today.css` — screen-specific
+     rules, in no particular order relative to each other (they don't overlap).
+- **Regression checks**: `RouteTest` and `StylesheetResourcesTest` verify every route's FXML and
+  every stylesheet resolve on the classpath, load in the documented order, and cover the four
+  primary nav items. `FxmlLoadingTest` loads the shell and every route's FXML through a real
+  `FXMLLoader` to catch broken `fx:id`s or controller wiring before a PR is opened; it requires a
+  JavaFX-capable display and skips (not fails) in headless CI environments that don't have one —
+  run it locally with a display, or under `xvfb-run -a mvn test` on Linux, to exercise it.
+
 ## Anki-compatible card import/export
 
 Decks can import and export tab-separated text files (`.tsv` or `.txt`) from the Decks screen with the **Import Cards** and **Export Cards** buttons. Choose a deck first, then select a file.

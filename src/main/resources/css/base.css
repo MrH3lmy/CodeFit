@@ -4,7 +4,7 @@
     -fx-font-family: "Inter", "Segoe UI", sans-serif;
 }
 
-.root-layout, .app-root {
+.app-root {
     -fx-background-color: -color-background;
 }
 
@@ -80,12 +80,6 @@
     -fx-column-halignment: left;
 }
 
-.card-tile-grid {
-    -fx-hgap: 18;
-    -fx-vgap: 18;
-    -fx-alignment: top-left;
-}
-
 .primary-column {
     -fx-spacing: 18;
     -fx-min-width: 0;
@@ -98,19 +92,13 @@
 }
 
 /* Generic surface/panel used by cards, panels, and composer sections across every screen. */
-.panel, .card, .stat-card, .small-card, .review-card, .composer-card, .tips-card, .hero-card,
-.dashboard-card, .metric-card {
+.panel, .review-card, .composer-card, .tips-card, .dashboard-card {
     -fx-background-color: -color-surface-raised;
     -fx-border-color: -color-border;
     -fx-border-width: 1;
     -fx-border-radius: 12;
     -fx-background-radius: 12;
     -fx-padding: 20;
-}
-
-.card-tile-grid .stat-card, .card-tile-grid .small-card {
-    -fx-min-width: 0;
-    -fx-pref-width: 220;
 }
 
 .review-card {

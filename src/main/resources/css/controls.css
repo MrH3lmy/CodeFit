@@ -207,7 +207,7 @@
 }
 
 /* Pills, badges, and status banners. */
-.pill, .header-pill, .progress-pill, .xp-chip, .due-badge {
+.pill, .xp-chip, .due-badge {
     -fx-background-color: -color-surface-raised;
     -fx-border-color: -color-border;
     -fx-border-radius: 999;

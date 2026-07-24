@@ -4,172 +4,127 @@
 
 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.StatsController">
     <content>
-                <VBox spacing="18" styleClass="content" maxWidth="Infinity">
-                    <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
+                <VBox spacing="14" styleClass="content" maxWidth="Infinity">
+                    <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
                         <Label text="Progress" styleClass="page-title" wrapText="true" />
-                        <Label text="Am I retaining what I learned? How much is durably mastered? Which skills are weakest? Am I training consistently?" styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <VBox fx:id="statsEmptyStateBox" spacing="10" styleClass="status-banner" maxWidth="Infinity" visible="false" managed="false">
                         <Label fx:id="statsEmptyStateLabel" wrapText="true" />
                         <Button text="Start a Review" onAction="#goReview" styleClass="action-button" maxWidth="Infinity" />
                     </VBox>
 
-                    <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                            <Label text="RETENTION" styleClass="dashboard-card-title" wrapText="true" />
-                            <Label fx:id="heroRetentionLabel" text="No signal" styleClass="dashboard-signal-value" wrapText="true" />
-                        </VBox>
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                            <Label text="MASTERED" styleClass="dashboard-card-title" wrapText="true" />
-                            <Label fx:id="heroMasteredLabel" text="0 cards" styleClass="dashboard-signal-value" wrapText="true" />
-                        </VBox>
-                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                            <Label text="THIS WEEK" styleClass="dashboard-card-title" wrapText="true" />
-                            <Label fx:id="heroThisWeekLabel" text="0 reviews" styleClass="dashboard-signal-value" wrapText="true" />
-                        </VBox>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <ToggleButton fx:id="overviewTabButton" text="Overview" styleClass="ghost-button" selected="true" />
+                        <ToggleButton fx:id="skillsTabButton" text="Skills" styleClass="ghost-button" />
+                        <ToggleButton fx:id="activityTabButton" text="Activity" styleClass="ghost-button" />
                     </HBox>
 
-                    <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
-                        <VBox spacing="4">
-                            <Label text="WEAKEST SKILLS" styleClass="dashboard-card-title" wrapText="true" />
-                            <Label text="Ranked by Again/Hard pressure. Full detail and sample size below." styleClass="dashboard-card-helper" wrapText="true" />
-                        </VBox>
-                        <VBox fx:id="weakestSkillsCompactList" spacing="8" maxWidth="Infinity" />
-                    </VBox>
-
-                    <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
-                        <Label text="RETENTION — OBJECTIVE" styleClass="dashboard-card-title" wrapText="true" />
-                        <Label text="Correctness only, never the self-selected rating." styleClass="dashboard-card-helper" wrapText="true" />
+                    <!-- OVERVIEW -->
+                    <VBox fx:id="overviewTabPanel" spacing="14" maxWidth="Infinity">
                         <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
                             <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="READINESS SCORE" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="readinessScoreLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                                <Label text="Blends accuracy, timed success, weak-area pressure, and consistency" styleClass="dashboard-card-helper" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="TIMED FLUENCY" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="timedFluencyLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                                <Label text="Correct and submitted in time" styleClass="dashboard-card-helper" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="WEAK-AREA PRESSURE" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="weakAreaPressureLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                                <Label text="Recent Again/Hard ratings" styleClass="dashboard-card-helper" wrapText="true" />
-                            </VBox>
-                        </HBox>
-                        <Label text="SUBJECTIVE (SEPARATE FROM OBJECTIVE ACCURACY)" styleClass="dashboard-card-title" wrapText="true" />
-                        <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="SELF-ASSESSMENT" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="subjectiveSelfAssessmentLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                                <Label text="Concept cards self-rated Good/Easy" styleClass="dashboard-card-helper" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="CONFIDENCE CALIBRATION" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="confidenceCalibrationLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                                <Label text="How often stated confidence matched the outcome" styleClass="dashboard-card-helper" wrapText="true" />
-                            </VBox>
-                        </HBox>
-                    </VBox>
-
-                    <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
-                        <Label text="MASTERY" styleClass="dashboard-card-title" wrapText="true" />
-                        <Label text="Share of your whole library that has been seen, is still learning, or is durably mastered." styleClass="dashboard-card-helper" wrapText="true" />
-                        <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="SEEN" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="masterySeenLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="LEARNING" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="masteryLearningLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                <Label text="RETENTION" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label fx:id="heroRetentionLabel" text="No signal" styleClass="dashboard-signal-value" wrapText="true" />
                             </VBox>
                             <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
                                 <Label text="MASTERED" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="masteryMasteredLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                <Label fx:id="heroMasteredLabel" text="0 cards" styleClass="dashboard-signal-value" wrapText="true" />
+                            </VBox>
+                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                <Label text="THIS WEEK" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label fx:id="heroThisWeekLabel" text="0 reviews" styleClass="dashboard-signal-value" wrapText="true" />
                             </VBox>
                         </HBox>
+
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="WEAKEST SKILLS" styleClass="dashboard-card-title" wrapText="true" />
+                            <VBox fx:id="weakestSkillsCompactList" spacing="8" maxWidth="Infinity" />
+                        </VBox>
+
+                        <TitledPane text="Advanced Metrics" expanded="false" maxWidth="Infinity">
+                            <content>
+                                <VBox spacing="10" maxWidth="Infinity">
+                                    <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                            <Label text="READINESS SCORE" styleClass="dashboard-card-title" wrapText="true" />
+                                            <Label fx:id="readinessScoreLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                        </VBox>
+                                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                            <Label text="TIMED FLUENCY" styleClass="dashboard-card-title" wrapText="true" />
+                                            <Label fx:id="timedFluencyLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                        </VBox>
+                                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                            <Label text="WEAK-AREA PRESSURE" styleClass="dashboard-card-title" wrapText="true" />
+                                            <Label fx:id="weakAreaPressureLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                        </VBox>
+                                    </HBox>
+                                    <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                            <Label text="SELF-ASSESSMENT" styleClass="dashboard-card-title" wrapText="true" />
+                                            <Label fx:id="subjectiveSelfAssessmentLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                        </VBox>
+                                        <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                            <Label text="CONFIDENCE CALIBRATION" styleClass="dashboard-card-title" wrapText="true" />
+                                            <Label fx:id="confidenceCalibrationLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                        </VBox>
+                                    </HBox>
+                                </VBox>
+                            </content>
+                        </TitledPane>
                     </VBox>
 
-                    <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
-                        <Label text="CONSISTENCY &amp; EFFICIENCY" styleClass="dashboard-card-title" wrapText="true" />
-                        <Label text="Training regularity and how much durable mastery each hour of practice produces." styleClass="dashboard-card-helper" wrapText="true" />
-                        <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="STREAK" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="streakLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="CONSISTENCY" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="consistencyLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                                <Label text="Active days in the last week" styleClass="dashboard-card-helper" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="LEARNING EFFICIENCY" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="learningEfficiencyLabel" text="No signal" styleClass="dashboard-signal-value" wrapText="true" />
-                                <Label text="Mastered cards per hour of recent practice" styleClass="dashboard-card-helper" wrapText="true" />
-                            </VBox>
-                        </HBox>
-                    </VBox>
-
-                    <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
-                        <Label text="Daily Training Intensity" styleClass="section-title" />
-                        <Label text="Choose how much CodeFit should plan for today's quests, dashboard routine, and review-session queue." styleClass="muted" wrapText="true" />
-                        <ChoiceBox fx:id="workloadModeChoiceBox" maxWidth="Infinity" />
-                        <Label fx:id="workloadModeDetailLabel" styleClass="dashboard-card-helper" wrapText="true" />
-                    </VBox>
-                    <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
-                        <Label text="Weekly Boss Battle" styleClass="section-title" />
-                        <Label fx:id="weeklyBossScoreLabel" styleClass="stat-value accent" wrapText="true" />
-                        <Label fx:id="weeklyBossWeakAreasLabel" styleClass="muted" wrapText="true" />
-                        <Label fx:id="weeklyBossFocusLabel" styleClass="dashboard-card-helper" wrapText="true" />
-                        <Button fx:id="weeklyBossButton" text="Start Weekly Boss Battle" onAction="#startWeeklyBossBattle" styleClass="action-button" maxWidth="Infinity" />
-                    </VBox>
-
-                    <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
-                        <Label text="ACCOUNT" styleClass="dashboard-card-title" wrapText="true" />
-                        <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="LEVEL" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="levelLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                                <ProgressBar fx:id="xpProgressBar" maxWidth="Infinity" styleClass="level-progress" />
-                                <Label fx:id="xpLabel" styleClass="dashboard-card-helper" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="TOTAL REVIEWS" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="totalReviewsLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="REVIEWED TODAY" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="reviewedTodayLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="TOTAL CARDS" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="totalCardsLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                            </VBox>
-                            <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                <Label text="DUE CARDS" styleClass="dashboard-card-title" wrapText="true" />
-                                <Label fx:id="dueCardsLabel" styleClass="dashboard-signal-value" wrapText="true" />
-                            </VBox>
-                        </HBox>
-                    </VBox>
-
-                    <FlowPane hgap="18" vgap="18" prefWrapLength="760" maxWidth="Infinity" VBox.vgrow="ALWAYS" styleClass="workspace-grid">
-                        <VBox spacing="10" styleClass="panel primary-column" minWidth="0" prefWidth="360" maxWidth="Infinity">
+                    <!-- SKILLS -->
+                    <VBox fx:id="skillsTabPanel" spacing="14" maxWidth="Infinity" visible="false" managed="false">
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="MASTERY" styleClass="dashboard-card-title" wrapText="true" />
+                            <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="SEEN" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="masterySeenLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="LEARNING" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="masteryLearningLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="MASTERED" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="masteryMasteredLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
                             <Label text="Skill Performance" styleClass="section-title" />
-                            <Label text="Accuracy is the share of objectively text-graded reviews with a correct answer for each skill, not the self-selected rating. Self-graded concept cards are excluded from accuracy and shown separately. Weak areas are skills with at least 2 recent reviews and 40% or more AGAIN/HARD scheduling ratings." styleClass="muted" wrapText="true" />
                             <ListView fx:id="skillPerformanceListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                         </VBox>
-                        <VBox spacing="10" styleClass="panel primary-column" minWidth="0" prefWidth="360" maxWidth="Infinity">
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
                             <Label text="Needs Practice" styleClass="section-title" />
-                            <Label text="Weak areas prioritize the skills most likely to benefit from review now. Use the action when available to jump straight into due-card practice." styleClass="muted" wrapText="true" />
                             <ListView fx:id="needsPracticeListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                         </VBox>
-                    </FlowPane>
-                    <VBox spacing="10" styleClass="panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
-                        <Label text="Recent Reviews" styleClass="section-title" />
-                        <Label text="Lower-priority activity log: most recent review outcomes and interval changes." styleClass="muted" wrapText="true" />
-                        <ListView fx:id="recentReviewsListView" prefHeight="220" VBox.vgrow="ALWAYS" />
+                    </VBox>
+
+                    <!-- ACTIVITY -->
+                    <VBox fx:id="activityTabPanel" spacing="14" maxWidth="Infinity" visible="false" managed="false">
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="CONSISTENCY &amp; EFFICIENCY" styleClass="dashboard-card-title" wrapText="true" />
+                            <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="STREAK" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="streakLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="CONSISTENCY" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="consistencyLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="LEARNING EFFICIENCY" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="learningEfficiencyLabel" text="No signal" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
+                            <Label text="Recent Reviews" styleClass="section-title" />
+                            <ListView fx:id="recentReviewsListView" prefHeight="260" VBox.vgrow="ALWAYS" />
+                        </VBox>
                     </VBox>
                 </VBox>
     </content>

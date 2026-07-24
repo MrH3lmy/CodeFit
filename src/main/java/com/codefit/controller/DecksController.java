@@ -21,6 +21,8 @@ import java.util.regex.Pattern;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
@@ -41,14 +43,13 @@ public class DecksController extends BaseController {
     private static final DateTimeFormatter DUE_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d");
     private static final Pattern JAVA_BE_MODULE_PATTERN = Pattern.compile("^\\s*Java\\s+BE\\s+(\\d{1,2})\\b.*", Pattern.CASE_INSENSITIVE);
 
-    @FXML private ListView<Deck> deckListView;
+    @FXML private VBox libraryOverviewRoot;
+    @FXML private VBox deckDetailRoot;
+    @FXML private VBox deckCardsList;
     @FXML private ListView<Flashcard> cardListView;
     @FXML private TextField deckNameField;
     @FXML private TextArea deckDescriptionArea;
     @FXML private TextField searchField;
-    @FXML private ToggleButton deckFilterAllButton;
-    @FXML private ToggleButton deckFilterDueButton;
-    @FXML private ToggleButton deckFilterMasteredButton;
     @FXML private ToggleButton cardFilterAllButton;
     @FXML private ToggleButton cardFilterDueButton;
     @FXML private ToggleButton cardFilterMasteredButton;
@@ -58,6 +59,8 @@ public class DecksController extends BaseController {
     @FXML private Label messageLabel;
     @FXML private Label deckEmptyGuidanceLabel;
     @FXML private Label cardEmptyGuidanceLabel;
+    @FXML private Label deckDetailNameLabel;
+    @FXML private Label deckDetailDescriptionLabel;
 
     private final DeckService deckService = new DeckService();
     private final FlashcardService flashcardService = new FlashcardService();
@@ -65,38 +68,21 @@ public class DecksController extends BaseController {
     private final SyllabusService syllabusService = new SyllabusService();
     private final FlashcardImportExportService importExportService = new FlashcardImportExportService(flashcardService);
 
-    private enum DeckFilter { ALL, DUE, MASTERED }
     private enum CardFilter { ALL, DUE, MASTERED, SUSPENDED }
 
-    private DeckFilter deckFilter = DeckFilter.ALL;
     private CardFilter cardFilter = CardFilter.ALL;
+    private Deck currentDeck;
 
     @FXML
     public void initialize() {
-        deckListView.setCellFactory(listView -> new DeckCell());
         cardListView.setCellFactory(listView -> new FlashcardCell());
-        deckListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, deck) -> loadCards(deck));
         configureSearchAndFilters();
-        loadDecks();
+        showLibraryOverview();
+        loadDeckCards();
     }
 
     private void configureSearchAndFilters() {
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> refreshLists());
-
-        ToggleGroup deckFilterGroup = new ToggleGroup();
-        deckFilterAllButton.setToggleGroup(deckFilterGroup);
-        deckFilterDueButton.setToggleGroup(deckFilterGroup);
-        deckFilterMasteredButton.setToggleGroup(deckFilterGroup);
-        deckFilterGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue == null) {
-                deckFilterGroup.selectToggle(oldValue == null ? deckFilterAllButton : oldValue);
-                return;
-            }
-            deckFilter = newValue == deckFilterDueButton ? DeckFilter.DUE
-                    : newValue == deckFilterMasteredButton ? DeckFilter.MASTERED
-                    : DeckFilter.ALL;
-            loadDecks();
-        });
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> loadDeckCards());
 
         ToggleGroup cardFilterGroup = new ToggleGroup();
         cardFilterAllButton.setToggleGroup(cardFilterGroup);
@@ -112,13 +98,8 @@ public class DecksController extends BaseController {
                     : newValue == cardFilterMasteredButton ? CardFilter.MASTERED
                     : newValue == cardFilterSuspendedButton ? CardFilter.SUSPENDED
                     : CardFilter.ALL;
-            loadCards(deckListView.getSelectionModel().getSelectedItem());
+            loadCards(currentDeck);
         });
-    }
-
-    private void refreshLists() {
-        loadDecks();
-        loadCards(deckListView.getSelectionModel().getSelectedItem());
     }
 
     @FXML
@@ -129,11 +110,11 @@ public class DecksController extends BaseController {
         newDeckToggleButton.setText(nowVisible ? "Close" : "+ New Deck");
     }
 
-
     @FXML
     public void importCards() {
-        Deck deck = selectedDeckOrWarn();
+        Deck deck = currentDeck;
         if (deck == null) {
+            setStatus(messageLabel, "Open a deck before importing cards.");
             return;
         }
         File file = tsvFileChooser("Import Cards").showOpenDialog(window());
@@ -145,13 +126,11 @@ public class DecksController extends BaseController {
             ImportSummary summary = importExportService.importAnkiTsv(deck.getId(), file.toPath());
             setStatus(messageLabel, summary.message());
             loadCards(deck);
-            deckListView.refresh();
         } catch (ImportExportException exception) {
             ImportSummary summary = exception.getSummary();
             String prefix = summary == null ? "Import completed with errors." : summary.message();
             setStatus(messageLabel, prefix + " " + String.join(" ", exception.getRowErrors()));
             loadCards(deck);
-            deckListView.refresh();
         } catch (RuntimeException exception) {
             setStatus(messageLabel, exception.getMessage());
         }
@@ -159,8 +138,9 @@ public class DecksController extends BaseController {
 
     @FXML
     public void exportCards() {
-        Deck deck = selectedDeckOrWarn();
+        Deck deck = currentDeck;
         if (deck == null) {
+            setStatus(messageLabel, "Open a deck before exporting cards.");
             return;
         }
         FileChooser fileChooser = tsvFileChooser("Export Cards");
@@ -182,7 +162,7 @@ public class DecksController extends BaseController {
     public void createJavaBackendPath() {
         try {
             deckService.createJavaBackendPath();
-            loadDecks();
+            loadDeckCards();
             setStatus(messageLabel, "Java Backend Engineering path added.");
         } catch (RuntimeException exception) {
             setStatus(messageLabel, exception.getMessage());
@@ -196,47 +176,106 @@ public class DecksController extends BaseController {
             deckNameField.clear();
             deckDescriptionArea.clear();
             setStatus(messageLabel, "Deck created.");
-            loadDecks();
+            loadDeckCards();
         } catch (RuntimeException exception) {
             setStatus(messageLabel, exception.getMessage());
         }
     }
 
-    private void loadDecks() {
-        Deck previouslySelected = deckListView.getSelectionModel().getSelectedItem();
+    private void openDeck(Deck deck) {
+        currentDeck = deck;
+        deckDetailNameLabel.setText(displayText(deck.getName(), "Untitled deck"));
+        deckDetailDescriptionLabel.setText(displayText(deck.getDescription(), "No description yet."));
+        cardFilter = CardFilter.ALL;
+        cardFilterAllButton.setSelected(true);
+        showDeckDetail();
+        loadCards(deck);
+    }
+
+    @FXML
+    public void backToLibrary() {
+        currentDeck = null;
+        showLibraryOverview();
+        loadDeckCards();
+    }
+
+    private void showLibraryOverview() {
+        setVisible(libraryOverviewRoot, true);
+        setVisible(deckDetailRoot, false);
+    }
+
+    private void showDeckDetail() {
+        setVisible(libraryOverviewRoot, false);
+        setVisible(deckDetailRoot, true);
+    }
+
+    private void setVisible(Node node, boolean visible) {
+        node.setVisible(visible);
+        node.setManaged(visible);
+    }
+
+    private void loadDeckCards() {
+        deckCardsList.getChildren().clear();
         List<Deck> allDecks = deckService.getDecks();
         String search = searchText();
         List<Deck> filtered = allDecks.stream()
                 .filter(deck -> matchesDeckSearch(deck, search))
-                .filter(this::matchesDeckFilter)
                 .toList();
 
-        deckListView.setItems(FXCollections.observableArrayList(filtered));
-
         if (allDecks.isEmpty()) {
-            setStatus(messageLabel, "No decks yet. Next action: create your first deck with a focused topic.");
             setStatus(deckEmptyGuidanceLabel, "No decks yet. Create your first deck with a focused topic like Java basics or Git commands.");
-            setStatus(cardEmptyGuidanceLabel, "Cards will appear here after you create a deck and add your first card.");
-            deckListView.setPlaceholder(new Label("Next action: enter a deck name, then choose Create Deck."));
-            cardListView.setPlaceholder(new Label("Create a deck first, then add cards from Add Flashcard."));
-            cardListView.getItems().clear();
             return;
         }
-
-        setStatus(messageLabel, "");
         if (filtered.isEmpty()) {
-            setStatus(deckEmptyGuidanceLabel, "No decks match your search and filters. Try clearing the search or choosing All.");
-            deckListView.setPlaceholder(new Label("No matching decks. Next action: clear the search or filter."));
-            cardListView.getItems().clear();
+            setStatus(deckEmptyGuidanceLabel, "No decks match your search. Try clearing it.");
             return;
         }
-
         setStatus(deckEmptyGuidanceLabel, "");
-        if (previouslySelected != null && filtered.stream().anyMatch(deck -> deck.getId() == previouslySelected.getId())) {
-            deckListView.getSelectionModel().select(previouslySelected);
-        } else {
-            deckListView.getSelectionModel().selectFirst();
-        }
+        filtered.forEach(deck -> deckCardsList.getChildren().add(createDeckCardRow(deck)));
+    }
+
+    private VBox createDeckCardRow(Deck deck) {
+        List<Flashcard> cards = flashcardService.getCardsForDeck(deck.getId());
+        long dueCount = countDueCards(cards);
+        long masteredPercent = Math.round(masteryService.summarize(cards).masteredPercent());
+
+        Label nameLabel = new Label(displayText(deck.getName(), "Untitled deck"));
+        nameLabel.getStyleClass().add("deck-row-title");
+        nameLabel.setWrapText(true);
+
+        Label descriptionLabel = new Label(displayText(deck.getDescription(), "No description yet."));
+        descriptionLabel.getStyleClass().add("deck-row-description");
+        descriptionLabel.setWrapText(true);
+
+        String cardSummary = String.format("%d %s • %d due • %d%% mastered",
+                cards.size(), cards.size() == 1 ? "card" : "cards", dueCount, masteredPercent);
+        Label metadataLabel = new Label(detectJavaBackendModule(deck)
+                .stream()
+                .mapToObj(moduleNumber -> String.format("Module %02d • %s", moduleNumber, cardSummary))
+                .findFirst()
+                .orElse(cardSummary));
+        metadataLabel.getStyleClass().add("deck-row-stats");
+
+        VBox textColumn = new VBox(4, nameLabel, descriptionLabel, metadataLabel);
+        textColumn.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(textColumn, Priority.ALWAYS);
+
+        Button openButton = new Button("Open");
+        openButton.getStyleClass().add("ghost-button");
+        openButton.setMinWidth(70);
+        openButton.setOnAction(event -> openDeck(deck));
+
+        HBox row = new HBox(12, textColumn, openButton);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setMaxWidth(Double.MAX_VALUE);
+        row.getStyleClass().add("deck-row");
+        row.setCursor(Cursor.HAND);
+        row.setOnMouseClicked(event -> openDeck(deck));
+
+        VBox wrapper = new VBox(row);
+        wrapper.getStyleClass().add("panel");
+        wrapper.setMaxWidth(Double.MAX_VALUE);
+        return wrapper;
     }
 
     private boolean matchesDeckSearch(Deck deck, String search) {
@@ -246,36 +285,17 @@ public class DecksController extends BaseController {
         if (deck.getName() != null && deck.getName().toLowerCase().contains(search)) {
             return true;
         }
-        if (deck.getDescription() != null && deck.getDescription().toLowerCase().contains(search)) {
-            return true;
-        }
-        return flashcardService.getCardsForDeck(deck.getId()).stream()
-                .anyMatch(card -> matchesCardSearch(card, search));
-    }
-
-    private boolean matchesDeckFilter(Deck deck) {
-        if (deckFilter == DeckFilter.ALL) {
-            return true;
-        }
-        List<Flashcard> cards = flashcardService.getCardsForDeck(deck.getId());
-        if (deckFilter == DeckFilter.DUE) {
-            return cards.stream().anyMatch(this::isDue);
-        }
-        return masteryService.summarize(cards).masteredPercent() >= 80.0;
+        return deck.getDescription() != null && deck.getDescription().toLowerCase().contains(search);
     }
 
     private void loadCards(Deck deck) {
         if (deck == null) {
-            setStatus(cardEmptyGuidanceLabel, "Select a deck to inspect its cards, or create one if your deck list is empty.");
-            cardListView.setPlaceholder(new Label("No deck selected. Next action: select or create a deck."));
             cardListView.getItems().clear();
             return;
         }
 
         List<Flashcard> allCards = flashcardService.getCardsForDeck(deck.getId());
-        String search = searchText();
         var cards = FXCollections.observableArrayList(allCards.stream()
-                .filter(card -> matchesCardSearch(card, search))
                 .filter(this::matchesCardFilter)
                 .toList());
         boolean hasCards = !allCards.isEmpty();
@@ -284,20 +304,12 @@ public class DecksController extends BaseController {
             setStatus(cardEmptyGuidanceLabel, "No cards in this deck yet. Next action: add your first card to this deck from Add Flashcard.");
             cardListView.setPlaceholder(new Label("Next action: choose Add Card and save the first prompt for this deck."));
         } else if (!hasVisibleCards) {
-            setStatus(cardEmptyGuidanceLabel, "No cards match your search and filters in this deck.");
-            cardListView.setPlaceholder(new Label("No matching cards. Next action: clear the search or filter."));
+            setStatus(cardEmptyGuidanceLabel, "No cards match this filter in this deck.");
+            cardListView.setPlaceholder(new Label("No matching cards. Next action: clear the filter."));
         } else {
             setStatus(cardEmptyGuidanceLabel, "");
         }
         cardListView.setItems(cards);
-    }
-
-    private boolean matchesCardSearch(Flashcard card, String search) {
-        if (search.isEmpty()) {
-            return true;
-        }
-        return (card.getFront() != null && card.getFront().toLowerCase().contains(search))
-                || (card.getBack() != null && card.getBack().toLowerCase().contains(search));
     }
 
     private boolean matchesCardFilter(Flashcard card) {
@@ -313,18 +325,16 @@ public class DecksController extends BaseController {
         return card.getDueDate() != null && !card.getDueDate().isAfter(LocalDate.now());
     }
 
+    private long countDueCards(List<Flashcard> cards) {
+        LocalDate today = LocalDate.now();
+        return cards.stream()
+                .filter(card -> card.getDueDate() != null && !card.getDueDate().isAfter(today))
+                .count();
+    }
+
     private String searchText() {
         String text = searchField == null ? null : searchField.getText();
         return text == null ? "" : text.strip().toLowerCase();
-    }
-
-
-    private Deck selectedDeckOrWarn() {
-        Deck deck = deckListView.getSelectionModel().getSelectedItem();
-        if (deck == null) {
-            setStatus(messageLabel, "Select a deck before importing or exporting cards.");
-        }
-        return deck;
     }
 
     private FileChooser tsvFileChooser(String title) {
@@ -335,7 +345,7 @@ public class DecksController extends BaseController {
     }
 
     private Window window() {
-        return deckListView.getScene() == null ? null : deckListView.getScene().getWindow();
+        return cardListView.getScene() == null ? null : cardListView.getScene().getWindow();
     }
 
     private String safeFileName(String value) {
@@ -347,103 +357,34 @@ public class DecksController extends BaseController {
         return value == null || value.isBlank() ? fallback : value.strip();
     }
 
-    private final class DeckCell extends ListCell<Deck> {
-        private final Label nameLabel = new Label();
-        private final Label descriptionLabel = new Label();
-        private final Label metadataLabel = new Label();
-        private final VBox content = new VBox(4, nameLabel, descriptionLabel, metadataLabel);
-
-        private DeckCell() {
-            nameLabel.getStyleClass().add("deck-row-title");
-            nameLabel.setWrapText(true);
-            nameLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
-            nameLabel.maxWidthProperty().bind(widthProperty().subtract(28));
-
-            descriptionLabel.getStyleClass().add("deck-row-description");
-            descriptionLabel.setWrapText(true);
-            descriptionLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
-            descriptionLabel.maxWidthProperty().bind(widthProperty().subtract(28));
-
-            metadataLabel.getStyleClass().add("deck-row-stats");
-            metadataLabel.setWrapText(true);
-            metadataLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
-            metadataLabel.maxWidthProperty().bind(widthProperty().subtract(28));
-
-            content.getStyleClass().add("deck-row");
-            content.setMaxWidth(Double.MAX_VALUE);
-
-            setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+    private OptionalInt detectJavaBackendModule(Deck deck) {
+        if (deck == null) {
+            return OptionalInt.empty();
         }
 
-        @Override
-        protected void updateItem(Deck deck, boolean empty) {
-            super.updateItem(deck, empty);
-            if (empty || deck == null) {
-                setGraphic(null);
-                return;
-            }
-
-            List<Flashcard> cards = flashcardService.getCardsForDeck(deck.getId());
-            long totalCards = cards.size();
-            long dueCards = countDueCards(cards);
-            long masteredPercent = Math.round(masteryService.summarize(cards).masteredPercent());
-
-            nameLabel.setText(displayText(deck.getName(), "Untitled deck"));
-            descriptionLabel.setText(displayText(deck.getDescription(), "No description yet."));
-            metadataLabel.setText(formatMetadata(deck, totalCards, dueCards, masteredPercent));
-            setGraphic(content);
+        OptionalInt syllabusModule = syllabusService.getJavaBackendModules().stream()
+                .filter(module -> module.getDeckId() == deck.getId()
+                        || module.getDeckName().equalsIgnoreCase(deck.getName()))
+                .mapToInt(module -> module.getModuleNumber())
+                .findFirst();
+        if (syllabusModule.isPresent()) {
+            return syllabusModule;
         }
 
-        private String formatMetadata(Deck deck, long totalCards, long dueCards, long masteredPercent) {
-            String cardSummary = String.format(
-                    "%d %s • %d due • %d%% mastered",
-                    totalCards,
-                    totalCards == 1 ? "card" : "cards",
-                    dueCards,
-                    masteredPercent);
-            return detectJavaBackendModule(deck)
-                    .stream()
-                    .mapToObj(moduleNumber -> String.format("Module %02d • %s", moduleNumber, cardSummary))
-                    .findFirst()
-                    .orElse(cardSummary);
+        return parseJavaBackendModule(deck.getName());
+    }
+
+    private OptionalInt parseJavaBackendModule(String deckName) {
+        if (deckName == null) {
+            return OptionalInt.empty();
         }
 
-        private OptionalInt detectJavaBackendModule(Deck deck) {
-            if (deck == null) {
-                return OptionalInt.empty();
-            }
-
-            OptionalInt syllabusModule = syllabusService.getJavaBackendModules().stream()
-                    .filter(module -> module.getDeckId() == deck.getId()
-                            || module.getDeckName().equalsIgnoreCase(deck.getName()))
-                    .mapToInt(module -> module.getModuleNumber())
-                    .findFirst();
-            if (syllabusModule.isPresent()) {
-                return syllabusModule;
-            }
-
-            return parseJavaBackendModule(deck.getName());
+        Matcher matcher = JAVA_BE_MODULE_PATTERN.matcher(deckName);
+        if (!matcher.matches()) {
+            return OptionalInt.empty();
         }
 
-        private OptionalInt parseJavaBackendModule(String deckName) {
-            if (deckName == null) {
-                return OptionalInt.empty();
-            }
-
-            Matcher matcher = JAVA_BE_MODULE_PATTERN.matcher(deckName);
-            if (!matcher.matches()) {
-                return OptionalInt.empty();
-            }
-
-            return OptionalInt.of(Integer.parseInt(matcher.group(1)));
-        }
-
-        private long countDueCards(List<Flashcard> cards) {
-            LocalDate today = LocalDate.now();
-            return cards.stream()
-                    .filter(card -> card.getDueDate() != null && !card.getDueDate().isAfter(today))
-                    .count();
-        }
+        return OptionalInt.of(Integer.parseInt(matcher.group(1)));
     }
 
     private static final class FlashcardCell extends ListCell<Flashcard> {

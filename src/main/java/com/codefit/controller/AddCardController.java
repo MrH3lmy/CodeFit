@@ -12,18 +12,16 @@ import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TitledPane;
 import javafx.scene.layout.VBox;
 
 public class AddCardController extends BaseController {
-    private static final String FRONT_PREVIEW_FALLBACK = "Your prompt preview will appear here.";
-    private static final String BACK_PREVIEW_FALLBACK = "Your answer preview will appear here.";
     private static final String DEFAULT_JAVA_BE_SKILL_CATEGORY = "Spring REST";
     private static final String[] JAVA_BE_SKILL_CATEGORIES = {
             "Spring REST", "JPA", "SQL", "Testing", "Security"
@@ -40,12 +38,8 @@ public class AddCardController extends BaseController {
     @FXML private TextArea acceptedAnswersArea;
     @FXML private TextArea simulatedOutputArea;
     @FXML private Label messageLabel;
-    @FXML private Label templateHelpLabel;
-    @FXML private Label templateExampleLabel;
     @FXML private Label frontLabel;
-    @FXML private Label frontHelpLabel;
     @FXML private Label backLabel;
-    @FXML private Label backHelpLabel;
     @FXML private Label acceptedAnswersLabel;
     @FXML private Label simulatedOutputLabel;
     @FXML private VBox validationField;
@@ -55,13 +49,9 @@ public class AddCardController extends BaseController {
     @FXML private VBox hintField;
     @FXML private VBox acceptedAnswersField;
     @FXML private VBox simulatedOutputField;
-    @FXML private TitledPane practiceSettingsSection;
-    @FXML private Label frontPreviewLabel;
-    @FXML private Label backPreviewLabel;
     @FXML private Label pageTitleLabel;
-    @FXML private Label pageSubtitleLabel;
-    @FXML private Button saveCardButton;
-    @FXML private Button saveAndCloseButton;
+    @FXML private CheckBox addAnotherCheckBox;
+    @FXML private Button saveButton;
     @FXML private Button createDeckButton;
 
     private final DeckService deckService = new DeckService();
@@ -80,12 +70,6 @@ public class AddCardController extends BaseController {
         timeLimitSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 5));
         cardTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applyTemplate(newValue));
         deckComboBox.valueProperty().addListener((observable, oldValue, newValue) -> suggestJavaBeSkillCategory(newValue));
-        frontPreviewLabel.setText(previewText(frontArea.getText(), FRONT_PREVIEW_FALLBACK));
-        backPreviewLabel.setText(previewText(backArea.getText(), BACK_PREVIEW_FALLBACK));
-        frontArea.textProperty().addListener((observable, oldValue, newValue) ->
-                frontPreviewLabel.setText(previewText(newValue, FRONT_PREVIEW_FALLBACK)));
-        backArea.textProperty().addListener((observable, oldValue, newValue) ->
-                backPreviewLabel.setText(previewText(newValue, BACK_PREVIEW_FALLBACK)));
         applyTemplate(cardTypeComboBox.getValue());
         pendingReflectionType = NavigationService.consumePendingReflectionType();
         Long editCardId = NavigationService.consumePendingEditCardId();
@@ -101,8 +85,7 @@ public class AddCardController extends BaseController {
         simulatedOutputArea.setDisable(hasNoDecks);
         timeLimitSpinner.setDisable(hasNoDecks);
         skillCategoryField.setDisable(hasNoDecks);
-        saveCardButton.setDisable(hasNoDecks);
-        saveAndCloseButton.setDisable(hasNoDecks);
+        saveButton.setDisable(hasNoDecks);
         createDeckButton.setVisible(hasNoDecks);
         createDeckButton.setManaged(hasNoDecks);
 
@@ -127,10 +110,10 @@ public class AddCardController extends BaseController {
 
         editingCardId = cardId;
         pageTitleLabel.setText("Edit Card");
-        pageSubtitleLabel.setText("Update the prompt, answer, or advanced settings for this card.");
-        saveCardButton.setVisible(false);
-        saveCardButton.setManaged(false);
-        saveAndCloseButton.setText("Save Changes");
+        addAnotherCheckBox.setSelected(false);
+        addAnotherCheckBox.setVisible(false);
+        addAnotherCheckBox.setManaged(false);
+        saveButton.setText("Save Changes");
 
         deckComboBox.getItems().stream()
                 .filter(deck -> deck.getId() == card.getDeckId())
@@ -151,12 +134,7 @@ public class AddCardController extends BaseController {
 
     @FXML
     public void saveCard() {
-        persistCard(false);
-    }
-
-    @FXML
-    public void saveAndClose() {
-        persistCard(true);
+        persistCard(editingCardId != null || !addAnotherCheckBox.isSelected());
     }
 
     private void persistCard(boolean closeAfterSave) {
@@ -279,7 +257,6 @@ public class AddCardController extends BaseController {
         boolean codeOutput = template == CardType.CODE_OUTPUT;
         boolean regex = template == CardType.REGEX_PATTERN;
         boolean sql = template == CardType.SQL_QUERY;
-        boolean concept = template == CardType.RECALL || template == CardType.CONCEPT;
 
         boolean hasPracticeSettings = command || regex || sql || codeOutput;
         setVisible(validationField, hasPracticeSettings);
@@ -287,8 +264,6 @@ public class AddCardController extends BaseController {
         setVisible(acceptedAnswersField, command || regex || sql);
         setVisible(simulatedOutputField, command || codeOutput);
         setVisible(hintField, !regex);
-        practiceSettingsSection.setVisible(hasPracticeSettings);
-        practiceSettingsSection.setManaged(hasPracticeSettings);
 
         if (command) {
             validationModeComboBox.getSelectionModel().select(ValidationMode.COMMAND_NORMALIZED);
@@ -300,43 +275,31 @@ public class AddCardController extends BaseController {
 
         switch (template) {
             case LINUX_COMMAND -> configureCopy(
-                    "Linux command template: practice terminal syntax, aliases, and expected output.",
-                    "Example: Prompt: Compress logs older than 7 days. Answer: find ./logs -mtime +7 -name \"*.log\" -exec gzip {} \\;",
                     "Task", "Describe the Linux task to complete (for example, list hidden files).",
                     "Canonical command", "Enter the preferred command and a short explanation.",
                     "Accepted command variants", "Accepted Linux commands, one per line (for example: ls -la\nls -al)",
                     "Simulated terminal output", "Optional terminal output shown after reveal");
             case GIT_COMMAND -> configureCopy(
-                    "Git command template: capture repository tasks and valid command variants.",
-                    "Example: Prompt: Undo staged changes. Answer: git restore --staged .",
                     "Git task", "Describe the Git operation to perform (for example, undo staged changes).",
                     "Canonical Git command", "Enter the preferred Git command and why it works.",
                     "Accepted Git variants", "Accepted Git commands, one per line",
                     "Simulated Git output", "Optional Git output shown after reveal");
             case SQL_QUERY -> configureCopy(
-                    "SQL query template: focus on schema, expected query, and equivalent answers.",
-                    "Example: Prompt: Given orders(id, status), count shipped orders. Answer: SELECT COUNT(*) FROM orders WHERE status = 'SHIPPED';",
                     "SQL query prompt", "Describe the table schema and the query result learners should produce.",
                     "Expected query or result", "Enter the expected query, query result, and a brief explanation of important clauses.",
                     "Accepted query variants", "Accepted SQL queries, one per line",
                     "", "");
             case REGEX_PATTERN -> configureCopy(
-                    "Regex template: define matching requirements and accepted patterns.",
-                    "Example: Prompt: Match a 5-digit ZIP code only. Answer: ^\\d{5}$",
                     "Matching requirement", "Describe strings that should match and not match.",
                     "Regex explanation", "Explain the pattern and any flags or anchors.",
                     "Accepted regex patterns", "Accepted regex patterns, one per line",
                     "", "");
             case CODE_OUTPUT -> configureCopy(
-                    "Code output template: ask learners to predict Java BE behavior or output.",
-                    "Example: Prompt: What happens when a @Transactional service throws a RuntimeException? Answer: The transaction rolls back by default.",
                     "Java BE scenario", "Describe REST endpoint behavior, a Spring annotation, SQL query, or exception scenario.",
                     "Expected behavior", "Enter the expected HTTP status, annotation purpose, query result, or short explanation.",
                     "", "",
                     "Runtime output", "Optional runtime output shown after reveal");
             default -> configureCopy(
-                    concept ? "Java BE concept template: capture one focused REST, Spring, SQL, testing, or security idea." : "Command template: practice command syntax and output safely.",
-                    command ? "Example: Prompt: Show disk usage for this folder. Answer: du -sh ." : "Example: Prompt: Which annotation maps a controller method to POST /orders? Answer: @PostMapping(\"/orders\") declares the POST route.",
                     "Prompt", "Use Java BE prompts such as REST endpoint behavior, a SQL query task, a Spring annotation question, or an exception scenario.",
                     "Answer", "Answer with the expected HTTP status, annotation purpose, query result, or a short explanation.",
                     "Accepted command answers", "Accepted command answers, one per line",
@@ -362,17 +325,12 @@ public class AddCardController extends BaseController {
         return DEFAULT_JAVA_BE_SKILL_CATEGORY;
     }
 
-    private void configureCopy(String templateHelp, String templateExample, String frontTitle, String frontHelp, String backTitle, String backHelp,
+    private void configureCopy(String frontTitle, String frontHelp, String backTitle, String backHelp,
                                String acceptedTitle, String acceptedPrompt, String outputTitle, String outputPrompt) {
-        templateHelpLabel.setText(templateHelp);
-        templateExampleLabel.setText(templateExample);
-        boolean hasExample = templateExample != null && !templateExample.isBlank();
-        templateExampleLabel.setVisible(hasExample);
-        templateExampleLabel.setManaged(hasExample);
         frontLabel.setText(frontTitle);
-        frontHelpLabel.setText(frontHelp);
+        frontArea.setPromptText(frontHelp);
         backLabel.setText(backTitle);
-        backHelpLabel.setText(backHelp);
+        backArea.setPromptText(backHelp);
         acceptedAnswersLabel.setText(acceptedTitle);
         acceptedAnswersArea.setPromptText(acceptedPrompt);
         simulatedOutputLabel.setText(outputTitle);
@@ -382,12 +340,5 @@ public class AddCardController extends BaseController {
     private void setVisible(VBox field, boolean visible) {
         field.setVisible(visible);
         field.setManaged(visible);
-    }
-
-    private String previewText(String value, String fallback) {
-        if (value == null || value.isBlank()) {
-            return fallback;
-        }
-        return value.strip();
     }
 }

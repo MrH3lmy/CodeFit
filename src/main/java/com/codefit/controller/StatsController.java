@@ -1,27 +1,25 @@
 package com.codefit.controller;
 
-import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.UserProgress;
 import com.codefit.service.EngineerReadinessStats;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.MasteryService;
-import com.codefit.service.ProgressService;
 import com.codefit.service.StatsService;
-import com.codefit.service.SystemMessageService;
 import com.codefit.service.StatsSkillPerformance;
-import com.codefit.service.WeeklyBossResult;
 import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -31,27 +29,14 @@ import java.time.LocalDate;
 import java.util.List;
 
 public class StatsController extends BaseController {
-    @FXML private Label levelLabel;
-    @FXML private Label xpLabel;
-    @FXML private Label streakLabel;
-    @FXML private Label totalReviewsLabel;
-    @FXML private Label totalCardsLabel;
-    @FXML private Label dueCardsLabel;
-    @FXML private Label reviewedTodayLabel;
     @FXML private Label readinessScoreLabel;
     @FXML private Label timedFluencyLabel;
     @FXML private Label weakAreaPressureLabel;
+    @FXML private Label streakLabel;
     @FXML private Label consistencyLabel;
     @FXML private Label subjectiveSelfAssessmentLabel;
     @FXML private Label confidenceCalibrationLabel;
     @FXML private Label statsEmptyStateLabel;
-    @FXML private Label weeklyBossScoreLabel;
-    @FXML private Label weeklyBossWeakAreasLabel;
-    @FXML private Label weeklyBossFocusLabel;
-    @FXML private Label workloadModeDetailLabel;
-    @FXML private Button weeklyBossButton;
-    @FXML private ChoiceBox<DailyWorkloadMode> workloadModeChoiceBox;
-    @FXML private ProgressBar xpProgressBar;
     @FXML private VBox statsEmptyStateBox;
     @FXML private ListView<String> recentReviewsListView;
     @FXML private ListView<StatsSkillPerformance> skillPerformanceListView;
@@ -64,35 +49,35 @@ public class StatsController extends BaseController {
     @FXML private Label masteryLearningLabel;
     @FXML private Label masteryMasteredLabel;
     @FXML private Label learningEfficiencyLabel;
+    @FXML private ToggleButton overviewTabButton;
+    @FXML private ToggleButton skillsTabButton;
+    @FXML private ToggleButton activityTabButton;
+    @FXML private VBox overviewTabPanel;
+    @FXML private VBox skillsTabPanel;
+    @FXML private VBox activityTabPanel;
 
     private static final int MAX_PROMPT_LENGTH = 48;
 
     private final StatsService statsService = new StatsService();
-    private final ProgressService progressService = new ProgressService();
     private final FlashcardService flashcardService = new FlashcardService();
     private final MasteryService masteryService = new MasteryService();
-    private final SystemMessageService systemMessageService = new SystemMessageService();
+
+    private enum ProgressTab { OVERVIEW, SKILLS, ACTIVITY }
+
+    private ProgressTab activeTab = ProgressTab.OVERVIEW;
 
     @FXML
     public void initialize() {
         UserProgress progress = statsService.getProgress();
-        levelLabel.setText(progress.getLevelRankLabel(progressService.getRankTitle(progress)));
-        xpLabel.setText(progress.getXp() + " XP");
         streakLabel.setText(progress.getStreakDays() + " days");
-        totalReviewsLabel.setText(String.valueOf(progress.getTotalReviews()));
-        totalCardsLabel.setText(String.valueOf(statsService.getTotalCards()));
-        dueCardsLabel.setText(String.valueOf(statsService.getDueCards()));
-        reviewedTodayLabel.setText(String.valueOf(statsService.getReviewedToday()));
-        xpProgressBar.setProgress((progress.getXp() % ProgressService.XP_PER_LEVEL) / (double) ProgressService.XP_PER_LEVEL);
         EngineerReadinessStats readinessStats = statsService.getEngineerReadinessStats();
         configureReadinessStats(readinessStats);
         configureStatsEmptyState(progress.getTotalReviews());
-        configureWeeklyBossResult(statsService.getLatestWeeklyBossResult());
-        configureWorkloadMode(progress);
         populateHeroMetrics(readinessStats);
         populateMasteryBreakdown();
         populateWeakestSkillsCompact();
         populateLearningEfficiency();
+        configureTabs();
 
         configureSkillPerformanceList();
         configureNeedsPracticeList();
@@ -113,35 +98,33 @@ public class StatsController extends BaseController {
                 : FXCollections.observableArrayList(needsPractice));
     }
 
-
-    private void configureWorkloadMode(UserProgress progress) {
-        workloadModeChoiceBox.setItems(FXCollections.observableArrayList(DailyWorkloadMode.values()));
-        workloadModeChoiceBox.setConverter(new javafx.util.StringConverter<>() {
-            @Override
-            public String toString(DailyWorkloadMode mode) {
-                return mode == null ? "Normal" : mode.getDisplayName();
-            }
-
-            @Override
-            public DailyWorkloadMode fromString(String value) {
-                return DailyWorkloadMode.fromDatabaseValue(value);
-            }
-        });
-        workloadModeChoiceBox.setValue(progress.getDailyWorkloadMode());
-        updateWorkloadModeDetail(progress.getDailyWorkloadMode());
-        workloadModeChoiceBox.getSelectionModel().selectedItemProperty().addListener((observable, oldMode, newMode) -> {
-            if (newMode == null || newMode == oldMode) {
+    private void configureTabs() {
+        ToggleGroup tabGroup = new ToggleGroup();
+        overviewTabButton.setToggleGroup(tabGroup);
+        skillsTabButton.setToggleGroup(tabGroup);
+        activityTabButton.setToggleGroup(tabGroup);
+        tabGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null) {
+                tabGroup.selectToggle(oldValue == null ? overviewTabButton : oldValue);
                 return;
             }
-            UserProgress latestProgress = progressService.getProgress();
-            latestProgress.setDailyWorkloadMode(newMode);
-            progressService.saveProgress(latestProgress);
-            updateWorkloadModeDetail(newMode);
+            activeTab = newValue == skillsTabButton ? ProgressTab.SKILLS
+                    : newValue == activityTabButton ? ProgressTab.ACTIVITY
+                    : ProgressTab.OVERVIEW;
+            updateTabVisibility();
         });
+        updateTabVisibility();
     }
 
-    private void updateWorkloadModeDetail(DailyWorkloadMode mode) {
-        workloadModeDetailLabel.setText(mode.getSummary() + " · quest target " + mode.getDueReviewQuestTarget() + " due reviews");
+    private void updateTabVisibility() {
+        setVisible(overviewTabPanel, activeTab == ProgressTab.OVERVIEW);
+        setVisible(skillsTabPanel, activeTab == ProgressTab.SKILLS);
+        setVisible(activityTabPanel, activeTab == ProgressTab.ACTIVITY);
+    }
+
+    private void setVisible(Node node, boolean visible) {
+        node.setVisible(visible);
+        node.setManaged(visible);
     }
 
     private void configureReadinessStats(EngineerReadinessStats readinessStats) {
@@ -196,7 +179,7 @@ public class StatsController extends BaseController {
     }
 
     /** Ranked, at-a-glance view of the weakest skills; the full drill-down list with sample size
-     *  and a review action lives in the Needs Practice panel below. */
+     *  and a review action lives in the Skills tab. */
     private void populateWeakestSkillsCompact() {
         weakestSkillsCompactList.getChildren().clear();
         List<StatsSkillPerformance> weakSkills = statsService.getNeedsPracticeSkills();
@@ -259,32 +242,6 @@ public class StatsController extends BaseController {
         if (empty) {
             statsEmptyStateLabel.setText("Stats appear after review sessions. Complete one review session to unlock accuracy, weak-area, and activity signals.");
         }
-    }
-
-    private void configureWeeklyBossResult(WeeklyBossResult result) {
-        boolean weeklyBossAvailable = statsService.isWeeklyBossAvailable();
-        if (!result.hasSignal()) {
-            weeklyBossScoreLabel.setText("No weekly result yet");
-            weeklyBossWeakAreasLabel.setText("Weak areas appear after your first boss battle.");
-            weeklyBossFocusLabel.setText(weeklyBossAvailable
-                    ? systemMessageService.formatBossBattleUnlockMessage()
-                    : result.recommendedFocus());
-        } else {
-            weeklyBossScoreLabel.setText(formatPercent(result.scorePercent()) + " score across " + result.reviewedCards() + " cards");
-            weeklyBossWeakAreasLabel.setText(result.weakAreas().isEmpty()
-                    ? "Weak areas: none detected in the latest battle."
-                    : "Weak areas: " + String.join(", ", result.weakAreas()));
-            weeklyBossFocusLabel.setText(weeklyBossAvailable
-                    ? systemMessageService.formatBossBattleUnlockMessage() + " Recommended training focus: " + result.recommendedFocus()
-                    : "Recommended training focus: " + result.recommendedFocus());
-        }
-        weeklyBossButton.setDisable(!weeklyBossAvailable);
-        weeklyBossButton.setText(weeklyBossAvailable ? "Start Weekly Boss Battle" : "Boss Battle Complete This Week");
-    }
-
-    @FXML
-    public void startWeeklyBossBattle() {
-        NavigationService.showWeeklyBossBattle();
     }
 
     private void configureSkillPerformanceList() {

@@ -22,6 +22,7 @@ public class Sidebar extends VBox {
     @FXML private Button reviewButton;
     @FXML private Button libraryButton;
     @FXML private Button progressButton;
+    @FXML private Button settingsButton;
     @FXML private ChoiceBox<String> themeChoiceBox;
     @FXML private Label subtitleLabel;
     @FXML private VBox footerCard;
@@ -82,6 +83,11 @@ public class Sidebar extends VBox {
     @FXML
     private void goProgress() {
         NavigationService.showStats();
+    }
+
+    @FXML
+    private void goSettings() {
+        NavigationService.showSettings();
     }
 
     private void configureCompactBehavior() {

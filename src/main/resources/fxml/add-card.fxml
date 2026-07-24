@@ -5,98 +5,70 @@
 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.AddCardController">
     <content>
                 <VBox spacing="18" styleClass="content" maxWidth="Infinity">
-                    <VBox spacing="8" styleClass="page-header" maxWidth="Infinity">
+                    <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
                         <Label fx:id="pageTitleLabel" text="New Card" styleClass="page-title" wrapText="true" />
-                        <Label fx:id="pageSubtitleLabel" text="Capture one focused prompt and answer, then file it into the right deck." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
-                    <FlowPane hgap="20" vgap="20" prefWrapLength="720" styleClass="workspace-grid" maxWidth="Infinity" VBox.vgrow="ALWAYS">
-                        <VBox spacing="14" styleClass="composer-card primary-column" minWidth="0" prefWidth="460" maxWidth="Infinity">
-                            <Label text="Card Composer" styleClass="section-title" />
-                            <VBox spacing="12" maxWidth="Infinity">
-                                <Label text="Required fields" styleClass="section-title" />
-                                <VBox spacing="6" maxWidth="Infinity">
-                                    <Label text="Deck" styleClass="section-title" />
-                                    <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
-                                    <Button fx:id="createDeckButton" text="Create a Deck" onAction="#goDecks" styleClass="nav-button-primary" visible="false" managed="false" />
-                                </VBox>
-                                <VBox spacing="6" maxWidth="Infinity">
-                                    <Label text="Template" styleClass="section-title" />
-                                    <ComboBox fx:id="cardTypeComboBox" maxWidth="Infinity" />
-                                    <Label fx:id="templateHelpLabel" text="Choose a technical-skill template to tailor the fields below." styleClass="helper-text" wrapText="true" />
-                                    <Label fx:id="templateExampleLabel" styleClass="helper-text" wrapText="true" visible="false" managed="false" />
-                                </VBox>
-                                <VBox fx:id="frontField" spacing="6" maxWidth="Infinity">
-                                    <Label fx:id="frontLabel" text="Prompt" styleClass="section-title" />
-                                    <TextArea fx:id="frontArea" promptText="Example: What HTTP status should a POST create endpoint return?" prefRowCount="6" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
-                                    <Label fx:id="frontHelpLabel" text="Use Java BE prompts such as REST endpoint behavior, a SQL query task, a Spring annotation question, or an exception scenario." styleClass="helper-text" wrapText="true" />
-                                </VBox>
-                                <VBox fx:id="backField" spacing="6" maxWidth="Infinity">
-                                    <Label fx:id="backLabel" text="Answer" styleClass="section-title" />
-                                    <TextArea fx:id="backArea" promptText="Example: 201 Created with a Location header" prefRowCount="8" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
-                                    <Label fx:id="backHelpLabel" text="Answer with the expected HTTP status, annotation purpose, query result, or a short explanation." styleClass="helper-text" wrapText="true" />
-                                </VBox>
-                            </VBox>
-                            <TitledPane text="Optional details" expanded="false" maxWidth="Infinity">
-                                <content>
-                                    <VBox spacing="12" maxWidth="Infinity">
-                                        <VBox spacing="6" maxWidth="Infinity">
-                                            <Label text="Skill / Category" styleClass="section-title" />
-                                            <TextField fx:id="skillCategoryField" promptText="Example: Spring REST, JPA, SQL, Testing, Security" maxWidth="Infinity" />
-                                            <Label text="Categories power per-skill stats and weak-area detection." styleClass="helper-text" wrapText="true" />
-                                        </VBox>
-                                        <VBox fx:id="hintField" spacing="6" maxWidth="Infinity">
-                                            <Label text="Hint (optional)" styleClass="section-title" />
-                                            <TextArea fx:id="hintArea" promptText="Optional clue shown during review before the answer" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
-                                            <Label text="Hints should nudge recall without giving away the full answer." styleClass="helper-text" wrapText="true" />
-                                        </VBox>
-                                    </VBox>
-                                </content>
-                            </TitledPane>
-                            <TitledPane fx:id="practiceSettingsSection" text="Validation, accepted answers, and output" expanded="false" maxWidth="Infinity">
-                                <content>
-                                    <VBox spacing="12" maxWidth="Infinity">
-                                        <VBox fx:id="acceptedAnswersField" spacing="6" maxWidth="Infinity">
-                                            <Label fx:id="acceptedAnswersLabel" text="Accepted Answers" styleClass="section-title" />
-                                            <TextArea fx:id="acceptedAnswersArea" promptText="Accepted answers, one per line" prefRowCount="4" wrapText="true" maxWidth="Infinity" />
-                                        </VBox>
-                                        <VBox fx:id="simulatedOutputField" spacing="6" maxWidth="Infinity">
-                                            <Label fx:id="simulatedOutputLabel" text="Simulated Output" styleClass="section-title" />
-                                            <TextArea fx:id="simulatedOutputArea" promptText="Optional simulated output shown after reveal" prefRowCount="4" wrapText="true" maxWidth="Infinity" />
-                                        </VBox>
-                                        <VBox fx:id="validationField" spacing="6" maxWidth="Infinity">
-                                            <Label text="Validation" styleClass="section-title" />
-                                            <ComboBox fx:id="validationModeComboBox" maxWidth="Infinity" />
-                                        </VBox>
-                                        <VBox fx:id="timeLimitField" spacing="6" maxWidth="Infinity">
-                                            <Label text="Optional Time Limit" styleClass="section-title" />
-                                            <HBox spacing="10" alignment="CENTER_LEFT">
-                                                <Spinner fx:id="timeLimitSpinner" editable="true" prefWidth="120" />
-                                                <Label text="seconds (0 = untimed)" styleClass="helper-text" wrapText="true" />
-                                            </HBox>
-                                        </VBox>
-                                    </VBox>
-                                </content>
-                            </TitledPane>
-                            <HBox spacing="10" maxWidth="Infinity">
-                                <Button fx:id="saveCardButton" text="Save &amp; Add Another" onAction="#saveCard" styleClass="action-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
-                                <Button fx:id="saveAndCloseButton" text="Save &amp; Close" onAction="#saveAndClose" styleClass="primary-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
-                            </HBox>
+
+                    <VBox spacing="14" styleClass="composer-card" maxWidth="640">
+                        <VBox spacing="6" maxWidth="Infinity">
+                            <Label text="Deck" styleClass="section-title" />
+                            <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
+                            <Button fx:id="createDeckButton" text="Create a Deck" onAction="#goDecks" styleClass="nav-button-primary" visible="false" managed="false" />
                         </VBox>
-                        <VBox spacing="14" styleClass="tips-card side-panel" minWidth="0" prefWidth="280" maxWidth="Infinity">
-                            <Label text="Preview &amp; tips" styleClass="section-title" wrapText="true" />
-                            <Label text="Front" styleClass="stat-label" />
-                            <Label fx:id="frontPreviewLabel" text="Your prompt preview will appear here." styleClass="section-title" wrapText="true" />
-                            <Label text="Use the prompt field for the exact cue you want to see during review." styleClass="muted" wrapText="true" />
-                            <Separator />
-                            <Label text="Back" styleClass="stat-label" />
-                            <Label fx:id="backPreviewLabel" text="Your answer preview will appear here." styleClass="section-title" wrapText="true" />
-                            <Label text="Answers work best when they start with the short response and follow with just enough context." styleClass="muted" wrapText="true" />
-                            <Separator />
-                            <Label text="Tip" styleClass="stat-label" />
-                            <Label text="One idea per card keeps practice fast and helps spaced repetition find weak spots sooner." styleClass="helper-text" wrapText="true" />
+                        <VBox spacing="6" maxWidth="Infinity">
+                            <Label text="Type" styleClass="section-title" />
+                            <ComboBox fx:id="cardTypeComboBox" maxWidth="Infinity" />
                         </VBox>
-                    </FlowPane>
+                        <VBox fx:id="frontField" spacing="6" maxWidth="Infinity">
+                            <Label fx:id="frontLabel" text="Prompt" styleClass="section-title" />
+                            <TextArea fx:id="frontArea" promptText="Example: What HTTP status should a POST create endpoint return?" prefRowCount="6" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
+                        </VBox>
+                        <VBox fx:id="backField" spacing="6" maxWidth="Infinity">
+                            <Label fx:id="backLabel" text="Answer" styleClass="section-title" />
+                            <TextArea fx:id="backArea" promptText="Example: 201 Created with a Location header" prefRowCount="8" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
+                        </VBox>
+
+                        <TitledPane text="Advanced" expanded="false" maxWidth="Infinity">
+                            <content>
+                                <VBox spacing="12" maxWidth="Infinity">
+                                    <VBox spacing="6" maxWidth="Infinity">
+                                        <Label text="Skill / Category" styleClass="section-title" />
+                                        <TextField fx:id="skillCategoryField" promptText="Example: Spring REST, JPA, SQL, Testing, Security" maxWidth="Infinity" />
+                                    </VBox>
+                                    <VBox fx:id="hintField" spacing="6" maxWidth="Infinity">
+                                        <Label text="Hint" styleClass="section-title" />
+                                        <TextArea fx:id="hintArea" promptText="Optional clue shown during review before the answer" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
+                                    </VBox>
+                                    <VBox fx:id="acceptedAnswersField" spacing="6" maxWidth="Infinity">
+                                        <Label fx:id="acceptedAnswersLabel" text="Accepted Answers" styleClass="section-title" />
+                                        <TextArea fx:id="acceptedAnswersArea" promptText="Accepted answers, one per line" prefRowCount="4" wrapText="true" maxWidth="Infinity" />
+                                    </VBox>
+                                    <VBox fx:id="simulatedOutputField" spacing="6" maxWidth="Infinity">
+                                        <Label fx:id="simulatedOutputLabel" text="Simulated Output" styleClass="section-title" />
+                                        <TextArea fx:id="simulatedOutputArea" promptText="Optional simulated output shown after reveal" prefRowCount="4" wrapText="true" maxWidth="Infinity" />
+                                    </VBox>
+                                    <VBox fx:id="validationField" spacing="6" maxWidth="Infinity">
+                                        <Label text="Validation" styleClass="section-title" />
+                                        <ComboBox fx:id="validationModeComboBox" maxWidth="Infinity" />
+                                    </VBox>
+                                    <VBox fx:id="timeLimitField" spacing="6" maxWidth="Infinity">
+                                        <Label text="Time Limit" styleClass="section-title" />
+                                        <HBox spacing="10" alignment="CENTER_LEFT">
+                                            <Spinner fx:id="timeLimitSpinner" editable="true" prefWidth="120" />
+                                            <Label text="seconds (0 = untimed)" styleClass="helper-text" wrapText="true" />
+                                        </HBox>
+                                    </VBox>
+                                </VBox>
+                            </content>
+                        </TitledPane>
+
+                        <HBox spacing="10" alignment="CENTER_LEFT" maxWidth="Infinity">
+                            <CheckBox fx:id="addAnotherCheckBox" text="Add another after saving" />
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Button fx:id="saveButton" text="Save Card" onAction="#saveCard" styleClass="primary-button" />
+                        </HBox>
+                    </VBox>
                 </VBox>
     </content>
 </ScrollPane>

@@ -79,6 +79,7 @@
 
 .confidence-panel {
     -fx-padding: 2 0;
+    -fx-opacity: 0.85;
 }
 
 .confidence-button {

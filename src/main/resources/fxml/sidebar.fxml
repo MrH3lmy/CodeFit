@@ -23,6 +23,8 @@
         <ChoiceBox fx:id="themeChoiceBox" maxWidth="Infinity" />
     </VBox>
 
+    <Button fx:id="settingsButton" text="Settings" onAction="#goSettings" maxWidth="Infinity" styleClass="nav-item" />
+
     <VBox fx:id="footerCard" styleClass="sidebar-footer-card" spacing="4">
         <Label text="Keep it warm" styleClass="sidebar-footer-title" />
         <Label text="Review a few cards today to protect your streak." styleClass="sidebar-footer-text" wrapText="true" />

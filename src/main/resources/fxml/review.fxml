@@ -11,7 +11,6 @@
                 <Label fx:id="queueLabel" styleClass="pill" wrapText="true" />
                 <Label fx:id="timerLabel" styleClass="pill" wrapText="true" visible="false" managed="false" />
                 <Label fx:id="sessionTimeLabel" styleClass="pill" wrapText="true" visible="false" managed="false" />
-                <Label fx:id="workloadModeLabel" styleClass="pill" wrapText="true" />
             </HBox>
             <ProgressBar fx:id="sessionProgressBar" maxWidth="Infinity" styleClass="review-session-progress" />
 
@@ -82,22 +81,22 @@
                     </VBox>
 
                     <VBox fx:id="ratingPanel" spacing="14" styleClass="rating-panel" maxWidth="Infinity" visible="false" managed="false">
-                        <TilePane hgap="14" vgap="14" prefTileWidth="164" maxWidth="Infinity" tileAlignment="TOP_LEFT" styleClass="rating-grid">
-                            <VBox spacing="7" styleClass="rating-option">
+                        <TilePane hgap="10" vgap="10" prefTileWidth="140" maxWidth="Infinity" tileAlignment="TOP_LEFT" styleClass="rating-grid">
+                            <VBox fx:id="againOptionBox" spacing="5" styleClass="rating-option">
                                 <Button fx:id="againButton" text="✕ Again (1)" onAction="#rateAgain" styleClass="danger-button rating-button" maxWidth="Infinity" />
-                                <Label fx:id="againDescriptionLabel" text="Missed it — review again today" styleClass="rating-description" wrapText="true" />
+                                <Label fx:id="againDescriptionLabel" styleClass="rating-description" wrapText="true" />
                             </VBox>
-                            <VBox spacing="7" styleClass="rating-option">
+                            <VBox fx:id="hardOptionBox" spacing="5" styleClass="rating-option">
                                 <Button fx:id="hardButton" text="▲ Hard (2)" onAction="#rateHard" styleClass="warning-button rating-button" maxWidth="Infinity" />
-                                <Label fx:id="hardDescriptionLabel" text="Remembered with effort — short interval" styleClass="rating-description" wrapText="true" />
+                                <Label fx:id="hardDescriptionLabel" styleClass="rating-description" wrapText="true" />
                             </VBox>
-                            <VBox spacing="7" styleClass="rating-option">
+                            <VBox fx:id="goodOptionBox" spacing="5" styleClass="rating-option">
                                 <Button fx:id="goodButton" text="✓ Good (3)" onAction="#rateGood" styleClass="success-button rating-button" maxWidth="Infinity" />
-                                <Label fx:id="goodDescriptionLabel" text="Solid recall — normal interval" styleClass="rating-description" wrapText="true" />
+                                <Label fx:id="goodDescriptionLabel" styleClass="rating-description" wrapText="true" />
                             </VBox>
-                            <VBox spacing="7" styleClass="rating-option">
+                            <VBox fx:id="easyOptionBox" spacing="5" styleClass="rating-option">
                                 <Button fx:id="easyButton" text="★ Easy (4)" onAction="#rateEasy" styleClass="epic-button rating-button" maxWidth="Infinity" />
-                                <Label fx:id="easyDescriptionLabel" text="Instant recall — longer interval" styleClass="rating-description" wrapText="true" />
+                                <Label fx:id="easyDescriptionLabel" styleClass="rating-description" wrapText="true" />
                             </VBox>
                         </TilePane>
                     </VBox>

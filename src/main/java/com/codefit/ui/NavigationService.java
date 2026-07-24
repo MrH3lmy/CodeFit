@@ -136,6 +136,10 @@ public final class NavigationService {
         navigate(Route.PROGRESS);
     }
 
+    public static void showSettings() {
+        navigate(Route.SETTINGS);
+    }
+
     /** Navigates to a route, building the persistent shell on first use. Only the shell's content
      *  host is swapped on subsequent calls, so the sidebar and top bar are never reconstructed. */
     public static void navigate(Route route) {

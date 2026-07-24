@@ -51,7 +51,6 @@ import java.util.stream.Collectors;
 public class ReviewController extends BaseController {
     @FXML private ScrollPane reviewRoot;
     @FXML private Label queueLabel;
-    @FXML private Label workloadModeLabel;
     @FXML private Label sessionTimeLabel;
     @FXML private Label timerLabel;
     @FXML private Label categoryLabel;
@@ -59,6 +58,10 @@ public class ReviewController extends BaseController {
     @FXML private Label answerLabel;
     @FXML private Label messageLabel;
     @FXML private Label matchRequirementLabel;
+    @FXML private VBox againOptionBox;
+    @FXML private VBox hardOptionBox;
+    @FXML private VBox goodOptionBox;
+    @FXML private VBox easyOptionBox;
     @FXML private Label againDescriptionLabel;
     @FXML private Label hardDescriptionLabel;
     @FXML private Label goodDescriptionLabel;
@@ -142,13 +145,6 @@ public class ReviewController extends BaseController {
             initialCards = reviewService.getDueCards();
         }
 
-        if (workloadModeLabel != null) {
-            workloadModeLabel.setText(sessionBudgetMinutes != null
-                    ? "Timed session · " + sessionBudgetMinutes + " min budget"
-                    : reviewService.getDailyWorkloadMode().getSummary());
-            workloadModeLabel.setVisible(!weeklyBossMode);
-            workloadModeLabel.setManaged(!weeklyBossMode);
-        }
         sessionQueue = new SessionQueue(initialCards, SAME_SESSION_RETRY_LIMIT);
         resetSessionMetrics();
         updateSessionTimeLabel();
@@ -873,30 +869,29 @@ public class ReviewController extends BaseController {
 
     private void setRatingDescriptions(Flashcard card) {
         ReviewRating recommendedRating = recommendedRating();
-        againDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.AGAIN, recommendedRating,
-                "Missed it — review again today"));
-        hardDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.HARD, recommendedRating,
-                formatRatingDescription(card, ReviewRating.HARD, "Remembered with effort", "short interval")));
-        goodDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.GOOD, recommendedRating,
-                formatRatingDescription(card, ReviewRating.GOOD, "Solid recall", "normal interval")));
-        easyDescriptionLabel.setText(formatRecommendedDescription(ReviewRating.EASY, recommendedRating,
-                formatRatingDescription(card, ReviewRating.EASY, "Instant recall", "longer interval")));
+        updateRatingOption(againOptionBox, againDescriptionLabel, ReviewRating.AGAIN, recommendedRating, formatInterval(0));
+        updateRatingOption(hardOptionBox, hardDescriptionLabel, ReviewRating.HARD, recommendedRating, formatRatingInterval(card, ReviewRating.HARD));
+        updateRatingOption(goodOptionBox, goodDescriptionLabel, ReviewRating.GOOD, recommendedRating, formatRatingInterval(card, ReviewRating.GOOD));
+        updateRatingOption(easyOptionBox, easyDescriptionLabel, ReviewRating.EASY, recommendedRating, formatRatingInterval(card, ReviewRating.EASY));
     }
 
-    private String formatRecommendedDescription(ReviewRating rating, ReviewRating recommendedRating, String description) {
-        if (rating == recommendedRating) {
-            return description + " (recommended)";
+    private void updateRatingOption(VBox optionBox, Label descriptionLabel, ReviewRating rating, ReviewRating recommendedRating, String intervalText) {
+        descriptionLabel.setText(intervalText);
+        if (optionBox == null) {
+            return;
         }
-        return description;
+        boolean recommended = rating == recommendedRating;
+        optionBox.getStyleClass().remove("rating-option-recommended");
+        if (recommended) {
+            optionBox.getStyleClass().add("rating-option-recommended");
+        }
     }
 
-    private String formatRatingDescription(Flashcard card, ReviewRating rating, String recallDescription, String fallbackInterval) {
+    private String formatRatingInterval(Flashcard card, ReviewRating rating) {
         if (card == null) {
-            return recallDescription + " — " + fallbackInterval;
+            return "";
         }
-
-        int previewInterval = calculatePreviewInterval(card, rating);
-        return recallDescription + " — " + formatInterval(previewInterval);
+        return formatInterval(calculatePreviewInterval(card, rating));
     }
 
     private int calculatePreviewInterval(Flashcard card, ReviewRating rating) {
@@ -913,9 +908,9 @@ public class ReviewController extends BaseController {
 
     private String formatInterval(int intervalDays) {
         if (intervalDays <= 0) {
-            return "review again today";
+            return "Today";
         }
-        return "next review in " + intervalDays + " " + pluralizeDay(intervalDays);
+        return "In " + intervalDays + " " + pluralizeDay(intervalDays);
     }
 
 

@@ -58,6 +58,17 @@
     -fx-text-fill: -color-text-primary;
 }
 
+/* Selected state for any toggle button (filter chips, confidence picker, segmented controls). */
+.toggle-button:selected {
+    -fx-background-color: -color-accent;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}
+
+.toggle-button:selected:hover {
+    -fx-background-color: -color-accent-hover;
+}
+
 .nav-button-primary {
     -fx-border-color: -color-accent;
     -fx-text-fill: -color-accent;

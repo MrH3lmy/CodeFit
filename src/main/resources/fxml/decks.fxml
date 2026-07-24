@@ -9,10 +9,19 @@
                         <HBox alignment="CENTER_LEFT" spacing="12">
                             <Label text="Library" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
                             <Button text="Syllabus" onAction="#goSyllabus" styleClass="ghost-button" />
+                            <Button fx:id="newDeckToggleButton" text="+ New Deck" onAction="#toggleCreateDeckPanel" styleClass="primary-button" />
                         </HBox>
-                        <Label text="Organize related prompts into focused decks so each review queue matches what you want to master next." styleClass="page-subtitle" wrapText="true" />
+                        <Label text="Search, filter, and organize related prompts into focused decks so each review queue matches what you want to master next." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
                     <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+
+                    <HBox spacing="10" alignment="CENTER_LEFT" maxWidth="Infinity">
+                        <TextField fx:id="searchField" promptText="Search decks and cards…" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
+                        <ToggleButton fx:id="deckFilterAllButton" text="All" styleClass="ghost-button" selected="true" />
+                        <ToggleButton fx:id="deckFilterDueButton" text="Due" styleClass="ghost-button" />
+                        <ToggleButton fx:id="deckFilterMasteredButton" text="Mastered" styleClass="ghost-button" />
+                    </HBox>
+
                     <FlowPane hgap="22" vgap="22" prefWrapLength="720" styleClass="workspace-grid" VBox.vgrow="ALWAYS" maxWidth="Infinity">
                         <VBox spacing="18" styleClass="primary-column" minWidth="0" prefWidth="460" maxWidth="Infinity">
                             <VBox spacing="10" styleClass="panel deck-list-panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
@@ -23,14 +32,20 @@
                             <VBox spacing="10" styleClass="panel card-list-panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
                                 <HBox spacing="10" alignment="CENTER_LEFT">
                                     <Label text="Cards" styleClass="section-title" HBox.hgrow="ALWAYS" />
-                                    <Button text="Import Cards" onAction="#importCards" />
-                                    <Button text="Export Cards" onAction="#exportCards" />
+                                    <Button text="Import Cards" onAction="#importCards" styleClass="ghost-button" />
+                                    <Button text="Export Cards" onAction="#exportCards" styleClass="ghost-button" />
+                                </HBox>
+                                <HBox spacing="8" alignment="CENTER_LEFT">
+                                    <ToggleButton fx:id="cardFilterAllButton" text="All" styleClass="ghost-button" selected="true" />
+                                    <ToggleButton fx:id="cardFilterDueButton" text="Due" styleClass="ghost-button" />
+                                    <ToggleButton fx:id="cardFilterMasteredButton" text="Mastered" styleClass="ghost-button" />
+                                    <ToggleButton fx:id="cardFilterSuspendedButton" text="Suspended" styleClass="ghost-button" />
                                 </HBox>
                                 <Label fx:id="cardEmptyGuidanceLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
                                 <ListView fx:id="cardListView" prefHeight="260" VBox.vgrow="ALWAYS" />
                             </VBox>
                         </VBox>
-                        <VBox spacing="14" styleClass="panel side-panel" minWidth="0" prefWidth="280" maxWidth="Infinity">
+                        <VBox fx:id="createDeckPanel" spacing="14" styleClass="panel side-panel" minWidth="0" prefWidth="280" maxWidth="Infinity" visible="false" managed="false">
                             <Label text="Create Deck" styleClass="section-title" />
                             <TextField fx:id="deckNameField" promptText="Deck name" maxWidth="Infinity" />
                             <TextArea fx:id="deckDescriptionArea" promptText="Description" prefRowCount="8" wrapText="true" maxWidth="Infinity" VBox.vgrow="ALWAYS" />

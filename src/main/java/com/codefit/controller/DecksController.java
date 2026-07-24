@@ -10,6 +10,7 @@ import com.codefit.service.FlashcardImportExportService.ImportSummary;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.MasteryService;
 import com.codefit.service.SyllabusService;
+import com.codefit.ui.NavigationService;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -449,8 +450,10 @@ public class DecksController extends BaseController {
         private final Label promptLabel = new Label();
         private final Label answerLabel = new Label();
         private final Label dueBadge = new Label();
+        private final Button editButton = new Button("Edit");
         private final VBox textBlock = new VBox(5, promptLabel, answerLabel);
-        private final HBox content = new HBox(12, textBlock, dueBadge);
+        private final VBox actionColumn = new VBox(6, dueBadge, editButton);
+        private final HBox content = new HBox(12, textBlock, actionColumn);
 
         private FlashcardCell() {
             promptLabel.getStyleClass().add("card-row-prompt");
@@ -466,6 +469,17 @@ public class DecksController extends BaseController {
             dueBadge.getStyleClass().add("due-badge");
             dueBadge.setMinWidth(76);
             dueBadge.setAlignment(Pos.CENTER);
+
+            editButton.getStyleClass().add("ghost-button");
+            editButton.setMinWidth(76);
+            editButton.setOnAction(event -> {
+                Flashcard card = getItem();
+                if (card != null) {
+                    NavigationService.showEditCard(card.getId());
+                }
+            });
+
+            actionColumn.setAlignment(Pos.CENTER);
 
             textBlock.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(textBlock, Priority.ALWAYS);

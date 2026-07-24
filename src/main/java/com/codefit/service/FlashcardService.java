@@ -73,6 +73,32 @@ public class FlashcardService {
         return savedCard;
     }
 
+    /** Updates an existing card's editable content. Scheduling state (due date, interval, ease,
+     *  review count, card state) is preserved unchanged. */
+    public Flashcard updateCard(long cardId, String front, String back, CardType cardType,
+                                 String acceptedAnswers, ValidationMode validationMode, String simulatedOutput,
+                                 String hint, Integer timeLimitSeconds, String skillCategory) {
+        Flashcard existing = flashcardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Card not found."));
+        if (front == null || front.isBlank() || back == null || back.isBlank()) {
+            throw new IllegalArgumentException("Both prompt and answer are required.");
+        }
+        String rawAnswers = acceptedAnswers == null || acceptedAnswers.isBlank() ? back : acceptedAnswers;
+        String answers = AcceptedAnswerCodec.normalize(rawAnswers);
+
+        existing.setFront(front.trim());
+        existing.setBack(back.trim());
+        existing.setCardType(cardType);
+        existing.setAcceptedAnswers(answers);
+        existing.setValidationMode(validationMode);
+        existing.setSimulatedOutput(simulatedOutput == null || simulatedOutput.isBlank() ? null : simulatedOutput.trim());
+        existing.setHint(hint == null || hint.isBlank() ? null : hint.trim());
+        existing.setTimeLimitSeconds(timeLimitSeconds);
+        existing.setSkillCategory(skillCategory);
+        flashcardRepository.updateContent(existing);
+        return existing;
+    }
+
     public int countAllCards() {
         return flashcardRepository.countAll();
     }

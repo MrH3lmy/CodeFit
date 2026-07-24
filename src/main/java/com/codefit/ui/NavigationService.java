@@ -39,6 +39,7 @@ public final class NavigationService {
     private static boolean weeklyBossModeRequested;
     private static Integer pendingSessionMinutes;
     private static String pendingReflectionType;
+    private static Long pendingEditCardId;
     private static String selectedTheme;
 
     static {
@@ -66,11 +67,13 @@ public final class NavigationService {
 
     public static void showAddCard() {
         pendingReflectionType = null;
+        pendingEditCardId = null;
         navigate(Route.ADD_CARD);
     }
 
     public static void showAddCardReflection(String reflectionType) {
         pendingReflectionType = reflectionType;
+        pendingEditCardId = null;
         navigate(Route.ADD_CARD);
     }
 
@@ -78,6 +81,19 @@ public final class NavigationService {
         String reflectionType = pendingReflectionType;
         pendingReflectionType = null;
         return reflectionType;
+    }
+
+    /** Opens the card composer in edit mode for an existing card. */
+    public static void showEditCard(long cardId) {
+        pendingReflectionType = null;
+        pendingEditCardId = cardId;
+        navigate(Route.ADD_CARD);
+    }
+
+    public static Long consumePendingEditCardId() {
+        Long cardId = pendingEditCardId;
+        pendingEditCardId = null;
+        return cardId;
     }
 
     public static void showReview() {

@@ -1,0 +1,143 @@
+/* Review session: queue header, prompt/answer stage, confidence, and the practice terminal. */
+
+.hero-card {
+    -fx-padding: 24;
+}
+
+.queue-strip {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 14 16;
+}
+
+.progress-pill {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-primary;
+}
+
+.progress-strip {
+    -fx-padding: 2 0 0 0;
+}
+
+.progress-step {
+    -fx-min-height: 6;
+    -fx-pref-height: 6;
+    -fx-background-color: -color-border;
+    -fx-background-radius: 999;
+}
+
+.progress-step-active {
+    -fx-background-color: -color-accent;
+}
+
+.review-stage {
+    -fx-alignment: center;
+    -fx-padding: 8 0 26 0;
+}
+
+.prompt-section, .answer-section, .rating-panel {
+    -fx-padding: 2 0;
+}
+
+.review-prompt {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-line-spacing: 6;
+}
+
+.review-answer {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-line-spacing: 5;
+}
+
+.current-action-panel {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 18;
+}
+
+.attempt-section.current-action-panel .stat-label,
+.prompt-section.current-action-panel .stat-label {
+    -fx-text-fill: -color-text-secondary;
+}
+
+.terminal-input {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10 12;
+}
+
+.attempt-section.current-action-panel .text-area,
+.terminal-input {
+    -fx-border-color: -color-accent;
+}
+
+.terminal-prompt {
+    -fx-text-fill: -color-accent;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+}
+
+.terminal-input .text-field {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-primary;
+    -fx-prompt-text-fill: -color-text-secondary;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+.terminal-panel {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 14;
+}
+
+.terminal-titlebar {
+    -fx-padding: 0 2 4 2;
+}
+
+.terminal-dot {
+    -fx-font-size: 10px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+.terminal-dot-red { -fx-text-fill: -color-danger; }
+.terminal-dot-yellow { -fx-text-fill: -color-warning; }
+.terminal-dot-green { -fx-text-fill: -color-success; }
+
+.terminal-title {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-padding: 0 0 0 8;
+}
+
+.terminal-history {
+    -fx-background-color: -color-surface;
+    -fx-control-inner-background: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: -color-text-primary;
+    -fx-prompt-text-fill: -color-text-secondary;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+}
+
+.terminal-history .content {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 8;
+}

@@ -12,16 +12,26 @@ import java.util.List;
 import java.util.prefs.Preferences;
 
 public final class NavigationService {
+    /** Only Dark and Light are selectable. Legacy Ocean/Forest/Synthwave preferences are mapped
+     *  onto Dark by {@link #sanitizeThemeClass} so old preference files never fail to start. */
     private static final List<ThemeOption> THEMES = List.of(
             new ThemeOption("Dark", "theme-dark"),
-            new ThemeOption("Light", "theme-light"),
-            new ThemeOption("Ocean", "theme-ocean"),
-            new ThemeOption("Forest", "theme-forest"),
-            new ThemeOption("Synthwave", "theme-synthwave")
+            new ThemeOption("Light", "theme-light")
     );
     private static final String BASE_THEME_CLASS = "theme-dark";
     private static final String THEME_PREFERENCE_KEY = "selectedTheme";
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(NavigationService.class);
+    static final String[] STYLESHEETS = {
+            "/css/tokens.css",
+            "/css/base.css",
+            "/css/controls.css",
+            "/css/shell.css",
+            "/css/review.css",
+            "/css/library.css",
+            "/css/forms.css",
+            "/css/progress.css",
+            "/css/today.css"
+    };
 
     private static Stage primaryStage;
     private static Scene primaryScene;
@@ -29,7 +39,15 @@ public final class NavigationService {
     private static boolean weeklyBossModeRequested;
     private static Integer pendingSessionMinutes;
     private static String pendingReflectionType;
-    private static String selectedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
+    private static String selectedTheme;
+
+    static {
+        String storedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
+        selectedTheme = sanitizeThemeClass(storedTheme);
+        if (!selectedTheme.equals(storedTheme)) {
+            PREFERENCES.put(THEME_PREFERENCE_KEY, selectedTheme);
+        }
+    }
 
     private NavigationService() {
     }
@@ -126,8 +144,10 @@ public final class NavigationService {
             applyTheme(shellRoot);
 
             primaryScene = new Scene(shellRoot, 1100, 720);
-            primaryScene.getStylesheets().add(NavigationService.class.getResource("/css/app.css").toExternalForm());
-            primaryScene.setFill(Color.web("#070b16"));
+            for (String stylesheet : STYLESHEETS) {
+                primaryScene.getStylesheets().add(NavigationService.class.getResource(stylesheet).toExternalForm());
+            }
+            primaryScene.setFill(Color.web("#0B0D12"));
             primaryStage.setScene(primaryScene);
             primaryStage.setMinWidth(760);
             primaryStage.setMinHeight(560);
@@ -172,9 +192,8 @@ public final class NavigationService {
     private static void applyTheme(Parent root) {
         root.getStyleClass().removeAll(THEMES.stream().map(ThemeOption::styleClass).toArray(String[]::new));
 
-        // Always apply the complete base token set first; alternate themes then override the
-        // full semantic checklist documented in app.css so every FXML screen inherits a stable
-        // background/surface/text/status/focus palette without missing-token fallbacks.
+        // Always apply the complete base token set first; the selected theme then overrides the
+        // eleven semantic tokens defined in tokens.css so every screen inherits a stable palette.
         root.getStyleClass().add(BASE_THEME_CLASS);
         if (!selectedTheme.equals(BASE_THEME_CLASS)) {
             root.getStyleClass().add(selectedTheme);
@@ -186,6 +205,16 @@ public final class NavigationService {
                 .filter(theme -> theme.styleClass().equals(themeClass))
                 .findFirst()
                 .orElse(THEMES.getFirst());
+    }
+
+    /** Maps any unrecognized or legacy theme class (Ocean/Forest/Synthwave) onto Dark so an old
+     *  preference file can never prevent startup. */
+    static String sanitizeThemeClass(String themeClass) {
+        return THEMES.stream()
+                .filter(theme -> theme.styleClass().equals(themeClass))
+                .findFirst()
+                .map(ThemeOption::styleClass)
+                .orElse(BASE_THEME_CLASS);
     }
 
     private record ThemeOption(String displayName, String styleClass) {

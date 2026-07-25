@@ -7,11 +7,11 @@
                 <VBox alignment="TOP_CENTER" maxWidth="Infinity" spacing="16" styleClass="content" VBox.vgrow="ALWAYS">
                     <VBox maxWidth="Infinity" spacing="12" styleClass="page-header">
                         <HBox alignment="CENTER_LEFT" spacing="12">
-                            <Label text="Java Backend Syllabus" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
+                            <Label text="Training Syllabus" styleClass="page-title" wrapText="true" HBox.hgrow="ALWAYS" />
                             <Button text="Back" onAction="#goDecks" styleClass="ghost-button" minWidth="60" />
                             <Label text="Ordered roadmap" styleClass="pill" wrapText="true" />
                         </HBox>
-                        <Label text="Follow the Java BE path module by module, with each learning objective linked to its recommended flashcard deck and current review progress." styleClass="page-subtitle" wrapText="true" />
+                        <Label text="Follow each training path module by module — Java Backend fundamentals and the Advanced Backend Engineering track for senior engineers — with every learning objective linked to its recommended flashcard deck and current mastery-based progress." styleClass="page-subtitle" wrapText="true" />
                     </VBox>
 
                     <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">

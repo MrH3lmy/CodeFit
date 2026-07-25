@@ -153,3 +153,28 @@ A deeper concurrency curriculum is available in `src/main/resources/templates/ja
 - `04-locks-atomics-memory-model.tsv` — explicit locks, conditions, AQS, CAS, nonblocking algorithms, happens-before, safe initialization, and publication.
 
 The curriculum favors explanation and production diagnosis over trivia: 108 `CONCEPT` cards, 46 `RECALL` cards, and 6 deterministic `CODE_OUTPUT` cards. See the template directory's `README.md` for suggested deck names, counts, scope, and a recommended training sequence.
+
+### Advanced Backend Engineering training path
+
+CodeFit registers a **second training path** aimed at senior backend engineers rather than
+beginner Java recall: `TrainingPathService.getAdvancedBackendEngineeringPath()`. It appears on the
+**Syllabus** screen alongside the Java Backend path (each module tagged with its path name) and
+participates in the same mastery-based recommendation engine and review queue — there is no
+separate mechanism for it.
+
+The path has 10 modules. Module 1 reuses the Java Concurrency in Practice curriculum above; starter
+decks for modules 2-10 (259 cards total) live in `src/main/resources/templates/advanced-backend-engineering/`:
+
+- `02-database-transactions-locking-isolation.tsv` — isolation levels, locking, deadlocks, MVCC.
+- `03-idempotency-race-condition-prevention.tsv` — idempotency keys, dedup, CAS, fencing tokens.
+- `04-kafka-delivery-semantics-outbox-dlq.tsv` — delivery semantics, transactional outbox, DLQs.
+- `05-distributed-transactions-sagas.tsv` — 2PC, sagas, compensation, TCC.
+- `06-oauth2-oidc-service-authentication.tsv` — grant types, JWTs, JWKS, mTLS.
+- `07-caching-consistency-invalidation.tsv` — cache patterns, stampedes, invalidation races.
+- `08-observability-production-debugging.tsv` — logs/metrics/traces, thread/heap dumps, SLOs.
+- `09-jvm-memory-gc-performance.tsv` — heap generations, GC tuning, leaks, JIT warm-up.
+- `10-api-database-failure-scenarios.tsv` — timeouts, retries, circuit breakers, failover.
+
+Each module has a documented learning objective, prerequisites, and mastery threshold. See the
+template directory's `README.md` for the full coverage map, the intended senior-backend audience,
+and import instructions.

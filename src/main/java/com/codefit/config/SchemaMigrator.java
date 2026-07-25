@@ -2,6 +2,8 @@ package com.codefit.config;
 
 import com.codefit.model.CardType;
 import com.codefit.service.AcceptedAnswerCodec;
+import com.codefit.service.SqlCardSpec;
+import com.codefit.service.SqlCardSpecCodec;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -36,7 +38,10 @@ final class SchemaMigrator {
                     SchemaMigrator::migrateLegacyAcceptedAnswers),
             new VersionedMigration(2,
                     "Backfill card lifecycle state for cards created before card_state existed",
-                    SchemaMigrator::backfillCardLifecycleState)
+                    SchemaMigrator::backfillCardLifecycleState),
+            new VersionedMigration(3,
+                    "Convert the seeded newest-user-emails SQL_QUERY card to fixture-based grading config",
+                    SchemaMigrator::migrateSeededSqlQueryCard)
     );
 
     static void migrate(Connection connection) throws SQLException {
@@ -161,6 +166,40 @@ final class SchemaMigrator {
                 update.setLong(2, row.id());
                 update.executeUpdate();
             }
+        }
+    }
+
+    /**
+     * SQL_QUERY cards used to be graded by text-matching a saved answer string; the seeded
+     * "newest user emails" starter card stored its accepted answers this way, either as the
+     * original pre-#90 pipe-delimited string or (after migration 1) the equivalent JSON array.
+     * SQL_QUERY grading now executes the attempt against a fixture instead (see
+     * {@link SqlCardSpecCodec}), so any install that already seeded this exact starter card needs
+     * its accepted_answers value converted to the new fixture-based configuration. Only this exact
+     * known legacy value is matched, the same way {@link #KNOWN_LEGACY_PIPE_ANSWERS} avoids
+     * touching user-authored cards that merely look similar.
+     */
+    private static final String LEGACY_NEWEST_EMAILS_ANSWERS = AcceptedAnswerCodec.encode(
+            List.of("SELECT email FROM users ORDER BY created_at DESC LIMIT 5;",
+                    "SELECT email FROM users ORDER BY created_at DESC LIMIT 5"));
+
+    private static final SqlCardSpec NEWEST_EMAILS_SQL_SPEC = new SqlCardSpec(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL, created_at TEXT NOT NULL);",
+            "INSERT INTO users (id, email, created_at) VALUES "
+                    + "(1,'ada@example.com','2024-01-01'),(2,'ben@example.com','2024-01-02'),"
+                    + "(3,'cleo@example.com','2024-01-03'),(4,'drew@example.com','2024-01-04'),"
+                    + "(5,'eva@example.com','2024-01-05'),(6,'finn@example.com','2024-01-06'),"
+                    + "(7,'grace@example.com','2024-01-07');",
+            "SELECT email FROM users ORDER BY created_at DESC LIMIT 5;",
+            null, true, false, SqlCardSpec.DEFAULT_TIMEOUT_MILLIS);
+
+    private static void migrateSeededSqlQueryCard(Connection connection) throws SQLException {
+        try (PreparedStatement update = connection.prepareStatement(
+                "UPDATE flashcards SET accepted_answers = ? WHERE card_type = ? AND accepted_answers = ?")) {
+            update.setString(1, SqlCardSpecCodec.encode(NEWEST_EMAILS_SQL_SPEC));
+            update.setString(2, CardType.SQL_QUERY.name());
+            update.setString(3, LEGACY_NEWEST_EMAILS_ANSWERS);
+            update.executeUpdate();
         }
     }
 

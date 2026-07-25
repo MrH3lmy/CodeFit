@@ -16,6 +16,7 @@ import com.codefit.service.JavaExerciseCodec;
 import com.codefit.service.JavaSandboxRunner;
 import com.codefit.service.RatingGuardrail;
 import com.codefit.service.ReviewService;
+import com.codefit.service.SqlCardValidator;
 import com.codefit.service.SessionQueue;
 import com.codefit.service.SessionBudgetService;
 import com.codefit.service.SystemMessageService;
@@ -126,6 +127,7 @@ public class ReviewController extends BaseController {
     private final Map<ReviewRating, Integer> ratingCounts = new EnumMap<>(ReviewRating.class);
     private final List<Flashcard> missedCards = new ArrayList<>();
     private AttemptValidationResult latestValidationResult = AttemptValidationResult.EMPTY;
+    private SqlCardValidator.GradingResult latestSqlGradingResult;
     private boolean answerRevealed;
     private Timeline timeLimitTimeline;
     private int remainingTimeSeconds;
@@ -946,6 +948,9 @@ public class ReviewController extends BaseController {
     }
 
     private AttemptValidationResult validateAttempt() {
+        if (currentCard.getCardType() == CardType.SQL_QUERY) {
+            return validateSqlAttempt();
+        }
         AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(currentCard.getCardType(),
                 getAttemptText(), acceptedAnswers(), currentCard.getValidationMode());
         return switch (outcome) {
@@ -991,6 +996,20 @@ public class ReviewController extends BaseController {
             case REJECTED_UNSAFE_SNIPPET -> AttemptValidationResult.JAVA_REJECTED_UNSAFE_SNIPPET;
             case SANDBOX_UNAVAILABLE -> AttemptValidationResult.JAVA_SANDBOX_UNAVAILABLE;
         };
+    }
+
+    /**
+     * SQL_QUERY cards are graded by executing the attempt against an isolated fixture (see
+     * {@link SqlCardValidator}) rather than text-matching a saved answer, so any accepted outcome
+     * other than EMPTY collapses to EXACT/DIFFERENT here; the grading detail is kept in
+     * {@link #latestSqlGradingResult} for {@link #formatSafeSqlFeedback()}.
+     */
+    private AttemptValidationResult validateSqlAttempt() {
+        latestSqlGradingResult = SqlCardValidator.grade(getAttemptText(), currentCard.getAcceptedAnswers());
+        if (latestSqlGradingResult.outcome() == SqlCardValidator.Outcome.EMPTY) {
+            return AttemptValidationResult.EMPTY;
+        }
+        return latestSqlGradingResult.isCorrect() ? AttemptValidationResult.EXACT : AttemptValidationResult.DIFFERENT;
     }
 
     private String getAttemptText() {
@@ -1132,6 +1151,11 @@ public class ReviewController extends BaseController {
         return describeCommandMismatch(closest);
     }
 
+    /** Reuses the {@link SqlCardValidator.GradingResult} computed for this attempt in {@link #validateSqlAttempt()}. */
+    private String formatSafeSqlFeedback() {
+        return latestSqlGradingResult == null ? "Query result different from expected." : latestSqlGradingResult.feedback();
+    }
+
     private String describeCommandMismatch(CommandValidator.Comparison comparison) {
         if (!comparison.executableMatches()) {
             return "different command: expected \"" + comparison.expectedExecutable()
@@ -1175,6 +1199,9 @@ public class ReviewController extends BaseController {
         if (currentCard != null && currentCard.getCardType().isCommandTemplate() && result == AttemptValidationResult.DIFFERENT) {
             return formatSafeCommandFeedback() + ". Recommended rating: " + recommendedRatingLabel(result) + ".";
         }
+        if (currentCard != null && currentCard.getCardType() == CardType.SQL_QUERY && result == AttemptValidationResult.DIFFERENT) {
+            return formatSafeSqlFeedback() + ". Recommended rating: " + recommendedRatingLabel(result) + ".";
+        }
         return switch (result) {
             case EMPTY -> "Enter an attempt to enable Reveal Answer.";
             case EXACT -> "Exact match. Recommended rating: " + recommendedRatingLabel(result) + ".";
@@ -1207,6 +1234,10 @@ public class ReviewController extends BaseController {
         if (currentCard != null && currentCard.getCardType() == CardType.JAVA_CODE) {
             return "Write the missing code. It is compiled and run in a sandboxed subprocess when you reveal the "
                     + "answer, and graded against the expected output or exception.";
+        }
+        if (currentCard != null && currentCard.getCardType() == CardType.SQL_QUERY) {
+            return "Write a query. It runs against an isolated practice database and is graded by comparing "
+                    + "its result to the expected result, not by matching exact wording.";
         }
         return switch (currentCard == null || currentCard.getValidationMode() == null ? ValidationMode.CASE_INSENSITIVE : currentCard.getValidationMode()) {
             case EXACT -> "Exact capitalization, wording, and spacing are required for this card.";

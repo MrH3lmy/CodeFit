@@ -1,11 +1,14 @@
 package com.codefit.config;
 
+import com.codefit.service.AcceptedAnswerCodec;
+import com.codefit.service.SqlCardSpecCodec;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -78,6 +81,21 @@ class SchemaMigratorTest {
         SchemaMigrator.migrate(connection);
 
         assertEquals("ps aux | grep java", acceptedAnswers(id));
+    }
+
+    @Test
+    void migratesTheSeededSqlQueryStarterCardToFixtureBasedConfig() throws SQLException {
+        String legacyAnswers = AcceptedAnswerCodec.encode(
+                List.of("SELECT email FROM users ORDER BY created_at DESC LIMIT 5;",
+                        "SELECT email FROM users ORDER BY created_at DESC LIMIT 5"));
+        long id = insertCard("SQL_QUERY", legacyAnswers);
+
+        SchemaMigrator.migrate(connection);
+
+        String migrated = acceptedAnswers(id);
+        assertTrue(migrated.startsWith("{"));
+        assertEquals("SELECT email FROM users ORDER BY created_at DESC LIMIT 5;",
+                SqlCardSpecCodec.decode(migrated).referenceQuery());
     }
 
     @Test

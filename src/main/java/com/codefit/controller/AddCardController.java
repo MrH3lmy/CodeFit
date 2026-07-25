@@ -287,7 +287,8 @@ public class AddCardController extends BaseController {
             case SQL_QUERY -> configureCopy(
                     "SQL query prompt", "Describe the table schema and the query result learners should produce.",
                     "Expected query or result", "Enter the expected query, query result, and a brief explanation of important clauses.",
-                    "Accepted query variants", "Accepted SQL queries, one per line",
+                    "Fixture grading config", "Paste a SqlCardSpecCodec-encoded fixture config (schema/seed/reference "
+                            + "query or expected error); attempts are executed against it, not text-matched.",
                     "", "");
             case REGEX_PATTERN -> configureCopy(
                     "Matching requirement", "Describe strings that should match and not match.",

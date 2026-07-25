@@ -78,6 +78,31 @@ class FlashcardImportExportServiceTest {
     }
 
     @Test
+    void roundTripPreservesSqlCardSpecFormatThroughTsv() {
+        SqlCardSpec spec = new SqlCardSpec(
+                "CREATE TABLE t (\n  id INTEGER PRIMARY KEY\n);",
+                "INSERT INTO t VALUES (1);",
+                "SELECT id FROM t;",
+                null, true, false, SqlCardSpec.DEFAULT_TIMEOUT_MILLIS);
+        String storedConfig = SqlCardSpecCodec.encode(spec);
+
+        String row = FlashcardImportExportService.toTsvRow(List.of(
+                FlashcardImportExportService.field("t(id): select every row."),
+                FlashcardImportExportService.field("SELECT id FROM t;"),
+                CardType.SQL_QUERY.name(),
+                FlashcardImportExportService.field(storedConfig),
+                ValidationMode.NORMALIZED_SPACING.name(),
+                FlashcardImportExportService.field(null),
+                FlashcardImportExportService.field("SQL"),
+                ""
+        ));
+
+        String[] parsedFields = row.split("\t", -1);
+        assertEquals(storedConfig, parsedFields[3]);
+        assertEquals(spec, SqlCardSpecCodec.decode(AcceptedAnswerCodec.normalize(parsedFields[3])));
+    }
+
+    @Test
     void isHeaderRowRecognizesBasicAndExtendedHeaders() {
         assertTrue(FlashcardImportExportService.isHeaderRow("front\tback"));
         assertTrue(FlashcardImportExportService.isHeaderRow("Front\tBack\tCard_Type\tAccepted_Answers"));

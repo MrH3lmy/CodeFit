@@ -8,12 +8,16 @@ import com.codefit.model.JavaCardConfig;
 import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewRating;
+import com.codefit.model.RegexCardConfig;
+import com.codefit.model.RegexMatchMode;
 import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.AnswerValidator;
 import com.codefit.service.CommandValidator;
 import com.codefit.service.DeckService;
 import com.codefit.service.JavaExerciseCodec;
 import com.codefit.service.JavaSandboxRunner;
+import com.codefit.service.RegexCardCodec;
+import com.codefit.service.RegexCardValidator;
 import com.codefit.service.RatingGuardrail;
 import com.codefit.service.ReviewService;
 import com.codefit.service.SqlCardValidator;
@@ -1185,6 +1189,41 @@ public class ReviewController extends BaseController {
         return token == null ? "(none)" : token;
     }
 
+    private boolean isRegexExamplesCard() {
+        return currentCard != null && currentCard.getCardType() == CardType.REGEX_PATTERN
+                && currentCard.getValidationMode() == ValidationMode.REGEX_EXAMPLES;
+    }
+
+    /**
+     * Runs the submitted pattern through {@link RegexCardValidator} again (grading itself only needs a
+     * pass/fail boolean via {@link AnswerValidator}) purely to report which configured example broke and
+     * how, without ever naming or displaying the card's own accepted pattern.
+     */
+    private String formatRegexFeedback() {
+        String attempt = getAttemptText();
+        RegexCardConfig config = RegexCardCodec.decode(rawAcceptedAnswersForCurrentCard());
+        RegexCardValidator.Result result = RegexCardValidator.grade(attempt, config);
+        return describeRegexOutcome(result);
+    }
+
+    private String describeRegexOutcome(RegexCardValidator.Result result) {
+        return switch (result.outcome()) {
+            case PASS -> "pattern matches all configured examples";
+            case INVALID_SYNTAX -> "invalid regex syntax" + (result.syntaxError() == null ? "" : ": " + result.syntaxError());
+            case TIMEOUT -> "pattern took too long to evaluate against example \"" + result.failingExample()
+                    + "\" (possible catastrophic backtracking) — simplify the pattern";
+            case MISCONFIGURED -> "this card has no configured example strings to grade against";
+            case FAIL -> result.failingExampleShouldMatch()
+                    ? "pattern didn't match required string \"" + result.failingExample() + "\""
+                    : "pattern incorrectly matched string that should be rejected: \"" + result.failingExample() + "\"";
+        };
+    }
+
+    private String rawAcceptedAnswersForCurrentCard() {
+        List<String> decoded = acceptedAnswers();
+        return decoded.isEmpty() ? "" : decoded.get(0);
+    }
+
     private String firstToken(String value) {
         if (value == null || value.isBlank()) {
             return "";
@@ -1201,6 +1240,9 @@ public class ReviewController extends BaseController {
         }
         if (currentCard != null && currentCard.getCardType() == CardType.SQL_QUERY && result == AttemptValidationResult.DIFFERENT) {
             return formatSafeSqlFeedback() + ". Recommended rating: " + recommendedRatingLabel(result) + ".";
+        }
+        if (isRegexExamplesCard() && result == AttemptValidationResult.DIFFERENT) {
+            return formatRegexFeedback() + ". Recommended rating: " + recommendedRatingLabel(result) + ".";
         }
         return switch (result) {
             case EMPTY -> "Enter an attempt to enable Reveal Answer.";
@@ -1239,10 +1281,20 @@ public class ReviewController extends BaseController {
             return "Write a query. It runs against an isolated practice database and is graded by comparing "
                     + "its result to the expected result, not by matching exact wording.";
         }
+        if (isRegexExamplesCard()) {
+            RegexCardConfig config = RegexCardCodec.decode(rawAcceptedAnswersForCurrentCard());
+            String modeText = config.matchMode() == RegexMatchMode.FULL_MATCH
+                    ? "must match an example's entire string" : "may match anywhere within an example";
+            String flagsText = config.flags().isEmpty() ? "no special flags"
+                    : config.flags().stream().map(Object::toString).collect(Collectors.joining(", "));
+            return "Your submitted pattern is compiled and run against configured example strings, not compared as "
+                    + "text. It " + modeText + ". Flags: " + flagsText + ".";
+        }
         return switch (currentCard == null || currentCard.getValidationMode() == null ? ValidationMode.CASE_INSENSITIVE : currentCard.getValidationMode()) {
             case EXACT -> "Exact capitalization, wording, and spacing are required for this card.";
             case CASE_INSENSITIVE -> "Case-insensitive exact matching is accepted for this card.";
             case NORMALIZED_SPACING, COMMAND_NORMALIZED -> "Extra spacing is normalized, and case-insensitive alternatives are accepted.";
+            case REGEX_EXAMPLES -> "Your submitted pattern is compiled and run against configured example strings.";
         };
     }
 

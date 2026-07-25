@@ -8,7 +8,8 @@ public enum CardType {
     SQL_QUERY("SQL query"),
     REGEX_PATTERN("Regex pattern"),
     CODE_OUTPUT("Code output prediction"),
-    CONCEPT("Concept flashcard");
+    CONCEPT("Concept flashcard"),
+    JAVA_CODE("Java code execution");
 
     private final String label;
 

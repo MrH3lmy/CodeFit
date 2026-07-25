@@ -12,7 +12,7 @@ import java.util.List;
 public final class AnswerValidator {
 
     public enum Outcome {
-        EMPTY, EXACT, CLOSE_SPACING, DIFFERENT, SUBJECTIVE
+        EMPTY, EXACT, CLOSE_SPACING, DIFFERENT, SUBJECTIVE, JAVA_PENDING
     }
 
     private AnswerValidator() {
@@ -29,6 +29,13 @@ public final class AnswerValidator {
         if (cardType == CardType.CONCEPT) {
             String trimmedAttempt = attempt == null ? "" : attempt.strip();
             return trimmedAttempt.isEmpty() ? Outcome.EMPTY : Outcome.SUBJECTIVE;
+        }
+        if (cardType == CardType.JAVA_CODE) {
+            // Grading a Java attempt means compiling and running it in a subprocess, which is far
+            // too slow to do on every keystroke. JAVA_PENDING just unlocks "Show Answer"; the actual
+            // sandbox run happens once, explicitly, when the learner reveals the answer.
+            String trimmedAttempt = attempt == null ? "" : attempt.strip();
+            return trimmedAttempt.isEmpty() ? Outcome.EMPTY : Outcome.JAVA_PENDING;
         }
         return validate(attempt, acceptedAnswers, validationMode);
     }

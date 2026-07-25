@@ -18,4 +18,5 @@ public abstract class BaseController {
     public void goReview() { NavigationService.showReview(); }
     public void goSyllabus() { NavigationService.showSyllabus(); }
     public void goStats() { NavigationService.showStats(); }
+    public void goWeeklyAssessment() { NavigationService.showWeeklyAssessment(); }
 }

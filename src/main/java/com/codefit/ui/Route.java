@@ -11,6 +11,7 @@ public enum Route {
     SYLLABUS("syllabus.fxml", "Java Backend Syllabus", "CodeFit - Java Backend Syllabus", NavItem.LIBRARY),
     PROGRESS("stats.fxml", "Progress", "CodeFit - Progress", NavItem.PROGRESS),
     ADD_CARD("add-card.fxml", "New Card", "CodeFit - New Card", null),
+    ASSESSMENT("weekly-assessment.fxml", "Assessment", "CodeFit - Weekly Transfer Assessment", null),
     SETTINGS("settings.fxml", "Settings", "CodeFit - Settings", null);
 
     private final String fxmlResource;

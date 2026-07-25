@@ -132,6 +132,12 @@ public final class NavigationService {
         navigate(Route.SYLLABUS);
     }
 
+    /** A weekly transfer assessment is a distinct, separately tracked activity from normal review
+     *  (#104), so it gets its own route rather than reusing the review screen's session state. */
+    public static void showWeeklyAssessment() {
+        navigate(Route.ASSESSMENT);
+    }
+
     public static void showStats() {
         navigate(Route.PROGRESS);
     }

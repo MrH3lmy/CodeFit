@@ -38,7 +38,9 @@ public final class RatingGuardrail {
             return EnumSet.of(ReviewRating.AGAIN, ReviewRating.HARD);
         }
         return switch (validationResult) {
-            case "EXACT", "CLOSE_SPACING" -> hintUsed
+            // JAVA_CORRECT is the sandboxed-execution equivalent of an EXACT text match: the
+            // attempt compiled, ran, and matched the expected output/exception.
+            case "EXACT", "CLOSE_SPACING", "JAVA_CORRECT" -> hintUsed
                     ? EnumSet.of(ReviewRating.AGAIN, ReviewRating.HARD, ReviewRating.GOOD)
                     : EnumSet.of(ReviewRating.GOOD, ReviewRating.EASY);
             default -> EnumSet.of(ReviewRating.AGAIN, ReviewRating.HARD);
@@ -50,7 +52,8 @@ public final class RatingGuardrail {
         if (!isObjectivelyGraded(cardType)) {
             return label + " is available.";
         }
-        boolean correct = "EXACT".equals(validationResult) || "CLOSE_SPACING".equals(validationResult);
+        boolean correct = "EXACT".equals(validationResult) || "CLOSE_SPACING".equals(validationResult)
+                || "JAVA_CORRECT".equals(validationResult);
         if (correct) {
             return hintUsed
                     ? label + " isn't available because a hint was used; the highest rating for a hinted answer is Good."

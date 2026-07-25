@@ -4,6 +4,7 @@ import com.codefit.model.CardType;
 import com.codefit.model.ConfidenceLevel;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
+import com.codefit.model.JavaCardConfig;
 import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewRating;
@@ -11,6 +12,8 @@ import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.AnswerValidator;
 import com.codefit.service.CommandValidator;
 import com.codefit.service.DeckService;
+import com.codefit.service.JavaExerciseCodec;
+import com.codefit.service.JavaSandboxRunner;
 import com.codefit.service.RatingGuardrail;
 import com.codefit.service.ReviewService;
 import com.codefit.service.SessionQueue;
@@ -109,6 +112,8 @@ public class ReviewController extends BaseController {
     private final ReviewService reviewService = new ReviewService();
     private final DeckService deckService = new DeckService();
     private final SystemMessageService systemMessageService = new SystemMessageService();
+    private final JavaSandboxRunner javaSandboxRunner = new JavaSandboxRunner();
+    private JavaSandboxRunner.ExecutionResult lastJavaExecutionResult;
     private SessionQueue sessionQueue = new SessionQueue(new ArrayList<>(), SAME_SESSION_RETRY_LIMIT);
     private Flashcard currentCard;
     private int reviewedCardCount;
@@ -191,6 +196,9 @@ public class ReviewController extends BaseController {
         stopTimeLimitTimeline();
         submittedInTime = !isTimedCardExpired();
         lastResponseTimeMs = computeResponseTimeMs();
+        if (currentCard.getCardType() == CardType.JAVA_CODE && validationResult == AttemptValidationResult.JAVA_PENDING) {
+            latestValidationResult = runJavaSandboxAndGrade(getAttemptText());
+        }
         answerRevealed = true;
         answerLabel.setText(formatRevealedAnswer());
         renderTerminalSubmission(validationResult);
@@ -561,6 +569,7 @@ public class ReviewController extends BaseController {
         setCategoryText(currentCard.getSkillCategory());
         promptLabel.setText(currentCard.getFront());
         latestValidationResult = AttemptValidationResult.EMPTY;
+        lastJavaExecutionResult = null;
         answerRevealed = false;
         hintUsed = false;
         submittedInTime = true;
@@ -945,6 +954,42 @@ public class ReviewController extends BaseController {
             case CLOSE_SPACING -> AttemptValidationResult.CLOSE_SPACING;
             case DIFFERENT -> AttemptValidationResult.DIFFERENT;
             case SUBJECTIVE -> AttemptValidationResult.SUBJECTIVE;
+            case JAVA_PENDING -> AttemptValidationResult.JAVA_PENDING;
+        };
+    }
+
+    /**
+     * Compiles and runs the learner's Java attempt in {@link JavaSandboxRunner} exactly once, when
+     * the answer is revealed — never per keystroke, since that would spawn a JVM on every edit.
+     * Falls back to a single generic result if the card's exercise config can't be decoded so a
+     * malformed card never crashes the review screen.
+     */
+    private AttemptValidationResult runJavaSandboxAndGrade(String attempt) {
+        JavaCardConfig config;
+        try {
+            config = JavaExerciseCodec.decode(currentCard.getAcceptedAnswers());
+        } catch (RuntimeException exception) {
+            lastJavaExecutionResult = new JavaSandboxRunner.ExecutionResult(JavaSandboxRunner.Outcome.COMPILE_ERROR,
+                    "", "", "", false, "This card's exercise data is malformed and could not be decoded.");
+            return AttemptValidationResult.JAVA_COMPILE_ERROR;
+        }
+
+        JavaSandboxRunner.Expectation expectation =
+                new JavaSandboxRunner.Expectation(config.expectedOutput(), config.expectedExceptionSimpleName());
+        JavaSandboxRunner.Limits limits = new JavaSandboxRunner.Limits(config.timeoutSeconds(), config.memoryLimitMb(),
+                JavaSandboxRunner.Limits.defaults().maxOutputBytes());
+        lastJavaExecutionResult = javaSandboxRunner.run(config.assembleSource(attempt), JavaCardConfig.MAIN_CLASS_NAME,
+                expectation, limits);
+
+        return switch (lastJavaExecutionResult.outcome()) {
+            case CORRECT -> AttemptValidationResult.JAVA_CORRECT;
+            case WRONG_OUTPUT -> AttemptValidationResult.JAVA_WRONG_OUTPUT;
+            case COMPILE_ERROR -> AttemptValidationResult.JAVA_COMPILE_ERROR;
+            case TIMEOUT -> AttemptValidationResult.JAVA_TIMEOUT;
+            case UNEXPECTED_EXCEPTION -> AttemptValidationResult.JAVA_UNEXPECTED_EXCEPTION;
+            case MISSING_EXPECTED_EXCEPTION -> AttemptValidationResult.JAVA_MISSING_EXPECTED_EXCEPTION;
+            case REJECTED_UNSAFE_SNIPPET -> AttemptValidationResult.JAVA_REJECTED_UNSAFE_SNIPPET;
+            case SANDBOX_UNAVAILABLE -> AttemptValidationResult.JAVA_SANDBOX_UNAVAILABLE;
         };
     }
 
@@ -996,7 +1041,24 @@ public class ReviewController extends BaseController {
                 && !currentCard.getSimulatedOutput().isBlank()) {
             return answer + "\n\nSimulated output:\n" + currentCard.getSimulatedOutput();
         }
+        if (currentCard.getCardType() == CardType.JAVA_CODE) {
+            return answer + "\n\n" + formatJavaExecutionDetails();
+        }
         return answer;
+    }
+
+    /** Surfaces exactly what the sandbox captured — compile diagnostics, stderr, or stdout — so the
+     *  learner can tell a compile error from a wrong-output run from a timeout, not just see a verdict. */
+    private String formatJavaExecutionDetails() {
+        JavaSandboxRunner.ExecutionResult result = lastJavaExecutionResult;
+        if (result == null) {
+            return "No sandbox result available.";
+        }
+        StringBuilder details = new StringBuilder(result.message());
+        if (result.outputTruncated()) {
+            details.append("\n(output truncated)");
+        }
+        return details.toString();
     }
 
     private void configureAttemptInput() {
@@ -1121,6 +1183,15 @@ public class ReviewController extends BaseController {
             case TIMED_OUT -> "Time expired with no matching attempt. Recommended rating: " + recommendedRatingLabel(result) + ".";
             case TIMED_OUT_WITH_ATTEMPT -> "Time expired after an attempt. Recommended rating: " + recommendedRatingLabel(result) + ".";
             case SUBJECTIVE -> "Self-graded card. Compare your answer with the explanation, then rate yourself honestly — there's no recommended rating.";
+            case JAVA_PENDING -> "Ready to compile and run. Reveal the answer to execute it in the sandbox.";
+            case JAVA_CORRECT -> "Compiled and ran correctly. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case JAVA_WRONG_OUTPUT -> "Compiled and ran, but the output didn't match. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case JAVA_COMPILE_ERROR -> "Didn't compile. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case JAVA_TIMEOUT -> "Ran too long and was stopped (possible infinite loop). Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case JAVA_UNEXPECTED_EXCEPTION -> "Threw an exception that wasn't expected. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case JAVA_MISSING_EXPECTED_EXCEPTION -> "Ran to completion, but the expected exception was never thrown. Recommended rating: " + recommendedRatingLabel(result) + ".";
+            case JAVA_REJECTED_UNSAFE_SNIPPET -> "This attempt uses a construct outside what this exercise allows — rewrite it without that and try again.";
+            case JAVA_SANDBOX_UNAVAILABLE -> "The Java code sandbox is unavailable on this machine (no JDK found) — this card can't be graded here.";
         };
     }
 
@@ -1132,6 +1203,10 @@ public class ReviewController extends BaseController {
         if (currentCard != null && currentCard.getCardType() == CardType.CONCEPT) {
             return "This is a self-graded card. Your wording is not text-matched — compare your answer with the "
                     + "revealed explanation, then rate yourself honestly.";
+        }
+        if (currentCard != null && currentCard.getCardType() == CardType.JAVA_CODE) {
+            return "Write the missing code. It is compiled and run in a sandboxed subprocess when you reveal the "
+                    + "answer, and graded against the expected output or exception.";
         }
         return switch (currentCard == null || currentCard.getValidationMode() == null ? ValidationMode.CASE_INSENSITIVE : currentCard.getValidationMode()) {
             case EXACT -> "Exact capitalization, wording, and spacing are required for this card.";
@@ -1198,7 +1273,19 @@ public class ReviewController extends BaseController {
         TIMED_OUT(ReviewRating.AGAIN),
         TIMED_OUT_WITH_ATTEMPT(ReviewRating.HARD),
         /** Concept/reflection cards are self-assessed, never text-matched against an answer key. */
-        SUBJECTIVE(null);
+        SUBJECTIVE(null),
+        /** Attempt entered but not yet compiled/run — resolves to one of the JAVA_* results below on reveal. */
+        JAVA_PENDING(null),
+        JAVA_CORRECT(ReviewRating.EASY),
+        JAVA_WRONG_OUTPUT(ReviewRating.AGAIN),
+        JAVA_COMPILE_ERROR(ReviewRating.AGAIN),
+        JAVA_TIMEOUT(ReviewRating.AGAIN),
+        JAVA_UNEXPECTED_EXCEPTION(ReviewRating.AGAIN),
+        JAVA_MISSING_EXPECTED_EXCEPTION(ReviewRating.AGAIN),
+        /** Defense-in-depth guard rejected the assembled source before any process was spawned. */
+        JAVA_REJECTED_UNSAFE_SNIPPET(null),
+        /** No JDK (javac) discoverable at java.home — the feature disables itself gracefully. */
+        JAVA_SANDBOX_UNAVAILABLE(null);
 
         private final ReviewRating recommendedRating;
 

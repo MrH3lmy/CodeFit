@@ -44,6 +44,25 @@ class AnswerValidatorTest {
     }
 
     @Test
+    void javaCodeCardWithAnAttemptIsPendingNotTextGraded() {
+        // Grading a Java attempt means compiling and running it, which is too slow to do per
+        // keystroke. It must resolve to JAVA_PENDING rather than being text-compared against the
+        // encoded exercise config stored in acceptedAnswers.
+        AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(CardType.JAVA_CODE,
+                "return a + b;", List.of("JAVA_EXERCISE_V1:5:128:::"), ValidationMode.CASE_INSENSITIVE);
+
+        assertEquals(AnswerValidator.Outcome.JAVA_PENDING, outcome);
+    }
+
+    @Test
+    void javaCodeCardWithEmptyAttemptIsEmpty() {
+        AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(CardType.JAVA_CODE, "  ",
+                List.of("JAVA_EXERCISE_V1:5:128:::"), ValidationMode.CASE_INSENSITIVE);
+
+        assertEquals(AnswerValidator.Outcome.EMPTY, outcome);
+    }
+
+    @Test
     void nonConceptCardTypesAreStillTextGradedObjectively() {
         AnswerValidator.Outcome outcome = AnswerValidator.validateForCardType(CardType.RECALL,
                 "extends", List.of("extends"), ValidationMode.CASE_INSENSITIVE);

@@ -1,6 +1,7 @@
 package com.codefit.service;
 
 import com.codefit.model.CardType;
+import com.codefit.model.JavaCardConfig;
 import com.codefit.model.ValidationMode;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +45,36 @@ class FlashcardImportExportServiceTest {
         String[] parsedFields = row.split("\t", -1);
         assertEquals(storedAnswers, parsedFields[3]);
         assertEquals(List.of("@ControllerAdvice", "@RestControllerAdvice"), AcceptedAnswerCodec.decode(parsedFields[3]));
+    }
+
+    @Test
+    void javaCodeExerciseConfigRoundTripsThroughTheExistingTsvColumnsUnchanged() {
+        // JAVA_CODE reuses the accepted_answers column (like COMMAND_NORMALIZED cards already do)
+        // instead of adding dedicated schema/TSV columns, so the existing 8-field format needs no
+        // changes and every other card type's import/export stays exactly as it was.
+        JavaCardConfig config = new JavaCardConfig(
+                "public class Solution {\n public static void main(String[] a) {\n"
+                        + JavaCardConfig.SOLUTION_PLACEHOLDER + "\n}\n}",
+                "42\n", null, 5, 128);
+        String encodedExercise = JavaExerciseCodec.encode(config);
+
+        String row = FlashcardImportExportService.toTsvRow(List.of(
+                FlashcardImportExportService.field("Print the answer to everything"),
+                FlashcardImportExportService.field("System.out.println(42);"),
+                CardType.JAVA_CODE.name(),
+                FlashcardImportExportService.field(encodedExercise),
+                ValidationMode.CASE_INSENSITIVE.name(),
+                FlashcardImportExportService.field(null),
+                FlashcardImportExportService.field("Java Fundamentals"),
+                ""
+        ));
+
+        String[] parsedFields = row.split("\t", -1);
+        assertEquals(8, parsedFields.length);
+        assertEquals(encodedExercise, parsedFields[3]);
+        JavaCardConfig decoded = JavaExerciseCodec.decode(parsedFields[3]);
+        assertEquals(config.template(), decoded.template());
+        assertEquals(config.expectedOutput(), decoded.expectedOutput());
     }
 
     @Test

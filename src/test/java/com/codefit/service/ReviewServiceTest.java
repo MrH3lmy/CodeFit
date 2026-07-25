@@ -203,6 +203,47 @@ class ReviewServiceTest {
     }
 
     @Test
+    void leechCardsAreNeverIncludedInWeeklyBossCandidates() {
+        // A leech is actively being worked on/rewritten, not a fair candidate for a high-pressure
+        // timed assessment (issue #103).
+        Flashcard active = due(1);
+        Flashcard leech = card(2, CardState.LEECH, LocalDate.now().minusDays(10), "General");
+
+        List<Flashcard> prioritized = ReviewService.prioritizeWeeklyBossCandidates(
+                List.of(active, leech), Map.of(), LocalDate.now());
+
+        assertEquals(List.of(1L), prioritized.stream().map(Flashcard::getId).toList());
+    }
+
+    @Test
+    void leechCardsAreLabelledNeedsRewriteRatherThanRecentlyFailedOrWeakestSkill() {
+        // The label is what session-summary UI groups by (see ReviewController); a leech must never
+        // be folded into the "Recently failed"/"Weakest skill" buckets that make the priority
+        // ordering keep requeuing the same card into every session.
+        Flashcard leech = card(1, CardState.LEECH, LocalDate.now().minusDays(1), "General");
+        List<Flashcard> due = List.of(leech);
+
+        AdaptiveSessionPlan plan = ReviewService.buildAdaptiveSessionPlan(due, List.of("General"), List.of(), 60, ignored -> 10);
+
+        assertEquals(1, plan.composition().get("Needs rewrite"));
+        assertFalse(plan.composition().containsKey("Recently failed"));
+        assertFalse(plan.composition().containsKey("Weakest skill"));
+    }
+
+    @Test
+    void leechCardsAreNotBumpedAheadOfMoreOverdueDueCardsLikeRelearningIs() {
+        // Unlike RELEARNING, a leech isn't force-prioritized to the front of the queue every
+        // session — it falls into the normal due-date/ease ordering alongside other due cards.
+        Flashcard leech = card(1, CardState.LEECH, LocalDate.now(), "General");
+        Flashcard moreOverdue = card(2, CardState.REVIEW, LocalDate.now().minusDays(10), "General");
+        List<Flashcard> due = List.of(leech, moreOverdue);
+
+        AdaptiveSessionPlan plan = ReviewService.buildAdaptiveSessionPlan(due, List.of(), List.of(), 60, ignored -> 10);
+
+        assertEquals(2L, plan.cards().get(0).getId(), "the more-overdue ordinary card must still come first");
+    }
+
+    @Test
     void weeklyBossCandidatesPrioritizeOverdueAndHighPressureCards() {
         Flashcard overdue = card(1, CardState.REVIEW, LocalDate.now().minusDays(5), "General");
         Flashcard notYetDue = card(2, CardState.REVIEW, LocalDate.now().plusDays(5), "General");

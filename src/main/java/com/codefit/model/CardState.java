@@ -24,7 +24,17 @@ public enum CardState {
      * CardLifecycleService); resurfaces as a normal due card for a retention check once that date
      * arrives, and then transitions like any other reviewed card.
      */
-    GRADUATED("Graduated");
+    GRADUATED("Graduated"),
+    /**
+     * Repeated Again ratings, a high failure rate, repeated hint use, or answers consistently far
+     * slower than the card's own time target — evidence the card itself may be poorly written, too
+     * broad, ambiguous, or missing prerequisite knowledge, rather than the learner simply needing
+     * more repetitions (see CardLifecycleService#isLeech). Still resurfaces in the normal due queue
+     * at its own pace rather than being force-prioritized every session, but is excluded from weekly
+     * boss battles; leaves this state after a run of consecutive successful reviews, or via an
+     * explicit rewrite-and-reset (CardLifecycleService#resetForRewrite).
+     */
+    LEECH("Needs Rewrite");
 
     private final String label;
 

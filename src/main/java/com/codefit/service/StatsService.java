@@ -243,9 +243,7 @@ public class StatsService {
     /** Shared "did this attempt succeed" definition for recovered-misses and retention, since both
      *  need a uniform pass/fail signal across objective and subjective (self-rated) cards. */
     private static boolean isSuccessfulAttempt(ReviewHistory history) {
-        return history.isSubjective()
-                ? (history.getRating() == ReviewRating.GOOD || history.getRating() == ReviewRating.EASY)
-                : history.isObjectivelyCorrect();
+        return history.isSuccessfulAttempt();
     }
 
     /**
@@ -492,10 +490,11 @@ public class StatsService {
     static CardStateBreakdown summarizeCardStates(List<Flashcard> cards) {
         int graduated = (int) cards.stream().filter(card -> card.getCardState() == CardState.GRADUATED).count();
         int suspended = (int) cards.stream().filter(card -> card.getCardState() == CardState.SUSPENDED).count();
-        return new CardStateBreakdown(graduated, suspended);
+        int leech = (int) cards.stream().filter(card -> card.getCardState() == CardState.LEECH).count();
+        return new CardStateBreakdown(graduated, suspended, leech);
     }
 
-    public record CardStateBreakdown(int graduatedCards, int suspendedCards) {
+    public record CardStateBreakdown(int graduatedCards, int suspendedCards, int leechCards) {
     }
 
     private static String normalizeSkill(String skillCategory) {

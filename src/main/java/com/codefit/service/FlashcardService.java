@@ -1,5 +1,6 @@
 package com.codefit.service;
 
+import com.codefit.model.CardState;
 import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
@@ -11,6 +12,7 @@ import java.util.Optional;
 public class FlashcardService {
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
     private final DailyQuestService dailyQuestService = new DailyQuestService();
+    private final CardLifecycleService cardLifecycleService = new CardLifecycleService();
 
     public List<Flashcard> getAllCards() {
         return flashcardRepository.findAll();
@@ -118,6 +120,32 @@ public class FlashcardService {
         existing.setTimeLimitSeconds(timeLimitSeconds);
         existing.setSkillCategory(skillCategory);
         flashcardRepository.updateContent(existing);
+        return existing;
+    }
+
+    /** Cards flagged LEECH (see CardLifecycleService#isLeech), surfaced on the decks and stats
+     *  screens so a learner sees them once rather than only stumbling onto them mid-session. */
+    public List<Flashcard> getLeechCards() {
+        return flashcardRepository.findByState(CardState.LEECH);
+    }
+
+    /** Deliberate suspension of a card the learner has decided not to rewrite right now; reuses the
+     *  same CardLifecycleService transition weekly-boss/new-card suspension already goes through. */
+    public Flashcard suspendCard(long cardId) {
+        Flashcard existing = flashcardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Card not found."));
+        cardLifecycleService.suspend(existing);
+        flashcardRepository.updateSchedule(existing);
+        return existing;
+    }
+
+    /** Restarts a rewritten card's learning progress from scratch; intended to be called right
+     *  after editing a leech card's content so it re-enters learning cleanly. */
+    public Flashcard resetCardForRewrite(long cardId) {
+        Flashcard existing = flashcardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Card not found."));
+        cardLifecycleService.resetForRewrite(existing);
+        flashcardRepository.updateSchedule(existing);
         return existing;
     }
 

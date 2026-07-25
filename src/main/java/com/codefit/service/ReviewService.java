@@ -26,6 +26,9 @@ import java.util.function.ToIntFunction;
 public class ReviewService {
     private static final int WEEKLY_BOSS_CARD_LIMIT = 12;
     public static final int DEFAULT_DAILY_NEW_CARD_LIMIT = 2;
+    /** How many recent (non-boss-battle) reviews are fetched as leech-detection evidence; matches
+     *  MasteryService's own lookback so both decisions look at a comparably-sized recent window. */
+    private static final int LEECH_EVIDENCE_LOOKBACK = 10;
 
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
     private final ReviewHistoryRepository reviewHistoryRepository = new ReviewHistoryRepository();
@@ -257,9 +260,19 @@ public class ReviewService {
         return ordered;
     }
 
+    /**
+     * LEECH is deliberately not treated as "Recently failed" or "Weakest skill" here: those labels
+     * feed the same priority ordering that keeps requeuing a card every session, which is exactly
+     * what the issue asks a flagged leech to avoid. It's called out under its own label instead, and
+     * otherwise falls into the normal due-date/ease ordering in {@link #orderDueQueue} rather than
+     * jumping the queue.
+     */
     private static String classifyDueCard(Flashcard card, List<String> weakSkills) {
         if (card.getCardState() == CardState.RELEARNING) {
             return "Recently failed";
+        }
+        if (card.getCardState() == CardState.LEECH) {
+            return "Needs rewrite";
         }
         if (weakSkills.contains(normalizeSkillCategory(card.getSkillCategory()))) {
             return "Weakest skill";
@@ -296,7 +309,9 @@ public class ReviewService {
     /** Package-private/static so the suspended-card exclusion is directly unit testable without a database. */
     static List<Flashcard> prioritizeWeeklyBossCandidates(List<Flashcard> allCards, Map<Long, CardPressure> pressureByCardId, LocalDate today) {
         return allCards.stream()
-                .filter(card -> card.getCardState() != CardState.SUSPENDED)
+                // A leech is actively being worked on/rewritten, not a fair candidate for a
+                // high-pressure timed assessment.
+                .filter(card -> card.getCardState() != CardState.SUSPENDED && card.getCardState() != CardState.LEECH)
                 .sorted(Comparator.comparingDouble((Flashcard card) -> -weeklyBossPriority(card, pressureByCardId.get(card.getId()), today))
                         .thenComparing(Flashcard::getSkillCategory, Comparator.nullsLast(String::compareToIgnoreCase))
                         .thenComparingLong(Flashcard::getDeckId)
@@ -347,9 +362,10 @@ public class ReviewService {
                 attempt.validationResult(), attempt.submittedAnswer(), attempt.responseTimeMs(),
                 attempt.hintUsed(), attempt.sessionId(),
                 attempt.confidence() == null ? null : attempt.confidence().name()));
-        // Evaluated after saving history so this review counts toward the mastery decision.
+        // Evaluated after saving history so this review counts toward the mastery and leech decisions.
         MasteryService.CardMasteryState masteryState = masteryService.getMasteryState(card);
-        cardLifecycleService.applyReviewOutcome(card, rating, masteryState);
+        List<ReviewHistory> recentHistory = reviewHistoryRepository.findRecentForFlashcard(card.getId(), LEECH_EVIDENCE_LOOKBACK);
+        cardLifecycleService.applyReviewOutcome(card, rating, masteryState, recentHistory);
         flashcardRepository.updateSchedule(card);
         if (!bossBattle) {
             progressService.recordReview(rating);

@@ -69,6 +69,8 @@ public class StatsController extends BaseController {
     @FXML private Label timeByCardTypeLabel;
     @FXML private Label graduatedCardsLabel;
     @FXML private Label suspendedCardsLabel;
+    @FXML private Label needsRewriteCountLabel;
+    @FXML private VBox needsRewriteCardsBox;
     @FXML private Label latestAssessmentSummaryLabel;
     @FXML private VBox transferSkillBreakdownBox;
     @FXML private ToggleButton overviewTabButton;
@@ -102,6 +104,7 @@ public class StatsController extends BaseController {
         populateWeakestSkillsCompact();
         populateLearningEfficiency();
         populateTransferAssessment();
+        populateNeedsRewrite();
         configureTabs();
 
         configureSkillPerformanceList();
@@ -313,6 +316,29 @@ public class StatsController extends BaseController {
             row.getStyleClass().add("dashboard-card-helper");
             row.setWrapText(true);
             transferSkillBreakdownBox.getChildren().add(row);
+        });
+    }
+
+    /**
+     * Cards flagged LEECH are surfaced here once, prominently, rather than only being discovered
+     * mid-session; see ReviewService for how a flagged leech avoids being repeatedly re-prioritized
+     * into every adaptive session instead of appearing here.
+     */
+    private void populateNeedsRewrite() {
+        if (needsRewriteCountLabel == null || needsRewriteCardsBox == null) {
+            return;
+        }
+        int leechCount = statsService.getCardStateBreakdown().leechCards();
+        needsRewriteCountLabel.setText(leechCount == 0
+                ? "No cards currently need a rewrite."
+                : leechCount + " " + (leechCount == 1 ? "card needs" : "cards need") + " a rewrite.");
+
+        needsRewriteCardsBox.getChildren().clear();
+        flashcardService.getLeechCards().stream().limit(10).forEach(card -> {
+            Label row = new Label(shortenPrompt(card.getFront()));
+            row.getStyleClass().add("dashboard-card-helper");
+            row.setWrapText(true);
+            needsRewriteCardsBox.getChildren().add(row);
         });
     }
 

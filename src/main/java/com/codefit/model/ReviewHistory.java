@@ -110,4 +110,15 @@ public class ReviewHistory {
     public boolean isTimedSuccess() {
         return submittedInTime && isObjectivelyCorrect();
     }
+
+    /**
+     * Uniform pass/fail signal across objective and subjective (self-rated) cards, needed wherever
+     * "did this attempt succeed" has to be a single boolean regardless of card type (recovered-miss
+     * and retention aggregation in StatsService, leech recovery in CardLifecycleService).
+     */
+    public boolean isSuccessfulAttempt() {
+        return isSubjective()
+                ? (rating == ReviewRating.GOOD || rating == ReviewRating.EASY)
+                : isObjectivelyCorrect();
+    }
 }

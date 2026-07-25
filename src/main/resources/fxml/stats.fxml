@@ -105,6 +105,17 @@
                                 </VBox>
                             </HBox>
                         </VBox>
+                        <!-- Leech detection (#103): cards repeatedly missed, hint-abused, or answered far
+                             slower than their own time target, kept visibly separate from the mastery
+                             breakdown above since needing a rewrite is a different signal than not yet
+                             being mastered. -->
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="NEEDS REWRITE" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label text="Cards repeatedly missed, hint-abused, or answered far slower than their own time target — evidence the card itself needs editing, not just more repetitions." styleClass="dashboard-card-helper" wrapText="true" />
+                            <Label fx:id="needsRewriteCountLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                            <VBox fx:id="needsRewriteCardsBox" spacing="6" maxWidth="Infinity" />
+                        </VBox>
+
                         <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
                             <Label text="Skill Performance" styleClass="section-title" />
                             <ListView fx:id="skillPerformanceListView" prefHeight="220" VBox.vgrow="ALWAYS" />

@@ -112,6 +112,7 @@ public class ReviewController extends BaseController {
     @FXML private Button addMissedConceptButton;
     @FXML private Button emptyStateActionButton;
     @FXML private VBox newCardActionsBox;
+    @FXML private Label newCardActionsLabel;
     @FXML private Button graduateButton;
     @FXML private Button suspendButton;
     @FXML private Button editCardButton;
@@ -286,11 +287,12 @@ public class ReviewController extends BaseController {
         showCurrentCard();
     }
 
-    /** Removes a NEW card from every review queue (normal, adaptive, and weekly boss) until it is
-     *  explicitly reactivated. Available before or after reveal since it doesn't depend on the attempt. */
+    /** Removes a NEW or LEECH card from every review queue (normal, adaptive, and weekly boss) until
+     *  it is explicitly reactivated. Available before or after reveal since it doesn't depend on the
+     *  attempt. */
     @FXML
     public void suspendCard() {
-        if (currentCard == null || currentCard.getCardState() != CardState.NEW) {
+        if (currentCard == null || (currentCard.getCardState() != CardState.NEW && currentCard.getCardState() != CardState.LEECH)) {
             return;
         }
         stopTimeLimitTimeline();
@@ -1383,20 +1385,35 @@ public class ReviewController extends BaseController {
         updateGraduateButtonAvailability();
     }
 
-    /** The new-card diagnostic actions only apply while reviewing a NEW card: Suspend and Edit
-     *  don't depend on the attempt, but Graduate is additionally gated on the same correct/
-     *  unassisted/on-time signals the rating buttons use. */
+    /**
+     * Suspend and Edit are available while reviewing either a NEW card or a LEECH card (a leech is
+     * excluded from weekly boss and never force-prioritized, but still needs a way to be edited or
+     * suspended from the review screen itself, not only from the Library); Graduate only ever
+     * applies to a NEW card and is additionally gated on the same correct/unassisted/on-time signals
+     * the rating buttons use.
+     */
     private void updateNewCardActionsVisibility() {
         boolean isNewCard = currentCard != null && currentCard.getCardState() == CardState.NEW;
+        boolean isLeech = currentCard != null && currentCard.getCardState() == CardState.LEECH;
+        boolean showActions = isNewCard || isLeech;
         if (newCardActionsBox != null) {
-            newCardActionsBox.setVisible(isNewCard);
-            newCardActionsBox.setManaged(isNewCard);
+            newCardActionsBox.setVisible(showActions);
+            newCardActionsBox.setManaged(showActions);
+        }
+        if (newCardActionsLabel != null) {
+            newCardActionsLabel.setText(isLeech
+                    ? "Flagged as needing a rewrite — split, clarify, or add a prerequisite card, then Edit, Reset, or Suspend it."
+                    : "New card — already familiar with this?");
+        }
+        if (graduateButton != null) {
+            graduateButton.setVisible(isNewCard);
+            graduateButton.setManaged(isNewCard);
         }
         if (suspendButton != null) {
-            suspendButton.setDisable(!isNewCard);
+            suspendButton.setDisable(!showActions);
         }
         if (editCardButton != null) {
-            editCardButton.setDisable(!isNewCard);
+            editCardButton.setDisable(!showActions);
         }
         updateGraduateButtonAvailability();
     }

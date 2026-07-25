@@ -75,7 +75,7 @@
                     </HBox>
 
                     <VBox fx:id="newCardActionsBox" spacing="8" styleClass="queue-strip" maxWidth="Infinity" visible="false" managed="false">
-                        <Label text="New card — already familiar with this?" styleClass="helper-text" wrapText="true" />
+                        <Label fx:id="newCardActionsLabel" text="New card — already familiar with this?" styleClass="helper-text" wrapText="true" />
                         <HBox spacing="10" alignment="CENTER" maxWidth="Infinity">
                             <Button fx:id="graduateButton" text="✔ Graduate — already know this (G)" onAction="#graduateCard" styleClass="epic-button rating-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
                             <Button fx:id="suspendButton" text="Suspend (S)" onAction="#suspendCard" styleClass="warning-button rating-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />

@@ -59,26 +59,52 @@ public class TrainingPath {
         return Optional.of(Integer.parseInt(matcher.group(1)));
     }
 
+    /**
+     * One module in a training path. A module is normally backed by a single flashcard deck, but
+     * {@code deckNames} may list more than one deck (e.g. a module whose curriculum was authored as
+     * several smaller decks) so mastery and due-card counts aggregate across all of them.
+     *
+     * <p>{@code prerequisiteModuleOrders} documents which earlier modules should be reasonably solid
+     * before starting this one, and {@code masteryThreshold} is the durable-mastery fraction (0-1,
+     * from {@link com.codefit.service.MasteryService}) this module must reach before the
+     * recommendation engine considers it complete enough to move on.
+     */
     public static class TrainingPathModule {
         private final int order;
         private final String title;
         private final String learningObjective;
-        private final String deckName;
+        private final List<String> deckNames;
+        private final List<Integer> prerequisiteModuleOrders;
+        private final double masteryThreshold;
 
-        public TrainingPathModule(int order, String title, String learningObjective, String deckName) {
+        public TrainingPathModule(int order, String title, String learningObjective, List<String> deckNames,
+                                  List<Integer> prerequisiteModuleOrders, double masteryThreshold) {
             this.order = order;
             this.title = title;
             this.learningObjective = learningObjective;
-            this.deckName = deckName;
+            this.deckNames = List.copyOf(deckNames);
+            this.prerequisiteModuleOrders = List.copyOf(prerequisiteModuleOrders);
+            this.masteryThreshold = masteryThreshold;
+        }
+
+        public TrainingPathModule(int order, String title, String learningObjective, String deckName,
+                                  List<Integer> prerequisiteModuleOrders, double masteryThreshold) {
+            this(order, title, learningObjective, List.of(deckName), prerequisiteModuleOrders, masteryThreshold);
         }
 
         public int getOrder() { return order; }
         public String getTitle() { return title; }
         public String getLearningObjective() { return learningObjective; }
-        public String getDeckName() { return deckName; }
+
+        /** The primary/first deck backing this module. Use {@link #getDeckNames()} for the full set. */
+        public String getDeckName() { return deckNames.get(0); }
+        public List<String> getDeckNames() { return deckNames; }
+        public List<Integer> getPrerequisiteModuleOrders() { return prerequisiteModuleOrders; }
+        public boolean hasPrerequisites() { return !prerequisiteModuleOrders.isEmpty(); }
+        public double getMasteryThreshold() { return masteryThreshold; }
 
         public boolean matchesDeck(Deck deck) {
-            return deck != null && deckName.equalsIgnoreCase(deck.getName());
+            return deck != null && deckNames.stream().anyMatch(deckName -> deckName.equalsIgnoreCase(deck.getName()));
         }
     }
 }

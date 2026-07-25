@@ -1,6 +1,7 @@
 package com.codefit.model;
 
 public class SyllabusModule {
+    private final String pathName;
     private final int moduleNumber;
     private final String title;
     private final String learningObjective;
@@ -11,9 +12,10 @@ public class SyllabusModule {
     private final int learningCardCount;
     private final int masteredCardCount;
 
-    public SyllabusModule(int moduleNumber, String title, String learningObjective, long deckId,
+    public SyllabusModule(String pathName, int moduleNumber, String title, String learningObjective, long deckId,
                           String deckName, int estimatedCardCount, int seenCardCount, int learningCardCount,
                           int masteredCardCount) {
+        this.pathName = pathName;
         this.moduleNumber = moduleNumber;
         this.title = title;
         this.learningObjective = learningObjective;
@@ -25,6 +27,7 @@ public class SyllabusModule {
         this.masteredCardCount = masteredCardCount;
     }
 
+    public String getPathName() { return pathName; }
     public int getModuleNumber() { return moduleNumber; }
     public String getTitle() { return title; }
     public String getLearningObjective() { return learningObjective; }

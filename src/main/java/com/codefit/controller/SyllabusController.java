@@ -26,7 +26,7 @@ public class SyllabusController extends BaseController {
     @FXML
     public void initialize() {
         syllabusListView.setCellFactory(listView -> new SyllabusModuleCell());
-        var modules = FXCollections.observableArrayList(syllabusService.getJavaBackendModules());
+        var modules = FXCollections.observableArrayList(syllabusService.getAllTrainingPathModules());
         syllabusListView.setItems(modules);
         syllabusListView.setPlaceholder(new Label("No syllabus modules are available yet."));
 
@@ -82,7 +82,7 @@ public class SyllabusController extends BaseController {
                 return;
             }
 
-            numberLabel.setText("Module " + module.getModuleNumber());
+            numberLabel.setText(module.getPathName() + " · Module " + module.getModuleNumber());
             titleLabel.setText(module.getTitle());
             objectiveLabel.setText(module.getLearningObjective());
             deckLabel.setText("Deck: " + module.getDeckName() + deckIdText(module));

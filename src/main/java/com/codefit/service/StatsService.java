@@ -479,6 +479,25 @@ public class StatsService {
                 .toList();
     }
 
+    /**
+     * Diagnostically graduated ("already know this") cards are tracked separately from cards that
+     * earned MASTERED status through the normal repeated-review bar (see MasteryService), so a
+     * learner can see how much of their progress is a single-shot diagnostic skip still pending a
+     * retention check versus durably proven mastery.
+     */
+    public CardStateBreakdown getCardStateBreakdown() {
+        return summarizeCardStates(flashcardRepository.findAll());
+    }
+
+    static CardStateBreakdown summarizeCardStates(List<Flashcard> cards) {
+        int graduated = (int) cards.stream().filter(card -> card.getCardState() == CardState.GRADUATED).count();
+        int suspended = (int) cards.stream().filter(card -> card.getCardState() == CardState.SUSPENDED).count();
+        return new CardStateBreakdown(graduated, suspended);
+    }
+
+    public record CardStateBreakdown(int graduatedCards, int suspendedCards) {
+    }
+
     private static String normalizeSkill(String skillCategory) {
         return skillCategory == null || skillCategory.isBlank() ? "General" : skillCategory.strip();
     }

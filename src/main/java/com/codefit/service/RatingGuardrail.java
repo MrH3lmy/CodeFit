@@ -64,4 +64,28 @@ public final class RatingGuardrail {
         }
         return label + " isn't available for an incorrect or empty answer; rate it Again or Hard.";
     }
+
+    /**
+     * Diagnostic graduation ("Already know this") is held to the same bar as an Easy rating —
+     * correct, unassisted, on-time — plus an explicit timeliness check, since a hinted, incorrect,
+     * or timed-out attempt must never be able to skip a card 30-60 days into the future. Subjective
+     * (CONCEPT) cards have no objective signal to gate on, so they can never graduate this way.
+     */
+    public static boolean canGraduate(CardType cardType, String validationResult, boolean hintUsed, boolean submittedInTime) {
+        return isObjectivelyGraded(cardType) && submittedInTime
+                && allowedRatings(cardType, validationResult, hintUsed).contains(ReviewRating.EASY);
+    }
+
+    public static String graduationBlockedReason(CardType cardType, String validationResult, boolean hintUsed, boolean submittedInTime) {
+        if (!isObjectivelyGraded(cardType)) {
+            return "Graduate isn't available for a self-graded card; there is no objective signal to confirm it's already known.";
+        }
+        if (!submittedInTime) {
+            return "Graduate isn't available because time expired before the answer was submitted.";
+        }
+        if (hintUsed) {
+            return "Graduate isn't available because a hint was used.";
+        }
+        return "Graduate isn't available for an incorrect or empty answer.";
+    }
 }

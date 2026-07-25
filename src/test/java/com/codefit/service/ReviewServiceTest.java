@@ -5,11 +5,13 @@ import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ValidationMode;
 import com.codefit.service.ReviewService.AdaptiveSessionPlan;
+import com.codefit.service.ReviewService.CardPressure;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -159,5 +161,45 @@ class ReviewServiceTest {
     void availableNewCardBudgetIsCappedByHowManyNewCardsActuallyExist() {
         // Limit allows 2 more today, but only 1 NEW card exists in the whole collection.
         assertEquals(1, ReviewService.computeAvailableNewCardBudget(2, 0, 1));
+    }
+
+    @Test
+    void suspendedCardsAreNeverIncludedInWeeklyBossCandidates() {
+        Flashcard active = due(1);
+        Flashcard suspended = card(2, CardState.SUSPENDED, LocalDate.now().minusDays(10), "General");
+
+        List<Flashcard> prioritized = ReviewService.prioritizeWeeklyBossCandidates(
+                List.of(active, suspended), Map.of(), LocalDate.now());
+
+        assertEquals(List.of(1L), prioritized.stream().map(Flashcard::getId).toList());
+    }
+
+    @Test
+    void suspendedGraduatedAndMasteredCardsAreAllExcludedOnlyIfSuspended() {
+        // Suspension is the only state that removes a card from the weekly boss queue; GRADUATED
+        // and MASTERED cards remain eligible candidates like any other non-suspended card.
+        Flashcard graduated = card(1, CardState.GRADUATED, LocalDate.now().plusDays(40), "General");
+        Flashcard mastered = card(2, CardState.MASTERED, LocalDate.now().plusDays(14), "General");
+        Flashcard suspended = card(3, CardState.SUSPENDED, LocalDate.now(), "General");
+
+        List<Flashcard> prioritized = ReviewService.prioritizeWeeklyBossCandidates(
+                List.of(graduated, mastered, suspended), Map.of(), LocalDate.now());
+
+        assertEquals(2, prioritized.size());
+        assertFalse(prioritized.stream().anyMatch(card -> card.getId() == 3L));
+    }
+
+    @Test
+    void weeklyBossCandidatesPrioritizeOverdueAndHighPressureCards() {
+        Flashcard overdue = card(1, CardState.REVIEW, LocalDate.now().minusDays(5), "General");
+        Flashcard notYetDue = card(2, CardState.REVIEW, LocalDate.now().plusDays(5), "General");
+        CardPressure highPressure = new CardPressure();
+        highPressure.reviewCount = 3;
+        highPressure.againCount = 2;
+
+        List<Flashcard> prioritized = ReviewService.prioritizeWeeklyBossCandidates(
+                List.of(notYetDue, overdue), Map.of(1L, highPressure), LocalDate.now());
+
+        assertEquals(1L, prioritized.get(0).getId());
     }
 }

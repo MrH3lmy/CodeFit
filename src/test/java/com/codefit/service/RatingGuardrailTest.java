@@ -77,4 +77,44 @@ class RatingGuardrailTest {
         String reason = RatingGuardrail.blockedReason(ReviewRating.EASY, CardType.RECALL, "DIFFERENT", false);
         assertTrue(reason.toLowerCase().contains("incorrect") || reason.toLowerCase().contains("empty"));
     }
+
+    @Test
+    void canGraduateOnlyOnCorrectUnassistedTimelyAnswer() {
+        assertTrue(RatingGuardrail.canGraduate(CardType.RECALL, "EXACT", false, true));
+        assertTrue(RatingGuardrail.canGraduate(CardType.RECALL, "CLOSE_SPACING", false, true));
+    }
+
+    @Test
+    void cannotGraduateAHintedAnswer() {
+        assertFalse(RatingGuardrail.canGraduate(CardType.RECALL, "EXACT", true, true));
+    }
+
+    @Test
+    void cannotGraduateAnIncorrectOrEmptyAnswer() {
+        assertFalse(RatingGuardrail.canGraduate(CardType.RECALL, "DIFFERENT", false, true));
+        assertFalse(RatingGuardrail.canGraduate(CardType.RECALL, "EMPTY", false, true));
+        assertFalse(RatingGuardrail.canGraduate(CardType.RECALL, null, false, true));
+    }
+
+    @Test
+    void cannotGraduateATimedOutAnswerEvenIfCorrect() {
+        // submittedInTime=false covers a plain timeout; TIMED_OUT_WITH_ATTEMPT covers a correct
+        // attempt recorded after time expired. Both must be blocked.
+        assertFalse(RatingGuardrail.canGraduate(CardType.RECALL, "EXACT", false, false));
+        assertFalse(RatingGuardrail.canGraduate(CardType.RECALL, "TIMED_OUT_WITH_ATTEMPT", false, true));
+    }
+
+    @Test
+    void cannotGraduateASelfGradedConceptCard() {
+        assertFalse(RatingGuardrail.canGraduate(CardType.CONCEPT, "EXACT", false, true));
+        String reason = RatingGuardrail.graduationBlockedReason(CardType.CONCEPT, "EXACT", false, true);
+        assertTrue(reason.toLowerCase().contains("self-graded"));
+    }
+
+    @Test
+    void graduationBlockedReasonNamesTheSpecificBlocker() {
+        assertTrue(RatingGuardrail.graduationBlockedReason(CardType.RECALL, "EXACT", true, true).toLowerCase().contains("hint"));
+        assertTrue(RatingGuardrail.graduationBlockedReason(CardType.RECALL, "EXACT", false, false).toLowerCase().contains("time"));
+        assertTrue(RatingGuardrail.graduationBlockedReason(CardType.RECALL, "DIFFERENT", false, true).toLowerCase().contains("incorrect"));
+    }
 }

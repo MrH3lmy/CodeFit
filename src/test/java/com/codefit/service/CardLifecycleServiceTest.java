@@ -8,6 +8,8 @@ import com.codefit.model.ValidationMode;
 import com.codefit.service.MasteryService.CardMasteryState;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -104,5 +106,69 @@ class CardLifecycleServiceTest {
         Flashcard card = card(CardState.SUSPENDED);
         service.applyReviewOutcome(card, ReviewRating.GOOD, CardMasteryState.MASTERED);
         assertNull(card.getIntroducedAt());
+    }
+
+    @Test
+    void graduatingANewCardSetsStateAndIntroducedAt() {
+        Flashcard card = card(CardState.NEW);
+        assertNull(card.getIntroducedAt());
+
+        service.graduate(card, 45);
+
+        assertEquals(CardState.GRADUATED, card.getCardState());
+        assertNotNull(card.getIntroducedAt());
+        assertEquals(45, card.getIntervalDays());
+        assertEquals(LocalDate.now().plusDays(45), card.getDueDate());
+        assertEquals(1, card.getReviewCount());
+    }
+
+    @Test
+    void graduationIntervalIsClampedToTheConfiguredRange() {
+        Flashcard tooShort = card(CardState.NEW);
+        service.graduate(tooShort, 5);
+        assertEquals(CardLifecycleService.MIN_GRADUATION_INTERVAL_DAYS, tooShort.getIntervalDays());
+
+        Flashcard tooLong = card(CardState.NEW);
+        service.graduate(tooLong, 200);
+        assertEquals(CardLifecycleService.MAX_GRADUATION_INTERVAL_DAYS, tooLong.getIntervalDays());
+    }
+
+    @Test
+    void graduatingASuspendedCardIsANoOp() {
+        Flashcard card = card(CardState.SUSPENDED);
+        service.graduate(card, 45);
+        assertEquals(CardState.SUSPENDED, card.getCardState());
+        assertNull(card.getIntroducedAt());
+    }
+
+    @Test
+    void graduatedCardRatedAgainOnRetentionCheckMovesToRelearning() {
+        // The retention check when a graduated card comes back due must go through the same
+        // AGAIN-handling as any other previously-reviewed card, not be treated like a fresh NEW card.
+        Flashcard card = card(CardState.GRADUATED);
+        service.applyReviewOutcome(card, ReviewRating.AGAIN, CardMasteryState.NOT_SEEN);
+        assertEquals(CardState.RELEARNING, card.getCardState());
+    }
+
+    @Test
+    void graduatedCardPassingRetentionCheckMovesToReviewOrMastered() {
+        Flashcard reviewCard = card(CardState.GRADUATED);
+        service.applyReviewOutcome(reviewCard, ReviewRating.GOOD, CardMasteryState.LEARNING);
+        assertEquals(CardState.REVIEW, reviewCard.getCardState());
+
+        Flashcard masteredCard = card(CardState.GRADUATED);
+        service.applyReviewOutcome(masteredCard, ReviewRating.EASY, CardMasteryState.MASTERED);
+        assertEquals(CardState.MASTERED, masteredCard.getCardState());
+    }
+
+    @Test
+    void suspendMarksAnyCardStateSuspended() {
+        Flashcard newCard = card(CardState.NEW);
+        service.suspend(newCard);
+        assertEquals(CardState.SUSPENDED, newCard.getCardState());
+
+        Flashcard reviewCard = card(CardState.REVIEW);
+        service.suspend(reviewCard);
+        assertEquals(CardState.SUSPENDED, reviewCard.getCardState());
     }
 }

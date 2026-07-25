@@ -5,6 +5,7 @@ import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.ReviewRating;
+import com.codefit.model.ValidationMode;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -319,5 +320,52 @@ class StatsServiceTest {
         assertTrue(stats.hasConfidenceSignal());
         assertEquals(100.0, stats.confidenceCalibrationPercent());
         assertEquals(2, stats.confidenceSampleCount());
+    }
+
+    private Flashcard cardInState(long id, CardState state) {
+        Flashcard flashcard = new Flashcard(1, "front " + id, "back", CardType.RECALL, "back",
+                ValidationMode.CASE_INSENSITIVE, null);
+        flashcard.setId(id);
+        flashcard.setCardState(state);
+        return flashcard;
+    }
+
+    @Test
+    void graduatedCardsAreCountedSeparatelyFromNormallyLearnedCards() {
+        List<Flashcard> cards = List.of(
+                cardInState(1, CardState.GRADUATED),
+                cardInState(2, CardState.GRADUATED),
+                cardInState(3, CardState.MASTERED),
+                cardInState(4, CardState.REVIEW),
+                cardInState(5, CardState.NEW)
+        );
+
+        StatsService.CardStateBreakdown breakdown = StatsService.summarizeCardStates(cards);
+
+        assertEquals(2, breakdown.graduatedCards());
+        assertEquals(0, breakdown.suspendedCards());
+    }
+
+    @Test
+    void suspendedCardsAreCountedSeparatelyFromGraduatedCards() {
+        List<Flashcard> cards = List.of(
+                cardInState(1, CardState.SUSPENDED),
+                cardInState(2, CardState.GRADUATED)
+        );
+
+        StatsService.CardStateBreakdown breakdown = StatsService.summarizeCardStates(cards);
+
+        assertEquals(1, breakdown.graduatedCards());
+        assertEquals(1, breakdown.suspendedCards());
+    }
+
+    @Test
+    void noGraduatedOrSuspendedCardsGivesZeroForBoth() {
+        List<Flashcard> cards = List.of(cardInState(1, CardState.NEW), cardInState(2, CardState.MASTERED));
+
+        StatsService.CardStateBreakdown breakdown = StatsService.summarizeCardStates(cards);
+
+        assertEquals(0, breakdown.graduatedCards());
+        assertEquals(0, breakdown.suspendedCards());
     }
 }

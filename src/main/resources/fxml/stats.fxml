@@ -93,6 +93,19 @@
                             </HBox>
                         </VBox>
                         <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="DIAGNOSTIC GRADUATION" styleClass="dashboard-card-title" wrapText="true" />
+                            <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="GRADUATED (ALREADY KNEW IT)" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="graduatedCardsLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="SUSPENDED" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="suspendedCardsLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
                             <Label text="Skill Performance" styleClass="section-title" />
                             <ListView fx:id="skillPerformanceListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                         </VBox>

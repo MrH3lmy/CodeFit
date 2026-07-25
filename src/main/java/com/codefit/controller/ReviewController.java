@@ -1,5 +1,6 @@
 package com.codefit.controller;
 
+import com.codefit.model.CardState;
 import com.codefit.model.CardType;
 import com.codefit.model.ConfidenceLevel;
 import com.codefit.model.Deck;
@@ -109,6 +110,10 @@ public class ReviewController extends BaseController {
     @FXML private Button addSearchedCommandButton;
     @FXML private Button addMissedConceptButton;
     @FXML private Button emptyStateActionButton;
+    @FXML private VBox newCardActionsBox;
+    @FXML private Button graduateButton;
+    @FXML private Button suspendButton;
+    @FXML private Button editCardButton;
 
     private static final int AGAIN_REQUEUE_OFFSET = 3;
     private static final int HARD_REQUEUE_OFFSET = 6;
@@ -125,6 +130,7 @@ public class ReviewController extends BaseController {
     private int earnedXp;
     private int initialMissCount;
     private int recoveredMissCount;
+    private int graduatedCardCount;
     private Integer sessionBudgetMinutes;
     private int sessionElapsedSeconds;
     private Map<String, Integer> sessionComposition = Map.of();
@@ -251,6 +257,57 @@ public class ReviewController extends BaseController {
         NavigationService.showAddCardReflection("concept");
     }
 
+    /**
+     * Diagnostic graduation for a new card the learner already knows: schedules it far into the
+     * future instead of the short interval a normal Easy rating would give it. Only available on a
+     * NEW card, after reveal, and only when the attempt was correct, unassisted, and on time — the
+     * same signals {@link #allowedRatings()} already tracks for the rating buttons.
+     */
+    @FXML
+    public void graduateCard() {
+        if (currentCard == null || currentCard.getCardState() != CardState.NEW || !answerRevealed) {
+            return;
+        }
+        if (!RatingGuardrail.canGraduate(currentCard.getCardType(), latestValidationResult.name(), hintUsed, submittedInTime)) {
+            setStatus(messageLabel, RatingGuardrail.graduationBlockedReason(currentCard.getCardType(), latestValidationResult.name(), hintUsed, submittedInTime));
+            return;
+        }
+        stopTimeLimitTimeline();
+        Flashcard graduatedCard = currentCard;
+        reviewService.graduateCard(graduatedCard);
+        reviewedCardCount++;
+        graduatedCardCount++;
+        earnedXp += ReviewRating.EASY.getXp();
+        sessionElapsedSeconds += (lastResponseTimeMs == null ? 15_000 : lastResponseTimeMs) / 1000 + 5;
+        updateSessionTimeLabel();
+        setStatus(messageLabel, "Graduated — scheduled " + graduatedCard.getIntervalDays()
+                + " days out for a retention check instead of the normal short interval.");
+        showCurrentCard();
+    }
+
+    /** Removes a NEW card from every review queue (normal, adaptive, and weekly boss) until it is
+     *  explicitly reactivated. Available before or after reveal since it doesn't depend on the attempt. */
+    @FXML
+    public void suspendCard() {
+        if (currentCard == null || currentCard.getCardState() != CardState.NEW) {
+            return;
+        }
+        stopTimeLimitTimeline();
+        Flashcard suspendedCard = currentCard;
+        reviewService.suspendCard(suspendedCard);
+        setStatus(messageLabel, "Card suspended. It won't appear in any review queue until reactivated.");
+        showCurrentCard();
+    }
+
+    /** Routes to the existing card composer in edit mode rather than building a separate editor. */
+    @FXML
+    public void editCurrentCard() {
+        if (currentCard == null) {
+            return;
+        }
+        NavigationService.showEditCard(currentCard.getId());
+    }
+
     private void rate(ReviewRating rating) {
         if (currentCard == null || !answerRevealed) {
             return;
@@ -310,6 +367,7 @@ public class ReviewController extends BaseController {
         earnedXp = 0;
         initialMissCount = 0;
         recoveredMissCount = 0;
+        graduatedCardCount = 0;
         sessionElapsedSeconds = 0;
         ratingCounts.clear();
         missedCards.clear();
@@ -350,6 +408,11 @@ public class ReviewController extends BaseController {
                     .append(pluralize(initialMissCount, "miss")).append(", ")
                     .append(recoveredMissCount).append(" recovered this session, ")
                     .append(missedCards.size()).append(" still outstanding.");
+        }
+
+        if (graduatedCardCount > 0) {
+            summary.append("\nGraduated: ").append(graduatedCardCount).append(" ")
+                    .append(pluralize(graduatedCardCount, "card")).append(" marked already known, scheduled for a later retention check.");
         }
 
         if (sessionBudgetMinutes != null) {
@@ -535,6 +598,7 @@ public class ReviewController extends BaseController {
             updateCompletionStats(false);
             updateSessionProgressBar(false, 0);
             updateRevealVisibility();
+            updateNewCardActionsVisibility();
             return;
         }
         if (!sessionQueue.hasNext()) {
@@ -561,6 +625,7 @@ public class ReviewController extends BaseController {
             updateCompletionStats(true);
             updateSessionProgressBar(true, 1.0);
             updateRevealVisibility();
+            updateNewCardActionsVisibility();
             return;
         }
 
@@ -592,6 +657,7 @@ public class ReviewController extends BaseController {
         updateRatingButtonAvailability();
         startTimeLimitIfNeeded();
         updateRevealVisibility();
+        updateNewCardActionsVisibility();
         Platform.runLater(this::focusActiveAttemptInput);
     }
 
@@ -692,6 +758,15 @@ public class ReviewController extends BaseController {
                 event.consume();
             } else if (answerRevealed && code == KeyCode.DIGIT4) {
                 fireIfAvailable(easyButton);
+                event.consume();
+            } else if (code == KeyCode.G && !isFocusInTextInput()) {
+                fireIfAvailable(graduateButton);
+                event.consume();
+            } else if (code == KeyCode.S && !isFocusInTextInput()) {
+                fireIfAvailable(suspendButton);
+                event.consume();
+            } else if (code == KeyCode.E && !isFocusInTextInput()) {
+                fireIfAvailable(editCardButton);
                 event.consume();
             }
         });
@@ -1304,6 +1379,35 @@ public class ReviewController extends BaseController {
         hardButton.setDisable(!allowed.contains(ReviewRating.HARD));
         goodButton.setDisable(!allowed.contains(ReviewRating.GOOD));
         easyButton.setDisable(!allowed.contains(ReviewRating.EASY));
+        updateGraduateButtonAvailability();
+    }
+
+    /** The new-card diagnostic actions only apply while reviewing a NEW card: Suspend and Edit
+     *  don't depend on the attempt, but Graduate is additionally gated on the same correct/
+     *  unassisted/on-time signals the rating buttons use. */
+    private void updateNewCardActionsVisibility() {
+        boolean isNewCard = currentCard != null && currentCard.getCardState() == CardState.NEW;
+        if (newCardActionsBox != null) {
+            newCardActionsBox.setVisible(isNewCard);
+            newCardActionsBox.setManaged(isNewCard);
+        }
+        if (suspendButton != null) {
+            suspendButton.setDisable(!isNewCard);
+        }
+        if (editCardButton != null) {
+            editCardButton.setDisable(!isNewCard);
+        }
+        updateGraduateButtonAvailability();
+    }
+
+    private void updateGraduateButtonAvailability() {
+        if (graduateButton == null) {
+            return;
+        }
+        boolean isNewCard = currentCard != null && currentCard.getCardState() == CardState.NEW;
+        boolean eligible = isNewCard && answerRevealed
+                && RatingGuardrail.canGraduate(currentCard.getCardType(), latestValidationResult.name(), hintUsed, submittedInTime);
+        graduateButton.setDisable(!eligible);
     }
 
     private Set<ReviewRating> allowedRatings() {

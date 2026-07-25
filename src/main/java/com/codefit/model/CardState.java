@@ -16,7 +16,15 @@ public enum CardState {
     /** Excluded from all queues until reactivated. */
     SUSPENDED("Suspended"),
     /** Meets the durable-mastery bar (see MasteryService). */
-    MASTERED("Mastered");
+    MASTERED("Mastered"),
+    /**
+     * Diagnostically graduated out of a NEW card's normal learning phase via the "Already know
+     * this" review action, on the strength of a single correct, unassisted, on-time answer rather
+     * than the repeated exposure {@link #MASTERED} requires. Scheduled far into the future (see
+     * CardLifecycleService); resurfaces as a normal due card for a retention check once that date
+     * arrives, and then transitions like any other reviewed card.
+     */
+    GRADUATED("Graduated");
 
     private final String label;
 

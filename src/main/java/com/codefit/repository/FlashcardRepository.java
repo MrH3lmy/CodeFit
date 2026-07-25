@@ -46,6 +46,25 @@ public class FlashcardRepository {
         return query("SELECT * FROM flashcards WHERE card_state = 'NEW' ORDER BY deck_id, created_at");
     }
 
+    /**
+     * Cards mature enough (by scheduler interval) to be considered settled, but not yet due
+     * again. Used to interleave a small share of older material from other modules into a
+     * focus-biased session so it doesn't rot while the learner concentrates on one module (#110).
+     */
+    public List<Flashcard> findMatureNotDueCards(int minIntervalDays) {
+        String sql = "SELECT * FROM flashcards WHERE card_state = 'REVIEW' AND due_date > date('now') "
+                + "AND interval_days >= ? ORDER BY due_date, created_at";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, minIntervalDays);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return mapAll(resultSet);
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load mature cards", exception);
+        }
+    }
+
     public int countIntroducedToday() {
         return count("SELECT COUNT(*) FROM flashcards WHERE introduced_at IS NOT NULL AND date(introduced_at) = date('now')");
     }

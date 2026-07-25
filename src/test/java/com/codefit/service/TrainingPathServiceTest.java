@@ -182,4 +182,69 @@ class TrainingPathServiceTest {
         assertEquals(1, recommendation.get().current().module().getOrder());
         assertEquals(2, recommendation.get().next().module().getOrder());
     }
+
+    // --- Focus-module deck resolution and focus-change recommendation (#110) ---
+
+    @Test
+    void resolveModuleDeckIdsReturnsOnlyDecksMatchingThatModule() {
+        Deck matchingDeck = deck("Java BE 03 - JDBC & SQL");
+        matchingDeck.setId(42);
+        Deck unrelatedDeck = deck("Some Unrelated Deck");
+        unrelatedDeck.setId(99);
+
+        Set<Long> deckIds = trainingPathService.resolveModuleDeckIds("Java Backend", 3, List.of(matchingDeck, unrelatedDeck));
+
+        assertEquals(Set.of(42L), deckIds);
+    }
+
+    @Test
+    void resolveModuleDeckIdsReturnsEmptyForUnknownPathOrModule() {
+        assertEquals(Set.of(), trainingPathService.resolveModuleDeckIds("Not A Real Path", 1, List.of()));
+        assertEquals(Set.of(), trainingPathService.resolveModuleDeckIds("Java Backend", 999, List.of()));
+    }
+
+    @Test
+    void recommendFocusChangeOnlyFiresOnceTheFocusModuleClearsItsOwnMasteryThreshold() {
+        TrainingPathModule strictModule = module(1, List.of(), 0.9);
+        TrainingPathModule lenientModule = module(2, List.of(1), 0.7);
+        TrainingPath path = new TrainingPath("Test Path", List.of(strictModule, lenientModule),
+                java.util.regex.Pattern.compile("^NEVER MATCHES$"), 0, 0.8);
+
+        List<TrainingPathModuleProgress> belowThreshold = List.of(
+                progress(strictModule, 10, 0, 85),
+                progress(lenientModule, 10, 0, 60));
+        assertEquals(Optional.empty(), TrainingPathService.recommendFocusChange(path, 1, belowThreshold),
+                "85% mastered should not clear a focus module whose own threshold is 90%");
+
+        List<TrainingPathModuleProgress> clearsThreshold = List.of(
+                progress(strictModule, 10, 0, 92),
+                progress(lenientModule, 10, 0, 60));
+        Optional<TrainingPathRecommendation> recommendation = TrainingPathService.recommendFocusChange(path, 1, clearsThreshold);
+
+        assertTrue(recommendation.isPresent());
+        assertEquals(TrainingPathAction.MOVE_TO_NEXT_MODULE, recommendation.get().action());
+        assertEquals(1, recommendation.get().current().module().getOrder());
+        assertEquals(2, recommendation.get().next().module().getOrder());
+    }
+
+    @Test
+    void recommendFocusChangeIsEmptyWhenFocusedOnTheLastModuleEvenPastThreshold() {
+        TrainingPathModule onlyModule = module(1, List.of(), 0.8);
+        TrainingPath path = new TrainingPath("Test Path", List.of(onlyModule),
+                java.util.regex.Pattern.compile("^NEVER MATCHES$"), 0, 0.8);
+        List<TrainingPathModuleProgress> progressList = List.of(progress(onlyModule, 10, 0, 95));
+
+        assertEquals(Optional.empty(), TrainingPathService.recommendFocusChange(path, 1, progressList),
+                "there is no next module to recommend when the focus module is the last in the path");
+    }
+
+    @Test
+    void recommendFocusChangeIsEmptyWhenFocusModuleOrderDoesNotMatchAnyProgressEntry() {
+        TrainingPathModule module1 = module(1, List.of(), 0.8);
+        TrainingPath path = new TrainingPath("Test Path", List.of(module1),
+                java.util.regex.Pattern.compile("^NEVER MATCHES$"), 0, 0.8);
+        List<TrainingPathModuleProgress> progressList = List.of(progress(module1, 10, 0, 95));
+
+        assertEquals(Optional.empty(), TrainingPathService.recommendFocusChange(path, 7, progressList));
+    }
 }

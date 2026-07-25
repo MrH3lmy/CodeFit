@@ -6,6 +6,7 @@ import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.ReviewRating;
+import com.codefit.model.UserProgress;
 import com.codefit.repository.FlashcardRepository;
 import com.codefit.repository.ReviewHistoryRepository;
 import com.codefit.repository.UserProgressRepository;
@@ -19,6 +20,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.ToIntFunction;
 
 public class ReviewService {
@@ -35,6 +37,7 @@ public class ReviewService {
     private final CardLifecycleService cardLifecycleService = new CardLifecycleService();
     private final SessionBudgetService sessionBudgetService = new SessionBudgetService();
     private final StatsService statsService = new StatsService();
+    private final FocusPreferenceService focusPreferenceService = new FocusPreferenceService();
     private final int dailyNewCardLimit;
 
     public ReviewService() {
@@ -67,6 +70,34 @@ public class ReviewService {
 
     private List<Flashcard> selectNewCardsMixedAcrossDecks(int limit) {
         return selectNewCardsMixedAcrossDecks(flashcardRepository.findNewCards(), limit);
+    }
+
+    /**
+     * New/stretch cards should come mainly from the learner's chosen focus module (#110): drain the
+     * focus module's own new cards first (still mixed across its decks if it spans more than one),
+     * then only fall back to the existing cross-deck mix for any remaining budget. When no focus
+     * module is set this degrades to the original unbiased mix.
+     */
+    private List<Flashcard> selectNewCardsFavoringFocus(int limit, Set<Long> focusDeckIds) {
+        return selectNewCardsFavoringFocus(flashcardRepository.findNewCards(), limit, focusDeckIds);
+    }
+
+    static List<Flashcard> selectNewCardsFavoringFocus(List<Flashcard> candidates, int limit, Set<Long> focusDeckIds) {
+        if (limit <= 0) {
+            return List.of();
+        }
+        if (focusDeckIds == null || focusDeckIds.isEmpty()) {
+            return selectNewCardsMixedAcrossDecks(candidates, limit);
+        }
+
+        List<Flashcard> focusCandidates = candidates.stream().filter(card -> focusDeckIds.contains(card.getDeckId())).toList();
+        List<Flashcard> otherCandidates = candidates.stream().filter(card -> !focusDeckIds.contains(card.getDeckId())).toList();
+
+        List<Flashcard> selected = new ArrayList<>(selectNewCardsMixedAcrossDecks(focusCandidates, limit));
+        if (selected.size() < limit) {
+            selected.addAll(selectNewCardsMixedAcrossDecks(otherCandidates, limit - selected.size()));
+        }
+        return selected;
     }
 
     /** Package-private/static so the daily-limit-respecting selection is directly unit testable without a database. */
@@ -110,23 +141,55 @@ public class ReviewService {
 
     /**
      * Builds a time-budgeted session. Due and relearning cards are never displaced by optional
-     * new content: the full time budget is offered to the due/relearning queue (relearning
-     * first, then weakest-skill due cards, then the rest ordered by forgetting risk) before any
-     * new/stretch card is even considered, and new cards only fill genuinely leftover budget.
+     * new content, and are never filtered by focus module: the full time budget is offered to the
+     * due/relearning queue (relearning first, then weakest-skill due cards, then the rest ordered
+     * by forgetting risk) from every module before any new/stretch card is even considered. New
+     * cards only fill genuinely leftover budget, favoring the learner's focus module (#110); a
+     * small configurable share of what's left after that is reserved for mature-card interleaving
+     * from other modules so older material doesn't rot.
      */
     public AdaptiveSessionPlan getAdaptiveSessionCards(int budgetMinutes) {
         List<Flashcard> dueAndRelearning = flashcardRepository.findDueCards();
         List<String> weakSkills = statsService.getNeedsPracticeSkills().stream()
                 .map(StatsSkillPerformance::skillCategory)
                 .toList();
-        List<Flashcard> newCardOrder = selectNewCardsMixedAcrossDecks(getAvailableNewCardBudget());
+        UserProgress progress = userProgressRepository.getProgress();
+        Set<Long> focusDeckIds = focusPreferenceService.getFocusDeckIds(progress);
+        List<Flashcard> newCardOrder = selectNewCardsFavoringFocus(getAvailableNewCardBudget(), focusDeckIds);
+        List<Flashcard> matureInterleaveOrder = selectMatureInterleaveCandidates(focusDeckIds);
 
-        return buildAdaptiveSessionPlan(dueAndRelearning, weakSkills, newCardOrder, budgetMinutes,
-                sessionBudgetService::estimateCardSeconds);
+        return buildAdaptiveSessionPlan(dueAndRelearning, weakSkills, newCardOrder, matureInterleaveOrder,
+                progress.getMatureInterleavePercent(), budgetMinutes, sessionBudgetService::estimateCardSeconds);
+    }
+
+    /** Mature (settled-interval), not-yet-due cards from modules other than the focus module, mixed for variety. */
+    private List<Flashcard> selectMatureInterleaveCandidates(Set<Long> focusDeckIds) {
+        if (focusDeckIds.isEmpty()) {
+            return List.of();
+        }
+        List<Flashcard> matureFromOtherModules = flashcardRepository
+                .findMatureNotDueCards(MasteryService.DEFAULT_THRESHOLDS.minIntervalDays()).stream()
+                .filter(card -> !focusDeckIds.contains(card.getDeckId()))
+                .toList();
+        return selectNewCardsMixedAcrossDecks(matureFromOtherModules, matureFromOtherModules.size());
     }
 
     static AdaptiveSessionPlan buildAdaptiveSessionPlan(List<Flashcard> dueAndRelearning, List<String> weakSkills,
                                                         List<Flashcard> newCardOrder, int budgetMinutes,
+                                                        ToIntFunction<Flashcard> estimator) {
+        return buildAdaptiveSessionPlan(dueAndRelearning, weakSkills, newCardOrder, List.of(), 0, budgetMinutes, estimator);
+    }
+
+    /**
+     * @param matureInterleaveOrder  candidate mature cards from non-focus modules, pre-mixed for
+     *                               variety; only ever fills leftover budget, never displacing due
+     *                               cards or the focus module's new cards
+     * @param matureInterleavePercent share (0-100) of leftover (post-due) budget reserved for
+     *                                matureInterleaveOrder before new cards get the rest (#110)
+     */
+    static AdaptiveSessionPlan buildAdaptiveSessionPlan(List<Flashcard> dueAndRelearning, List<String> weakSkills,
+                                                        List<Flashcard> newCardOrder, List<Flashcard> matureInterleaveOrder,
+                                                        int matureInterleavePercent, int budgetMinutes,
                                                         ToIntFunction<Flashcard> estimator) {
         int budgetSeconds = Math.max(0, budgetMinutes) * 60;
         List<Flashcard> duePriorityOrder = orderDueQueue(dueAndRelearning, weakSkills);
@@ -136,29 +199,44 @@ public class ReviewService {
         int remainingSeconds = Math.max(0, budgetSeconds - usedSeconds);
 
         // When there are due cards, selectedDue already guarantees the session isn't empty, so
-        // leftover budget must only go to new cards that genuinely fit — never force one in.
-        // When there are no due cards at all, new cards carry the "never start empty" guarantee.
+        // leftover budget must only go to optional content that genuinely fits — never force one
+        // in. When there are no due cards at all, new cards alone carry the "never start empty"
+        // guarantee and interleaving (a nice-to-have) is skipped.
+        List<Flashcard> selectedInterleave;
         List<Flashcard> selectedNew;
         if (selectedDue.isEmpty()) {
             selectedNew = SessionBudgetService.selectWithinBudgetSeconds(newCardOrder, remainingSeconds, estimator);
+            selectedInterleave = List.of();
+        } else if (remainingSeconds > 0) {
+            int interleaveBudgetSeconds = remainingSeconds * clampPercent(matureInterleavePercent) / 100;
+            selectedInterleave = SessionBudgetService.selectFittingWithinBudgetSeconds(matureInterleaveOrder, interleaveBudgetSeconds, estimator);
+            int interleaveUsedSeconds = selectedInterleave.stream().mapToInt(estimator::applyAsInt).sum();
+            selectedNew = SessionBudgetService.selectFittingWithinBudgetSeconds(newCardOrder, remainingSeconds - interleaveUsedSeconds, estimator);
         } else {
-            selectedNew = remainingSeconds > 0
-                    ? SessionBudgetService.selectFittingWithinBudgetSeconds(newCardOrder, remainingSeconds, estimator)
-                    : List.of();
+            selectedNew = List.of();
+            selectedInterleave = List.of();
         }
 
         Map<String, Integer> composition = new LinkedHashMap<>();
         for (Flashcard card : selectedDue) {
             composition.merge(classifyDueCard(card, weakSkills), 1, Integer::sum);
         }
+        if (!selectedInterleave.isEmpty()) {
+            composition.merge("Interleaved review (other modules)", selectedInterleave.size(), Integer::sum);
+        }
         if (!selectedNew.isEmpty()) {
             composition.merge("New / stretch", selectedNew.size(), Integer::sum);
         }
 
         List<Flashcard> allSelected = new ArrayList<>(selectedDue);
+        allSelected.addAll(selectedInterleave);
         allSelected.addAll(selectedNew);
         int estimatedSeconds = allSelected.stream().mapToInt(estimator::applyAsInt).sum();
         return new AdaptiveSessionPlan(allSelected, composition, estimatedSeconds);
+    }
+
+    private static int clampPercent(int percent) {
+        return Math.max(0, Math.min(100, percent));
     }
 
     /** Relearning cards are highest priority, then due cards in weak skills, then the rest by forgetting risk (most overdue, lowest ease first). */

@@ -28,6 +28,16 @@
                 <ChoiceBox fx:id="matureInterleavePercentChoiceBox" maxWidth="Infinity" />
                 <Label fx:id="matureInterleavePercentDetailLabel" styleClass="dashboard-card-helper" wrapText="true" />
             </VBox>
+
+            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
+                <Label text="Guided Daily Routine" styleClass="section-title" />
+                <Label text="Session length and new-card cap for &quot;Start Today's Training&quot; on the dashboard — change the routine here instead of building a queue by hand." styleClass="muted" wrapText="true" />
+                <Label text="Session length" styleClass="dashboard-card-helper" />
+                <ChoiceBox fx:id="guidedSessionMinutesChoiceBox" maxWidth="Infinity" />
+                <Label text="New cards per day" styleClass="dashboard-card-helper" />
+                <ChoiceBox fx:id="dailyNewCardLimitChoiceBox" maxWidth="Infinity" />
+                <Label fx:id="guidedRoutineDetailLabel" styleClass="dashboard-card-helper" wrapText="true" />
+            </VBox>
         </VBox>
     </content>
 </ScrollPane>

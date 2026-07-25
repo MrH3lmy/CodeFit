@@ -3,8 +3,10 @@ package com.codefit.controller;
 import com.codefit.model.AssessmentVariant;
 import com.codefit.service.AssessmentAttemptService;
 import com.codefit.service.AssessmentGradingService;
+import com.codefit.service.GuidedStage;
 import com.codefit.service.WeeklyAssessmentSelectionService;
 import com.codefit.service.WeeklyAssessmentSelectionService.SelectedAssessment;
+import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -45,6 +47,8 @@ public class WeeklyAssessmentController extends BaseController {
     @FXML private Button showHintButton;
     @FXML private Button checkAnswerButton;
     @FXML private Button nextButton;
+    @FXML private Button completionExitButton;
+    @FXML private Button emptyStateExitButton;
 
     private final WeeklyAssessmentSelectionService selectionService = new WeeklyAssessmentSelectionService();
     private final AssessmentAttemptService assessmentAttemptService = new AssessmentAttemptService();
@@ -67,6 +71,12 @@ public class WeeklyAssessmentController extends BaseController {
         correctCount = 0;
         totalAnswered = 0;
         attemptTextArea.textProperty().addListener((observable, oldValue, newValue) -> updateCheckButtonState());
+        // Continuing the guided routine (#111) means returning to its hub, not Progress.
+        String exitText = NavigationService.isGuidedTrainingActive() ? "Continue" : null;
+        if (exitText != null) {
+            completionExitButton.setText(exitText);
+            emptyStateExitButton.setText(exitText);
+        }
         showCurrentItem();
     }
 
@@ -139,9 +149,15 @@ public class WeeklyAssessmentController extends BaseController {
         showCurrentItem();
     }
 
+    /** In the guided routine (#111), Exit hands off to the completion summary instead of Progress. */
     @FXML
     public void exitAssessment() {
-        goStats();
+        if (NavigationService.isGuidedTrainingActive()) {
+            NavigationService.markGuidedStageDone(GuidedStage.WEEKLY_ASSESSMENT);
+            NavigationService.resumeGuidedTraining();
+        } else {
+            goStats();
+        }
     }
 
     private void recordAttempt(boolean correct) {

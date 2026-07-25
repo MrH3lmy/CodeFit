@@ -58,13 +58,13 @@
                     <Label text="Weekly transfer assessment complete" styleClass="review-prompt" wrapText="true" />
                     <Label fx:id="completionSummaryLabel" styleClass="review-answer" wrapText="true" />
                     <VBox fx:id="completionSkillBreakdownBox" spacing="8" maxWidth="Infinity" />
-                    <Button text="View Progress" onAction="#goStats" styleClass="action-button" maxWidth="Infinity" />
+                    <Button fx:id="completionExitButton" text="View Progress" onAction="#exitAssessment" styleClass="action-button" maxWidth="Infinity" />
                 </VBox>
 
                 <VBox fx:id="emptyStatePanel" spacing="14" styleClass="review-card" maxWidth="780" StackPane.alignment="CENTER" visible="false" managed="false">
                     <Label text="No transfer assessment available yet" styleClass="review-prompt" wrapText="true" />
                     <Label text="Assessment content is still being added. Check back once assessment items are seeded." styleClass="review-answer" wrapText="true" />
-                    <Button text="Back to Progress" onAction="#goStats" styleClass="action-button" maxWidth="Infinity" />
+                    <Button fx:id="emptyStateExitButton" text="Back to Progress" onAction="#exitAssessment" styleClass="action-button" maxWidth="Infinity" />
                 </VBox>
             </StackPane>
         </VBox>

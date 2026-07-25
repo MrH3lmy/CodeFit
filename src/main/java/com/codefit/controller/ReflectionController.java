@@ -5,6 +5,7 @@ import com.codefit.model.GeneratedCard;
 import com.codefit.model.ReflectionDraft;
 import com.codefit.model.ReflectionType;
 import com.codefit.service.DeckService;
+import com.codefit.service.GuidedStage;
 import com.codefit.service.ReflectionSaveResult;
 import com.codefit.service.ReflectionService;
 import com.codefit.ui.NavigationService;
@@ -43,6 +44,7 @@ public class ReflectionController extends BaseController {
     @FXML private Label previewSummaryLabel;
     @FXML private VBox generatedCardsList;
     @FXML private Button saveButton;
+    @FXML private Button continueTrainingButton;
 
     private final DeckService deckService = new DeckService();
     private final ReflectionService reflectionService = new ReflectionService();
@@ -67,7 +69,19 @@ public class ReflectionController extends BaseController {
             deckComboBox.getSelectionModel().selectFirst();
         }
 
+        // Only shown mid-guided-routine (#111): lets the learner move on to the next stage without
+        // saving anything, or right after saving, without losing the review work already recorded.
+        boolean guided = NavigationService.isGuidedTrainingActive();
+        continueTrainingButton.setVisible(guided);
+        continueTrainingButton.setManaged(guided);
+
         showCapture();
+    }
+
+    @FXML
+    public void continueGuidedTraining() {
+        NavigationService.markGuidedStageDone(GuidedStage.REFLECTION);
+        NavigationService.resumeGuidedTraining();
     }
 
     @FXML

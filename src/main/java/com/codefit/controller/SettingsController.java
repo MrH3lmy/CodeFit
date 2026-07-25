@@ -3,6 +3,7 @@ package com.codefit.controller;
 import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.UserProgress;
 import com.codefit.service.FocusPreferenceService;
+import com.codefit.service.GuidedTrainingService;
 import com.codefit.service.ProgressService;
 import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
@@ -14,21 +15,65 @@ import java.util.List;
 
 public class SettingsController extends BaseController {
     private static final List<Integer> MATURE_INTERLEAVE_PERCENT_OPTIONS = List.of(0, 5, 10, 15, 20, 25, 30, 40, 50);
+    private static final List<Integer> GUIDED_SESSION_MINUTES_OPTIONS = List.of(5, 10, 15, 20, 30, 45);
+    private static final List<Integer> DAILY_NEW_CARD_LIMIT_OPTIONS = List.of(0, 1, 2, 3, 4, 5, 8, 10);
 
     @FXML private ChoiceBox<String> themeChoiceBox;
     @FXML private ChoiceBox<DailyWorkloadMode> workloadModeChoiceBox;
     @FXML private Label workloadModeDetailLabel;
     @FXML private ChoiceBox<Integer> matureInterleavePercentChoiceBox;
     @FXML private Label matureInterleavePercentDetailLabel;
+    @FXML private ChoiceBox<Integer> guidedSessionMinutesChoiceBox;
+    @FXML private ChoiceBox<Integer> dailyNewCardLimitChoiceBox;
+    @FXML private Label guidedRoutineDetailLabel;
 
     private final ProgressService progressService = new ProgressService();
     private final FocusPreferenceService focusPreferenceService = new FocusPreferenceService();
+    private final GuidedTrainingService guidedTrainingService = new GuidedTrainingService();
 
     @FXML
     public void initialize() {
         configureThemePreference();
         configureWorkloadPreference();
         configureMatureInterleavePreference();
+        configureGuidedRoutinePreference();
+    }
+
+    /** Session length and new-card cap for the guided daily routine (#111) — the same knobs
+     *  {@link com.codefit.service.ReviewService} and {@link GuidedTrainingService} already read,
+     *  exposed here instead of a second preferences system. */
+    private void configureGuidedRoutinePreference() {
+        guidedSessionMinutesChoiceBox.setItems(FXCollections.observableArrayList(GUIDED_SESSION_MINUTES_OPTIONS));
+        int currentMinutes = guidedTrainingService.getPreferredSessionMinutes();
+        guidedSessionMinutesChoiceBox.setValue(
+                GUIDED_SESSION_MINUTES_OPTIONS.contains(currentMinutes) ? currentMinutes : UserProgress.DEFAULT_GUIDED_SESSION_MINUTES);
+
+        dailyNewCardLimitChoiceBox.setItems(FXCollections.observableArrayList(DAILY_NEW_CARD_LIMIT_OPTIONS));
+        int currentLimit = guidedTrainingService.getPreferredDailyNewCardLimit();
+        dailyNewCardLimitChoiceBox.setValue(
+                DAILY_NEW_CARD_LIMIT_OPTIONS.contains(currentLimit) ? currentLimit : UserProgress.DEFAULT_DAILY_NEW_CARD_LIMIT);
+
+        updateGuidedRoutineDetail();
+        guidedSessionMinutesChoiceBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.equals(oldValue)) {
+                return;
+            }
+            guidedTrainingService.setPreferredSessionMinutes(newValue);
+            updateGuidedRoutineDetail();
+        });
+        dailyNewCardLimitChoiceBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.equals(oldValue)) {
+                return;
+            }
+            guidedTrainingService.setPreferredDailyNewCardLimit(newValue);
+            updateGuidedRoutineDetail();
+        });
+    }
+
+    private void updateGuidedRoutineDetail() {
+        guidedRoutineDetailLabel.setText("Start Today's Training runs a " + guidedSessionMinutesChoiceBox.getValue()
+                + "-minute session and introduces at most " + dailyNewCardLimitChoiceBox.getValue()
+                + " new " + (dailyNewCardLimitChoiceBox.getValue() == 1 ? "card" : "cards") + " per day.");
     }
 
     private void configureMatureInterleavePreference() {

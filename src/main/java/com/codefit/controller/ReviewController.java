@@ -16,6 +16,7 @@ import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.AnswerValidator;
 import com.codefit.service.CommandValidator;
 import com.codefit.service.DeckService;
+import com.codefit.service.GuidedStage;
 import com.codefit.service.JavaExerciseCodec;
 import com.codefit.service.JavaSandboxRunner;
 import com.codefit.service.RegexCardCodec;
@@ -878,9 +879,16 @@ public class ReviewController extends BaseController {
         }
     }
 
+    /** In the guided routine (#111), Exit means "done with review", not "leave training": it hands
+     *  off to the next stage instead of returning to the dashboard. */
     @FXML
     public void exitReview() {
-        goDashboard();
+        if (NavigationService.isGuidedTrainingActive()) {
+            NavigationService.markGuidedStageDone(GuidedStage.REVIEW);
+            NavigationService.resumeGuidedTraining();
+        } else {
+            goDashboard();
+        }
     }
 
     private void startTimeLimitIfNeeded() {

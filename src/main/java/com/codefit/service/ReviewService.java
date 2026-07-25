@@ -43,8 +43,10 @@ public class ReviewService {
     private final FocusPreferenceService focusPreferenceService = new FocusPreferenceService();
     private final int dailyNewCardLimit;
 
+    /** Reads the learner's persisted daily new-card limit (#111) rather than hardcoding it, so
+     *  changing it in Settings takes effect the next time any screen builds a new ReviewService. */
     public ReviewService() {
-        this(DEFAULT_DAILY_NEW_CARD_LIMIT);
+        this(new UserProgressRepository().getProgress().getDailyNewCardLimit());
     }
 
     public ReviewService(int dailyNewCardLimit) {

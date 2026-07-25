@@ -12,7 +12,7 @@ import java.time.LocalDate;
 
 public class UserProgressRepository {
     public UserProgress getProgress() {
-        String sql = "SELECT id, xp, level, streak_days, last_review_date, total_reviews, missed_day_count, streak_freeze_count, recovery_quest_active, daily_workload_mode, active_training_path, focus_module_order, mature_interleave_percent FROM user_progress WHERE id = 1";
+        String sql = "SELECT id, xp, level, streak_days, last_review_date, total_reviews, missed_day_count, streak_freeze_count, recovery_quest_active, daily_workload_mode, active_training_path, focus_module_order, mature_interleave_percent, daily_new_card_limit, guided_session_minutes FROM user_progress WHERE id = 1";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
@@ -31,7 +31,9 @@ public class UserProgressRepository {
                         DailyWorkloadMode.fromDatabaseValue(resultSet.getString("daily_workload_mode")),
                         resultSet.getString("active_training_path"),
                         resultSet.getInt("focus_module_order"),
-                        resultSet.getInt("mature_interleave_percent")
+                        resultSet.getInt("mature_interleave_percent"),
+                        resultSet.getInt("daily_new_card_limit"),
+                        resultSet.getInt("guided_session_minutes")
                 );
             }
             return new UserProgress(1, 0, 1, 0, null, 0);
@@ -43,7 +45,7 @@ public class UserProgressRepository {
     public void save(UserProgress progress) {
         String sql = """
                 UPDATE user_progress
-                SET xp = ?, level = ?, streak_days = ?, last_review_date = ?, total_reviews = ?, missed_day_count = ?, streak_freeze_count = ?, recovery_quest_active = ?, daily_workload_mode = ?, active_training_path = ?, focus_module_order = ?, mature_interleave_percent = ?
+                SET xp = ?, level = ?, streak_days = ?, last_review_date = ?, total_reviews = ?, missed_day_count = ?, streak_freeze_count = ?, recovery_quest_active = ?, daily_workload_mode = ?, active_training_path = ?, focus_module_order = ?, mature_interleave_percent = ?, daily_new_card_limit = ?, guided_session_minutes = ?
                 WHERE id = 1
                 """;
         try (Connection connection = DatabaseConfig.getConnection();
@@ -64,6 +66,8 @@ public class UserProgressRepository {
             statement.setString(10, progress.getActiveTrainingPath());
             statement.setInt(11, progress.getFocusModuleOrder());
             statement.setInt(12, progress.getMatureInterleavePercent());
+            statement.setInt(13, progress.getDailyNewCardLimit());
+            statement.setInt(14, progress.getGuidedSessionMinutes());
             statement.executeUpdate();
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to save user progress", exception);

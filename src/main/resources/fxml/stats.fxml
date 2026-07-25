@@ -105,7 +105,7 @@
                     <!-- ACTIVITY -->
                     <VBox fx:id="activityTabPanel" spacing="14" maxWidth="Infinity" visible="false" managed="false">
                         <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
-                            <Label text="CONSISTENCY &amp; EFFICIENCY" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label text="CONSISTENCY" styleClass="dashboard-card-title" wrapText="true" />
                             <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
                                 <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
                                     <Label text="STREAK" styleClass="dashboard-card-title" wrapText="true" />
@@ -115,12 +115,62 @@
                                     <Label text="CONSISTENCY" styleClass="dashboard-card-title" wrapText="true" />
                                     <Label fx:id="consistencyLabel" styleClass="dashboard-signal-value" wrapText="true" />
                                 </VBox>
-                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
-                                    <Label text="LEARNING EFFICIENCY" styleClass="dashboard-card-title" wrapText="true" />
-                                    <Label fx:id="learningEfficiencyLabel" text="No signal" styleClass="dashboard-signal-value" wrapText="true" />
-                                </VBox>
                             </HBox>
                         </VBox>
+
+                        <!-- Learning efficiency: whether training time is producing durable knowledge,
+                             kept separate from the gamification/activity signals above. -->
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="LEARNING EFFICIENCY" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label text="Durable knowledge per training hour, not just activity." styleClass="dashboard-card-helper" wrapText="true" />
+                            <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="MASTERED / HOUR" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="efficiencyMasteredPerHourLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="RECALLS / MINUTE" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="efficiencyRecallsPerMinuteLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="RECOVERED MISSES" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="efficiencyRecoveredMissesLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                            </HBox>
+                            <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="RETENTION @ 7D" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="retention7DayLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="RETENTION @ 14D" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="retention14DayLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="RETENTION @ 30D+" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="retention30DayLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                            </HBox>
+                            <HBox alignment="CENTER_LEFT" maxWidth="Infinity" spacing="14" styleClass="dashboard-signal-strip">
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="CONFIDENCE CALIBRATION" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="efficiencyConfidenceLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                                <VBox maxWidth="Infinity" minWidth="0" spacing="5" styleClass="dashboard-signal-item" HBox.hgrow="ALWAYS">
+                                    <Label text="TIME ON SUSPENDED CARDS" styleClass="dashboard-card-title" wrapText="true" />
+                                    <Label fx:id="suspendedCardTimeLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                                </VBox>
+                            </HBox>
+                            <VBox spacing="4" maxWidth="Infinity">
+                                <Label text="TIME BY SKILL" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label fx:id="timeBySkillLabel" styleClass="dashboard-card-helper" wrapText="true" />
+                            </VBox>
+                            <VBox spacing="4" maxWidth="Infinity">
+                                <Label text="TIME BY CARD TYPE" styleClass="dashboard-card-title" wrapText="true" />
+                                <Label fx:id="timeByCardTypeLabel" styleClass="dashboard-card-helper" wrapText="true" />
+                            </VBox>
+                        </VBox>
+
                         <VBox spacing="10" styleClass="panel" maxWidth="Infinity" VBox.vgrow="ALWAYS">
                             <Label text="Recent Reviews" styleClass="section-title" />
                             <ListView fx:id="recentReviewsListView" prefHeight="260" VBox.vgrow="ALWAYS" />

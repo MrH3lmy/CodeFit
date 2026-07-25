@@ -1,10 +1,12 @@
 package com.codefit.controller;
 
+import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.UserProgress;
 import com.codefit.service.EngineerReadinessStats;
 import com.codefit.service.FlashcardService;
+import com.codefit.service.LearningEfficiencyStats;
 import com.codefit.service.MasteryService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
@@ -27,6 +29,9 @@ import javafx.scene.layout.VBox;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class StatsController extends BaseController {
     @FXML private Label readinessScoreLabel;
@@ -48,7 +53,16 @@ public class StatsController extends BaseController {
     @FXML private Label masterySeenLabel;
     @FXML private Label masteryLearningLabel;
     @FXML private Label masteryMasteredLabel;
-    @FXML private Label learningEfficiencyLabel;
+    @FXML private Label efficiencyMasteredPerHourLabel;
+    @FXML private Label efficiencyRecallsPerMinuteLabel;
+    @FXML private Label efficiencyRecoveredMissesLabel;
+    @FXML private Label retention7DayLabel;
+    @FXML private Label retention14DayLabel;
+    @FXML private Label retention30DayLabel;
+    @FXML private Label efficiencyConfidenceLabel;
+    @FXML private Label suspendedCardTimeLabel;
+    @FXML private Label timeBySkillLabel;
+    @FXML private Label timeByCardTypeLabel;
     @FXML private ToggleButton overviewTabButton;
     @FXML private ToggleButton skillsTabButton;
     @FXML private ToggleButton activityTabButton;
@@ -212,23 +226,56 @@ public class StatsController extends BaseController {
         });
     }
 
-    /** Mastered cards per hour of recent training time, when there is enough signal to be
-     *  meaningful. Based on the same recent-review sample as the other readiness stats, not full
-     *  lifetime history. */
+    /** Whether training time is producing durable knowledge, kept fully separate from the
+     *  gamification/activity signals elsewhere on this screen (XP, streak, consistency). Reads
+     *  the full history in scope rather than only the most recent reviews, so long-horizon
+     *  figures like the 30+ day retention bucket aren't starved by a small recency window. */
     private void populateLearningEfficiency() {
-        var recentReviews = statsService.getRecentReviews();
-        long totalResponseMs = recentReviews.stream()
-                .map(ReviewHistory::getResponseTimeMs)
-                .filter(java.util.Objects::nonNull)
-                .mapToLong(Integer::longValue)
-                .sum();
-        double hours = totalResponseMs / 3_600_000.0;
-        if (hours < 0.05) {
-            learningEfficiencyLabel.setText("No signal");
-            return;
-        }
-        int masteredCount = masteryService.summarize(flashcardService.getAllCards()).masteredCards();
-        learningEfficiencyLabel.setText(String.format("%.1f mastered/hr", masteredCount / hours));
+        LearningEfficiencyStats efficiency = statsService.getLearningEfficiencyStats();
+
+        efficiencyMasteredPerHourLabel.setText(efficiency.hasTrainingTimeSignal()
+                ? String.format("%.1f/hr", efficiency.masteredCardsPerHour())
+                : "Not enough training time yet");
+        efficiencyRecallsPerMinuteLabel.setText(efficiency.hasTrainingTimeSignal()
+                ? String.format("%.2f/min", efficiency.objectiveRecallsPerMinute())
+                : "Not enough training time yet");
+        efficiencyRecoveredMissesLabel.setText(efficiency.hasSessionSignal()
+                ? String.format("%.1f/session", efficiency.recoveredMissesPerSession())
+                : "Not enough sessions yet");
+        efficiencyConfidenceLabel.setText(efficiency.hasConfidenceSignal()
+                ? formatPercent(efficiency.confidenceCalibrationPercent())
+                : "No signal");
+        suspendedCardTimeLabel.setText(efficiency.hasSuspendedCardSignal()
+                ? efficiency.suspendedCardCount() + " " + (efficiency.suspendedCardCount() == 1 ? "card" : "cards")
+                + " (" + formatMinutes(efficiency.suspendedCardActiveMinutes()) + ")"
+                : "No suspended cards yet");
+
+        LearningEfficiencyStats.RetentionByInterval retention = efficiency.retentionByInterval();
+        retention7DayLabel.setText(formatRetentionBucket(retention.sevenToThirteenDays()));
+        retention14DayLabel.setText(formatRetentionBucket(retention.fourteenToTwentyNineDays()));
+        retention30DayLabel.setText(formatRetentionBucket(retention.thirtyPlusDays()));
+
+        timeBySkillLabel.setText(formatTimeBreakdown(efficiency.activeMinutesBySkill().entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .map(entry -> entry.getKey() + " " + formatMinutes(entry.getValue()))));
+        timeByCardTypeLabel.setText(formatTimeBreakdown(efficiency.activeMinutesByCardType().entrySet().stream()
+                .sorted(Map.Entry.<CardType, Double>comparingByValue().reversed())
+                .map(entry -> entry.getKey() + " " + formatMinutes(entry.getValue()))));
+    }
+
+    private String formatRetentionBucket(LearningEfficiencyStats.RetentionBucket bucket) {
+        return bucket.hasSignal()
+                ? formatPercent(bucket.retentionPercent()) + " (" + bucket.sampleSize() + ")"
+                : "Not enough reviews yet";
+    }
+
+    private String formatTimeBreakdown(Stream<String> entries) {
+        String summary = entries.limit(5).collect(Collectors.joining(", "));
+        return summary.isEmpty() ? "Not enough reviews yet" : summary;
+    }
+
+    private String formatMinutes(double minutes) {
+        return minutes < 1 ? "<1m" : Math.round(minutes) + "m";
     }
 
     private String formatPercent(double value) {

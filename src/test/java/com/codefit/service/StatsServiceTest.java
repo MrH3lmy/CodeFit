@@ -1,13 +1,20 @@
 package com.codefit.service;
 
+import com.codefit.model.CardState;
+import com.codefit.model.CardType;
+import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.ReviewRating;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StatsServiceTest {
 
@@ -121,5 +128,196 @@ class StatsServiceTest {
         List<ReviewHistory> reviews = List.of(objectiveWithConfidence("DIFFERENT", "HIGH"));
 
         assertEquals(0.0, StatsService.getConfidenceCalibrationScore(reviews));
+    }
+
+    // --- Learning-efficiency metrics (issue #109) ---
+
+    private ReviewHistory review(long id, long flashcardId, ReviewRating rating, String validationResult,
+                                  int previousIntervalDays, Integer responseTimeMs, String sessionId, LocalDateTime reviewedAt) {
+        return new ReviewHistory(id, flashcardId, rating, previousIntervalDays, previousIntervalDays, reviewedAt,
+                true, false, validationResult, "attempt", responseTimeMs, false, sessionId, null);
+    }
+
+    private Flashcard flashcard(long id, String skillCategory, CardType cardType) {
+        Flashcard card = new Flashcard(id, 1, "front", "back", LocalDate.now(), 0, 2.5, 1, LocalDateTime.now());
+        card.setSkillCategory(skillCategory);
+        card.setCardType(cardType);
+        return card;
+    }
+
+    @Test
+    void totalActiveMinutesSumsResponseTimesAndIgnoresNulls() {
+        List<ReviewHistory> reviews = List.of(
+                review(1, 1, ReviewRating.GOOD, "EXACT", 1, 30_000, "s1", LocalDateTime.now()),
+                review(2, 1, ReviewRating.GOOD, "EXACT", 1, null, "s1", LocalDateTime.now())
+        );
+
+        assertEquals(0.5, StatsService.totalActiveMinutes(reviews), 0.0001);
+    }
+
+    @Test
+    void masteredCardsPerHourUsesProvidedMasteryCountAndActiveTime() {
+        // 30 minutes of active (response-time-based) training, not wall-clock time.
+        List<ReviewHistory> reviews = List.of(
+                review(1, 1, ReviewRating.GOOD, "EXACT", 1, 1_800_000, "s1", LocalDateTime.now())
+        );
+
+        LearningEfficiencyStats stats = StatsService.buildLearningEfficiencyStats(reviews, Map.of(), 2);
+
+        assertTrue(stats.hasTrainingTimeSignal());
+        assertEquals(0.5, stats.activeReviewHours(), 0.0001);
+        assertEquals(4.0, stats.masteredCardsPerHour(), 0.0001);
+    }
+
+    @Test
+    void insufficientTrainingTimeDoesNotReportMisleadingRates() {
+        // One second of active time is nowhere near enough to divide by without an implausible rate.
+        List<ReviewHistory> reviews = List.of(
+                review(1, 1, ReviewRating.GOOD, "EXACT", 1, 1_000, "s1", LocalDateTime.now())
+        );
+
+        LearningEfficiencyStats stats = StatsService.buildLearningEfficiencyStats(reviews, Map.of(), 5);
+
+        assertFalse(stats.hasTrainingTimeSignal());
+        assertEquals(0.0, stats.masteredCardsPerHour());
+        assertEquals(0.0, stats.objectiveRecallsPerMinute());
+    }
+
+    @Test
+    void noReviewsReportsNoSignalRatherThanZero() {
+        LearningEfficiencyStats stats = StatsService.buildLearningEfficiencyStats(List.of(), Map.of(), 0);
+
+        assertFalse(stats.hasReviewSignal());
+        assertFalse(stats.hasTrainingTimeSignal());
+        assertFalse(stats.hasSessionSignal());
+        assertFalse(stats.hasConfidenceSignal());
+        assertFalse(stats.hasSuspendedCardSignal());
+        assertFalse(stats.retentionByInterval().sevenToThirteenDays().hasSignal());
+    }
+
+    @Test
+    void objectiveRecallsPerMinuteOnlyCountsObjectivelyCorrectNonSubjectiveAttempts() {
+        List<ReviewHistory> reviews = List.of(
+                review(1, 1, ReviewRating.GOOD, "EXACT", 1, 60_000, "s1", LocalDateTime.now()),      // correct recall
+                review(2, 1, ReviewRating.AGAIN, "DIFFERENT", 1, 60_000, "s1", LocalDateTime.now()), // incorrect, still counts as time
+                new ReviewHistory(3, 1, ReviewRating.EASY, 1, 1, LocalDateTime.now(), true, false,
+                        "SUBJECTIVE", "self explained", 60_000, false, "s1")                          // subjective: excluded from numerator
+        );
+
+        LearningEfficiencyStats stats = StatsService.buildLearningEfficiencyStats(reviews, Map.of(), 0);
+
+        assertTrue(stats.hasTrainingTimeSignal());
+        assertEquals(1, stats.objectiveRecallCount());
+        assertEquals(1.0 / 3.0, stats.objectiveRecallsPerMinute(), 0.0001);
+    }
+
+    @Test
+    void recoveredMissCountsDistinctCardsNotRepeatedAttempts() {
+        LocalDateTime t0 = LocalDateTime.now().minusMinutes(10);
+        List<ReviewHistory> reviews = List.of(
+                review(1, 100, ReviewRating.AGAIN, "DIFFERENT", 1, 1000, "session-a", t0),
+                review(2, 200, ReviewRating.AGAIN, "DIFFERENT", 1, 1000, "session-a", t0.plusSeconds(1)),
+                review(3, 100, ReviewRating.GOOD, "EXACT", 1, 1000, "session-a", t0.plusSeconds(2)),  // card 100 recovered
+                review(4, 100, ReviewRating.GOOD, "EXACT", 1, 1000, "session-a", t0.plusSeconds(3))    // repeat success: no double count
+        );
+
+        StatsService.RecoveredMissResult result = StatsService.computeRecoveredMisses(reviews);
+
+        assertEquals(1, result.sessionCount());
+        assertEquals(1, result.recoveredCount()); // card 200's miss is never recovered
+    }
+
+    @Test
+    void recoveredMissesIgnoreReviewsWithoutASessionId() {
+        List<ReviewHistory> reviews = List.of(
+                review(1, 1, ReviewRating.AGAIN, "DIFFERENT", 1, 1000, null, LocalDateTime.now())
+        );
+
+        StatsService.RecoveredMissResult result = StatsService.computeRecoveredMisses(reviews);
+
+        assertEquals(0, result.sessionCount());
+        assertEquals(0, result.recoveredCount());
+    }
+
+    @Test
+    void retentionBucketsGroupReviewsByGapSincePreviousAttempt() {
+        LocalDateTime now = LocalDateTime.now();
+        List<ReviewHistory> reviews = List.of(
+                review(1, 1, ReviewRating.GOOD, "EXACT", 7, 1000, "s1", now),        // 7-13 day bucket, retained
+                review(2, 2, ReviewRating.AGAIN, "DIFFERENT", 10, 1000, "s1", now),  // 7-13 day bucket, missed
+                review(3, 3, ReviewRating.GOOD, "EXACT", 14, 1000, "s1", now),       // 14-29 day bucket, retained
+                review(4, 4, ReviewRating.GOOD, "EXACT", 30, 1000, "s1", now),       // 30+ day bucket, retained
+                review(5, 5, ReviewRating.GOOD, "EXACT", 3, 1000, "s1", now)         // below 7 days: excluded entirely
+        );
+
+        LearningEfficiencyStats.RetentionByInterval retention = StatsService.computeRetentionByInterval(reviews);
+
+        assertEquals(2, retention.sevenToThirteenDays().sampleSize());
+        assertEquals(50.0, retention.sevenToThirteenDays().retentionPercent());
+        assertEquals(1, retention.fourteenToTwentyNineDays().sampleSize());
+        assertEquals(100.0, retention.fourteenToTwentyNineDays().retentionPercent());
+        assertEquals(1, retention.thirtyPlusDays().sampleSize());
+        assertEquals(100.0, retention.thirtyPlusDays().retentionPercent());
+    }
+
+    @Test
+    void retentionBucketWithNoSampleReportsNoSignalInsteadOfZero() {
+        LearningEfficiencyStats.RetentionByInterval retention = StatsService.computeRetentionByInterval(List.of());
+
+        assertFalse(retention.sevenToThirteenDays().hasSignal());
+        assertFalse(retention.fourteenToTwentyNineDays().hasSignal());
+        assertFalse(retention.thirtyPlusDays().hasSignal());
+    }
+
+    @Test
+    void activeMinutesAreGroupedBySkillAndByCardType() {
+        Map<Long, Flashcard> cardsById = Map.of(
+                1L, flashcard(1, "SQL", CardType.SQL_QUERY),
+                2L, flashcard(2, "Git", CardType.GIT_COMMAND)
+        );
+        List<ReviewHistory> reviews = List.of(
+                review(1, 1, ReviewRating.GOOD, "EXACT", 1, 60_000, "s1", LocalDateTime.now()),
+                review(2, 2, ReviewRating.GOOD, "EXACT", 1, 120_000, "s1", LocalDateTime.now())
+        );
+
+        Map<String, Double> bySkill = StatsService.activeMinutesBySkill(reviews, cardsById);
+        Map<CardType, Double> byCardType = StatsService.activeMinutesByCardType(reviews, cardsById);
+
+        assertEquals(1.0, bySkill.get("SQL"), 0.0001);
+        assertEquals(2.0, bySkill.get("Git"), 0.0001);
+        assertEquals(1.0, byCardType.get(CardType.SQL_QUERY), 0.0001);
+        assertEquals(2.0, byCardType.get(CardType.GIT_COMMAND), 0.0001);
+    }
+
+    @Test
+    void suspendedCardTimeOnlyCountsCardsCurrentlyInSuspendedState() {
+        Flashcard suspendedCard = flashcard(1, "General", CardType.RECALL);
+        suspendedCard.setCardState(CardState.SUSPENDED);
+        Flashcard activeCard = flashcard(2, "General", CardType.RECALL);
+        Map<Long, Flashcard> cardsById = Map.of(1L, suspendedCard, 2L, activeCard);
+
+        List<ReviewHistory> reviews = List.of(
+                review(1, 1, ReviewRating.AGAIN, "DIFFERENT", 1, 90_000, "s1", LocalDateTime.now()),
+                review(2, 2, ReviewRating.GOOD, "EXACT", 1, 60_000, "s1", LocalDateTime.now())
+        );
+
+        StatsService.SuspendedCardTime result = StatsService.computeSuspendedCardTime(reviews, cardsById);
+
+        assertEquals(1, result.cardCount());
+        assertEquals(1.5, result.activeMinutes(), 0.0001);
+    }
+
+    @Test
+    void learningEfficiencyStatsReuseConfidenceCalibrationCalculation() {
+        List<ReviewHistory> reviews = List.of(
+                objectiveWithConfidence("EXACT", "HIGH"),
+                objectiveWithConfidence("DIFFERENT", "LOW")
+        );
+
+        LearningEfficiencyStats stats = StatsService.buildLearningEfficiencyStats(reviews, Map.of(), 0);
+
+        assertTrue(stats.hasConfidenceSignal());
+        assertEquals(100.0, stats.confidenceCalibrationPercent());
+        assertEquals(2, stats.confidenceSampleCount());
     }
 }

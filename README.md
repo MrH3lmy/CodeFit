@@ -130,7 +130,7 @@ Starter Java backend practice templates are available in `src/main/resources/tem
 front	back	card_type	accepted_answers	validation_mode	hint	skill_category	time_limit_seconds
 ```
 
-Available Java BE templates:
+Available Java BE templates (each is a 20-card deck covering the module's learning objectives with a documented mix of card styles — basic recall, explain/compare, predict behavior or output, diagnose a failure, and write code/SQL/regex/commands — instead of being weighted toward simple recall):
 
 - `01-core-java.tsv`
 - `02-collections-streams-generics.tsv`
@@ -141,7 +141,7 @@ Available Java BE templates:
 - `07-security.tsv`
 - `08-deployment.tsv`
 
-To import a template, open the **Decks** screen, create or select the deck you want to fill, click **Import Cards**, and choose one of the TSV files from `src/main/resources/templates/java-be/`. Repeat this for each module you want to practice.
+To import a template, open the **Decks** screen, create or select the deck you want to fill, click **Import Cards**, and choose one of the TSV files from `src/main/resources/templates/java-be/`. Repeat this for each module you want to practice. See the template directory's `README.md` for the full per-module coverage matrix (learning objectives and card-style counts).
 
 ### Java Concurrency in Practice template decks
 

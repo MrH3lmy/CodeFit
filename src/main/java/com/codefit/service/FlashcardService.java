@@ -32,6 +32,28 @@ public class FlashcardService {
         return flashcardRepository.existsByDeckIdAndFront(deckId, front);
     }
 
+    /**
+     * Near-exact duplicate check used before persisting reflection-generated cards (#102):
+     * normalizes casing, punctuation, and whitespace so a trivially reworded prompt is still
+     * caught. Unlike {@link #cardExistsInDeck}, which only matches the exact (case-insensitive)
+     * front text, this isn't invoked from {@link #addCard} today — callers that want it run it
+     * explicitly, since most callers still want to allow near-identical prompts.
+     */
+    public boolean hasNearDuplicatePromptInDeck(long deckId, String front) {
+        String normalizedCandidate = normalizeForDuplicateCheck(front);
+        if (normalizedCandidate.isEmpty()) {
+            return false;
+        }
+        return getCardsForDeck(deckId).stream()
+                .map(Flashcard::getFront)
+                .map(this::normalizeForDuplicateCheck)
+                .anyMatch(normalizedCandidate::equals);
+    }
+
+    private String normalizeForDuplicateCheck(String value) {
+        return value == null ? "" : value.toLowerCase().replaceAll("[^a-z0-9]+", " ").strip();
+    }
+
     public Flashcard addCard(long deckId, String front, String back) {
         return addCard(deckId, front, back, CardType.RECALL, back, ValidationMode.CASE_INSENSITIVE, null, null, null, null);
     }

@@ -7,7 +7,6 @@ import com.codefit.model.ValidationMode;
 import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
-import com.codefit.service.ProgressService;
 import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -56,8 +55,6 @@ public class AddCardController extends BaseController {
 
     private final DeckService deckService = new DeckService();
     private final FlashcardService flashcardService = new FlashcardService();
-    private final ProgressService progressService = new ProgressService();
-    private String pendingReflectionType;
     private Long editingCardId;
 
     @FXML
@@ -71,7 +68,6 @@ public class AddCardController extends BaseController {
         cardTypeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applyTemplate(newValue));
         deckComboBox.valueProperty().addListener((observable, oldValue, newValue) -> suggestJavaBeSkillCategory(newValue));
         applyTemplate(cardTypeComboBox.getValue());
-        pendingReflectionType = NavigationService.consumePendingReflectionType();
         Long editCardId = NavigationService.consumePendingEditCardId();
 
         boolean hasNoDecks = deckComboBox.getItems().isEmpty();
@@ -96,7 +92,6 @@ public class AddCardController extends BaseController {
         } else {
             deckComboBox.getSelectionModel().selectFirst();
             suggestJavaBeSkillCategory(deckComboBox.getValue());
-            applyReflectionPrefillIfRequested();
         }
     }
 
@@ -154,20 +149,11 @@ public class AddCardController extends BaseController {
                 return;
             }
 
-            boolean reflectionCard = isReflectionCard();
             flashcardService.addCard(deck.getId(), frontArea.getText(), backArea.getText(),
                     cardTypeComboBox.getValue(), acceptedAnswersArea.getText(), validationModeComboBox.getValue(),
                     simulatedOutputArea.getText(), hintArea.getText(), getTimeLimitSeconds(), skillCategoryField.getText());
-            int reflectionXp = reflectionCard ? progressService.recordReflectionCardCreated() : 0;
             clearComposerFields();
-            if (reflectionCard) {
-                pendingReflectionType = null;
-                setStatus(messageLabel, reflectionXp > 0
-                        ? "Reflection card added and scheduled for today. +" + reflectionXp + " XP."
-                        : "Reflection card added and scheduled for today. Daily reflection XP cap reached.");
-            } else {
-                setStatus(messageLabel, "Card added and scheduled for today.");
-            }
+            setStatus(messageLabel, "Card added and scheduled for today.");
             if (closeAfterSave) {
                 NavigationService.showDecks();
             }
@@ -184,66 +170,6 @@ public class AddCardController extends BaseController {
         simulatedOutputArea.clear();
         timeLimitSpinner.getValueFactory().setValue(0);
         skillCategoryField.clear();
-    }
-
-    private void applyReflectionPrefillIfRequested() {
-        if (pendingReflectionType == null || pendingReflectionType.isBlank()) {
-            setStatus(messageLabel, "");
-            return;
-        }
-
-        ReflectionTemplate template = reflectionTemplateFor(pendingReflectionType);
-        cardTypeComboBox.getSelectionModel().select(template.cardType());
-        applyTemplate(template.cardType());
-        frontArea.setText(template.front());
-        backArea.setText(template.back());
-        hintArea.setText(template.hint());
-        acceptedAnswersArea.setText(template.acceptedAnswers());
-        simulatedOutputArea.setText(template.simulatedOutput());
-        skillCategoryField.setText(template.skillCategory());
-        setStatus(messageLabel, template.statusMessage());
-    }
-
-    private boolean isReflectionCard() {
-        String skillCategory = skillCategoryField.getText();
-        return pendingReflectionType != null
-                || (skillCategory != null && skillCategory.strip().startsWith("Reflection:"));
-    }
-
-    private ReflectionTemplate reflectionTemplateFor(String reflectionType) {
-        return switch (reflectionType) {
-            case "bug" -> new ReflectionTemplate(
-                    CardType.RECALL,
-                    "What bug did I fix today, and what was the root cause?",
-                    "Bug: <describe the symptom>\nRoot cause: <what actually caused it>\nFix: <the smallest change that solved it>\nPrevention: <test, log, or checklist item I will use next time>",
-                    "Think about the failing behavior, not just the patch.",
-                    "",
-                    "",
-                    "Reflection: Bug Fix",
-                    "Prefilled a reflection card for a bug you fixed today. Replace the placeholders before saving.");
-            case "command" -> new ReflectionTemplate(
-                    CardType.GIT_COMMAND,
-                    "Which command did I search for today, and when should I use it?",
-                    "Command: <paste the command>\nUse when: <describe the task>\nKey flags: <explain the flags I usually forget>\nExample: <one concrete example from today>",
-                    "Include the exact flags or subcommand you had to look up.",
-                    "<paste accepted command variants here>",
-                    "",
-                    "Reflection: Command",
-                    "Prefilled a reflection card for a command you searched today. Replace placeholders and adjust the template if needed.");
-            default -> new ReflectionTemplate(
-                    CardType.CONCEPT,
-                    "What concept did I miss today, and how would I explain it tomorrow?",
-                    "Concept: <name the idea>\nPlain-English explanation: <teach it simply>\nSignal I missed: <what confused me>\nNext cue: <what should remind me next time>",
-                    "Use the misconception as the recall hook.",
-                    "",
-                    "",
-                    "Reflection: Concept",
-                    "Prefilled a reflection card for a concept you missed today. Replace the placeholders before saving.");
-        };
-    }
-
-    private record ReflectionTemplate(CardType cardType, String front, String back, String hint, String acceptedAnswers,
-                                      String simulatedOutput, String skillCategory, String statusMessage) {
     }
 
     private Integer getTimeLimitSeconds() {

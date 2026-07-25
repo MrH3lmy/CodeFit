@@ -1,5 +1,6 @@
 package com.codefit.ui;
 
+import com.codefit.model.ReflectionType;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -38,7 +39,7 @@ public final class NavigationService {
     private static AppShellController shellController;
     private static boolean weeklyBossModeRequested;
     private static Integer pendingSessionMinutes;
-    private static String pendingReflectionType;
+    private static ReflectionType pendingReflectionType;
     private static Long pendingEditCardId;
     private static String selectedTheme;
 
@@ -66,26 +67,25 @@ public final class NavigationService {
     }
 
     public static void showAddCard() {
-        pendingReflectionType = null;
         pendingEditCardId = null;
         navigate(Route.ADD_CARD);
     }
 
-    public static void showAddCardReflection(String reflectionType) {
+    /** Opens the reflection capture/preview screen (#102) pre-selected to the workflow the learner
+     *  picked from the post-review reflection prompt. */
+    public static void showReflectionCapture(ReflectionType reflectionType) {
         pendingReflectionType = reflectionType;
-        pendingEditCardId = null;
-        navigate(Route.ADD_CARD);
+        navigate(Route.REFLECTION);
     }
 
-    public static String consumePendingReflectionType() {
-        String reflectionType = pendingReflectionType;
+    public static ReflectionType consumePendingReflectionType() {
+        ReflectionType reflectionType = pendingReflectionType;
         pendingReflectionType = null;
         return reflectionType;
     }
 
     /** Opens the card composer in edit mode for an existing card. */
     public static void showEditCard(long cardId) {
-        pendingReflectionType = null;
         pendingEditCardId = cardId;
         navigate(Route.ADD_CARD);
     }

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ReflectionController">
+    <content>
+        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+            <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
+                <Label text="Reflection" styleClass="page-title" wrapText="true" />
+                <Label text="Turn one piece of real work into several small cards, each answerable from one recalled fact." styleClass="helper-text" wrapText="true" />
+            </VBox>
+            <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+
+            <VBox fx:id="captureRoot" spacing="14" styleClass="composer-card" maxWidth="640">
+                <VBox spacing="6" maxWidth="Infinity">
+                    <Label text="Deck" styleClass="section-title" />
+                    <ComboBox fx:id="deckComboBox" maxWidth="Infinity" />
+                </VBox>
+                <VBox spacing="6" maxWidth="Infinity">
+                    <Label text="Workflow" styleClass="section-title" />
+                    <ComboBox fx:id="workflowComboBox" maxWidth="Infinity" />
+                </VBox>
+                <VBox spacing="6" maxWidth="Infinity">
+                    <Label fx:id="field1Label" text="Symptom" styleClass="section-title" />
+                    <TextArea fx:id="field1Area" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
+                </VBox>
+                <VBox spacing="6" maxWidth="Infinity">
+                    <Label fx:id="field2Label" text="Root cause" styleClass="section-title" />
+                    <TextArea fx:id="field2Area" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
+                </VBox>
+                <VBox spacing="6" maxWidth="Infinity">
+                    <Label fx:id="field3Label" text="Fix" styleClass="section-title" />
+                    <TextArea fx:id="field3Area" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
+                </VBox>
+                <VBox spacing="6" maxWidth="Infinity">
+                    <Label fx:id="field4Label" text="Prevention" styleClass="section-title" />
+                    <TextArea fx:id="field4Area" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
+                </VBox>
+                <HBox spacing="10" alignment="CENTER_LEFT" maxWidth="Infinity">
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Button text="Cancel" onAction="#goDecks" styleClass="ghost-button" />
+                    <Button text="Generate Cards" onAction="#generateCards" styleClass="primary-button" />
+                </HBox>
+            </VBox>
+
+            <VBox fx:id="previewRoot" spacing="14" styleClass="composer-card" maxWidth="720" visible="false" managed="false">
+                <Label fx:id="previewSummaryLabel" styleClass="helper-text" wrapText="true" />
+                <VBox fx:id="generatedCardsList" spacing="12" maxWidth="Infinity" />
+                <HBox spacing="10" alignment="CENTER_LEFT" maxWidth="Infinity">
+                    <Button text="Back" onAction="#backToCapture" styleClass="ghost-button" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Button fx:id="saveButton" text="Save Cards" onAction="#saveGeneratedCards" styleClass="primary-button" />
+                </HBox>
+            </VBox>
+        </VBox>
+    </content>
+</ScrollPane>

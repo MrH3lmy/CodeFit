@@ -12,6 +12,21 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class DeckService {
+    /**
+     * Fixture for the seeded "5 newest user emails" SQL_QUERY starter card: an isolated
+     * users(id, email, created_at) table the learner's query is executed against, graded by
+     * comparing its result to the reference query's result (see {@link SqlCardSpecCodec}).
+     */
+    private static final SqlCardSpec NEWEST_USER_EMAILS_SQL_SPEC = new SqlCardSpec(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL, created_at TEXT NOT NULL);",
+            "INSERT INTO users (id, email, created_at) VALUES "
+                    + "(1,'ada@example.com','2024-01-01'),(2,'ben@example.com','2024-01-02'),"
+                    + "(3,'cleo@example.com','2024-01-03'),(4,'drew@example.com','2024-01-04'),"
+                    + "(5,'eva@example.com','2024-01-05'),(6,'finn@example.com','2024-01-06'),"
+                    + "(7,'grace@example.com','2024-01-07');",
+            "SELECT email FROM users ORDER BY created_at DESC LIMIT 5;",
+            null, true, false, SqlCardSpec.DEFAULT_TIMEOUT_MILLIS);
+
     private static final JavaBackendDeck[] JAVA_BACKEND_DECKS = {
             new JavaBackendDeck("Java BE 01 - Core Java & OOP", "The foundation of the backend roadmap: Java syntax, classes, inheritance, polymorphism, exceptions, and JVM concepts needed before building services."),
             new JavaBackendDeck("Java BE 02 - Collections, Streams & Generics", "Build fluency with the data structures, generic types, lambdas, and stream pipelines used to transform backend request and persistence data safely."),
@@ -29,7 +44,7 @@ public class DeckService {
             new JavaBackendCard("Java BE 02 - Collections, Streams & Generics", "Which collection keeps insertion order and allows indexed access?", "ArrayList", CardType.RECALL, "ArrayList", ValidationMode.CASE_INSENSITIVE, null, null, "Collections", null),
             new JavaBackendCard("Java BE 03 - JDBC & SQL", "What JDBC object executes parameterized SQL safely?", "PreparedStatement", CardType.RECALL, "PreparedStatement", ValidationMode.CASE_INSENSITIVE, null, null, "SQL", null),
             new JavaBackendCard("Java BE 03 - JDBC & SQL", "Why should backend code prefer PreparedStatement over string-concatenated SQL?", "PreparedStatement binds parameters separately from SQL text, which helps prevent SQL injection and lets the driver handle type conversion.", CardType.CONCEPT, AcceptedAnswerCodec.encode(List.of("PreparedStatement prevents SQL injection by binding parameters", "It uses bind parameters instead of concatenating user input")), ValidationMode.CASE_INSENSITIVE, null, "Mention parameter binding and SQL injection.", "SQL", null),
-            new JavaBackendCard("Java BE 03 - JDBC & SQL", "users(id, email, created_at): write SQL to list the 5 newest user emails.", "SELECT email FROM users ORDER BY created_at DESC LIMIT 5;", CardType.SQL_QUERY, AcceptedAnswerCodec.encode(List.of("SELECT email FROM users ORDER BY created_at DESC LIMIT 5;", "SELECT email FROM users ORDER BY created_at DESC LIMIT 5")), ValidationMode.NORMALIZED_SPACING, null, "Order newest first, then cap the result size.", "SQL", null),
+            new JavaBackendCard("Java BE 03 - JDBC & SQL", "users(id, email, created_at): write SQL to list the 5 newest user emails.", "SELECT email FROM users ORDER BY created_at DESC LIMIT 5;", CardType.SQL_QUERY, SqlCardSpecCodec.encode(NEWEST_USER_EMAILS_SQL_SPEC), ValidationMode.NORMALIZED_SPACING, null, "Order newest first, then cap the result size.", "SQL", null),
             new JavaBackendCard("Java BE 03 - JDBC & SQL", "What is a database transaction?", "A transaction is a unit of work that should commit completely or roll back completely so related changes stay consistent.", CardType.CONCEPT, AcceptedAnswerCodec.encode(List.of("unit of work that commits or rolls back", "all-or-nothing unit of work")), ValidationMode.CASE_INSENSITIVE, null, "Think ACID and all-or-nothing changes.", "SQL", null),
             new JavaBackendCard("Java BE 03 - JDBC & SQL", "Which transaction isolation issue occurs when one transaction reads uncommitted changes from another?", "Dirty read", CardType.RECALL, "Dirty read", ValidationMode.CASE_INSENSITIVE, null, null, "SQL", null),
             new JavaBackendCard("Java BE 04 - Spring Boot REST APIs", "Which Spring annotation combines @Controller and @ResponseBody for JSON REST endpoints?", "@RestController", CardType.RECALL, "@RestController", ValidationMode.CASE_INSENSITIVE, null, null, "Spring REST", null),

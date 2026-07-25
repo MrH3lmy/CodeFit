@@ -9,6 +9,7 @@ import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewRating;
 import com.codefit.service.AcceptedAnswerCodec;
 import com.codefit.service.AnswerValidator;
+import com.codefit.service.CommandValidator;
 import com.codefit.service.DeckService;
 import com.codefit.service.RatingGuardrail;
 import com.codefit.service.ReviewService;
@@ -39,6 +40,7 @@ import javafx.util.Duration;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -1050,25 +1052,51 @@ public class ReviewController extends BaseController {
         return currentCard.getSimulatedOutput();
     }
 
+    /**
+     * Diffs the attempt against every accepted answer structurally (see {@link CommandValidator})
+     * and reports the closest one. A different executable or subcommand is always named as such,
+     * never described as "accepted" just because an unrelated flag or token happens to line up.
+     */
     private String formatSafeCommandFeedback() {
-        String attempt = AnswerValidator.normalizeCommand(getAttemptText()).toLowerCase();
-        String expected = acceptedAnswers().stream()
-                .map(AnswerValidator::normalizeCommand)
-                .map(String::toLowerCase)
-                .findFirst()
-                .orElse("");
-
-        if (!expected.isBlank() && sharesCommandName(attempt, expected)) {
-            return "command accepted but flags are missing";
+        String attempt = getAttemptText();
+        List<String> expectedAnswers = acceptedAnswers();
+        if (expectedAnswers.isEmpty()) {
+            return "command different from expected answer";
         }
-        if (expected.contains(" -l") || expected.contains(" --all") || expected.contains(" -a")) {
-            return "expected long listing output";
-        }
-        return "command accepted, but output differs from the saved simulation";
+        CommandValidator.Comparison closest = expectedAnswers.stream()
+                .map(expected -> CommandValidator.compare(attempt, expected))
+                .min(Comparator.comparingInt(CommandValidator.Comparison::mismatchCount))
+                .orElseThrow();
+        return describeCommandMismatch(closest);
     }
 
-    private boolean sharesCommandName(String attempt, String expected) {
-        return firstToken(attempt).equals(firstToken(expected));
+    private String describeCommandMismatch(CommandValidator.Comparison comparison) {
+        if (!comparison.executableMatches()) {
+            return "different command: expected \"" + comparison.expectedExecutable()
+                    + "\", got \"" + comparison.actualExecutable() + "\"";
+        }
+        if (!comparison.subcommandMatches()) {
+            return "different subcommand: expected \"" + describeToken(comparison.expectedSubcommand())
+                    + "\", got \"" + describeToken(comparison.actualSubcommand()) + "\"";
+        }
+        List<String> issues = new ArrayList<>();
+        if (!comparison.missingFlags().isEmpty()) {
+            issues.add("missing flag(s) " + String.join(", ", comparison.missingFlags()));
+        }
+        if (!comparison.extraFlags().isEmpty()) {
+            issues.add("unexpected flag(s) " + String.join(", ", comparison.extraFlags()));
+        }
+        if (!comparison.incorrectFlagValues().isEmpty()) {
+            issues.add("incorrect value for " + String.join(", ", comparison.incorrectFlagValues()));
+        }
+        if (!comparison.positionalArgsMatch()) {
+            issues.add("arguments differ");
+        }
+        return issues.isEmpty() ? "command different from expected answer" : String.join("; ", issues);
+    }
+
+    private String describeToken(String token) {
+        return token == null ? "(none)" : token;
     }
 
     private String firstToken(String value) {
@@ -1098,7 +1126,8 @@ public class ReviewController extends BaseController {
 
     private String formatMatchRequirement() {
         if (currentCard != null && currentCard.getCardType().isCommandTemplate()) {
-            return "Enter a command. Any listed accepted answer is valid (for example, ls -la or ls -al).";
+            return "Enter a command. Flags can be in any order (ls -la or ls -al both work), but the "
+                    + "executable, subcommand, and arguments must match.";
         }
         if (currentCard != null && currentCard.getCardType() == CardType.CONCEPT) {
             return "This is a self-graded card. Your wording is not text-matched — compare your answer with the "

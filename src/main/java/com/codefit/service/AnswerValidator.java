@@ -56,7 +56,7 @@ public final class AnswerValidator {
             case EXACT -> attempt.equals(expectedAnswer);
             case CASE_INSENSITIVE -> attempt.equalsIgnoreCase(expectedAnswer);
             case NORMALIZED_SPACING -> normalizeSpacing(attempt).equalsIgnoreCase(normalizeSpacing(expectedAnswer));
-            case COMMAND_NORMALIZED -> normalizeCommand(attempt).equalsIgnoreCase(normalizeCommand(expectedAnswer));
+            case COMMAND_NORMALIZED -> CommandValidator.matches(attempt, expectedAnswer);
         };
     }
 

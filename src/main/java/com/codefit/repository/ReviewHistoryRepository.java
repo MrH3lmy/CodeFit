@@ -114,17 +114,23 @@ public class ReviewHistoryRepository {
      * flashcards to apply those filters. Boss-battle attempts are excluded for consistency with
      * every other read path in this repository. Callers needing "no filter" should pass
      * {@link ReviewHistoryFilter#all()} rather than leaving fields null ad hoc.
+     *
+     * <p>{@code reviewed_at} is populated from SQLite's {@code CURRENT_TIMESTAMP} default (space
+     * between date and time), while {@code filter.start()}/{@code end()} are formatted via
+     * {@link LocalDateTime#toString()} ('T' separator); comparing those TEXT values directly would
+     * silently exclude every row (' ' sorts before 'T'). Wrapping both sides in SQLite's
+     * {@code datetime()} normalizes the separator before comparing.
      */
     public List<ReviewHistory> findFiltered(ReviewHistoryFilter filter) {
         StringBuilder sql = new StringBuilder(
                 "SELECT rh.* FROM review_history rh JOIN flashcards f ON f.id = rh.flashcard_id WHERE rh.boss_battle = 0");
         List<Object> params = new ArrayList<>();
         if (filter.start() != null) {
-            sql.append(" AND rh.reviewed_at >= ?");
+            sql.append(" AND datetime(rh.reviewed_at) >= datetime(?)");
             params.add(filter.start().toString());
         }
         if (filter.end() != null) {
-            sql.append(" AND rh.reviewed_at <= ?");
+            sql.append(" AND datetime(rh.reviewed_at) <= datetime(?)");
             params.add(filter.end().toString());
         }
         if (filter.deckId() != null) {

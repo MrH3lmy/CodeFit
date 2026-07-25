@@ -37,6 +37,7 @@
                     <TextArea fx:id="field4Area" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
                 </VBox>
                 <HBox spacing="10" alignment="CENTER_LEFT" maxWidth="Infinity">
+                    <Button fx:id="continueTrainingButton" text="Continue Training" onAction="#continueGuidedTraining" styleClass="ghost-button" visible="false" managed="false" />
                     <Region HBox.hgrow="ALWAYS" />
                     <Button text="Cancel" onAction="#goDecks" styleClass="ghost-button" />
                     <Button text="Generate Cards" onAction="#generateCards" styleClass="primary-button" />

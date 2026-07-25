@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fx:id="guidedTrainingRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.GuidedTrainingController">
+    <content>
+        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+            <HBox spacing="16" alignment="CENTER_LEFT" styleClass="review-topbar" maxWidth="Infinity">
+                <Button text="Exit" onAction="#exitGuidedTraining" styleClass="ghost-button" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label fx:id="stageProgressLabel" styleClass="pill" wrapText="true" />
+            </HBox>
+            <ProgressBar fx:id="stageProgressBar" maxWidth="Infinity" styleClass="review-session-progress" />
+
+            <VBox spacing="14" maxWidth="720" styleClass="review-card" alignment="CENTER_LEFT">
+                <Label fx:id="stageTitleLabel" styleClass="review-prompt" wrapText="true" />
+                <Label fx:id="stageBodyLabel" styleClass="review-answer" wrapText="true" />
+                <Label fx:id="stageWarningLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+                <VBox fx:id="stageStatsBox" spacing="6" maxWidth="Infinity" />
+                <HBox fx:id="stageActionsBox" spacing="12" alignment="CENTER" maxWidth="Infinity" />
+            </VBox>
+        </VBox>
+    </content>
+</ScrollPane>

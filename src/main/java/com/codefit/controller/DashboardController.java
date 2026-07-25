@@ -203,13 +203,13 @@ public class DashboardController extends BaseController {
                     "Add Card", this::goAddCard, false);
         } else if (dueCount == 0) {
             setStatus(contextBannerLabel, "No due reviews. Your queue is clear for now.");
-            configurePrimaryAction("Add a stretch card",
-                    "Keep momentum by adding one harder card while scheduled reviews mature.",
-                    "Add Card", this::goAddCard, false);
+            configurePrimaryAction("Start Today's Training",
+                    "No due reviews right now — the guided routine adapts: reflect on real work, or check this week's assessment if it's due.",
+                    "Start Today's Training", this::goGuidedTraining, false);
         } else {
-            configurePrimaryAction("Review due cards",
-                    "Start with the cards that need attention now.",
-                    "Start Review", this::goReview, true);
+            configurePrimaryAction("Start Today's Training",
+                    "One guided routine covers review, relearning, and an optional reflection step — no manual queue building.",
+                    "Start Today's Training", this::goGuidedTraining, false);
         }
     }
 

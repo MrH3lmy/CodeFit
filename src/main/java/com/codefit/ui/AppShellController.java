@@ -37,7 +37,7 @@ public class AppShellController {
             topBarTitleLabel.setText(route.shortLabel());
         }
 
-        setDistractionFreeMode(route == Route.REVIEW || route == Route.ASSESSMENT);
+        setDistractionFreeMode(route == Route.REVIEW || route == Route.ASSESSMENT || route == Route.GUIDED_TRAINING);
     }
 
     Route getCurrentRoute() {

@@ -1,6 +1,7 @@
 package com.codefit.ui;
 
 import com.codefit.model.ReflectionType;
+import com.codefit.service.GuidedStage;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -9,7 +10,9 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.prefs.Preferences;
 
 public final class NavigationService {
@@ -42,6 +45,8 @@ public final class NavigationService {
     private static ReflectionType pendingReflectionType;
     private static Long pendingEditCardId;
     private static String selectedTheme;
+    private static boolean guidedTrainingActive;
+    private static final Set<GuidedStage> completedGuidedStages = EnumSet.noneOf(GuidedStage.class);
 
     static {
         String storedTheme = PREFERENCES.get(THEME_PREFERENCE_KEY, BASE_THEME_CLASS);
@@ -140,6 +145,43 @@ public final class NavigationService {
 
     public static void showStats() {
         navigate(Route.PROGRESS);
+    }
+
+    /**
+     * Starts the guided daily routine (#111) fresh: one dashboard action instead of the learner
+     * manually choosing Review, then Reflection, then Assessment themselves. Review/Reflection/
+     * Assessment stay separate routes/controllers (not rebuilt here); each one, when
+     * {@link #isGuidedTrainingActive()}, marks its own stage done and calls
+     * {@link #resumeGuidedTraining()} to return here instead of sending the learner back to the
+     * dashboard or Progress screen.
+     */
+    public static void beginGuidedTraining() {
+        guidedTrainingActive = true;
+        completedGuidedStages.clear();
+        navigate(Route.GUIDED_TRAINING);
+    }
+
+    /** Returns to the guided routine hub after a stage screen finished or was skipped. */
+    public static void resumeGuidedTraining() {
+        navigate(Route.GUIDED_TRAINING);
+    }
+
+    public static boolean isGuidedTrainingActive() {
+        return guidedTrainingActive;
+    }
+
+    public static void markGuidedStageDone(GuidedStage stage) {
+        completedGuidedStages.add(stage);
+    }
+
+    public static Set<GuidedStage> getCompletedGuidedStages() {
+        return EnumSet.copyOf(completedGuidedStages);
+    }
+
+    /** Ends the guided routine (completion screen's "Done", or leaving early via the sidebar). */
+    public static void exitGuidedTraining() {
+        guidedTrainingActive = false;
+        completedGuidedStages.clear();
     }
 
     public static void showSettings() {

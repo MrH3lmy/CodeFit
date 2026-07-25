@@ -204,6 +204,10 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "user_progress", "active_training_path", "TEXT");
         addColumnIfMissing(connection, "user_progress", "focus_module_order", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "user_progress", "mature_interleave_percent", "INTEGER NOT NULL DEFAULT 15");
+        // Preferences the guided daily routine (#111) reads instead of hardcoding: how many new
+        // cards may be introduced per day, and how long a standard guided session runs.
+        addColumnIfMissing(connection, "user_progress", "daily_new_card_limit", "INTEGER NOT NULL DEFAULT 2");
+        addColumnIfMissing(connection, "user_progress", "guided_session_minutes", "INTEGER NOT NULL DEFAULT 15");
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

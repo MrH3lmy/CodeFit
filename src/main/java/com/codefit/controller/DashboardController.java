@@ -6,6 +6,7 @@ import com.codefit.model.UserProgress;
 import com.codefit.service.DailyQuestService;
 import com.codefit.service.DeckService;
 import com.codefit.service.FlashcardService;
+import com.codefit.service.FocusPreferenceService;
 import com.codefit.service.ProgressService;
 import com.codefit.service.ReviewService;
 import com.codefit.service.SessionBudgetService;
@@ -37,6 +38,8 @@ public class DashboardController extends BaseController {
     @FXML private MenuButton reviewSessionMenuButton;
     @FXML private Button weeklyBossButton;
     @FXML private VBox weakSkillsList;
+    @FXML private Label focusExplainerLabel;
+    @FXML private Label focusRecommendationLabel;
 
     private final DeckService deckService = new DeckService();
     private final DailyQuestService dailyQuestService = new DailyQuestService();
@@ -46,6 +49,7 @@ public class DashboardController extends BaseController {
     private final SystemMessageService systemMessageService = new SystemMessageService();
     private final ReviewService reviewService = new ReviewService();
     private final ProgressService progressService = new ProgressService();
+    private final FocusPreferenceService focusPreferenceService = new FocusPreferenceService();
 
     @FXML
     public void initialize() {
@@ -64,6 +68,30 @@ public class DashboardController extends BaseController {
         configurePrimaryState(decks, deckCount, cardCount, dueCount);
         configureContextMessage(progress, dailyQuest);
         configureWeeklyBossCallout();
+        configureFocusExplainer();
+    }
+
+    /** Explains why cards outside the active focus module still show up in a session (#110). */
+    private void configureFocusExplainer() {
+        UserProgress preference = focusPreferenceService.getPreference();
+        if (!preference.hasFocusModule()) {
+            focusExplainerLabel.setText("No focus module set. New cards are mixed evenly across every module until you "
+                    + "choose one in Manage Focus.");
+        } else {
+            focusExplainerLabel.setText("Focused on " + preference.getActiveTrainingPath() + " Module "
+                    + String.format("%02d", preference.getFocusModuleOrder())
+                    + ": new/stretch cards are drawn mainly from here. Due and relearning cards from every other module "
+                    + "still always appear first, and " + preference.getMatureInterleavePercent()
+                    + "% of leftover session time interleaves mature cards from older modules so they don't fade.");
+        }
+
+        focusPreferenceService.recommendFocusChange()
+                .filter(recommendation -> recommendation.next() != null)
+                .ifPresentOrElse(recommendation -> setStatus(focusRecommendationLabel,
+                                recommendation.current().module().getTitle() + " has reached its mastery threshold — consider "
+                                        + "moving focus to Module " + String.format("%02d", recommendation.next().module().getOrder())
+                                        + ": " + recommendation.next().module().getTitle() + "."),
+                        () -> setStatus(focusRecommendationLabel, ""));
     }
 
     @FXML

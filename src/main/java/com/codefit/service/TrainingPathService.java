@@ -8,7 +8,9 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class TrainingPathService {
     private static final TrainingPath JAVA_BACKEND_PATH = new TrainingPath(
@@ -142,6 +144,40 @@ public class TrainingPathService {
         }
 
         return Optional.empty();
+    }
+
+    /** Deck ids backing a given path/module, e.g. to bias new-card selection toward a learner's chosen focus module (#110). */
+    public Set<Long> resolveModuleDeckIds(String pathName, int moduleOrder, List<Deck> decks) {
+        return getTrainingPaths().stream()
+                .filter(path -> path.getName().equalsIgnoreCase(pathName))
+                .findFirst()
+                .flatMap(path -> path.findModuleByOrder(moduleOrder))
+                .map(module -> decks.stream().filter(module::matchesDeck).map(Deck::getId).collect(Collectors.toSet()))
+                .orElse(Set.of());
+    }
+
+    /**
+     * Focus-aware variant of {@link #recommendNextModule}: only suggests advancing the learner's
+     * explicitly chosen focus module, and only once that module's own mastery threshold (via
+     * {@link MasteryService}, not a raw attempted/seen count) is met (#110). Unlike
+     * recommendNextModule, this never surfaces ADD_STARTER_CARDS/REVIEW_DUE_MODULE for other
+     * modules — those still reach the learner through the dashboard's existing recommendation.
+     */
+    public Optional<TrainingPathRecommendation> recommendFocusChange(String activePathName, int focusModuleOrder, List<Deck> decks) {
+        return getTrainingPaths().stream()
+                .filter(path -> path.getName().equalsIgnoreCase(activePathName))
+                .findFirst()
+                .flatMap(path -> recommendFocusChange(path, focusModuleOrder, getPathProgress(path, decks)));
+    }
+
+    static Optional<TrainingPathRecommendation> recommendFocusChange(TrainingPath path, int focusModuleOrder,
+                                                                      List<TrainingPathModuleProgress> pathProgress) {
+        return pathProgress.stream()
+                .filter(progress -> progress.module().getOrder() == focusModuleOrder)
+                .findFirst()
+                .filter(progress -> progress.cardCount() > 0 && progress.reviewProgress() >= progress.module().getMasteryThreshold())
+                .flatMap(current -> nextModule(current, pathProgress)
+                        .map(next -> new TrainingPathRecommendation(path, current, next, TrainingPathAction.MOVE_TO_NEXT_MODULE)));
     }
 
     private List<TrainingPathModuleProgress> getPathProgress(TrainingPath path, List<Deck> decks) {

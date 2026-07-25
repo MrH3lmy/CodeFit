@@ -156,6 +156,12 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "user_progress", "streak_freeze_count", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "user_progress", "recovery_quest_active", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "user_progress", "daily_workload_mode", "TEXT NOT NULL DEFAULT 'NORMAL'");
+        // active_training_path/focus_module_order are a pure preference pointer (#110): switching
+        // focus only ever updates these two columns, never flashcards or review_history, so
+        // schedules and review history survive a focus change untouched.
+        addColumnIfMissing(connection, "user_progress", "active_training_path", "TEXT");
+        addColumnIfMissing(connection, "user_progress", "focus_module_order", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "user_progress", "mature_interleave_percent", "INTEGER NOT NULL DEFAULT 15");
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

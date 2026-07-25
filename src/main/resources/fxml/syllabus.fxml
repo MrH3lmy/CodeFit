@@ -29,6 +29,18 @@
                         </VBox>
                     </HBox>
 
+                    <VBox maxWidth="Infinity" spacing="10" styleClass="dashboard-card">
+                        <Label text="ACTIVE FOCUS" styleClass="dashboard-card-title" wrapText="true" />
+                        <Label text="Choose the training path and module that new/stretch cards should mainly come from. Due cards from every module always take priority, and a small share of mature cards from other modules is interleaved so older material doesn't rot." styleClass="dashboard-card-helper" wrapText="true" />
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <ChoiceBox fx:id="activePathChoiceBox" minWidth="220" />
+                            <ChoiceBox fx:id="focusModuleChoiceBox" minWidth="220" />
+                            <Button text="Set Focus" onAction="#setFocus" styleClass="primary-button" />
+                        </HBox>
+                        <Label fx:id="focusStatusLabel" styleClass="dashboard-card-helper" wrapText="true" />
+                        <Label fx:id="focusRecommendationLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+                    </VBox>
+
                     <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card">
                         <Label text="MODULE ROADMAP" styleClass="dashboard-card-title" wrapText="true" />
                         <ListView fx:id="syllabusListView" prefHeight="520" maxWidth="Infinity" VBox.vgrow="ALWAYS" />

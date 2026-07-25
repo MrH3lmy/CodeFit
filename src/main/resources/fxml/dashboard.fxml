@@ -43,6 +43,13 @@
                 <Label text="NEEDS ATTENTION" styleClass="dashboard-card-title" wrapText="true" />
                 <VBox fx:id="weakSkillsList" maxWidth="Infinity" spacing="10" />
             </VBox>
+
+            <VBox maxWidth="Infinity" spacing="8" styleClass="dashboard-card">
+                <Label text="ACTIVE FOCUS" styleClass="dashboard-card-title" wrapText="true" />
+                <Label fx:id="focusExplainerLabel" styleClass="dashboard-card-helper" wrapText="true" />
+                <Label fx:id="focusRecommendationLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+                <Button text="Manage Focus" onAction="#goSyllabus" styleClass="ghost-button" minWidth="0" />
+            </VBox>
         </VBox>
     </content>
 </ScrollPane>

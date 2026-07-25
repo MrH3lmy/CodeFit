@@ -109,6 +109,55 @@ public class ReviewHistoryRepository {
         }
     }
 
+    /**
+     * Deck, skill, and card type live on the flashcard, not the review, so this joins to
+     * flashcards to apply those filters. Boss-battle attempts are excluded for consistency with
+     * every other read path in this repository. Callers needing "no filter" should pass
+     * {@link ReviewHistoryFilter#all()} rather than leaving fields null ad hoc.
+     */
+    public List<ReviewHistory> findFiltered(ReviewHistoryFilter filter) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT rh.* FROM review_history rh JOIN flashcards f ON f.id = rh.flashcard_id WHERE rh.boss_battle = 0");
+        List<Object> params = new ArrayList<>();
+        if (filter.start() != null) {
+            sql.append(" AND rh.reviewed_at >= ?");
+            params.add(filter.start().toString());
+        }
+        if (filter.end() != null) {
+            sql.append(" AND rh.reviewed_at <= ?");
+            params.add(filter.end().toString());
+        }
+        if (filter.deckId() != null) {
+            sql.append(" AND f.deck_id = ?");
+            params.add(filter.deckId());
+        }
+        if (filter.skillCategory() != null && !filter.skillCategory().isBlank()) {
+            sql.append(" AND f.skill_category = ?");
+            params.add(filter.skillCategory());
+        }
+        if (filter.cardType() != null) {
+            sql.append(" AND f.card_type = ?");
+            params.add(filter.cardType().name());
+        }
+        sql.append(" ORDER BY rh.reviewed_at DESC, rh.id DESC");
+
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                statement.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<ReviewHistory> history = new ArrayList<>();
+                while (resultSet.next()) {
+                    history.add(mapReviewHistory(resultSet));
+                }
+                return history;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load filtered review history", exception);
+        }
+    }
+
     public boolean hasBossBattleSince(java.time.LocalDate since) {
         String sql = "SELECT 1 FROM review_history WHERE boss_battle = 1 AND date(reviewed_at) >= date(?) LIMIT 1";
         try (Connection connection = DatabaseConfig.getConnection();

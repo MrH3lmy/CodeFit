@@ -211,14 +211,40 @@ public class ReviewService {
             }
         });
 
-        List<Flashcard> prioritizedCards = flashcardRepository.findAll().stream()
+        List<Flashcard> prioritizedCards = prioritizeWeeklyBossCandidates(flashcardRepository.findAll(), pressureByCardId, today);
+        return mixedWeeklyBossCards(prioritizedCards);
+    }
+
+    /** Package-private/static so the suspended-card exclusion is directly unit testable without a database. */
+    static List<Flashcard> prioritizeWeeklyBossCandidates(List<Flashcard> allCards, Map<Long, CardPressure> pressureByCardId, LocalDate today) {
+        return allCards.stream()
                 .filter(card -> card.getCardState() != CardState.SUSPENDED)
                 .sorted(Comparator.comparingDouble((Flashcard card) -> -weeklyBossPriority(card, pressureByCardId.get(card.getId()), today))
                         .thenComparing(Flashcard::getSkillCategory, Comparator.nullsLast(String::compareToIgnoreCase))
                         .thenComparingLong(Flashcard::getDeckId)
                         .thenComparing(Flashcard::getDueDate))
                 .toList();
-        return mixedWeeklyBossCards(prioritizedCards);
+    }
+
+    /**
+     * Diagnostic graduation for a new card the learner already knows; see
+     * {@link CardLifecycleService#graduate}. Callers must gate this on
+     * {@link RatingGuardrail#canGraduate} first — this method trusts the caller and does not
+     * re-check correctness/hint/timing itself.
+     */
+    public void graduateCard(Flashcard card) {
+        graduateCard(card, CardLifecycleService.DEFAULT_GRADUATION_INTERVAL_DAYS);
+    }
+
+    public void graduateCard(Flashcard card, int intervalDays) {
+        cardLifecycleService.graduate(card, intervalDays);
+        flashcardRepository.updateSchedule(card);
+    }
+
+    /** Removes a card from every review queue (normal, adaptive, and weekly boss) until reactivated. */
+    public void suspendCard(Flashcard card) {
+        cardLifecycleService.suspend(card);
+        flashcardRepository.updateSchedule(card);
     }
 
     public boolean isWeeklyBossAvailable() {
@@ -281,7 +307,7 @@ public class ReviewService {
         return card.getDeckId() + "::" + skill;
     }
 
-    private double weeklyBossPriority(Flashcard card, CardPressure pressure, LocalDate today) {
+    private static double weeklyBossPriority(Flashcard card, CardPressure pressure, LocalDate today) {
         double score = 0.0;
         if (card.getDueDate() != null && !card.getDueDate().isAfter(today)) {
             score += 30.0 + Math.min(20.0, java.time.temporal.ChronoUnit.DAYS.between(card.getDueDate(), today));
@@ -295,10 +321,10 @@ public class ReviewService {
         return score;
     }
 
-    private static final class CardPressure {
-        private int reviewCount;
-        private int againCount;
-        private int hardCount;
-        private int successCount;
+    static final class CardPressure {
+        int reviewCount;
+        int againCount;
+        int hardCount;
+        int successCount;
     }
 }

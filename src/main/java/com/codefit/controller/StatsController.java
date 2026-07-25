@@ -63,6 +63,8 @@ public class StatsController extends BaseController {
     @FXML private Label suspendedCardTimeLabel;
     @FXML private Label timeBySkillLabel;
     @FXML private Label timeByCardTypeLabel;
+    @FXML private Label graduatedCardsLabel;
+    @FXML private Label suspendedCardsLabel;
     @FXML private ToggleButton overviewTabButton;
     @FXML private ToggleButton skillsTabButton;
     @FXML private ToggleButton activityTabButton;
@@ -89,6 +91,7 @@ public class StatsController extends BaseController {
         configureStatsEmptyState(progress.getTotalReviews());
         populateHeroMetrics(readinessStats);
         populateMasteryBreakdown();
+        populateCardStateBreakdown();
         populateWeakestSkillsCompact();
         populateLearningEfficiency();
         configureTabs();
@@ -190,6 +193,14 @@ public class StatsController extends BaseController {
         masterySeenLabel.setText(Math.round(breakdown.seenPercent()) + "% (" + breakdown.seenCards() + ")");
         masteryLearningLabel.setText(Math.round(breakdown.learningPercent()) + "% (" + breakdown.learningCards() + ")");
         masteryMasteredLabel.setText(Math.round(breakdown.masteredPercent()) + "% (" + breakdown.masteredCards() + ")");
+    }
+
+    /** Distinguishes cards diagnostically graduated ("already know this") from cards suspended out
+     *  of every queue, so neither is silently folded into the durable-mastery breakdown above. */
+    private void populateCardStateBreakdown() {
+        StatsService.CardStateBreakdown breakdown = statsService.getCardStateBreakdown();
+        graduatedCardsLabel.setText(breakdown.graduatedCards() + " " + (breakdown.graduatedCards() == 1 ? "card" : "cards"));
+        suspendedCardsLabel.setText(breakdown.suspendedCards() + " " + (breakdown.suspendedCards() == 1 ? "card" : "cards"));
     }
 
     /** Ranked, at-a-glance view of the weakest skills; the full drill-down list with sample size

@@ -35,9 +35,11 @@ public class FlashcardRepository {
         }
     }
 
+    /** GRADUATED cards resurface here once their long diagnostic interval elapses, so a graduation
+     *  is checked for durable retention instead of being trusted forever. */
     public List<Flashcard> findDueCards() {
         return query("SELECT * FROM flashcards WHERE due_date <= date('now') "
-                + "AND card_state IN ('REVIEW', 'RELEARNING') ORDER BY due_date, created_at");
+                + "AND card_state IN ('REVIEW', 'RELEARNING', 'GRADUATED') ORDER BY due_date, created_at");
     }
 
     public List<Flashcard> findNewCards() {
@@ -163,11 +165,24 @@ public class FlashcardRepository {
 
     public int countDue() {
         return count("SELECT COUNT(*) FROM flashcards WHERE due_date <= date('now') "
-                + "AND card_state IN ('REVIEW', 'RELEARNING')");
+                + "AND card_state IN ('REVIEW', 'RELEARNING', 'GRADUATED')");
     }
 
     public int countNew() {
         return count("SELECT COUNT(*) FROM flashcards WHERE card_state = 'NEW'");
+    }
+
+    public int countByState(CardState state) {
+        String sql = "SELECT COUNT(*) FROM flashcards WHERE card_state = ?";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, state.name());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? resultSet.getInt(1) : 0;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to count cards", exception);
+        }
     }
 
     private List<Flashcard> query(String sql) {

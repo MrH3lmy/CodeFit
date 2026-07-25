@@ -35,11 +35,17 @@ public class FlashcardRepository {
         }
     }
 
-    /** GRADUATED cards resurface here once their long diagnostic interval elapses, so a graduation
-     *  is checked for durable retention instead of being trusted forever. */
+    /**
+     * GRADUATED cards resurface here once their long diagnostic interval elapses, so a graduation
+     * is checked for durable retention instead of being trusted forever. LEECH cards are included
+     * too: unlike SUSPENDED, a leech isn't pulled out of rotation entirely, just kept from being
+     * force-prioritized (see ReviewService#classifyDueCard and #orderDueQueue) — it resurfaces at
+     * its own due date like any other review card, which is also how it gets the consecutive
+     * successful reviews it needs to leave LEECH (see CardLifecycleService#applyReviewOutcome).
+     */
     public List<Flashcard> findDueCards() {
         return query("SELECT * FROM flashcards WHERE due_date <= date('now') "
-                + "AND card_state IN ('REVIEW', 'RELEARNING', 'GRADUATED') ORDER BY due_date, created_at");
+                + "AND card_state IN ('REVIEW', 'RELEARNING', 'GRADUATED', 'LEECH') ORDER BY due_date, created_at");
     }
 
     public List<Flashcard> findNewCards() {
@@ -184,7 +190,7 @@ public class FlashcardRepository {
 
     public int countDue() {
         return count("SELECT COUNT(*) FROM flashcards WHERE due_date <= date('now') "
-                + "AND card_state IN ('REVIEW', 'RELEARNING', 'GRADUATED')");
+                + "AND card_state IN ('REVIEW', 'RELEARNING', 'GRADUATED', 'LEECH')");
     }
 
     public int countNew() {
@@ -201,6 +207,19 @@ public class FlashcardRepository {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to count cards", exception);
+        }
+    }
+
+    public List<Flashcard> findByState(CardState state) {
+        String sql = "SELECT * FROM flashcards WHERE card_state = ? ORDER BY due_date, created_at";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, state.name());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return mapAll(resultSet);
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load cards by state", exception);
         }
     }
 

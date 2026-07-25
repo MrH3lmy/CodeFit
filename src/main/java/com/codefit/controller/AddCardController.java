@@ -1,5 +1,6 @@
 package com.codefit.controller;
 
+import com.codefit.model.CardState;
 import com.codefit.model.CardType;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
@@ -141,10 +142,21 @@ public class AddCardController extends BaseController {
 
         try {
             if (editingCardId != null) {
+                // Read before updating: editable content is preserved separately from lifecycle
+                // state (see FlashcardRepository#updateContent), so a leech stays flagged after an
+                // edit until the learner explicitly resets or suspends it — checked here only to
+                // point that follow-up action out, not to change what gets saved.
+                boolean wasLeech = flashcardService.getCardById(editingCardId)
+                        .map(card -> card.getCardState() == CardState.LEECH)
+                        .orElse(false);
                 flashcardService.updateCard(editingCardId, frontArea.getText(), backArea.getText(),
                         cardTypeComboBox.getValue(), acceptedAnswersArea.getText(), validationModeComboBox.getValue(),
                         simulatedOutputArea.getText(), hintArea.getText(), getTimeLimitSeconds(), skillCategoryField.getText());
-                setStatus(messageLabel, "Card updated.");
+                setStatus(messageLabel, wasLeech
+                        ? "Card updated. It's still flagged as needing a rewrite — reset it from the Library "
+                                + "(Status: Needs Rewrite) so it re-enters learning cleanly, or suspend it if you'd "
+                                + "rather revisit it later."
+                        : "Card updated.");
                 NavigationService.showDecks();
                 return;
             }

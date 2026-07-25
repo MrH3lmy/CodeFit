@@ -368,4 +368,30 @@ class StatsServiceTest {
         assertEquals(0, breakdown.graduatedCards());
         assertEquals(0, breakdown.suspendedCards());
     }
+
+    @Test
+    void leechCardsAreCountedSeparatelyFromGraduatedAndSuspendedCards() {
+        List<Flashcard> cards = List.of(
+                cardInState(1, CardState.LEECH),
+                cardInState(2, CardState.LEECH),
+                cardInState(3, CardState.SUSPENDED),
+                cardInState(4, CardState.GRADUATED),
+                cardInState(5, CardState.REVIEW)
+        );
+
+        StatsService.CardStateBreakdown breakdown = StatsService.summarizeCardStates(cards);
+
+        assertEquals(2, breakdown.leechCards());
+        assertEquals(1, breakdown.suspendedCards());
+        assertEquals(1, breakdown.graduatedCards());
+    }
+
+    @Test
+    void noLeechCardsGivesZeroRatherThanCountingSomethingElse() {
+        List<Flashcard> cards = List.of(cardInState(1, CardState.NEW), cardInState(2, CardState.REVIEW));
+
+        StatsService.CardStateBreakdown breakdown = StatsService.summarizeCardStates(cards);
+
+        assertEquals(0, breakdown.leechCards());
+    }
 }

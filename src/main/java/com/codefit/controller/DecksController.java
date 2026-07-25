@@ -67,7 +67,7 @@ public class DecksController extends BaseController {
     private final SyllabusService syllabusService = new SyllabusService();
     private final FlashcardImportExportService importExportService = new FlashcardImportExportService(flashcardService);
 
-    private enum CardFilter { ALL, DUE, MASTERED, SUSPENDED }
+    private enum CardFilter { ALL, DUE, MASTERED, SUSPENDED, NEEDS_REWRITE }
 
     private CardFilter cardFilter = CardFilter.ALL;
     private Deck currentDeck;
@@ -103,6 +103,11 @@ public class DecksController extends BaseController {
     @FXML
     public void showSuspendedCards() {
         setCardFilter(CardFilter.SUSPENDED, "Status: Suspended");
+    }
+
+    @FXML
+    public void showNeedsRewriteCards() {
+        setCardFilter(CardFilter.NEEDS_REWRITE, "Status: Needs Rewrite");
     }
 
     private void setCardFilter(CardFilter filter, String displayName) {
@@ -349,6 +354,7 @@ public class DecksController extends BaseController {
             case DUE -> isDue(card);
             case MASTERED -> masteryService.getMasteryState(card) == MasteryService.CardMasteryState.MASTERED;
             case SUSPENDED -> card.getCardState() == CardState.SUSPENDED;
+            case NEEDS_REWRITE -> card.getCardState() == CardState.LEECH;
         };
     }
 
@@ -430,13 +436,17 @@ public class DecksController extends BaseController {
         return OptionalInt.of(Integer.parseInt(matcher.group(1)));
     }
 
-    private static final class FlashcardCell extends ListCell<Flashcard> {
+    /** Non-static so leech actions (Reset, Suspend) can reach the outer FlashcardService and refresh
+     *  the current deck's list, matching how editButton already reaches NavigationService. */
+    private final class FlashcardCell extends ListCell<Flashcard> {
         private final Label promptLabel = new Label();
         private final Label answerLabel = new Label();
         private final Label dueBadge = new Label();
         private final Button editButton = new Button("Edit");
+        private final Button resetButton = new Button("Reset");
+        private final Button suspendButton = new Button("Suspend");
         private final VBox textBlock = new VBox(5, promptLabel, answerLabel);
-        private final VBox actionColumn = new VBox(6, dueBadge, editButton);
+        private final VBox actionColumn = new VBox(6, dueBadge, editButton, resetButton, suspendButton);
         private final HBox content = new HBox(12, textBlock, actionColumn);
 
         private FlashcardCell() {
@@ -463,6 +473,24 @@ public class DecksController extends BaseController {
                 }
             });
 
+            // Only shown for a LEECH card (see updateItem): reset restarts its learning progress
+            // after a rewrite, suspend deliberately pulls it out of rotation instead.
+            resetButton.getStyleClass().add("ghost-button");
+            resetButton.setMinWidth(76);
+            resetButton.setOnAction(event -> withCurrentCard(card -> {
+                flashcardService.resetCardForRewrite(card.getId());
+                setStatus(messageLabel, "Card reset. It re-enters learning as a new card next session.");
+                loadCards(currentDeck);
+            }));
+
+            suspendButton.getStyleClass().add("ghost-button");
+            suspendButton.setMinWidth(76);
+            suspendButton.setOnAction(event -> withCurrentCard(card -> {
+                flashcardService.suspendCard(card.getId());
+                setStatus(messageLabel, "Card suspended. It won't appear in any review queue until reactivated.");
+                loadCards(currentDeck);
+            }));
+
             actionColumn.setAlignment(Pos.CENTER);
 
             textBlock.setMaxWidth(Double.MAX_VALUE);
@@ -475,6 +503,13 @@ public class DecksController extends BaseController {
             setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         }
 
+        private void withCurrentCard(java.util.function.Consumer<Flashcard> action) {
+            Flashcard card = getItem();
+            if (card != null) {
+                action.accept(card);
+            }
+        }
+
         @Override
         protected void updateItem(Flashcard card, boolean empty) {
             super.updateItem(card, empty);
@@ -485,9 +520,14 @@ public class DecksController extends BaseController {
 
             promptLabel.setText(displayText(card.getFront(), "Untitled prompt"));
             answerLabel.setText(displayText(card.getBack(), "No answer yet."));
-            dueBadge.setText(card.getDueDate() == null
-                    ? "No due"
-                    : "Due " + DUE_DATE_FORMATTER.format(card.getDueDate()));
+            dueBadge.setText(card.getCardState() == CardState.LEECH
+                    ? "Needs rewrite"
+                    : card.getDueDate() == null ? "No due" : "Due " + DUE_DATE_FORMATTER.format(card.getDueDate()));
+            boolean isLeech = card.getCardState() == CardState.LEECH;
+            resetButton.setVisible(isLeech);
+            resetButton.setManaged(isLeech);
+            suspendButton.setVisible(isLeech);
+            suspendButton.setManaged(isLeech);
             setGraphic(content);
         }
     }

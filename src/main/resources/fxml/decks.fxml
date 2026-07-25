@@ -59,6 +59,7 @@
                             <MenuItem text="Due" onAction="#showDueCards" />
                             <MenuItem text="Mastered" onAction="#showMasteredCards" />
                             <MenuItem text="Suspended" onAction="#showSuspendedCards" />
+                            <MenuItem text="Needs Rewrite" onAction="#showNeedsRewriteCards" />
                         </items>
                     </MenuButton>
                 </HBox>

@@ -113,6 +113,18 @@
                             <Label text="Needs Practice" styleClass="section-title" />
                             <ListView fx:id="needsPracticeListView" prefHeight="220" VBox.vgrow="ALWAYS" />
                         </VBox>
+
+                        <!-- Transfer assessment: unseen/parameterized scenarios that measure whether a
+                             concept can be applied in a new situation, kept visibly separate from
+                             normal-review retention stats above (#104). Results here never feed back
+                             into flashcard scheduling. -->
+                        <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                            <Label text="TRANSFER ASSESSMENT" styleClass="dashboard-card-title" wrapText="true" />
+                            <Label text="Unseen weekly scenarios that test applying a concept, not recalling a card's wording. Never affects normal review scheduling." styleClass="dashboard-card-helper" wrapText="true" />
+                            <Label fx:id="latestAssessmentSummaryLabel" styleClass="dashboard-signal-value" wrapText="true" />
+                            <VBox fx:id="transferSkillBreakdownBox" spacing="6" maxWidth="Infinity" />
+                            <Button text="Start Weekly Transfer Assessment" onAction="#goWeeklyAssessment" styleClass="action-button" maxWidth="Infinity" />
+                        </VBox>
                     </VBox>
 
                     <!-- ACTIVITY -->

@@ -113,12 +113,54 @@ public final class DatabaseConfig {
                         xp_reward INTEGER NOT NULL DEFAULT 25
                     )
                     """);
+            // Separate from flashcards/review_history by design (#104): a weekly transfer assessment
+            // must draw on scenarios the learner has never seen in normal review, and its results must
+            // never silently alter a flashcard's schedule, so the assessment bank gets its own tables.
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS assessment_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        skill_category TEXT NOT NULL DEFAULT 'General',
+                        module_name TEXT NOT NULL,
+                        card_type TEXT NOT NULL DEFAULT 'CONCEPT',
+                        validation_mode TEXT NOT NULL DEFAULT 'CASE_INSENSITIVE',
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS assessment_variants (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        assessment_item_id INTEGER NOT NULL,
+                        variant_index INTEGER NOT NULL,
+                        scenario TEXT NOT NULL,
+                        accepted_answers TEXT,
+                        reference_answer TEXT NOT NULL,
+                        simulated_output TEXT,
+                        hint TEXT,
+                        FOREIGN KEY(assessment_item_id) REFERENCES assessment_items(id) ON DELETE CASCADE
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS assessment_attempts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        assessment_item_id INTEGER NOT NULL,
+                        variant_index INTEGER NOT NULL,
+                        skill_category TEXT NOT NULL,
+                        module_name TEXT NOT NULL,
+                        correct INTEGER NOT NULL,
+                        submitted_answer TEXT,
+                        response_time_ms INTEGER,
+                        attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        run_id TEXT,
+                        FOREIGN KEY(assessment_item_id) REFERENCES assessment_items(id) ON DELETE CASCADE
+                    )
+                    """);
             ensureFlashcardColumns(connection);
             ensureReviewHistoryColumns(connection);
             ensureUserProgressColumns(connection);
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
+            seedAssessmentBank(connection);
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to initialize CodeFit database", exception);
         }
@@ -282,6 +324,150 @@ public final class DatabaseConfig {
         try (Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery("SELECT EXISTS(SELECT 1 FROM " + tableName + " LIMIT 1)")) {
             return resultSet.next() && resultSet.getInt(1) == 1;
+        }
+    }
+
+    private record AssessmentVariantSeed(String scenario, String acceptedAnswers, String referenceAnswer, String hint) {
+    }
+
+    private record AssessmentItemSeed(String skillCategory, String moduleName, CardType cardType,
+                                      ValidationMode validationMode, List<AssessmentVariantSeed> variants) {
+    }
+
+    /**
+     * Two transfer scenarios per item so a repeated weekly assessment rotates wording instead of
+     * showing the exact prompt again (#104). Modules match {@code TrainingPathService}'s Advanced
+     * Backend Engineering path so assessment coverage lines up with the syllabus a learner is
+     * actually progressing through, but the two tables are otherwise unrelated to any flashcard.
+     */
+    private static final SqlCardSpec TOP_SPENDERS_SQL_SPEC = new SqlCardSpec(
+            "CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL, amount REAL NOT NULL, status TEXT NOT NULL);",
+            "INSERT INTO orders (id, customer_id, amount, status) VALUES "
+                    + "(1,100,50.0,'PAID'),(2,100,30.0,'PAID'),(3,101,20.0,'PAID'),(4,101,5.0,'CANCELLED'),(5,102,75.0,'PAID');",
+            "SELECT customer_id, SUM(amount) AS total FROM orders WHERE status = 'PAID' GROUP BY customer_id ORDER BY total DESC;",
+            null, true, false, SqlCardSpec.DEFAULT_TIMEOUT_MILLIS);
+
+    private static final SqlCardSpec REPEAT_USD_PAYERS_SQL_SPEC = new SqlCardSpec(
+            "CREATE TABLE payments (id INTEGER PRIMARY KEY, account_id INTEGER NOT NULL, amount REAL NOT NULL, currency TEXT NOT NULL);",
+            "INSERT INTO payments (id, account_id, amount, currency) VALUES "
+                    + "(1,1,10.0,'USD'),(2,1,10.0,'USD'),(3,1,10.0,'USD'),(4,1,10.0,'USD'),"
+                    + "(5,2,10.0,'USD'),(6,2,10.0,'EUR'),(7,3,10.0,'USD');",
+            "SELECT account_id, COUNT(*) AS payment_count FROM payments WHERE currency = 'USD' GROUP BY account_id HAVING COUNT(*) > 3;",
+            null, false, false, SqlCardSpec.DEFAULT_TIMEOUT_MILLIS);
+
+    private static final List<AssessmentItemSeed> ASSESSMENT_BANK_SEED = List.of(
+            new AssessmentItemSeed("Concurrency", "Java Concurrency & Thread Safety", CardType.CONCEPT, ValidationMode.CASE_INSENSITIVE,
+                    List.of(
+                            new AssessmentVariantSeed(
+                                    "Two threads increment a shared `int balance` field without synchronization inside a bank transfer service. Under load, some deposits silently vanish. Diagnose the concurrency defect and name the fix.",
+                                    null,
+                                    "This is a lost-update race from a non-atomic read-modify-write on shared mutable state; fix with a lock/synchronized block, an AtomicInteger, or optimistic locking (a version column) so concurrent increments cannot interleave and overwrite each other.",
+                                    "Think about what happens when two threads read the same value before either writes it back."),
+                            new AssessmentVariantSeed(
+                                    "A checkout service caches an inventory count in a plain field, and two requests reserve the last unit at the same time; both succeed and the warehouse oversells by one unit. Diagnose the concurrency defect and name the fix.",
+                                    null,
+                                    "Also a lost-update / check-then-act race on shared mutable state without synchronization; fix with an atomic compare-and-swap (AtomicInteger.compareAndSet), a database-level optimistic lock (version column), or a pessimistic row lock so the check and decrement happen atomically.",
+                                    "The bug is the same shape as a double-spend: check, then act, with no atomicity between the two."))),
+            new AssessmentItemSeed("Transactions", "Database Transactions, Locking & Isolation", CardType.CONCEPT, ValidationMode.CASE_INSENSITIVE,
+                    List.of(
+                            new AssessmentVariantSeed(
+                                    "An outer @Transactional method calls an inner @Transactional(propagation = REQUIRES_NEW) method. The inner method throws an unchecked RuntimeException, which propagates out of the inner method but is caught immediately in the outer method (not rethrown). Predict what happens to the inner transaction's changes and the outer transaction's changes.",
+                                    null,
+                                    "REQUIRES_NEW runs the inner method in a brand-new, independent transaction, so the exception marks only the inner transaction for rollback and its changes are undone; the outer transaction never sees the exception (it was caught), so it is unaffected and commits its own changes normally.",
+                                    "Ask which physical transaction each propagation setting actually runs in."),
+                            new AssessmentVariantSeed(
+                                    "An outer @Transactional method calls an inner @Transactional(propagation = Propagation.NESTED) method that throws an unchecked RuntimeException, caught immediately in the outer method. Predict what happens to each transaction's changes, assuming NESTED is supported by the underlying driver.",
+                                    null,
+                                    "NESTED runs the inner method inside a savepoint of the same physical transaction; the exception rolls back only to that savepoint, undoing just the inner method's changes, while the outer transaction (which caught the exception and was never itself marked rollback-only) can still commit its own changes.",
+                                    "NESTED shares one physical transaction with a savepoint; REQUIRES_NEW starts a second, fully independent one."))),
+            new AssessmentItemSeed("Idempotency", "Idempotency & Race-Condition Prevention", CardType.CONCEPT, ValidationMode.CASE_INSENSITIVE,
+                    List.of(
+                            new AssessmentVariantSeed(
+                                    "A payment API endpoint charges a customer's card, and the mobile client retries the request after a network timeout, potentially charging twice. Design an idempotency approach for this endpoint and explain why it prevents a double charge.",
+                                    null,
+                                    "Require the client to send a unique idempotency key per logical payment attempt; the server stores (key -> result) the first time it processes a charge and, on a retried request with the same key, returns the stored result instead of re-executing the charge. A database unique constraint on the key makes the check-and-store atomic and repeat-safe regardless of how many times the same request arrives.",
+                                    "The client can retry any number of times; the design must make repetition a no-op, not just unlikely to double-charge."),
+                            new AssessmentVariantSeed(
+                                    "A background worker consumes 'send welcome email' jobs from a queue with at-least-once delivery, so the same job message can be redelivered and processed twice. Design an idempotency approach so the welcome email is never sent twice.",
+                                    null,
+                                    "Track processed job/message ids in a dedupe table with a unique constraint (or an idempotency key derived from the job) and check-and-insert before sending; if the id is already recorded, skip sending, which turns redelivery into a no-op instead of a duplicate side effect.",
+                                    "At-least-once delivery means redelivery is expected and normal, not an edge case."))),
+            new AssessmentItemSeed("SQL", "JDBC & SQL", CardType.SQL_QUERY, ValidationMode.NORMALIZED_SPACING,
+                    List.of(
+                            new AssessmentVariantSeed(
+                                    "orders(id, customer_id, amount, status): write a query that finds the total PAID amount spent by each customer, showing customer_id and total, highest spender first.",
+                                    SqlCardSpecCodec.encode(TOP_SPENDERS_SQL_SPEC),
+                                    "SELECT customer_id, SUM(amount) AS total FROM orders WHERE status = 'PAID' GROUP BY customer_id ORDER BY total DESC;",
+                                    "Filter to PAID rows, aggregate per customer, then order the result."),
+                            new AssessmentVariantSeed(
+                                    "payments(id, account_id, amount, currency): write a query that finds accounts with more than 3 USD payments, showing account_id and payment_count.",
+                                    SqlCardSpecCodec.encode(REPEAT_USD_PAYERS_SQL_SPEC),
+                                    "SELECT account_id, COUNT(*) AS payment_count FROM payments WHERE currency = 'USD' GROUP BY account_id HAVING COUNT(*) > 3;",
+                                    "Filter to USD rows, group per account, then keep only groups above the threshold with HAVING."))),
+            new AssessmentItemSeed("Security", "Security & Auth", CardType.CONCEPT, ValidationMode.CASE_INSENSITIVE,
+                    List.of(
+                            new AssessmentVariantSeed(
+                                    "A REST API stores JWTs in localStorage and validates them without ever checking the expiration claim server-side, so a token stolen via XSS can be reused indefinitely. Diagnose the vulnerability and the fix.",
+                                    null,
+                                    "The vulnerability is trusting a token forever because expiration isn't enforced server-side (plus storing it in localStorage is exposed to XSS); the fix is to always validate the exp claim on every request, keep access-token lifetimes short, and prefer an HttpOnly cookie (or a revocable refresh token) so a stolen token has a small, forced window.",
+                                    "A stolen token is only as dangerous as how long it stays valid and how it was exposed."),
+                            new AssessmentVariantSeed(
+                                    "A login endpoint returns \"Invalid password\" when the password is wrong but \"User not found\" when the email doesn't exist. Diagnose the vulnerability and the fix.",
+                                    null,
+                                    "This is a user-enumeration vulnerability: the differing error messages let an attacker discover which emails are registered; the fix is to return an identical generic message (e.g. \"Invalid email or password\") and take a similar amount of time in both cases so the two situations can't be distinguished.",
+                                    "Ask what an attacker learns from the response that they shouldn't be able to learn."))),
+            new AssessmentItemSeed("Kafka", "Kafka Delivery Semantics, Outbox & DLQs", CardType.CONCEPT, ValidationMode.CASE_INSENSITIVE,
+                    List.of(
+                            new AssessmentVariantSeed(
+                                    "A Kafka consumer commits its offset before finishing processing a message, then crashes mid-processing. Diagnose the delivery-semantics failure this causes and how to fix it.",
+                                    null,
+                                    "Committing the offset before processing completes risks silently losing the message if the consumer crashes afterward (an at-most-once loss); fix by only committing the offset after the message is fully processed (disable auto-commit and commit manually post-processing), accepting at-least-once delivery with idempotent handling instead.",
+                                    "Ask what happens if the process dies in between the two steps."),
+                            new AssessmentVariantSeed(
+                                    "A service publishes a 'payment confirmed' event to Kafka only after committing the local database transaction that records the payment, but the process crashes between the commit and the publish. Diagnose the failure and how to fix it.",
+                                    null,
+                                    "The database write and the Kafka publish are not atomic, so a crash between them permanently loses the event even though the payment was recorded; fix with the transactional outbox pattern: write the event to an outbox table in the same local transaction, then have a separate relay process publish outbox rows to Kafka and mark them sent.",
+                                    "Two separate systems (the database and Kafka) can never be updated atomically without a pattern like the outbox."))));
+
+    private static void seedAssessmentBank(Connection connection) throws SQLException {
+        try (PreparedStatement existsCheck = connection.prepareStatement(
+                "SELECT 1 FROM assessment_items WHERE skill_category = ? LIMIT 1");
+             PreparedStatement insertItem = connection.prepareStatement(
+                     "INSERT INTO assessment_items (skill_category, module_name, card_type, validation_mode) VALUES (?, ?, ?, ?)",
+                     Statement.RETURN_GENERATED_KEYS);
+             PreparedStatement insertVariant = connection.prepareStatement(
+                     "INSERT INTO assessment_variants (assessment_item_id, variant_index, scenario, accepted_answers, reference_answer, hint) VALUES (?, ?, ?, ?, ?, ?)")) {
+            for (AssessmentItemSeed itemSeed : ASSESSMENT_BANK_SEED) {
+                existsCheck.setString(1, itemSeed.skillCategory());
+                try (ResultSet existing = existsCheck.executeQuery()) {
+                    if (existing.next()) {
+                        continue;
+                    }
+                }
+
+                insertItem.setString(1, itemSeed.skillCategory());
+                insertItem.setString(2, itemSeed.moduleName());
+                insertItem.setString(3, itemSeed.cardType().name());
+                insertItem.setString(4, itemSeed.validationMode().name());
+                insertItem.executeUpdate();
+                long itemId;
+                try (ResultSet keys = insertItem.getGeneratedKeys()) {
+                    keys.next();
+                    itemId = keys.getLong(1);
+                }
+
+                List<AssessmentVariantSeed> variants = itemSeed.variants();
+                for (int index = 0; index < variants.size(); index++) {
+                    AssessmentVariantSeed variantSeed = variants.get(index);
+                    insertVariant.setLong(1, itemId);
+                    insertVariant.setInt(2, index);
+                    insertVariant.setString(3, variantSeed.scenario());
+                    insertVariant.setString(4, variantSeed.acceptedAnswers());
+                    insertVariant.setString(5, variantSeed.referenceAnswer());
+                    insertVariant.setString(6, variantSeed.hint());
+                    insertVariant.executeUpdate();
+                }
+            }
         }
     }
 }

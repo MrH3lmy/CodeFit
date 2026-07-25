@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fx:id="assessmentRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.WeeklyAssessmentController">
+    <content>
+        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+            <HBox spacing="16" alignment="CENTER_LEFT" styleClass="review-topbar" maxWidth="Infinity">
+                <Button text="Exit" onAction="#exitAssessment" styleClass="ghost-button" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label text="TRANSFER ASSESSMENT" styleClass="pill" wrapText="true" />
+                <Label fx:id="queueLabel" styleClass="pill" wrapText="true" />
+            </HBox>
+            <ProgressBar fx:id="assessmentProgressBar" maxWidth="Infinity" styleClass="review-session-progress" />
+
+            <Label fx:id="feedbackLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+
+            <StackPane styleClass="review-stage" maxWidth="Infinity">
+                <VBox fx:id="itemPanel" spacing="20" styleClass="review-card" maxWidth="780" StackPane.alignment="CENTER">
+                    <Label text="Unseen scenario — this item is never shown in normal review." styleClass="helper-text" wrapText="true" />
+                    <Label fx:id="categoryLabel" styleClass="category-pill" wrapText="true" />
+
+                    <VBox spacing="10" styleClass="prompt-section current-action-panel">
+                        <Label fx:id="scenarioLabel" styleClass="review-prompt" wrapText="true" />
+                    </VBox>
+
+                    <VBox fx:id="hintBox" spacing="6" maxWidth="Infinity" visible="false" managed="false">
+                        <Label fx:id="hintLabel" styleClass="muted" wrapText="true" />
+                    </VBox>
+
+                    <VBox fx:id="attemptSection" spacing="12" styleClass="attempt-section current-action-panel">
+                        <Label text="YOUR ANSWER" styleClass="stat-label" />
+                        <TextArea fx:id="attemptTextArea" promptText="Explain your reasoning or write the query/pattern this scenario calls for." wrapText="true" prefRowCount="5" maxWidth="Infinity" />
+                    </VBox>
+
+                    <HBox fx:id="preCheckActions" spacing="12" alignment="CENTER" maxWidth="Infinity">
+                        <Button fx:id="showHintButton" text="Hint" onAction="#showHint" styleClass="ghost-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                        <Button fx:id="checkAnswerButton" text="Check Answer" onAction="#checkAnswer" styleClass="action-button reveal-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                    </HBox>
+
+                    <VBox fx:id="referenceAnswerSection" spacing="10" styleClass="answer-section" visible="false" managed="false">
+                        <Label text="REFERENCE ANSWER" styleClass="stat-label" />
+                        <Label fx:id="referenceAnswerLabel" styleClass="review-answer" wrapText="true" />
+                    </VBox>
+
+                    <VBox fx:id="selfRatingBox" spacing="10" styleClass="rating-panel" maxWidth="Infinity" visible="false" managed="false">
+                        <Label text="Self-grade against the reference answer:" styleClass="helper-text" wrapText="true" />
+                        <HBox spacing="10" alignment="CENTER" maxWidth="Infinity">
+                            <Button fx:id="gotItButton" text="✓ Got it" onAction="#markGotIt" styleClass="success-button rating-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                            <Button fx:id="missedItButton" text="✕ Missed it" onAction="#markMissedIt" styleClass="danger-button rating-button" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                        </HBox>
+                    </VBox>
+
+                    <Button fx:id="nextButton" text="Next" onAction="#nextItem" styleClass="action-button" maxWidth="Infinity" visible="false" managed="false" />
+                </VBox>
+
+                <VBox fx:id="completionPanel" spacing="18" styleClass="review-card" maxWidth="780" StackPane.alignment="CENTER" visible="false" managed="false">
+                    <Label text="Weekly transfer assessment complete" styleClass="review-prompt" wrapText="true" />
+                    <Label fx:id="completionSummaryLabel" styleClass="review-answer" wrapText="true" />
+                    <VBox fx:id="completionSkillBreakdownBox" spacing="8" maxWidth="Infinity" />
+                    <Button text="View Progress" onAction="#goStats" styleClass="action-button" maxWidth="Infinity" />
+                </VBox>
+
+                <VBox fx:id="emptyStatePanel" spacing="14" styleClass="review-card" maxWidth="780" StackPane.alignment="CENTER" visible="false" managed="false">
+                    <Label text="No transfer assessment available yet" styleClass="review-prompt" wrapText="true" />
+                    <Label text="Assessment content is still being added. Check back once assessment items are seeded." styleClass="review-answer" wrapText="true" />
+                    <Button text="Back to Progress" onAction="#goStats" styleClass="action-button" maxWidth="Infinity" />
+                </VBox>
+            </StackPane>
+        </VBox>
+    </content>
+</ScrollPane>

@@ -4,12 +4,15 @@ import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.UserProgress;
+import com.codefit.service.AssessmentRunSummary;
+import com.codefit.service.AssessmentStatsService;
 import com.codefit.service.EngineerReadinessStats;
 import com.codefit.service.FlashcardService;
 import com.codefit.service.LearningEfficiencyStats;
 import com.codefit.service.MasteryService;
 import com.codefit.service.StatsService;
 import com.codefit.service.StatsSkillPerformance;
+import com.codefit.service.TransferSkillPerformance;
 import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -30,6 +33,7 @@ import javafx.scene.layout.VBox;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -65,6 +69,8 @@ public class StatsController extends BaseController {
     @FXML private Label timeByCardTypeLabel;
     @FXML private Label graduatedCardsLabel;
     @FXML private Label suspendedCardsLabel;
+    @FXML private Label latestAssessmentSummaryLabel;
+    @FXML private VBox transferSkillBreakdownBox;
     @FXML private ToggleButton overviewTabButton;
     @FXML private ToggleButton skillsTabButton;
     @FXML private ToggleButton activityTabButton;
@@ -77,6 +83,7 @@ public class StatsController extends BaseController {
     private final StatsService statsService = new StatsService();
     private final FlashcardService flashcardService = new FlashcardService();
     private final MasteryService masteryService = new MasteryService();
+    private final AssessmentStatsService assessmentStatsService = new AssessmentStatsService();
 
     private enum ProgressTab { OVERVIEW, SKILLS, ACTIVITY }
 
@@ -94,6 +101,7 @@ public class StatsController extends BaseController {
         populateCardStateBreakdown();
         populateWeakestSkillsCompact();
         populateLearningEfficiency();
+        populateTransferAssessment();
         configureTabs();
 
         configureSkillPerformanceList();
@@ -272,6 +280,40 @@ public class StatsController extends BaseController {
         timeByCardTypeLabel.setText(formatTimeBreakdown(efficiency.activeMinutesByCardType().entrySet().stream()
                 .sorted(Map.Entry.<CardType, Double>comparingByValue().reversed())
                 .map(entry -> entry.getKey() + " " + formatMinutes(entry.getValue()))));
+    }
+
+    /**
+     * Transfer-assessment accuracy is reported entirely separately from normal-review retention
+     * stats above: it never shares a chart, list, or aggregation with {@link #populateWeakestSkillsCompact}
+     * or {@link #configureSkillPerformanceList}, so a learner can never mistake one signal for the
+     * other (#104). Assessment results are read-only here — nothing in this method writes anything.
+     */
+    private void populateTransferAssessment() {
+        if (latestAssessmentSummaryLabel == null || transferSkillBreakdownBox == null) {
+            return;
+        }
+        Optional<AssessmentRunSummary> latestRun = assessmentStatsService.getLatestRunSummary();
+        latestAssessmentSummaryLabel.setText(latestRun.isPresent()
+                ? latestRun.get().runDate() + " — " + latestRun.get().correctCount() + " / " + latestRun.get().totalItems()
+                        + " correct (" + formatPercent(latestRun.get().accuracyPercent()) + ")"
+                : "No transfer assessment completed yet.");
+
+        transferSkillBreakdownBox.getChildren().clear();
+        List<TransferSkillPerformance> bySkill = assessmentStatsService.getTransferPerformanceBySkill();
+        if (bySkill.isEmpty()) {
+            Label emptyLabel = new Label("Complete a weekly transfer assessment to see per-skill transfer accuracy here.");
+            emptyLabel.getStyleClass().add("dashboard-card-helper");
+            emptyLabel.setWrapText(true);
+            transferSkillBreakdownBox.getChildren().add(emptyLabel);
+            return;
+        }
+        bySkill.forEach(performance -> {
+            Label row = new Label(performance.skillCategory() + ": " + performance.correctCount() + " / "
+                    + performance.attempts() + " (" + formatPercent(performance.accuracyPercent()) + ")");
+            row.getStyleClass().add("dashboard-card-helper");
+            row.setWrapText(true);
+            transferSkillBreakdownBox.getChildren().add(row);
+        });
     }
 
     private String formatRetentionBucket(LearningEfficiencyStats.RetentionBucket bucket) {

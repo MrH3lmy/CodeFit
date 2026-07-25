@@ -6,6 +6,7 @@ import com.codefit.model.ConfidenceLevel;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.JavaCardConfig;
+import com.codefit.model.ReflectionType;
 import com.codefit.model.ValidationMode;
 import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewRating;
@@ -246,15 +247,15 @@ public class ReviewController extends BaseController {
     @FXML public void rateEasy() { rate(ReviewRating.EASY); }
 
     @FXML public void addFixedBugReflection() {
-        NavigationService.showAddCardReflection("bug");
+        NavigationService.showReflectionCapture(ReflectionType.BUG);
     }
 
     @FXML public void addSearchedCommandReflection() {
-        NavigationService.showAddCardReflection("command");
+        NavigationService.showReflectionCapture(ReflectionType.COMMAND);
     }
 
     @FXML public void addMissedConceptReflection() {
-        NavigationService.showAddCardReflection("concept");
+        NavigationService.showReflectionCapture(ReflectionType.MISSED_CONCEPT);
     }
 
     /**
@@ -435,7 +436,7 @@ public class ReviewController extends BaseController {
             summary.append("\n").append(missedCardGroups);
         }
 
-        summary.append("\nReflection prompt: add one card from today’s real work while it is still fresh. Pick a bug you fixed, a command you searched, or a concept you missed.");
+        summary.append("\nReflection prompt: turn today’s real work into cards while it is still fresh. Pick a bug you fixed, a command you searched, or a concept you missed.");
         summary.append("\nNext action: ").append(formatSuggestedNextAction());
         return summary.toString();
     }

@@ -267,7 +267,9 @@ public class AddCardController extends BaseController {
 
         if (command) {
             validationModeComboBox.getSelectionModel().select(ValidationMode.COMMAND_NORMALIZED);
-        } else if (regex || sql || codeOutput) {
+        } else if (regex) {
+            validationModeComboBox.getSelectionModel().select(ValidationMode.REGEX_EXAMPLES);
+        } else if (sql || codeOutput) {
             validationModeComboBox.getSelectionModel().select(ValidationMode.NORMALIZED_SPACING);
         } else {
             validationModeComboBox.getSelectionModel().select(ValidationMode.CASE_INSENSITIVE);
@@ -293,7 +295,10 @@ public class AddCardController extends BaseController {
             case REGEX_PATTERN -> configureCopy(
                     "Matching requirement", "Describe strings that should match and not match.",
                     "Regex explanation", "Explain the pattern and any flags or anchors.",
-                    "Accepted regex patterns", "Accepted regex patterns, one per line",
+                    "Regex grading config", "Single-line JSON: {\"mustMatch\":[\"555-1234\"],\"mustNotMatch\":[\"abc\"],"
+                            + "\"flags\":[\"CASE_INSENSITIVE\"],\"matchMode\":\"FULL_MATCH\"} "
+                            + "(flags: CASE_INSENSITIVE, MULTILINE, DOTALL; matchMode: FULL_MATCH or FIND). "
+                            + "The learner's submitted pattern is compiled and run against these examples, never text-compared.",
                     "", "");
             case CODE_OUTPUT -> configureCopy(
                     "Java BE scenario", "Describe REST endpoint behavior, a Spring annotation, SQL query, or exception scenario.",

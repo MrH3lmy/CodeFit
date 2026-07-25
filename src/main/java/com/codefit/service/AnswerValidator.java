@@ -64,6 +64,7 @@ public final class AnswerValidator {
             case CASE_INSENSITIVE -> attempt.equalsIgnoreCase(expectedAnswer);
             case NORMALIZED_SPACING -> normalizeSpacing(attempt).equalsIgnoreCase(normalizeSpacing(expectedAnswer));
             case COMMAND_NORMALIZED -> CommandValidator.matches(attempt, expectedAnswer);
+            case REGEX_EXAMPLES -> RegexCardValidator.matches(attempt, expectedAnswer);
         };
     }
 

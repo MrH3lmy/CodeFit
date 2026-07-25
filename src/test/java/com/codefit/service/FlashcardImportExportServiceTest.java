@@ -2,10 +2,13 @@ package com.codefit.service;
 
 import com.codefit.model.CardType;
 import com.codefit.model.JavaCardConfig;
+import com.codefit.model.RegexCardConfig;
+import com.codefit.model.RegexMatchMode;
 import com.codefit.model.ValidationMode;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -100,6 +103,49 @@ class FlashcardImportExportServiceTest {
         String[] parsedFields = row.split("\t", -1);
         assertEquals(storedConfig, parsedFields[3]);
         assertEquals(spec, SqlCardSpecCodec.decode(AcceptedAnswerCodec.normalize(parsedFields[3])));
+    }
+
+    @Test
+    void roundTripPreservesRegexCardConfigThroughTsv() {
+        RegexCardConfig regexConfig = new RegexCardConfig(List.of("555-1234"), List.of("abc"),
+                Set.of(), RegexMatchMode.FULL_MATCH);
+        String storedAnswers = RegexCardCodec.encode(regexConfig);
+
+        String row = FlashcardImportExportService.toTsvRow(List.of(
+                FlashcardImportExportService.field("Match a phone number"),
+                FlashcardImportExportService.field("\\d{3}-\\d{4}"),
+                CardType.REGEX_PATTERN.name(),
+                FlashcardImportExportService.field(storedAnswers),
+                ValidationMode.REGEX_EXAMPLES.name(),
+                FlashcardImportExportService.field(null),
+                FlashcardImportExportService.field("Regex"),
+                ""
+        ));
+
+        String[] parsedFields = row.split("\t", -1);
+        assertEquals(storedAnswers, parsedFields[3]);
+        RegexCardConfig decoded = RegexCardCodec.decode(parsedFields[3]);
+        assertEquals(regexConfig.mustMatch(), decoded.mustMatch());
+        assertEquals(regexConfig.mustNotMatch(), decoded.mustNotMatch());
+        assertEquals(regexConfig.matchMode(), decoded.matchMode());
+    }
+
+    @Test
+    void requireGradableRegexConfigRejectsCardsWithNoExamples() {
+        String emptyConfig = RegexCardCodec.encode(new RegexCardConfig(List.of(), List.of(), Set.of(), RegexMatchMode.FIND));
+        assertThrows(IllegalArgumentException.class, () -> FlashcardImportExportService.requireGradableRegexConfig(
+                CardType.REGEX_PATTERN, ValidationMode.REGEX_EXAMPLES, emptyConfig, 1));
+    }
+
+    @Test
+    void requireGradableRegexConfigAcceptsCardsWithAtLeastOneExample() {
+        String validConfig = RegexCardCodec.encode(new RegexCardConfig(List.of("abc"), List.of(), Set.of(), RegexMatchMode.FIND));
+        FlashcardImportExportService.requireGradableRegexConfig(CardType.REGEX_PATTERN, ValidationMode.REGEX_EXAMPLES, validConfig, 1);
+    }
+
+    @Test
+    void requireGradableRegexConfigIgnoresNonRegexCards() {
+        FlashcardImportExportService.requireGradableRegexConfig(CardType.RECALL, ValidationMode.CASE_INSENSITIVE, "", 1);
     }
 
     @Test

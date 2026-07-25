@@ -2,6 +2,7 @@ package com.codefit.service;
 
 import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
+import com.codefit.model.RegexCardConfig;
 import com.codefit.model.ValidationMode;
 
 import java.io.BufferedReader;
@@ -89,13 +90,18 @@ public class FlashcardImportExportService {
                         skippedDuplicates++;
                         continue;
                     }
+                    CardType cardType = parseEnum(CardType.class, get(fields, 2), CardType.RECALL, "card_type", lineNumber);
+                    ValidationMode validationMode = parseEnum(ValidationMode.class, get(fields, 4),
+                            ValidationMode.CASE_INSENSITIVE, "validation_mode", lineNumber);
+                    String acceptedAnswers = blankToDefault(get(fields, 3), fields[1]);
+                    requireGradableRegexConfig(cardType, validationMode, acceptedAnswers, lineNumber);
                     flashcardService.addCard(
                             deckId,
                             fields[0],
                             fields[1],
-                            parseEnum(CardType.class, get(fields, 2), CardType.RECALL, "card_type", lineNumber),
-                            blankToDefault(get(fields, 3), fields[1]),
-                            parseEnum(ValidationMode.class, get(fields, 4), ValidationMode.CASE_INSENSITIVE, "validation_mode", lineNumber),
+                            cardType,
+                            acceptedAnswers,
+                            validationMode,
                             null,
                             blankToNull(get(fields, 5)),
                             parseTimeLimit(get(fields, 7), lineNumber),
@@ -171,6 +177,25 @@ public class FlashcardImportExportService {
             return seconds;
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("time_limit_seconds must be a positive integer.");
+        }
+    }
+
+    /**
+     * A {@link CardType#REGEX_PATTERN} card under {@link ValidationMode#REGEX_EXAMPLES} stores its
+     * {@link RegexCardConfig} (positive/negative examples, flags, match mode) in the same
+     * accepted_answers column every other card type uses (see {@link RegexCardCodec}), so it round-trips
+     * through this exact TSV field unchanged. What is new here is validating that the imported blob
+     * actually decodes to a gradable config, so a hand-edited or truncated TSV row fails the import with
+     * a clear message instead of silently producing a card nothing can ever pass.
+     */
+    static void requireGradableRegexConfig(CardType cardType, ValidationMode validationMode, String acceptedAnswers, int lineNumber) {
+        if (cardType != CardType.REGEX_PATTERN || validationMode != ValidationMode.REGEX_EXAMPLES) {
+            return;
+        }
+        RegexCardConfig config = RegexCardCodec.decode(acceptedAnswers);
+        if (config.mustMatch().isEmpty() && config.mustNotMatch().isEmpty()) {
+            throw new IllegalArgumentException("Line " + lineNumber
+                    + ": regex card requires at least one must-match or must-not-match example in accepted_answers.");
         }
     }
 

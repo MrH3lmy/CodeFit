@@ -78,11 +78,36 @@ public class TrainingPathService {
             0.8
     );
 
+    /** A focused deep-dive path covering local storage engines and distributed database internals. */
+    private static final TrainingPath DATABASE_INTERNALS_PATH = new TrainingPath(
+            "Database Internals",
+            List.of(
+                    new TrainingPath.TrainingPathModule(1, "Architecture, Layout & File Formats",
+                            "Trace requests through database subsystems and choose physical layouts, indexes, pages, versioning, and integrity checks according to workload.",
+                            "DI 01 - Architecture, Layout & File Formats", List.of(), 0.8),
+                    new TrainingPath.TrainingPathModule(2, "B-Trees, Buffer Management & Recovery",
+                            "Reason about B-Tree structure and maintenance, buffer-pool behavior, WAL, ARIES, and concurrency control under production failure and load.",
+                            "DI 02 - B-Trees, Buffer Management & Recovery", List.of(1), 0.85),
+                    new TrainingPath.TrainingPathModule(3, "LSM Trees & Storage Trade-offs",
+                            "Follow writes through memtables, SSTables, compaction, amplification trade-offs, key-value separation, and SSD-aware storage stacks.",
+                            "DI 03 - LSM Trees & Storage Trade-offs", List.of(1, 2), 0.85),
+                    new TrainingPath.TrainingPathModule(4, "Distributed Foundations & Consistency",
+                            "Reason about partial failure, clocks, failure detection, leader epochs, CAP, consistency models, session guarantees, quorums, and CRDTs.",
+                            "DI 04 - Distributed Foundations & Consistency", List.of(1), 0.8),
+                    new TrainingPath.TrainingPathModule(5, "Anti-Entropy, Transactions & Consensus",
+                            "Explain replica repair, gossip, distributed commit, partitioning, coordination avoidance, Paxos, Raft, ZAB, Byzantine faults, and log recovery.",
+                            "DI 05 - Anti-Entropy, Transactions & Consensus", List.of(2, 4), 0.85)
+            ),
+            Pattern.compile("^\\s*DI\\s+(\\d{1,2})\\b.*", Pattern.CASE_INSENSITIVE),
+            5,
+            0.8
+    );
+
     private final FlashcardService flashcardService = new FlashcardService();
     private final MasteryService masteryService = new MasteryService();
 
     public List<TrainingPath> getTrainingPaths() {
-        return List.of(JAVA_BACKEND_PATH, ADVANCED_BACKEND_ENGINEERING_PATH);
+        return List.of(JAVA_BACKEND_PATH, ADVANCED_BACKEND_ENGINEERING_PATH, DATABASE_INTERNALS_PATH);
     }
 
     public TrainingPath getJavaBackendPath() {
@@ -91,6 +116,10 @@ public class TrainingPathService {
 
     public TrainingPath getAdvancedBackendEngineeringPath() {
         return ADVANCED_BACKEND_ENGINEERING_PATH;
+    }
+
+    public TrainingPath getDatabaseInternalsPath() {
+        return DATABASE_INTERNALS_PATH;
     }
 
     public Optional<TrainingPathRecommendation> recommendNextModule(List<Deck> decks) {
@@ -171,7 +200,7 @@ public class TrainingPathService {
     }
 
     static Optional<TrainingPathRecommendation> recommendFocusChange(TrainingPath path, int focusModuleOrder,
-                                                                      List<TrainingPathModuleProgress> pathProgress) {
+                                                                       List<TrainingPathModuleProgress> pathProgress) {
         return pathProgress.stream()
                 .filter(progress -> progress.module().getOrder() == focusModuleOrder)
                 .findFirst()
@@ -200,7 +229,7 @@ public class TrainingPathService {
     }
 
     private static Optional<TrainingPathModuleProgress> nextModule(TrainingPathModuleProgress current,
-                                                           List<TrainingPathModuleProgress> pathDecks) {
+                                                            List<TrainingPathModuleProgress> pathDecks) {
         return pathDecks.stream()
                 .filter(progress -> progress.module().getOrder() > current.module().getOrder())
                 .min(Comparator.comparingInt(progress -> progress.module().getOrder()));
@@ -227,13 +256,13 @@ public class TrainingPathService {
     }
 
     public record TrainingPathModuleProgress(TrainingPath.TrainingPathModule module, Deck deck, int cardCount,
-                                             long dueCount, int progressPercent) {
+                                              long dueCount, int progressPercent) {
         public double reviewProgress() {
             return progressPercent / 100.0;
         }
     }
 
     public record TrainingPathRecommendation(TrainingPath path, TrainingPathModuleProgress current,
-                                             TrainingPathModuleProgress next, TrainingPathAction action) {
+                                              TrainingPathModuleProgress next, TrainingPathAction action) {
     }
 }

@@ -27,11 +27,11 @@ class TrainingPathServiceTest {
     }
 
     @Test
-    void bothTrainingPathsAreRegisteredWithDistinctNames() {
+    void allTrainingPathsAreRegisteredWithDistinctNames() {
         List<TrainingPath> paths = trainingPathService.getTrainingPaths();
 
-        assertEquals(2, paths.size());
-        assertEquals(Set.of("Java Backend", "Advanced Backend Engineering"),
+        assertEquals(3, paths.size());
+        assertEquals(Set.of("Java Backend", "Advanced Backend Engineering", "Database Internals"),
                 paths.stream().map(TrainingPath::getName).collect(java.util.stream.Collectors.toSet()));
     }
 
@@ -47,29 +47,46 @@ class TrainingPathServiceTest {
     }
 
     @Test
+    void databaseInternalsPathHasFiveSequentialModulesAndMatchesBundledDecks() {
+        TrainingPath path = trainingPathService.getDatabaseInternalsPath();
+        List<TrainingPathModule> modules = path.getModules();
+
+        assertEquals(5, modules.size());
+        for (int i = 0; i < modules.size(); i++) {
+            assertEquals(i + 1, modules.get(i).getOrder(), "modules should be sorted 1..5 by order");
+        }
+        assertTrue(path.findModuleForDeck(deck("DI 01 - Architecture, Layout & File Formats")).isPresent());
+        assertTrue(path.findModuleForDeck(deck("di 05 - anti-entropy, transactions & consensus")).isPresent());
+        assertEquals(Optional.empty(), path.findModuleForDeck(deck("ABE 02 - Database Transactions, Locking & Isolation")));
+    }
+
+    @Test
     void everyModuleBeyondTheFirstDeclaresAtLeastOnePrerequisiteAndTheFirstDeclaresNone() {
-        List<TrainingPathModule> modules = trainingPathService.getAdvancedBackendEngineeringPath().getModules();
+        for (TrainingPath path : List.of(
+                trainingPathService.getAdvancedBackendEngineeringPath(),
+                trainingPathService.getDatabaseInternalsPath())) {
+            List<TrainingPathModule> modules = path.getModules();
+            TrainingPathModule first = modules.get(0);
+            assertTrue(first.getPrerequisiteModuleOrders().isEmpty(),
+                    "the first module in a path is foundational and should have no prerequisites");
+            assertFalse(first.hasPrerequisites());
 
-        TrainingPathModule first = modules.get(0);
-        assertTrue(first.getPrerequisiteModuleOrders().isEmpty(),
-                "the first module in a path is foundational and should have no prerequisites");
-        assertFalse(first.hasPrerequisites());
-
-        for (TrainingPathModule module : modules.subList(1, modules.size())) {
-            assertTrue(module.hasPrerequisites(),
-                    () -> "module " + module.getOrder() + " (" + module.getTitle() + ") should declare a prerequisite");
-            for (int prerequisiteOrder : module.getPrerequisiteModuleOrders()) {
-                assertTrue(prerequisiteOrder < module.getOrder(),
-                        () -> "module " + module.getOrder() + " lists a prerequisite that is not an earlier module");
-                assertTrue(prerequisiteOrder >= 1 && prerequisiteOrder <= modules.size(),
-                        () -> "module " + module.getOrder() + " lists prerequisite order " + prerequisiteOrder
-                                + " which does not correspond to any module in the path");
+            for (TrainingPathModule module : modules.subList(1, modules.size())) {
+                assertTrue(module.hasPrerequisites(),
+                        () -> "module " + module.getOrder() + " (" + module.getTitle() + ") should declare a prerequisite");
+                for (int prerequisiteOrder : module.getPrerequisiteModuleOrders()) {
+                    assertTrue(prerequisiteOrder < module.getOrder(),
+                            () -> "module " + module.getOrder() + " lists a prerequisite that is not an earlier module");
+                    assertTrue(prerequisiteOrder >= 1 && prerequisiteOrder <= modules.size(),
+                            () -> "module " + module.getOrder() + " lists prerequisite order " + prerequisiteOrder
+                                    + " which does not correspond to any module in the path");
+                }
             }
         }
     }
 
     @Test
-    void everyModuleInBothPathsHasASensibleMasteryThreshold() {
+    void everyModuleInAllPathsHasASensibleMasteryThreshold() {
         for (TrainingPath path : trainingPathService.getTrainingPaths()) {
             for (TrainingPathModule module : path.getModules()) {
                 assertTrue(module.getMasteryThreshold() > 0.0 && module.getMasteryThreshold() <= 1.0,
@@ -143,11 +160,9 @@ class TrainingPathServiceTest {
         TrainingPath path = new TrainingPath("Test Path", List.of(module1, module2),
                 java.util.regex.Pattern.compile("^NEVER MATCHES$"), 0, 0.8);
 
-        // module1 is further along (70%) but still has due cards; module2 is weaker (20%) and due.
         List<TrainingPathModuleProgress> progressList = List.of(
                 progress(module1, 10, 2, 70),
                 progress(module2, 10, 5, 20));
-
         Optional<TrainingPathRecommendation> recommendation = TrainingPathService.recommend(path, progressList);
 
         assertTrue(recommendation.isPresent());
@@ -158,20 +173,17 @@ class TrainingPathServiceTest {
 
     @Test
     void moveToNextModuleUsesEachModulesOwnMasteryThresholdNotAFlatPercentage() {
-        // module1 requires a strict 90% mastery threshold; module2 only needs 70%.
         TrainingPathModule strictModule = module(1, List.of(), 0.9);
         TrainingPathModule lenientModule = module(2, List.of(1), 0.7);
         TrainingPath path = new TrainingPath("Test Path", List.of(strictModule, lenientModule),
                 java.util.regex.Pattern.compile("^NEVER MATCHES$"), 0, 0.8);
 
-        // 85% mastered clears the old flat 80% path-level bar, but not this module's own 90% bar.
         List<TrainingPathModuleProgress> belowOwnThreshold = List.of(
                 progress(strictModule, 10, 0, 85),
                 progress(lenientModule, 10, 0, 60));
         assertEquals(Optional.empty(), TrainingPathService.recommend(path, belowOwnThreshold),
                 "85% mastered should not satisfy a module whose own threshold is 90%");
 
-        // Once the strict module actually clears its own 90% bar, it should be recommended to move on.
         List<TrainingPathModuleProgress> clearsOwnThreshold = List.of(
                 progress(strictModule, 10, 0, 92),
                 progress(lenientModule, 10, 0, 60));
@@ -183,8 +195,6 @@ class TrainingPathServiceTest {
         assertEquals(2, recommendation.get().next().module().getOrder());
     }
 
-    // --- Focus-module deck resolution and focus-change recommendation (#110) ---
-
     @Test
     void resolveModuleDeckIdsReturnsOnlyDecksMatchingThatModule() {
         Deck matchingDeck = deck("Java BE 03 - JDBC & SQL");
@@ -195,6 +205,15 @@ class TrainingPathServiceTest {
         Set<Long> deckIds = trainingPathService.resolveModuleDeckIds("Java Backend", 3, List.of(matchingDeck, unrelatedDeck));
 
         assertEquals(Set.of(42L), deckIds);
+    }
+
+    @Test
+    void resolveModuleDeckIdsSupportsDatabaseInternalsModules() {
+        Deck matchingDeck = deck("DI 03 - LSM Trees & Storage Trade-offs");
+        matchingDeck.setId(55);
+
+        assertEquals(Set.of(55L), trainingPathService.resolveModuleDeckIds(
+                "Database Internals", 3, List.of(matchingDeck)));
     }
 
     @Test

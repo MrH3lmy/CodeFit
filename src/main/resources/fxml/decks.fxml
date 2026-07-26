@@ -16,6 +16,7 @@
                             <items>
                                 <MenuItem text="Open Syllabus" onAction="#goSyllabus" />
                                 <MenuItem text="Create Java BE Path" onAction="#createJavaBackendPath" />
+                                <MenuItem text="Install Database Internals Path" onAction="#installDatabaseInternalsPath" />
                             </items>
                         </MenuButton>
                         <Button fx:id="newDeckToggleButton" text="+ New Deck" onAction="#toggleCreateDeckPanel" styleClass="primary-button" />

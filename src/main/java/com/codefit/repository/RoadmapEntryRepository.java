@@ -19,6 +19,9 @@ import java.util.Optional;
 /**
  * Persists {@link RoadmapEntry} roadmap memberships, separate from {@link ProblemRepository} so a
  * problem's identity never has to be duplicated to give it a second roadmap position (#142).
+ *
+ * <p>Like {@link ProblemRepository}, every operation has a {@link Connection}-scoped overload so the
+ * workbook importer (#143) can run every row inside one shared transaction.
  */
 public class RoadmapEntryRepository {
 
@@ -61,38 +64,55 @@ public class RoadmapEntryRepository {
     }
 
     public Optional<RoadmapEntry> findByStageAndSequence(RoadmapStage stage, int sequenceOrder) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return findByStageAndSequence(connection, stage, sequenceOrder);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load roadmap entry", exception);
+        }
+    }
+
+    public Optional<RoadmapEntry> findByStageAndSequence(Connection connection, RoadmapStage stage, int sequenceOrder) throws SQLException {
         String sql = "SELECT * FROM roadmap_entries WHERE stage = ? AND sequence_order = ?";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, stage.name());
             statement.setInt(2, sequenceOrder);
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? Optional.of(mapEntry(resultSet)) : Optional.empty();
             }
+        }
+    }
+
+    public Optional<RoadmapEntry> findByProblemIdAndStage(long problemId, RoadmapStage stage) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return findByProblemIdAndStage(connection, problemId, stage);
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to load roadmap entry", exception);
         }
     }
 
-    public Optional<RoadmapEntry> findByProblemIdAndStage(long problemId, RoadmapStage stage) {
+    public Optional<RoadmapEntry> findByProblemIdAndStage(Connection connection, long problemId, RoadmapStage stage) throws SQLException {
         String sql = "SELECT * FROM roadmap_entries WHERE problem_id = ? AND stage = ?";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, problemId);
             statement.setString(2, stage.name());
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? Optional.of(mapEntry(resultSet)) : Optional.empty();
             }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to load roadmap entry", exception);
         }
     }
 
     public RoadmapEntry save(RoadmapEntry entry) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return save(connection, entry);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to save roadmap entry", exception);
+        }
+    }
+
+    public RoadmapEntry save(Connection connection, RoadmapEntry entry) throws SQLException {
         String sql = "INSERT INTO roadmap_entries (problem_id, stage, sequence_order, set_number, mandatory, suggested_level) "
                 + "VALUES (?, ?, ?, ?, ?, ?)";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, entry.getProblemId());
             statement.setString(2, entry.getStage().name());
             statement.setInt(3, entry.getSequenceOrder());
@@ -109,16 +129,21 @@ public class RoadmapEntryRepository {
                     entry.setId(keys.getLong(1));
                 }
             }
-            return entry;
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to save roadmap entry", exception);
         }
+        return entry;
     }
 
     public void update(RoadmapEntry entry) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            update(connection, entry);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to update roadmap entry", exception);
+        }
+    }
+
+    public void update(Connection connection, RoadmapEntry entry) throws SQLException {
         String sql = "UPDATE roadmap_entries SET sequence_order = ?, set_number = ?, mandatory = ?, suggested_level = ? WHERE id = ?";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, entry.getSequenceOrder());
             if (entry.getSetNumber() == null) {
                 statement.setNull(2, Types.INTEGER);
@@ -129,8 +154,6 @@ public class RoadmapEntryRepository {
             statement.setString(4, entry.getSuggestedLevel() == null ? null : entry.getSuggestedLevel().name());
             statement.setLong(5, entry.getId());
             statement.executeUpdate();
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to update roadmap entry", exception);
         }
     }
 

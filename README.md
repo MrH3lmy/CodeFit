@@ -102,6 +102,14 @@ the schema and the reasoning behind the entity split. It is entirely separate fr
 no problem-solving table references `flashcards`/`decks`, so existing review workflows are
 unaffected.
 
+A learner can import their own local Junior Training Sheet workbook (`.xlsx`) from **Settings →
+Problem-Solving Training → Import Training Sheet…**. The import is local-only, transactional, and
+safe to repeat: it never creates duplicate problems or roadmap memberships, and never overwrites
+progress already recorded locally. See
+[`docs/problem-solving-workbook-import.md`](docs/problem-solving-workbook-import.md) for the expected
+workbook shape and the exact rules the importer follows. The real Junior Training Sheet is never
+committed to this repository — only synthetic, programmatically-generated fixtures are used in tests.
+
 ## Anki-compatible card import/export
 
 Decks can import and export tab-separated text files (`.tsv` or `.txt`) from the Decks screen with the **Import Cards** and **Export Cards** buttons. Choose a deck first, then select a file.

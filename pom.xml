@@ -33,6 +33,13 @@
             <version>3.46.1.0</version>
         </dependency>
         <dependency>
+            <!-- Reads the .xlsx Junior Training Sheet workbook for the problem-solving importer (#143).
+                 Only the OOXML (.xlsx) reader is needed; no legacy .xls (HSSF) support is pulled in. -->
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.version}</version>

@@ -5,12 +5,19 @@ import com.codefit.model.UserProgress;
 import com.codefit.service.FocusPreferenceService;
 import com.codefit.service.GuidedTrainingService;
 import com.codefit.service.ProgressService;
+import com.codefit.service.TrainingSheetImportService;
+import com.codefit.service.TrainingSheetImportSummary;
+import com.codefit.service.WorkbookImportException;
 import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 
+import java.io.File;
 import java.util.List;
 
 public class SettingsController extends BaseController {
@@ -30,6 +37,7 @@ public class SettingsController extends BaseController {
     private final ProgressService progressService = new ProgressService();
     private final FocusPreferenceService focusPreferenceService = new FocusPreferenceService();
     private final GuidedTrainingService guidedTrainingService = new GuidedTrainingService();
+    private final TrainingSheetImportService trainingSheetImportService = new TrainingSheetImportService();
 
     @FXML
     public void initialize() {
@@ -37,6 +45,48 @@ public class SettingsController extends BaseController {
         configureWorkloadPreference();
         configureMatureInterleavePreference();
         configureGuidedRoutinePreference();
+    }
+
+    /**
+     * Local-only workbook import (#143): the file never leaves the machine. Re-importing the same
+     * workbook is always safe — {@link TrainingSheetImportService} never creates duplicate
+     * problems/memberships and never downgrades progress the learner has already recorded.
+     */
+    @FXML
+    public void importTrainingSheet() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Import Training Sheet");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel workbook", "*.xlsx"));
+        File file = fileChooser.showOpenDialog(settingsWindow());
+        if (file == null) {
+            return;
+        }
+
+        try {
+            TrainingSheetImportSummary summary = trainingSheetImportService.importWorkbook(file.toPath());
+            showImportResult("Training Sheet Import", summary, Alert.AlertType.INFORMATION);
+        } catch (WorkbookImportException exception) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Training Sheet Import");
+            alert.setHeaderText("Import failed; no changes were made");
+            alert.setContentText(exception.getMessage());
+            alert.showAndWait();
+        }
+    }
+
+    private void showImportResult(String title, TrainingSheetImportSummary summary, Alert.AlertType alertType) {
+        Alert alert = new Alert(alertType);
+        alert.setTitle(title);
+        alert.setHeaderText(summary.dryRun() ? "Preview complete" : "Import complete");
+        String details = summary.warnings().isEmpty()
+                ? summary.message()
+                : summary.message() + "\n\n" + String.join("\n", summary.warnings());
+        alert.setContentText(details);
+        alert.showAndWait();
+    }
+
+    private Window settingsWindow() {
+        return themeChoiceBox.getScene() == null ? null : themeChoiceBox.getScene().getWindow();
     }
 
     /** Session length and new-card cap for the guided daily routine (#111) — the same knobs

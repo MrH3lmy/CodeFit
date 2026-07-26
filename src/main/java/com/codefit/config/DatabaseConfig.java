@@ -158,6 +158,7 @@ public final class DatabaseConfig {
             ensureReviewHistoryColumns(connection);
             ensureUserProgressColumns(connection);
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");
+            createProblemSolvingTables(connection);
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
             seedAssessmentBank(connection);
@@ -208,6 +209,106 @@ public final class DatabaseConfig {
         // cards may be introduced per day, and how long a standard guided session runs.
         addColumnIfMissing(connection, "user_progress", "daily_new_card_limit", "INTEGER NOT NULL DEFAULT 2");
         addColumnIfMissing(connection, "user_progress", "guided_session_minutes", "INTEGER NOT NULL DEFAULT 15");
+    }
+
+    /**
+     * Problem-solving training (#141/#142) is a workflow entirely separate from flashcard review:
+     * these five tables only ever reference each other via {@code problem_id}, never
+     * {@code flashcards} or {@code decks}, so deleting or editing flashcard data can never affect a
+     * problem-solving record and vice versa.
+     *
+     * <p>{@code problems} is pure identity, deduplicated across repeated imports by
+     * {@code UNIQUE(platform, external_code)}. {@code roadmap_entries} is a separate membership
+     * table so the same problem can occupy positions in more than one {@link com.codefit.model.RoadmapStage}
+     * without duplicating its identity; {@code UNIQUE(stage, sequence_order)} keeps one problem per
+     * roadmap slot and {@code UNIQUE(problem_id, stage)} keeps a problem from being registered twice
+     * within the same stage. {@code problem_progress} is capped at one row per problem
+     * ({@code UNIQUE(problem_id)}) to hold the single current state, distinct from
+     * {@code problem_attempts} which holds many immutable per-submission rows
+     * ({@code UNIQUE(problem_id, attempt_number)}). {@code problem_solving_sessions} holds the
+     * persistent, resumable in-progress timer state and is likewise capped at one row per problem,
+     * kept separate from both progress (aggregate current state) and attempts (finalized submissions).
+     */
+    static void createProblemSolvingTables(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS problems (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        external_code TEXT NOT NULL,
+                        platform TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        url TEXT,
+                        topic TEXT NOT NULL DEFAULT 'General',
+                        quality_rating INTEGER CHECK (quality_rating IS NULL OR quality_rating BETWEEN 1 AND 5),
+                        learning_resources TEXT,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(platform, external_code)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS roadmap_entries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        problem_id INTEGER NOT NULL,
+                        stage TEXT NOT NULL,
+                        sequence_order INTEGER NOT NULL,
+                        set_number INTEGER,
+                        mandatory INTEGER NOT NULL DEFAULT 1,
+                        suggested_level TEXT,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE,
+                        UNIQUE(stage, sequence_order),
+                        UNIQUE(problem_id, stage)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS problem_progress (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        problem_id INTEGER NOT NULL UNIQUE,
+                        state TEXT NOT NULL DEFAULT 'NOT_STARTED',
+                        perceived_difficulty TEXT,
+                        solved_with TEXT,
+                        final_category TEXT,
+                        approach_notes TEXT,
+                        mistake_notes TEXT,
+                        completed_at TEXT,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS problem_attempts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        problem_id INTEGER NOT NULL,
+                        attempt_number INTEGER NOT NULL,
+                        submission_result TEXT NOT NULL,
+                        reading_time_seconds INTEGER,
+                        thinking_time_seconds INTEGER,
+                        coding_time_seconds INTEGER,
+                        debugging_time_seconds INTEGER,
+                        submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        notes TEXT,
+                        FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE,
+                        UNIQUE(problem_id, attempt_number)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS problem_solving_sessions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        problem_id INTEGER NOT NULL UNIQUE,
+                        phase TEXT NOT NULL DEFAULT 'READING',
+                        reading_seconds_elapsed INTEGER NOT NULL DEFAULT 0,
+                        thinking_seconds_elapsed INTEGER NOT NULL DEFAULT 0,
+                        coding_seconds_elapsed INTEGER NOT NULL DEFAULT 0,
+                        debugging_seconds_elapsed INTEGER NOT NULL DEFAULT 0,
+                        notes TEXT,
+                        active INTEGER NOT NULL DEFAULT 1,
+                        started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        last_active_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE
+                    )
+                    """);
+        }
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

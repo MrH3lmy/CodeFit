@@ -91,6 +91,17 @@ The desktop UI is a persistent application shell rather than a per-screen window
   JavaFX-capable display and skips (not fails) in headless CI environments that don't have one —
   run it locally with a display, or under `xvfb-run -a mvn test` on Linux, to exercise it.
 
+## Problem-solving training
+
+CodeFit is gaining a dedicated problem-solving training area (epic #141) alongside flashcard review,
+built around a locally-imported roadmap workbook (blind order `A → B → C1 → C2 → D1 → D2 → D3`, with
+topic-based browsing as an alternative view over the same data). The persistent data model — problem
+identity, roadmap membership, current progress, attempt history, and in-progress solving sessions —
+landed first; see [`docs/problem-solving-domain-model.md`](docs/problem-solving-domain-model.md) for
+the schema and the reasoning behind the entity split. It is entirely separate from flashcard review:
+no problem-solving table references `flashcards`/`decks`, so existing review workflows are
+unaffected.
+
 ## Anki-compatible card import/export
 
 Decks can import and export tab-separated text files (`.tsv` or `.txt`) from the Decks screen with the **Import Cards** and **Export Cards** buttons. Choose a deck first, then select a file.

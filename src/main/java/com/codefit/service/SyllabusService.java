@@ -24,6 +24,10 @@ public class SyllabusService {
         return getModules(trainingPathService.getAdvancedBackendEngineeringPath());
     }
 
+    public List<SyllabusModule> getDatabaseInternalsModules() {
+        return getModules(trainingPathService.getDatabaseInternalsPath());
+    }
+
     /** All registered training paths' modules, in path-registration order, each internally ordered by module number. */
     public List<SyllabusModule> getAllTrainingPathModules() {
         return trainingPathService.getTrainingPaths().stream()

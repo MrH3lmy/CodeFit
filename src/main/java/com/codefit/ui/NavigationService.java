@@ -34,7 +34,8 @@ public final class NavigationService {
             "/css/library.css",
             "/css/forms.css",
             "/css/progress.css",
-            "/css/today.css"
+            "/css/today.css",
+            "/css/problems.css"
     };
 
     private static Stage primaryStage;
@@ -145,6 +146,11 @@ public final class NavigationService {
 
     public static void showStats() {
         navigate(Route.PROGRESS);
+    }
+
+    /** Opens the Problem Library (#144), defaulting to whichever view/filter state the controller last left it in. */
+    public static void showProblems() {
+        navigate(Route.PROBLEMS);
     }
 
     /**

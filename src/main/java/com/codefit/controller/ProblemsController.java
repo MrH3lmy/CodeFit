@@ -97,6 +97,11 @@ public class ProblemsController extends BaseController {
     }
 
     @FXML
+    public void goProblemDashboard() {
+        NavigationService.showProblemDashboard();
+    }
+
+    @FXML
     public void resumeNextRecommended() {
         if (pendingResumeProblemId == null) {
             return;

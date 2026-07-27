@@ -10,6 +10,10 @@
                 <Label text="Follow the blind roadmap by default, or browse the same problems and progress by topic." styleClass="page-subtitle" wrapText="true" />
             </VBox>
 
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button text="View Dashboard →" onAction="#goProblemDashboard" styleClass="ghost-button" />
+            </HBox>
+
             <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
 
             <HBox spacing="8">

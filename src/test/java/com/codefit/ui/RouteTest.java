@@ -73,4 +73,9 @@ class RouteTest {
     void addCardIsAGlobalActionWithNoSidebarHighlight() {
         assertNull(Route.ADD_CARD.navItem());
     }
+
+    @Test
+    void solvingWorkspaceIsAGlobalActionWithNoSidebarHighlight() {
+        assertNull(Route.SOLVING_WORKSPACE.navItem());
+    }
 }

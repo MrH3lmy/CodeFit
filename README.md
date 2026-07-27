@@ -115,6 +115,13 @@ following the roadmap in Blind Order and highlights the next recommended unsolve
 switched to a filterable Topics view over the exact same problems and progress. See
 [`docs/problem-library.md`](docs/problem-library.md) for how the two views stay in sync.
 
+Clicking **Start / Resume** on a problem opens the **Solving Workspace**: phase timers for Reading,
+Thinking, Coding, and Debugging that persist across app restarts, non-blocking coaching-checkpoint
+reminders (configurable, default 20/60/120 minutes), and a Finish action that records the attempt as
+Submitted, Accepted, Could Not Solve, or Abandoned without ever losing an earlier attempt. See
+[`docs/problem-solving-workspace.md`](docs/problem-solving-workspace.md) for the timer/persistence
+model and the exact finish-outcome-to-attempt mapping.
+
 ## Anki-compatible card import/export
 
 Decks can import and export tab-separated text files (`.tsv` or `.txt`) from the Decks screen with the **Import Cards** and **Export Cards** buttons. Choose a deck first, then select a file.

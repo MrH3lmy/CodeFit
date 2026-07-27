@@ -1,6 +1,7 @@
 package com.codefit.service;
 
 import com.codefit.model.ProblemAttempt;
+import com.codefit.model.SessionFinishOutcome;
 import com.codefit.model.SubmissionResult;
 import com.codefit.repository.ProblemAttemptRepository;
 
@@ -31,13 +32,21 @@ public class ProblemAttemptService {
     public ProblemAttempt recordAttempt(long problemId, SubmissionResult submissionResult, Integer readingTimeSeconds,
                                         Integer thinkingTimeSeconds, Integer codingTimeSeconds,
                                         Integer debuggingTimeSeconds, String notes) {
+        return recordAttempt(problemId, submissionResult, readingTimeSeconds, thinkingTimeSeconds, codingTimeSeconds,
+                debuggingTimeSeconds, notes, null);
+    }
+
+    /** Same as the five-argument overload, but tags the attempt with the workspace finish reason that produced it (#145). */
+    public ProblemAttempt recordAttempt(long problemId, SubmissionResult submissionResult, Integer readingTimeSeconds,
+                                        Integer thinkingTimeSeconds, Integer codingTimeSeconds,
+                                        Integer debuggingTimeSeconds, String notes, SessionFinishOutcome sessionOutcome) {
         if (submissionResult == null) {
             throw new IllegalArgumentException("A submission result is required to record an attempt.");
         }
         int nextAttemptNumber = attemptRepository.countByProblemId(problemId) + 1;
         ProblemAttempt attempt = new ProblemAttempt(0, problemId, nextAttemptNumber, submissionResult,
                 readingTimeSeconds, thinkingTimeSeconds, codingTimeSeconds, debuggingTimeSeconds,
-                LocalDateTime.now(), notes);
+                LocalDateTime.now(), notes, sessionOutcome);
         return attemptRepository.save(attempt);
     }
 }

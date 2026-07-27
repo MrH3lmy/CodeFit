@@ -1,0 +1,6 @@
+/* Solving Workspace (#145): the coaching-checkpoint reminder banner is visually distinct from the
+ * generic status banner (accent border) so it reads as "informational", not an error/success state. */
+
+.checkpoint-banner {
+    -fx-border-color: -color-warning;
+}

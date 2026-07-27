@@ -35,7 +35,8 @@ public final class NavigationService {
             "/css/forms.css",
             "/css/progress.css",
             "/css/today.css",
-            "/css/problems.css"
+            "/css/problems.css",
+            "/css/solving-workspace.css"
     };
 
     private static Stage primaryStage;
@@ -45,6 +46,7 @@ public final class NavigationService {
     private static Integer pendingSessionMinutes;
     private static ReflectionType pendingReflectionType;
     private static Long pendingEditCardId;
+    private static Long pendingWorkspaceProblemId;
     private static String selectedTheme;
     private static boolean guidedTrainingActive;
     private static final Set<GuidedStage> completedGuidedStages = EnumSet.noneOf(GuidedStage.class);
@@ -151,6 +153,19 @@ public final class NavigationService {
     /** Opens the Problem Library (#144), defaulting to whichever view/filter state the controller last left it in. */
     public static void showProblems() {
         navigate(Route.PROBLEMS);
+    }
+
+    /** Opens the structured solving workspace (#145) for one problem. */
+    public static void showSolvingWorkspace(long problemId) {
+        pendingWorkspaceProblemId = problemId;
+        navigate(Route.SOLVING_WORKSPACE);
+    }
+
+    /** The problem id the workspace screen should load; null if reached without going through {@link #showSolvingWorkspace}. */
+    public static Long consumePendingWorkspaceProblemId() {
+        Long problemId = pendingWorkspaceProblemId;
+        pendingWorkspaceProblemId = null;
+        return problemId;
     }
 
     /**

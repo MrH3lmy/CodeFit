@@ -8,9 +8,12 @@ import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.RoadmapEntryRepository;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Builds the two Problem Library views (#144) from the same underlying {@link Problem}/
@@ -45,23 +48,58 @@ public class ProblemLibraryService {
         this.progressRepository = progressRepository;
     }
 
+    /**
+     * Builds Blind Order from exactly three bulk queries — {@code roadmap_entries},
+     * {@code problems}, and {@code problem_progress}, each loaded once — rather than one repository
+     * call per roadmap membership (#166). At curriculum scale (~926 memberships) the old per-row
+     * {@code findById}/{@code findByProblemId} loop opened well over a thousand individual SQLite
+     * connections; joining the three already-bulk-loadable tables in memory instead keeps this to a
+     * bounded, size-independent number of round trips.
+     */
     public List<ProblemLibraryEntry> getBlindOrderEntries() {
-        return roadmapEntryRepository.findAllInRoadmapOrder().stream()
+        List<RoadmapEntry> roadmapEntries = roadmapEntryRepository.findAllInRoadmapOrder();
+        Map<Long, Problem> problemsById = indexById(problemRepository.findAll(), Problem::getId);
+        Map<Long, ProblemProgress> progressByProblemId = indexById(progressRepository.findAll(), ProblemProgress::getProblemId);
+
+        return roadmapEntries.stream()
                 .map(entry -> {
-                    Problem problem = problemRepository.findById(entry.getProblemId())
-                            .orElseThrow(() -> new IllegalStateException("Roadmap entry references missing problem " + entry.getProblemId()));
-                    return ProblemLibraryEntry.of(problem, entry, progressRepository.findByProblemId(problem.getId()).orElse(null));
+                    Problem problem = problemsById.get(entry.getProblemId());
+                    if (problem == null) {
+                        throw new IllegalStateException("Roadmap entry references missing problem " + entry.getProblemId());
+                    }
+                    return ProblemLibraryEntry.of(problem, entry, progressByProblemId.get(problem.getId()));
                 })
                 .toList();
     }
 
+    /**
+     * Builds the Topics view the same bulk-query way {@link #getBlindOrderEntries()} does (#166): one
+     * row per problem, paired with its earliest-stage roadmap membership (if any) picked in memory
+     * from the same already-loaded, roadmap-ordered list rather than a per-problem
+     * {@code findByProblemId} query.
+     */
     public List<ProblemLibraryEntry> getTopicBasedEntries() {
+        List<RoadmapEntry> roadmapEntries = roadmapEntryRepository.findAllInRoadmapOrder();
+        Map<Long, RoadmapEntry> primaryEntryByProblemId = new HashMap<>();
+        for (RoadmapEntry entry : roadmapEntries) {
+            primaryEntryByProblemId.putIfAbsent(entry.getProblemId(), entry);
+        }
+        Map<Long, ProblemProgress> progressByProblemId = indexById(progressRepository.findAll(), ProblemProgress::getProblemId);
+
         return problemRepository.findAll().stream()
-                .map(problem -> {
-                    RoadmapEntry primaryEntry = roadmapEntryRepository.findByProblemId(problem.getId()).stream().findFirst().orElse(null);
-                    return ProblemLibraryEntry.of(problem, primaryEntry, progressRepository.findByProblemId(problem.getId()).orElse(null));
-                })
+                .map(problem -> ProblemLibraryEntry.of(problem, primaryEntryByProblemId.get(problem.getId()),
+                        progressByProblemId.get(problem.getId())))
                 .toList();
+    }
+
+    /** True the moment the roadmap has at least one problem — a single {@code COUNT(*)} rather than
+     *  loading every row just to check for emptiness (#166). */
+    public boolean hasAnyProblems() {
+        return problemRepository.countAll() > 0;
+    }
+
+    private static <T> Map<Long, T> indexById(List<T> rows, java.util.function.ToLongFunction<T> idFunction) {
+        return rows.stream().collect(Collectors.toMap(idFunction::applyAsLong, row -> row));
     }
 
     /** Applies every non-null field of {@code filter}; a row must match all of them. */
@@ -88,7 +126,15 @@ public class ProblemLibraryService {
      * there is no separate {@code ACX} state to check.
      */
     public Optional<ProblemLibraryEntry> getNextRecommendedProblem() {
-        return selectNextRecommended(getBlindOrderEntries());
+        return getNextRecommendedProblem(getBlindOrderEntries());
+    }
+
+    /** Reuses a Blind Order list the caller already fetched instead of re-querying (#166) — callers
+     *  building more than one Today-panel figure from the same snapshot (see
+     *  {@code GuidedPracticeService#buildTodayPlan}) should fetch {@link #getBlindOrderEntries()} once
+     *  and pass it to both this and {@link #getRevisitQueue(List)}. */
+    public Optional<ProblemLibraryEntry> getNextRecommendedProblem(List<ProblemLibraryEntry> blindOrderEntries) {
+        return selectNextRecommended(blindOrderEntries);
     }
 
     /** Package-visible, DB-free selection logic (mirrors {@code ProblemDashboardService}'s
@@ -113,7 +159,13 @@ public class ProblemLibraryService {
      * roadmap sequence or the frontier {@link #getNextRecommendedProblem()} tracks (#161).
      */
     public List<ProblemLibraryEntry> getRevisitQueue() {
-        return getBlindOrderEntries().stream()
+        return getRevisitQueue(getBlindOrderEntries());
+    }
+
+    /** Reuses a Blind Order list the caller already fetched instead of re-querying (#166) — see
+     *  {@link #getNextRecommendedProblem(List)}. */
+    public List<ProblemLibraryEntry> getRevisitQueue(List<ProblemLibraryEntry> blindOrderEntries) {
+        return blindOrderEntries.stream()
                 .filter(entry -> entry.progress().getState() == ProblemState.NEEDS_REVISIT)
                 .toList();
     }
@@ -146,6 +198,9 @@ public class ProblemLibraryService {
             }
         }
         if (filter.topic() != null && !filter.topic().equalsIgnoreCase(problem.getTopic())) {
+            return false;
+        }
+        if (filter.stage() != null && (entry.roadmapEntry() == null || entry.roadmapEntry().getStage() != filter.stage())) {
             return false;
         }
         if (filter.suggestedLevel() != null

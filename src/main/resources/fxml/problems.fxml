@@ -37,6 +37,7 @@
             <TextField fx:id="searchField" promptText="Search title, code, or platform…" maxWidth="Infinity" />
 
             <HBox spacing="8">
+                <MenuButton fx:id="stageMenuButton" text="Stage: All Stages" styleClass="ghost-button" />
                 <MenuButton fx:id="topicMenuButton" text="Topic: All" styleClass="ghost-button" />
                 <MenuButton fx:id="levelMenuButton" text="Level: All" styleClass="ghost-button" />
                 <MenuButton fx:id="qualityMenuButton" text="Quality: All" styleClass="ghost-button" />
@@ -46,7 +47,7 @@
             </HBox>
 
             <Label fx:id="emptyStateLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
-            <VBox fx:id="problemsList" spacing="12" maxWidth="Infinity" />
+            <ListView fx:id="problemsList" prefHeight="640" maxWidth="Infinity" VBox.vgrow="ALWAYS" />
         </VBox>
     </content>
 </ScrollPane>

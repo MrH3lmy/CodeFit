@@ -174,9 +174,49 @@ public class RoadmapEntryRepository {
         return entries;
     }
 
+    /** Every membership created or last touched by one import batch (#149) — used to preview or
+     *  confirm what {@link #deleteByImportBatchId} would remove. */
+    public List<RoadmapEntry> findByImportBatchId(long importBatchId) {
+        String sql = "SELECT * FROM roadmap_entries WHERE import_batch_id = ? ORDER BY stage, sequence_order";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, importBatchId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return sortByStageOrdinal(mapAll(resultSet));
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load roadmap entries for import batch", exception);
+        }
+    }
+
+    /** Stamps which import batch created or last touched this entry (#149); a plain column with no
+     *  foreign key, so it never affects deletion of anything else. */
+    public void updateImportBatchId(Connection connection, long entryId, long importBatchId) throws SQLException {
+        String sql = "UPDATE roadmap_entries SET import_batch_id = ? WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, importBatchId);
+            statement.setLong(2, entryId);
+            statement.executeUpdate();
+        }
+    }
+
+    /**
+     * Deletes every roadmap membership belonging to one import batch — and nothing else.
+     * {@code problem_progress}/{@code problem_attempts}/{@code flashcards} never reference
+     * {@code roadmap_entries}, only {@code problems} directly, so this can never touch a learner's
+     * progress, attempt history, or flashcards; the underlying {@link com.codefit.model.Problem} rows
+     * are left in place too, since another batch (or a manual addition) may still reference them.
+     */
+    public int deleteByImportBatchId(Connection connection, long importBatchId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("DELETE FROM roadmap_entries WHERE import_batch_id = ?")) {
+            statement.setLong(1, importBatchId);
+            return statement.executeUpdate();
+        }
+    }
+
     private RoadmapEntry mapEntry(ResultSet resultSet) throws SQLException {
         String suggestedLevel = resultSet.getString("suggested_level");
-        return new RoadmapEntry(
+        RoadmapEntry entry = new RoadmapEntry(
                 resultSet.getLong("id"),
                 resultSet.getLong("problem_id"),
                 RoadmapStage.valueOf(resultSet.getString("stage")),
@@ -186,10 +226,17 @@ public class RoadmapEntryRepository {
                 suggestedLevel == null ? null : DifficultyLevel.valueOf(suggestedLevel),
                 LocalDateTime.parse(resultSet.getString("created_at").replace(' ', 'T'))
         );
+        entry.setImportBatchId(nullableLong(resultSet, "import_batch_id"));
+        return entry;
     }
 
     private Integer nullableInteger(ResultSet resultSet, String columnName) throws SQLException {
         int value = resultSet.getInt(columnName);
+        return resultSet.wasNull() ? null : value;
+    }
+
+    private Long nullableLong(ResultSet resultSet, String columnName) throws SQLException {
+        long value = resultSet.getLong(columnName);
         return resultSet.wasNull() ? null : value;
     }
 }

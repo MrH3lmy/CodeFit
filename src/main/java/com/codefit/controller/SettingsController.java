@@ -1,9 +1,11 @@
 package com.codefit.controller;
 
 import com.codefit.model.DailyWorkloadMode;
+import com.codefit.model.ImportBatch;
 import com.codefit.model.UserProgress;
 import com.codefit.service.FocusPreferenceService;
 import com.codefit.service.GuidedTrainingService;
+import com.codefit.service.ImportSourceMetadata;
 import com.codefit.service.ProgressService;
 import com.codefit.service.TrainingSheetImportService;
 import com.codefit.service.TrainingSheetImportSummary;
@@ -11,13 +13,21 @@ import com.codefit.service.WorkbookImportException;
 import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 import java.io.File;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class SettingsController extends BaseController {
@@ -33,6 +43,14 @@ public class SettingsController extends BaseController {
     @FXML private ChoiceBox<Integer> guidedSessionMinutesChoiceBox;
     @FXML private ChoiceBox<Integer> dailyNewCardLimitChoiceBox;
     @FXML private Label guidedRoutineDetailLabel;
+    @FXML private TextField importSourceNameField;
+    @FXML private TextField importSourceUrlField;
+    @FXML private TextField importAuthorField;
+    @FXML private TextField importVersionField;
+    @FXML private Label importBatchesEmptyLabel;
+    @FXML private VBox importBatchesBox;
+
+    private static final DateTimeFormatter IMPORT_DATE_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy");
 
     private final ProgressService progressService = new ProgressService();
     private final FocusPreferenceService focusPreferenceService = new FocusPreferenceService();
@@ -45,6 +63,7 @@ public class SettingsController extends BaseController {
         configureWorkloadPreference();
         configureMatureInterleavePreference();
         configureGuidedRoutinePreference();
+        refreshImportBatches();
     }
 
     /**
@@ -62,9 +81,12 @@ public class SettingsController extends BaseController {
             return;
         }
 
+        ImportSourceMetadata sourceMetadata = new ImportSourceMetadata(blankToNull(importSourceNameField.getText()),
+                blankToNull(importSourceUrlField.getText()), blankToNull(importAuthorField.getText()), blankToNull(importVersionField.getText()));
         try {
-            TrainingSheetImportSummary summary = trainingSheetImportService.importWorkbook(file.toPath());
+            TrainingSheetImportSummary summary = trainingSheetImportService.importWorkbook(file.toPath(), sourceMetadata);
             showImportResult("Training Sheet Import", summary, Alert.AlertType.INFORMATION);
+            refreshImportBatches();
         } catch (WorkbookImportException exception) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Training Sheet Import");
@@ -72,6 +94,67 @@ public class SettingsController extends BaseController {
             alert.setContentText(exception.getMessage());
             alert.showAndWait();
         }
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
+    }
+
+    /** Lists every import batch (#149) so a learner can see where their roadmap data came from and,
+     *  if needed, remove one — deleting only its roadmap positions, never progress or flashcards. */
+    private void refreshImportBatches() {
+        importBatchesBox.getChildren().clear();
+        List<ImportBatch> batches = trainingSheetImportService.listImportBatches();
+        importBatchesEmptyLabel.setVisible(batches.isEmpty());
+        importBatchesEmptyLabel.setManaged(batches.isEmpty());
+        batches.forEach(batch -> importBatchesBox.getChildren().add(createImportBatchRow(batch)));
+    }
+
+    private HBox createImportBatchRow(ImportBatch batch) {
+        StringBuilder subtitle = new StringBuilder(batch.getImportedAt().format(IMPORT_DATE_FORMAT));
+        if (batch.getAuthor() != null && !batch.getAuthor().isBlank()) {
+            subtitle.append(" • ").append(batch.getAuthor());
+        }
+        if (batch.getVersion() != null && !batch.getVersion().isBlank()) {
+            subtitle.append(" • v").append(batch.getVersion());
+        }
+
+        Label nameLabel = new Label(batch.getSourceName());
+        nameLabel.getStyleClass().add("problem-row-title");
+        nameLabel.setWrapText(true);
+        Label subtitleLabel = new Label(subtitle.toString());
+        subtitleLabel.getStyleClass().add("problem-row-subtitle");
+        subtitleLabel.setWrapText(true);
+        VBox textColumn = new VBox(2, nameLabel, subtitleLabel);
+        textColumn.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(textColumn, Priority.ALWAYS);
+
+        Button deleteButton = new Button("Delete Roadmap…");
+        deleteButton.getStyleClass().add("ghost-button");
+        deleteButton.setOnAction(event -> confirmAndDeleteImportBatch(batch));
+
+        HBox row = new HBox(10, textColumn, deleteButton);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setMaxWidth(Double.MAX_VALUE);
+        row.getStyleClass().add("deck-row");
+        return row;
+    }
+
+    private void confirmAndDeleteImportBatch(ImportBatch batch) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Imported Roadmap");
+        confirm.setHeaderText("Delete the roadmap positions imported from \"" + batch.getSourceName() + "\"?");
+        confirm.setContentText("Solved/in-progress records and any flashcards you've created are never affected — "
+                + "only this import's roadmap positions are removed.");
+        if (confirm.showAndWait().filter(button -> button == ButtonType.OK).isEmpty()) {
+            return;
+        }
+        int removed = trainingSheetImportService.deleteImportBatch(batch.getId());
+        refreshImportBatches();
+        Alert result = new Alert(Alert.AlertType.INFORMATION);
+        result.setTitle("Delete Imported Roadmap");
+        result.setHeaderText("Removed " + removed + " roadmap " + (removed == 1 ? "position" : "positions") + ".");
+        result.showAndWait();
     }
 
     private void showImportResult(String title, TrainingSheetImportSummary summary, Alert.AlertType alertType) {

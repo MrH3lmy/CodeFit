@@ -102,13 +102,32 @@ the schema and the reasoning behind the entity split. It is entirely separate fr
 no problem-solving table references `flashcards`/`decks`, so existing review workflows are
 unaffected.
 
-A learner can import their own local Junior Training Sheet workbook (`.xlsx`) from **Settings →
+A learner can import their own local Junior Training Sheet-style workbook (`.xlsx`) from **Settings →
 Problem-Solving Training → Import Training Sheet…**. The import is local-only, transactional, and
 safe to repeat: it never creates duplicate problems or roadmap memberships, and never overwrites
 progress already recorded locally. See
 [`docs/problem-solving-workbook-import.md`](docs/problem-solving-workbook-import.md) for the expected
-workbook shape and the exact rules the importer follows. The real Junior Training Sheet is never
-committed to this repository — only synthetic, programmatically-generated fixtures are used in tests.
+workbook shape and the exact rules the importer follows.
+
+### Source attribution, licensing, and data ownership
+
+**The real Junior Training Sheet — or any other third-party curriculum workbook — is never committed
+to this repository, and CodeFit never uploads an imported workbook or its contents anywhere.** Only
+synthetic, programmatically-generated fixtures are used in tests (see `TrainingSheetFixtures` and
+`WorkbookContentPolicyTest`, which fails CI if a `.xlsx` file or the real workbook's known authorship
+ever gets committed). Whatever roadmap you import is treated as your own local data by default: you
+are responsible for having the right to use whatever workbook you import, and the import screen says
+so before you use it.
+
+Each import records lightweight source attribution — source name, source URL, author, and version,
+all optional — on an **import batch**, viewable and deletable from **Settings → Problem-Solving
+Training → Imported Roadmaps**. Deleting an import batch removes only the roadmap positions it
+created; it never touches the underlying problem catalog, your solved/in-progress records, your
+attempt history, or any flashcards you've created from a reflection — none of those tables reference
+a roadmap position at all, only the problem itself. See
+[`docs/problem-solving-source-attribution.md`](docs/problem-solving-source-attribution.md) for the
+full policy: what CodeFit stores after import, backup/export data-boundary behavior, and the checklist
+for approving an officially bundled curriculum in the future.
 
 Imported problems show up on the **Problems** screen (its own sidebar entry), which defaults to
 following the roadmap in Blind Order and highlights the next recommended unsolved problem, or can be
@@ -121,6 +140,21 @@ reminders (configurable, default 20/60/120 minutes), and a Finish action that re
 Submitted, Accepted, Could Not Solve, or Abandoned without ever losing an earlier attempt. See
 [`docs/problem-solving-workspace.md`](docs/problem-solving-workspace.md) for the timer/persistence
 model and the exact finish-outcome-to-attempt mapping.
+
+The workspace's Post-Solve Reflection panel captures perceived difficulty, how the problem was solved,
+complexity trade-offs, and free-text lessons/mistakes/observations — entirely optional and editable
+any time, independent of the timer/finish controls (see
+[`docs/problem-solving-submissions-reflection.md`](docs/problem-solving-submissions-reflection.md)). A
+"Create Flashcard" section on that same panel turns any reflection field into an ordinary
+spaced-repetition flashcard in one click, linked back to its source problem, with duplicate protection
+(see [`docs/problem-solving-flashcard-integration.md`](docs/problem-solving-flashcard-integration.md)).
+
+A **Problem-Solving Dashboard** (reachable via "View Dashboard →" on the Problems screen) turns all of
+this into core progress, quality, timing, and topic-strength metrics plus a next-problem
+recommendation with its reasoning — every figure computed fresh from stored attempts and progress, not
+a duplicated counter. See
+[`docs/problem-solving-dashboards.md`](docs/problem-solving-dashboards.md) for what each metric means
+and how the stage/date-range filters scope it.
 
 ## Anki-compatible card import/export
 

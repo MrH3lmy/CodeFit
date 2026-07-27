@@ -161,6 +161,7 @@ public final class DatabaseConfig {
             createProblemSolvingTables(connection);
             ensureProblemSolvingWorkspaceColumns(connection);
             ensureProblemProgressReflectionColumns(connection);
+            ensureImportAttributionSchema(connection);
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
             seedAssessmentBank(connection);
@@ -358,6 +359,34 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "problem_progress", "other_solutions_reviewed", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "problem_progress", "simpler_implementation_considered", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "problem_progress", "better_complexity_considered", "INTEGER NOT NULL DEFAULT 0");
+    }
+
+    /**
+     * Source attribution for imported roadmaps (#149): one {@code import_batches} row per workbook
+     * import run, recording who/where it came from and when, plus which {@code roadmap_entries} row
+     * that batch created or last touched. Deliberately no {@code FOREIGN KEY} on
+     * {@code roadmap_entries.import_batch_id} — deleting an import batch (see
+     * {@code TrainingSheetImportService#deleteImportBatch}) explicitly deletes its roadmap entries
+     * first and then the batch row itself, rather than relying on an implicit DB-level cascade, the
+     * same explicit-over-implicit choice already made for {@code flashcards.source_problem_id} (#148).
+     * Never touches {@code problem_progress}, {@code problem_attempts}, or {@code flashcards} — none
+     * of those tables reference {@code roadmap_entries} at all, only {@code problems} directly, so
+     * deleting a roadmap's memberships can never cascade into a learner's progress or flashcards.
+     */
+    private static void ensureImportAttributionSchema(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS import_batches (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        source_name TEXT NOT NULL,
+                        source_url TEXT,
+                        author TEXT,
+                        version TEXT,
+                        imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+        }
+        addColumnIfMissing(connection, "roadmap_entries", "import_batch_id", "INTEGER");
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

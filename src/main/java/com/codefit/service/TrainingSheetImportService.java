@@ -2,9 +2,11 @@ package com.codefit.service;
 
 import com.codefit.config.DatabaseConfig;
 import com.codefit.model.DifficultyLevel;
+import com.codefit.model.ImportBatch;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemState;
 import com.codefit.model.RoadmapStage;
+import com.codefit.repository.ImportBatchRepository;
 import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.RoadmapEntryRepository;
@@ -75,16 +77,25 @@ public class TrainingSheetImportService {
     private final ProblemRepository problemRepository;
     private final ProblemService problemService;
     private final ProblemProgressService progressService;
+    private final RoadmapEntryRepository roadmapEntryRepository;
+    private final ImportBatchRepository importBatchRepository;
 
     public TrainingSheetImportService() {
-        this(new ProblemRepository(), new RoadmapEntryRepository(), new ProblemProgressRepository());
+        this(new ProblemRepository(), new RoadmapEntryRepository(), new ProblemProgressRepository(), new ImportBatchRepository());
     }
 
     public TrainingSheetImportService(ProblemRepository problemRepository, RoadmapEntryRepository roadmapEntryRepository,
                                       ProblemProgressRepository progressRepository) {
+        this(problemRepository, roadmapEntryRepository, progressRepository, new ImportBatchRepository());
+    }
+
+    public TrainingSheetImportService(ProblemRepository problemRepository, RoadmapEntryRepository roadmapEntryRepository,
+                                      ProblemProgressRepository progressRepository, ImportBatchRepository importBatchRepository) {
         this.problemRepository = problemRepository;
         this.problemService = new ProblemService(problemRepository, roadmapEntryRepository);
         this.progressService = new ProblemProgressService(progressRepository);
+        this.roadmapEntryRepository = roadmapEntryRepository;
+        this.importBatchRepository = importBatchRepository;
     }
 
     /** Checks the workbook's structure without writing anything to the database. */
@@ -94,15 +105,24 @@ public class TrainingSheetImportService {
 
     /** Runs the full import logic but rolls back at the end, reporting what a real import would do. */
     public TrainingSheetImportSummary preview(Path workbookPath) {
-        return runImport(workbookPath, true);
+        return runImport(workbookPath, true, ImportSourceMetadata.unspecified());
     }
 
-    /** Imports the workbook for real, inside one all-or-nothing transaction. */
+    /** Imports the workbook for real, inside one all-or-nothing transaction, with unspecified source attribution. */
     public TrainingSheetImportSummary importWorkbook(Path workbookPath) {
-        return runImport(workbookPath, false);
+        return runImport(workbookPath, false, ImportSourceMetadata.unspecified());
     }
 
-    private TrainingSheetImportSummary runImport(Path workbookPath, boolean dryRun) {
+    /**
+     * Imports the workbook for real, recording {@code sourceMetadata} on the resulting
+     * {@link ImportBatch} (#149) so the roadmap it creates stays traceable to where it came from.
+     * {@code sourceMetadata.sourceName()} falls back to the workbook's file name when blank.
+     */
+    public TrainingSheetImportSummary importWorkbook(Path workbookPath, ImportSourceMetadata sourceMetadata) {
+        return runImport(workbookPath, false, sourceMetadata);
+    }
+
+    private TrainingSheetImportSummary runImport(Path workbookPath, boolean dryRun, ImportSourceMetadata sourceMetadata) {
         ParsedWorkbook workbook = TrainingSheetWorkbookReader.read(workbookPath);
         WorkbookValidationResult validation = validateStructure(workbook);
         if (!validation.valid()) {
@@ -115,6 +135,13 @@ public class TrainingSheetImportService {
             try {
                 ImportContext context = new ImportContext();
                 context.warnings.addAll(validation.structuralWarnings());
+
+                String sourceName = sourceMetadata.sourceName() == null || sourceMetadata.sourceName().isBlank()
+                        ? workbookPath.getFileName().toString()
+                        : sourceMetadata.sourceName().strip();
+                ImportBatch batch = importBatchRepository.save(connection,
+                        new ImportBatch(0, sourceName, sourceMetadata.sourceUrl(), sourceMetadata.author(), sourceMetadata.version(), null));
+                context.importBatchId = batch.getId();
 
                 for (RoadmapStage stage : RoadmapStage.values()) {
                     Optional<ParsedSheet> sheet = workbook.sheet(stage.name());
@@ -142,6 +169,33 @@ public class TrainingSheetImportService {
         } catch (SQLException exception) {
             throw new WorkbookImportException("Unable to open database connection for import: " + exception.getMessage(), exception);
         }
+    }
+
+    /** Deletes one import batch's roadmap memberships, then the batch row itself — never anything
+     *  else. See {@link com.codefit.repository.RoadmapEntryRepository#deleteByImportBatchId} for why
+     *  this can never touch a learner's progress, attempts, or flashcards. */
+    public int deleteImportBatch(long importBatchId) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                int deletedMemberships = roadmapEntryRepository.deleteByImportBatchId(connection, importBatchId);
+                importBatchRepository.delete(connection, importBatchId);
+                connection.commit();
+                return deletedMemberships;
+            } catch (SQLException | RuntimeException exception) {
+                connection.rollback();
+                throw new WorkbookImportException("Unable to delete import batch: " + exception.getMessage(), exception);
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
+        } catch (SQLException exception) {
+            throw new WorkbookImportException("Unable to open database connection: " + exception.getMessage(), exception);
+        }
+    }
+
+    public List<ImportBatch> listImportBatches() {
+        return importBatchRepository.findAll();
     }
 
     private void importRoadmapSheet(Connection connection, RoadmapStage stage, ParsedSheet sheet, ImportContext context) throws SQLException {
@@ -200,6 +254,7 @@ public class TrainingSheetImportService {
             if (membershipResult.created()) {
                 context.roadmapMembershipsCreated++;
             }
+            roadmapEntryRepository.updateImportBatchId(connection, membershipResult.entry().getId(), context.importBatchId);
 
             String rawStatus = row.get(TrainingSheetColumns.STATUS);
             ProblemState importedState = parseImportedState(rawStatus);
@@ -373,12 +428,16 @@ public class TrainingSheetImportService {
         int progressRecordsImported;
         int duplicateRowsSkipped;
         int invalidRows;
+        long importBatchId;
         final List<String> warnings = new ArrayList<>();
 
         TrainingSheetImportSummary toSummary(boolean dryRun) {
+            // A dry run's batch row is rolled back along with everything else, so it never durably
+            // exists - reporting its id would let a caller try to reference/delete a batch that isn't there.
+            Long reportedBatchId = dryRun ? null : importBatchId;
             return new TrainingSheetImportSummary(dryRun, problemsCreated, problemsUpdated, problemsReused,
                     roadmapMembershipsCreated, progressRecordsImported, duplicateRowsSkipped, invalidRows,
-                    List.copyOf(warnings));
+                    List.copyOf(warnings), reportedBatchId);
         }
     }
 }

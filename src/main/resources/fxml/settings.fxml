@@ -41,8 +41,20 @@
 
             <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
                 <Label text="Problem-Solving Training" styleClass="section-title" />
-                <Label text="Import a local Junior Training Sheet workbook (.xlsx) to build your problem roadmap. Re-importing the same file is always safe: it never creates duplicates and never overwrites progress you've already recorded." styleClass="muted" wrapText="true" />
+                <Label text="Import a local Junior Training Sheet-style workbook (.xlsx) to build your problem roadmap. Re-importing the same file is always safe: it never creates duplicates and never overwrites progress you've already recorded." styleClass="muted" wrapText="true" />
+                <Label text="This workbook stays entirely on your machine — CodeFit never uploads it or its contents anywhere. You are responsible for having the right to use whatever workbook you import; do not import copyrighted third-party curricula without permission." styleClass="muted" wrapText="true" />
+
+                <Label text="Source attribution (optional, but recommended for anything not your own)" styleClass="dashboard-card-helper" />
+                <TextField fx:id="importSourceNameField" promptText="Source name (defaults to the file name)" maxWidth="Infinity" />
+                <TextField fx:id="importSourceUrlField" promptText="Source URL" maxWidth="Infinity" />
+                <TextField fx:id="importAuthorField" promptText="Author" maxWidth="Infinity" />
+                <TextField fx:id="importVersionField" promptText="Version" maxWidth="Infinity" />
                 <Button text="Import Training Sheet…" onAction="#importTrainingSheet" />
+
+                <Label text="Imported Roadmaps" styleClass="dashboard-card-helper" />
+                <Label text="Deleting an import only removes its roadmap positions — your solved/in-progress records and any flashcards you've created stay exactly as they are." styleClass="muted" wrapText="true" />
+                <Label fx:id="importBatchesEmptyLabel" text="No imports yet." styleClass="muted" wrapText="true" managed="false" visible="false" />
+                <VBox fx:id="importBatchesBox" spacing="6" maxWidth="Infinity" />
             </VBox>
         </VBox>
     </content>

@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -206,6 +207,7 @@ public class TrainingSheetImportService {
     }
 
     private void importRoadmapSheet(Connection connection, RoadmapStage stage, ParsedSheet sheet, ImportContext context) throws SQLException {
+        context.mergeSkippedReasons(sheet.droppedRowReasons());
         Set<String> seenKeysInSheet = new HashSet<>();
         int sequenceCounter = 0;
         for (ParsedWorkbookRow row : sheet.rows()) {
@@ -214,6 +216,7 @@ public class TrainingSheetImportService {
             String title = row.get(TrainingSheetColumns.TITLE);
             if (code == null || title == null) {
                 context.invalidRows++;
+                context.rowsSkippedByReason.merge("missing problem code or title", 1, Integer::sum);
                 context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber() + ": missing problem code or title, skipped.");
                 continue;
             }
@@ -228,6 +231,7 @@ public class TrainingSheetImportService {
             String dedupeKey = platform.toLowerCase(Locale.ROOT) + "::" + code.toLowerCase(Locale.ROOT);
             if (!seenKeysInSheet.add(dedupeKey)) {
                 context.duplicateRowsSkipped++;
+                context.rowsSkippedByReason.merge("duplicate problem code within sheet", 1, Integer::sum);
                 context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
                         + ": duplicate problem code '" + code + "' within this sheet, skipped.");
                 continue;
@@ -260,6 +264,7 @@ public class TrainingSheetImportService {
                         connection, problemResult.problem().getId(), stage, sequenceOrder, setNumber, mandatory, suggestedLevel);
             } catch (IllegalStateException conflict) {
                 context.invalidRows++;
+                context.rowsSkippedByReason.merge("roadmap slot conflict", 1, Integer::sum);
                 context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber() + ": " + conflict.getMessage());
                 continue;
             }
@@ -267,9 +272,28 @@ public class TrainingSheetImportService {
                 context.roadmapMembershipsCreated++;
             }
             roadmapEntryRepository.updateImportBatchId(connection, membershipResult.entry().getId(), context.importBatchId);
+            context.stageMembershipCounts.merge(stage, 1, Integer::sum);
+            context.platformCounts.merge(platform, 1, Integer::sum);
+            if (url != null) {
+                context.hyperlinksFound++;
+            } else {
+                context.hyperlinksMissing++;
+            }
+            if (topic != null) {
+                context.topicCounts.merge(topic, 1, Integer::sum);
+            }
+            if (quality != null) {
+                context.qualityMetadataCount++;
+            }
 
             String rawStatus = row.get(TrainingSheetColumns.STATUS);
             ProblemState importedState = parseImportedState(rawStatus);
+            switch (importedState == null ? ProblemState.NOT_STARTED : importedState) {
+                case SOLVED -> context.solvedCount++;
+                case IN_PROGRESS -> context.inProgressCount++;
+                case NEEDS_REVISIT -> context.revisitCount++;
+                default -> { }
+            }
             if (importedState != null) {
                 boolean applied = progressService.applyImportedState(connection, problemResult.problem().getId(), importedState);
                 if (applied) {
@@ -339,11 +363,14 @@ public class TrainingSheetImportService {
      * warning, never an insert.
      */
     private void importTopicsSheet(Connection connection, ParsedSheet sheet, ImportContext context) throws SQLException {
+        context.mergeSkippedReasons(sheet.droppedRowReasons());
         for (ParsedWorkbookRow row : sheet.rows()) {
             String code = row.get(TrainingSheetColumns.CODE);
-            String topic = row.get(TrainingSheetColumns.TOPIC);
+            String topic = firstNonBlank(row.get(TrainingSheetColumns.CURATED_CATEGORY), row.get(TrainingSheetColumns.TOPIC),
+                    row.get(TrainingSheetColumns.CATEGORY_CODE));
             if (code == null || topic == null) {
                 context.invalidRows++;
+                context.rowsSkippedByReason.merge("missing problem code or topic (Topics sheet)", 1, Integer::sum);
                 context.warnings.add("Sheet " + TOPICS_SHEET_NAME + ", row " + row.rowNumber() + ": missing problem code or topic, skipped.");
                 continue;
             }
@@ -353,10 +380,12 @@ public class TrainingSheetImportService {
                     ? problemRepository.findByPlatformAndExternalCode(connection, platform, code).map(List::of).orElse(List.of())
                     : problemRepository.findAllByExternalCode(connection, code);
             if (matches.isEmpty()) {
+                context.rowsSkippedByReason.merge("Topics row with no matching problem", 1, Integer::sum);
                 context.warnings.add("Sheet " + TOPICS_SHEET_NAME + ", row " + row.rowNumber()
                         + ": no imported problem found for code '" + code + "', topic not applied.");
                 continue;
             }
+            context.topicCounts.merge(topic, 1, Integer::sum);
             for (Problem problem : matches) {
                 if (!topic.equalsIgnoreCase(problem.getTopic())) {
                     problem.setTopic(topic);
@@ -574,13 +603,31 @@ public class TrainingSheetImportService {
         long importBatchId;
         final List<String> warnings = new ArrayList<>();
 
+        final Map<RoadmapStage, Integer> stageMembershipCounts = new LinkedHashMap<>();
+        int hyperlinksFound;
+        int hyperlinksMissing;
+        final Map<String, Integer> platformCounts = new LinkedHashMap<>();
+        int solvedCount;
+        int inProgressCount;
+        int revisitCount;
+        final Map<String, Integer> topicCounts = new LinkedHashMap<>();
+        int qualityMetadataCount;
+        final Map<String, Integer> rowsSkippedByReason = new LinkedHashMap<>();
+
+        void mergeSkippedReasons(Map<String, Integer> reasons) {
+            reasons.forEach((reason, count) -> rowsSkippedByReason.merge(reason, count, Integer::sum));
+        }
+
         TrainingSheetImportSummary toSummary(boolean dryRun) {
             // A dry run's batch row is rolled back along with everything else, so it never durably
             // exists - reporting its id would let a caller try to reference/delete a batch that isn't there.
             Long reportedBatchId = dryRun ? null : importBatchId;
+            WorkbookPreviewDetails details = new WorkbookPreviewDetails(Map.copyOf(stageMembershipCounts), hyperlinksFound,
+                    hyperlinksMissing, Map.copyOf(platformCounts), solvedCount, inProgressCount, revisitCount,
+                    Map.copyOf(topicCounts), qualityMetadataCount, Map.copyOf(rowsSkippedByReason));
             return new TrainingSheetImportSummary(dryRun, problemsCreated, problemsUpdated, problemsReused,
                     roadmapMembershipsCreated, progressRecordsImported, duplicateRowsSkipped, invalidRows,
-                    attemptsImported, reflectionFieldsImported, List.copyOf(warnings), reportedBatchId);
+                    attemptsImported, reflectionFieldsImported, List.copyOf(warnings), reportedBatchId, details);
         }
     }
 }

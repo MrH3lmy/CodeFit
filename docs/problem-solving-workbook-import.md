@@ -62,6 +62,35 @@ exact expected counts (926 roadmap memberships, 923 unique problems, all 172 Sta
 standing regression test, in addition to the synthetic-fixture coverage in
 `TrainingSheetImportServiceTest`.
 
+## Import preview screen (#160)
+
+Selecting a workbook in **Settings → Problem-Solving Training → Import Training Sheet…** never
+immediately writes anything. `SettingsController#analyzeAndConfirmImport` is a two-step flow:
+
+1. **Analyze.** The file is run through `TrainingSheetImportService#preview` — the exact same
+   row-by-row logic and mapping rules a real import uses, always rolled back at the end — and the
+   resulting `TrainingSheetImportSummary` (plain counts) plus its `WorkbookPreviewDetails` (the richer
+   per-stage/hyperlink/platform/status/topic/skip-reason breakdown) are rendered into a plain-text
+   report by `WorkbookPreviewReportFormatter`.
+2. **Review and confirm.** The report is shown in a dialog with "Import Now", "Copy Report", and
+   Cancel. Copying leaves the dialog open; cancelling (or closing it any other way) leaves the
+   database exactly as the preview found it, since the preview itself already rolled back. Only
+   clicking "Import Now" runs `TrainingSheetImportService#importWorkbook` for real, against the same
+   file — producing the same counts the preview just showed, since it's the same file through the
+   same code path.
+
+A structurally invalid workbook (see `validate`) shows its blocking errors — which name the sheet and,
+where the affected row is known, the row number — before the review dialog would even appear, since
+`preview` itself refuses to run past `validateStructure` for such a workbook.
+
+The import-complete dialog offers a "Go to Problem Library" button
+(`NavigationService#showProblems`) so a multi-hundred-problem import doesn't end in a dead-end alert.
+
+`WorkbookPreviewReportFormatter` has no JavaFX dependency, so its output is covered by plain unit
+tests (`TrainingSheetImportServiceTest`) without needing a UI toolkit; `RealJuniorTrainingSheetImportTest`
+additionally asserts that `preview()` and `importWorkbook()` against the real fixture produce
+byte-for-byte matching `WorkbookPreviewDetails`.
+
 ## Local, transactional, idempotent, repeatable
 
 - **Local**: the workbook path is a plain local `Path`; nothing is uploaded or fetched over the

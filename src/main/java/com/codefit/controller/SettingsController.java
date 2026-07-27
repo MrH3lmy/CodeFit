@@ -10,16 +10,24 @@ import com.codefit.service.ProgressService;
 import com.codefit.service.TrainingSheetImportService;
 import com.codefit.service.TrainingSheetImportSummary;
 import com.codefit.service.WorkbookImportException;
+import com.codefit.service.WorkbookPreviewReportFormatter;
+import com.codefit.service.WorkbookValidationResult;
 import com.codefit.ui.NavigationService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -66,10 +74,15 @@ public class SettingsController extends BaseController {
         refreshImportBatches();
     }
 
+    private static final ButtonType IMPORT_NOW_BUTTON = new ButtonType("Import Now", ButtonBar.ButtonData.OK_DONE);
+    private static final ButtonType COPY_REPORT_BUTTON = new ButtonType("Copy Report", ButtonBar.ButtonData.LEFT);
+
     /**
-     * Local-only workbook import (#143): the file never leaves the machine. Re-importing the same
-     * workbook is always safe — {@link TrainingSheetImportService} never creates duplicate
-     * problems/memberships and never downgrades progress the learner has already recorded.
+     * Local-only workbook import (#159/#160): the file never leaves the machine. Selecting a workbook
+     * only ever analyzes it — see {@link #analyzeAndConfirmImport} — a real import only happens if the
+     * learner explicitly confirms after reviewing the preview report. Re-importing the same workbook
+     * is always safe — {@link TrainingSheetImportService} never creates duplicate problems/memberships
+     * and never downgrades progress the learner has already recorded.
      */
     @FXML
     public void importTrainingSheet() {
@@ -80,12 +93,43 @@ public class SettingsController extends BaseController {
         if (file == null) {
             return;
         }
+        analyzeAndConfirmImport(file);
+    }
+
+    /**
+     * Step 1, "Analyze workbook": runs the exact same row-by-row logic a real import would (see
+     * {@link TrainingSheetImportService#preview}), rolling back every write, and shows the resulting
+     * report. Step 2, "review and confirm": the learner reads the report and explicitly clicks
+     * "Import Now" before anything is written — cancelling (closing the dialog any other way) leaves
+     * the database exactly as it was.
+     */
+    private void analyzeAndConfirmImport(File file) {
+        TrainingSheetImportSummary preview;
+        try {
+            preview = trainingSheetImportService.preview(file.toPath());
+        } catch (WorkbookImportException exception) {
+            WorkbookValidationResult validation = safeValidate(file);
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Training Sheet Import");
+            alert.setHeaderText("This workbook can't be imported; no changes were made");
+            String detail = validation == null
+                    ? exception.getMessage()
+                    : exception.getMessage() + "\n\n" + String.join("\n", validation.structuralWarnings());
+            alert.setContentText(detail);
+            alert.showAndWait();
+            return;
+        }
+
+        String reportText = WorkbookPreviewReportFormatter.format(file.getName(), preview);
+        if (!showPreviewReportDialog(file.getName(), reportText)) {
+            return; // cancelled: the preview above already rolled back, nothing to undo
+        }
 
         ImportSourceMetadata sourceMetadata = new ImportSourceMetadata(blankToNull(importSourceNameField.getText()),
                 blankToNull(importSourceUrlField.getText()), blankToNull(importAuthorField.getText()), blankToNull(importVersionField.getText()));
         try {
             TrainingSheetImportSummary summary = trainingSheetImportService.importWorkbook(file.toPath(), sourceMetadata);
-            showImportResult("Training Sheet Import", summary, Alert.AlertType.INFORMATION);
+            showImportCompleteDialog(file.getName(), summary);
             refreshImportBatches();
         } catch (WorkbookImportException exception) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -93,6 +137,63 @@ public class SettingsController extends BaseController {
             alert.setHeaderText("Import failed; no changes were made");
             alert.setContentText(exception.getMessage());
             alert.showAndWait();
+        }
+    }
+
+    private WorkbookValidationResult safeValidate(File file) {
+        try {
+            return trainingSheetImportService.validate(file.toPath());
+        } catch (RuntimeException validationAlsoFailed) {
+            return null;
+        }
+    }
+
+    /** @return {@code true} if the learner clicked "Import Now", {@code false} for cancel/close. */
+    private boolean showPreviewReportDialog(String workbookFileName, String reportText) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Training Sheet Import — Preview");
+        dialog.setHeaderText("Review \"" + workbookFileName + "\" before importing — nothing has been written yet.");
+
+        TextArea reportArea = new TextArea(reportText);
+        reportArea.setEditable(false);
+        reportArea.setWrapText(false);
+        reportArea.setPrefColumnCount(72);
+        reportArea.setPrefRowCount(24);
+
+        DialogPane pane = dialog.getDialogPane();
+        pane.setContent(reportArea);
+        pane.getButtonTypes().addAll(COPY_REPORT_BUTTON, ButtonType.CANCEL, IMPORT_NOW_BUTTON);
+
+        Button copyButton = (Button) pane.lookupButton(COPY_REPORT_BUTTON);
+        copyButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            ClipboardContent content = new ClipboardContent();
+            content.putString(reportText);
+            Clipboard.getSystemClipboard().setContent(content);
+            event.consume(); // stay open after copying
+        });
+
+        return dialog.showAndWait().filter(button -> button == IMPORT_NOW_BUTTON).isPresent();
+    }
+
+    /** Links directly to the Problem Library so a learner can see what just landed in it. */
+    private void showImportCompleteDialog(String workbookFileName, TrainingSheetImportSummary summary) {
+        String reportText = WorkbookPreviewReportFormatter.format(workbookFileName, summary);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Training Sheet Import — Complete");
+        dialog.setHeaderText("Imported \"" + workbookFileName + "\".");
+
+        TextArea reportArea = new TextArea(reportText);
+        reportArea.setEditable(false);
+        reportArea.setPrefColumnCount(72);
+        reportArea.setPrefRowCount(20);
+
+        ButtonType goToLibraryButton = new ButtonType("Go to Problem Library", ButtonBar.ButtonData.OK_DONE);
+        DialogPane pane = dialog.getDialogPane();
+        pane.setContent(reportArea);
+        pane.getButtonTypes().addAll(ButtonType.CLOSE, goToLibraryButton);
+
+        if (dialog.showAndWait().filter(button -> button == goToLibraryButton).isPresent()) {
+            NavigationService.showProblems();
         }
     }
 
@@ -155,17 +256,6 @@ public class SettingsController extends BaseController {
         result.setTitle("Delete Imported Roadmap");
         result.setHeaderText("Removed " + removed + " roadmap " + (removed == 1 ? "position" : "positions") + ".");
         result.showAndWait();
-    }
-
-    private void showImportResult(String title, TrainingSheetImportSummary summary, Alert.AlertType alertType) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(summary.dryRun() ? "Preview complete" : "Import complete");
-        String details = summary.warnings().isEmpty()
-                ? summary.message()
-                : summary.message() + "\n\n" + String.join("\n", summary.warnings());
-        alert.setContentText(details);
-        alert.showAndWait();
     }
 
     private Window settingsWindow() {

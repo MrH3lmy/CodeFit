@@ -100,6 +100,7 @@ final class TrainingSheetWorkbookReader {
         applyTitleBeforeCodePositionalFallback(canonicalColumnByIndex);
 
         List<ParsedWorkbookRow> rows = new ArrayList<>();
+        Map<String, Integer> droppedRowReasons = new LinkedHashMap<>();
         for (int rowIndex = headerRow.getRowNum() + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
             Row row = sheet.getRow(rowIndex);
             if (row == null) {
@@ -113,14 +114,16 @@ final class TrainingSheetWorkbookReader {
             addHyperlinkIfPresent(row, canonicalColumnByIndex, TrainingSheetColumns.CODE, CODE_URL, values);
             addHyperlinkIfPresent(row, canonicalColumnByIndex, TrainingSheetColumns.TITLE, TITLE_URL, values);
 
-            if (isBlankOrInstructionalRow(values)) {
+            String skipReason = blankOrInstructionalRowReason(values);
+            if (skipReason != null) {
+                droppedRowReasons.merge(skipReason, 1, Integer::sum);
                 continue;
             }
             // Spreadsheet row numbers are 1-based; rowIndex is 0-based.
             rows.add(new ParsedWorkbookRow(rowIndex + 1, values));
         }
 
-        return new ParsedSheet(sheet.getSheetName(), new LinkedHashSet<>(canonicalColumnByIndex.values()), rows);
+        return new ParsedSheet(sheet.getSheetName(), new LinkedHashSet<>(canonicalColumnByIndex.values()), rows, droppedRowReasons);
     }
 
     /**
@@ -204,22 +207,26 @@ final class TrainingSheetWorkbookReader {
     }
 
     /**
-     * A row is dropped here (never reaching the importer) if it's blank, an aggregate/summary row, or
-     * one of the real workbook's literal "Sample Name/Link" placeholder rows (#159). A row with a code
-     * or title that merely fails other validation (e.g. one of the two present but not the other)
-     * still reaches the importer, which reports it as an invalid row rather than silently dropping it.
+     * The reason a row is dropped here (never reaching the importer) — blank, an aggregate/summary
+     * row, or one of the real workbook's literal "Sample Name/Link" placeholder rows (#159/#160) — or
+     * {@code null} if it isn't one of those. A row with a code or title that merely fails other
+     * validation (e.g. one of the two present but not the other) still reaches the importer, which
+     * reports it as an invalid row rather than silently dropping it.
      */
-    private static boolean isBlankOrInstructionalRow(Map<String, String> values) {
+    private static String blankOrInstructionalRowReason(Map<String, String> values) {
         String title = blankToNull(values.get(TrainingSheetColumns.TITLE));
         String code = blankToNull(values.get(TrainingSheetColumns.CODE));
         if (title == null && code == null) {
-            return true;
+            return "blank row";
         }
         if (code != null && code.toLowerCase(java.util.Locale.ROOT).contains("average")) {
-            return true;
+            return "aggregate row";
         }
-        return (title != null && SAMPLE_ROW_PATTERN.matcher(title).matches())
-                || (code != null && SAMPLE_ROW_PATTERN.matcher(code).matches());
+        if ((title != null && SAMPLE_ROW_PATTERN.matcher(title).matches())
+                || (code != null && SAMPLE_ROW_PATTERN.matcher(code).matches())) {
+            return "sample placeholder row";
+        }
+        return null;
     }
 
     private static String blankToNull(String value) {

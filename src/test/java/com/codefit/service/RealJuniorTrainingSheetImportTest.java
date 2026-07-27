@@ -98,6 +98,15 @@ class RealJuniorTrainingSheetImportTest {
         Set<Long> uniqueProblemIds = entries.stream().map(RoadmapEntry::getProblemId).collect(Collectors.toSet());
         assertEquals(923, uniqueProblemIds.size(), "923 unique real problems");
 
+        WorkbookPreviewDetails details = summary.details();
+        assertEquals(172, details.stageMembershipCounts().get(RoadmapStage.B), "per-stage breakdown matches Stage B's real count");
+        assertEquals(926, details.stageMembershipCounts().values().stream().mapToInt(Integer::intValue).sum(),
+                "per-stage breakdown sums to the same 926 total the preview screen (#160) shows");
+        assertTrue(details.hyperlinksFound() > 900, "nearly every real problem carries a recovered judge URL");
+        assertTrue(details.platformCounts().getOrDefault("Codeforces", 0) > 500, "Codeforces dominates the inferred platforms");
+        assertTrue(details.rowsSkippedByReason().getOrDefault("sample placeholder row", 0) >= 5,
+                "the five literal sample rows are reported as a skip reason, not silently vanished");
+
         // No instructional/sample rows became problems.
         for (Long problemId : uniqueProblemIds) {
             Problem problem = problemRepository.findById(problemId).orElseThrow();
@@ -106,6 +115,22 @@ class RealJuniorTrainingSheetImportTest {
             assertFalse(problem.getExternalCode().toLowerCase(java.util.Locale.ROOT).contains("average"),
                     "the 'AC Averages =>' summary row must never be imported as a real problem");
         }
+    }
+
+    @Test
+    void previewAndRealImportProduceMatchingCounts() throws Exception {
+        // #160: the preview ("Analyze workbook") screen must show exactly what a real import would
+        // do, since both run through TrainingSheetImportService#runImport's identical row-by-row pass.
+        TrainingSheetImportSummary preview = importService.preview(WORKBOOK_PATH);
+        assertTrue(preview.dryRun());
+        TrainingSheetImportSummary realImport = importAndTrack();
+
+        assertEquals(preview.details().stageMembershipCounts(), realImport.details().stageMembershipCounts());
+        assertEquals(preview.details().hyperlinksFound(), realImport.details().hyperlinksFound());
+        assertEquals(preview.details().hyperlinksMissing(), realImport.details().hyperlinksMissing());
+        assertEquals(preview.details().platformCounts(), realImport.details().platformCounts());
+        assertEquals(preview.details().solvedCount(), realImport.details().solvedCount());
+        assertEquals(preview.details().rowsSkippedByReason(), realImport.details().rowsSkippedByReason());
     }
 
     @Test

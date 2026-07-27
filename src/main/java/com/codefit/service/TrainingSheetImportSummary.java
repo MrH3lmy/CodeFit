@@ -11,11 +11,18 @@ import java.util.List;
  * difficulty/assistance level/actual topic/approach notes (on {@code ProblemProgress}) respectively
  * (#159) — both additive to the original {@code progressRecordsImported}, which continues to count
  * only workflow-state (e.g. {@code AC} -&gt; {@code SOLVED}) changes.
+ *
+ * <p>{@code details} is the richer breakdown behind these plain counts — per-stage counts, hyperlink
+ * and platform coverage, status/topic distribution, and rows skipped grouped by reason — that the
+ * import preview screen (#160) shows before the learner commits to a real import. It comes from the
+ * exact same row-by-row pass as everything else in this summary, whether this run was a real import
+ * or a {@link TrainingSheetImportService#preview} dry run.
  */
 public record TrainingSheetImportSummary(boolean dryRun, int problemsCreated, int problemsUpdated, int problemsReused,
                                          int roadmapMembershipsCreated, int progressRecordsImported,
                                          int duplicateRowsSkipped, int invalidRows, int attemptsImported,
-                                         int reflectionFieldsImported, List<String> warnings, Long importBatchId) {
+                                         int reflectionFieldsImported, List<String> warnings, Long importBatchId,
+                                         WorkbookPreviewDetails details) {
 
     public String message() {
         String prefix = dryRun ? "Preview: would create " : "Created ";

@@ -7,6 +7,7 @@ import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.ProblemState;
 import com.codefit.model.RoadmapEntry;
 import com.codefit.model.SessionFinishOutcome;
+import com.codefit.model.SolvedWith;
 import com.codefit.model.SolvingPhase;
 import com.codefit.model.SubmissionResult;
 import com.codefit.repository.ProblemRepository;
@@ -70,6 +71,11 @@ public class ProblemSolvingWorkspaceService {
 
     public void reset(long problemId) {
         sessionService.reset(problemId);
+    }
+
+    /** Passthrough to {@link ProblemProgressService#updateReflection} so the workspace UI only ever talks to this one service. */
+    public ProblemProgress updateReflection(long problemId, ProblemReflection reflection) {
+        return progressService.updateReflection(problemId, reflection);
     }
 
     /** Called by the UI timer roughly once a second; a no-op if the session is paused. */
@@ -142,13 +148,32 @@ public class ProblemSolvingWorkspaceService {
             case ABANDONED -> throw new IllegalStateException("Abandoned sessions never update progress.");
         };
         ProblemProgress existing = progressService.getOrCreate(problemId);
-        progressService.updateProgress(problemId, newState, existing.getPerceivedDifficulty(), existing.getSolvedWith(),
-                existing.getFinalCategory(), existing.getApproachNotes(), existing.getMistakeNotes(),
+        progressService.updateProgress(problemId, newState,
                 newState == ProblemState.SOLVED ? LocalDateTime.now() : existing.getCompletedAt());
     }
 
     private boolean isSuccessful(SubmissionResult result) {
         return result == SubmissionResult.AC || result == SubmissionResult.ACX;
+    }
+
+    /**
+     * Marks a problem previously solved elsewhere (e.g. the learner already knows the solution from
+     * before using CodeFit) without requiring a new timed workspace session (#146): records an
+     * {@code ACX} attempt using whatever phase times the session happens to have (zero if none were
+     * ever run) and moves progress to {@code SOLVED} with {@code solvedWith = PREVIOUSLY_SOLVED}.
+     */
+    public ProblemAttempt markPreviouslySolved(long problemId, String notes) {
+        ProblemAttempt attempt = finish(problemId, SessionFinishOutcome.SUBMITTED, SubmissionResult.ACX, notes)
+                .orElseThrow(() -> new IllegalStateException("Marking previously solved must always record an attempt."));
+        ProblemProgress progress = progressService.getOrCreate(problemId);
+        ProblemReflection reflection = new ProblemReflection(progress.getPerceivedDifficultyRating(), SolvedWith.PREVIOUSLY_SOLVED,
+                progress.getFinalCategory(), progress.getApproachNotes(), progress.getMistakeNotes(),
+                progress.getImportantObservation(), progress.getTimeComplexity(), progress.getSpaceComplexity(),
+                progress.getLessonLearned(), progress.getActualTopic(), progress.isEditorialUnderstood(),
+                progress.isOtherSolutionsReviewed(), progress.isSimplerImplementationConsidered(),
+                progress.isBetterComplexityConsidered());
+        progressService.updateReflection(problemId, reflection);
+        return attempt;
     }
 
     public record WorkspaceView(Problem problem, RoadmapEntry roadmapEntry, ProblemProgress progress,

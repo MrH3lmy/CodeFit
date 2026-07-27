@@ -244,8 +244,8 @@ public class ProblemsController extends BaseController {
                     roadmapEntry.isMandatory() ? "pill-mandatory" : "pill-optional"));
         }
         badgeRow.getChildren().add(pill(displayState(entry.progress().getState()), statePillClass(entry.progress().getState())));
-        if (entry.progress().getPerceivedDifficulty() != null) {
-            badgeRow.getChildren().add(pill("Felt: " + capitalize(entry.progress().getPerceivedDifficulty().name()), "pill"));
+        if (entry.progress().getPerceivedDifficultyRating() != null) {
+            badgeRow.getChildren().add(pill("Felt: " + entry.progress().getPerceivedDifficultyRating() + "/10", "pill"));
         }
 
         Button openButton = new Button("Open ↗");

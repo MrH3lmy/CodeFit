@@ -73,10 +73,8 @@ attempt (see `ProblemAttemptService`), never overwrites an earlier one.
 
 ## Known limitations
 
-- The workspace does not yet capture `perceivedDifficulty`, `solvedWith`, `finalCategory`, or
-  approach/mistake notes on `ProblemProgress` — those are #146's scope ("Track submissions, outcomes,
-  assistance level, and post-solve reflection"). Finishing here only ever changes `state` and
-  `completedAt`, explicitly preserving whatever those other fields already held.
 - Coaching-checkpoint reminders are computed against **total** elapsed time across all four phases,
   not per-phase; the issue only asked for total-time checkpoints ("initially around 20, 60, and 120
   minutes").
+- Submission verdicts, assistance level (`solvedWith`), final category, and post-solve reflection are
+  covered separately in [`problem-solving-submissions-reflection.md`](problem-solving-submissions-reflection.md) (#146).

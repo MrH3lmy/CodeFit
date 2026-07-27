@@ -203,8 +203,9 @@ class TrainingSheetImportServiceTest {
 
         importService.importWorkbook(workbookPath);
         Problem problem = problemRepository.findByPlatformAndExternalCode(platform, "P1").orElseThrow();
-        progressService.updateProgress(problem.getId(), ProblemState.IN_PROGRESS, null, null, null,
-                "learner already started this", null, null);
+        progressService.updateProgress(problem.getId(), ProblemState.IN_PROGRESS, null);
+        progressService.updateReflection(problem.getId(), new ProblemReflection(null, null, null,
+                "learner already started this", null, null, null, null, null, null, false, false, false, false));
 
         Path secondWorkbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "progress-preserved-2.xlsx", List.of(
                 sheet("A", List.of(row("P1", "Two Sum", platform, "")))));

@@ -81,6 +81,42 @@
                     <Button text="Could Not Solve" onAction="#finishAsCouldNotSolve" styleClass="ghost-button" />
                     <Button text="Abandon" onAction="#finishAsAbandoned" styleClass="ghost-button" />
                 </HBox>
+                <Button text="Mark Previously Solved (ACX)…" onAction="#markPreviouslySolved" styleClass="ghost-button" />
+            </VBox>
+
+            <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                <Label text="Post-Solve Reflection" styleClass="section-title" />
+                <Label text="All optional; save any time and edit again later." styleClass="muted" wrapText="true" />
+
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Perceived difficulty" styleClass="dashboard-card-helper" />
+                    <MenuButton fx:id="difficultyRatingMenuButton" text="Not rated" styleClass="ghost-button" />
+                    <Label text="Solved with" styleClass="dashboard-card-helper" />
+                    <MenuButton fx:id="solvedWithMenuButton" text="Not set" styleClass="ghost-button" />
+                    <Label text="Final category" styleClass="dashboard-card-helper" />
+                    <MenuButton fx:id="finalCategoryMenuButton" text="Not set" styleClass="ghost-button" />
+                </HBox>
+
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Time complexity" styleClass="dashboard-card-helper" />
+                    <MenuButton fx:id="timeComplexityMenuButton" text="Not set" styleClass="ghost-button" />
+                    <Label text="Space complexity" styleClass="dashboard-card-helper" />
+                    <MenuButton fx:id="spaceComplexityMenuButton" text="Not set" styleClass="ghost-button" />
+                </HBox>
+
+                <TextField fx:id="actualTopicField" promptText="Actual category/topic used (e.g. Two Pointers)" maxWidth="Infinity" />
+                <TextArea fx:id="approachNotesArea" promptText="Approach summary…" prefRowCount="2" wrapText="true" maxWidth="Infinity" />
+                <TextArea fx:id="mistakeNotesArea" promptText="Mistake made…" prefRowCount="2" wrapText="true" maxWidth="Infinity" />
+                <TextArea fx:id="importantObservationArea" promptText="Important observation…" prefRowCount="2" wrapText="true" maxWidth="Infinity" />
+                <TextArea fx:id="lessonLearnedArea" promptText="Lesson learned…" prefRowCount="2" wrapText="true" maxWidth="Infinity" />
+
+                <Label text="After AC" styleClass="dashboard-card-helper" />
+                <CheckBox fx:id="editorialUnderstoodCheckBox" text="Editorial understood" />
+                <CheckBox fx:id="otherSolutionsReviewedCheckBox" text="Other accepted solutions reviewed" />
+                <CheckBox fx:id="simplerImplementationCheckBox" text="Simpler implementation considered" />
+                <CheckBox fx:id="betterComplexityCheckBox" text="Better complexity considered" />
+
+                <Button text="Save Reflection" onAction="#saveReflection" styleClass="primary-button" />
             </VBox>
         </VBox>
     </content>

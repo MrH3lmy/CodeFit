@@ -115,6 +115,13 @@ CREATE TABLE problem_progress (
 `ProblemProgressService.getOrCreate` is the only way callers reach either one, so "exactly one
 progress row" is enforced both at the schema level and at the call site.
 
+#146 adds ten more additive columns (`perceived_difficulty_rating`, `important_observation`,
+`time_complexity`, `space_complexity`, `lesson_learned`, `actual_topic`, `editorial_understood`,
+`other_solutions_reviewed`, `simpler_implementation_considered`, `better_complexity_considered`) for
+post-solve reflection; see [`problem-solving-submissions-reflection.md`](problem-solving-submissions-reflection.md)
+for why they're split from `state`/`completed_at` into their own `updateReflection` write path, and why
+the original `perceived_difficulty` column stays in place, unused, rather than being renamed or dropped.
+
 ### `problem_attempts`
 
 ```sql
@@ -170,13 +177,16 @@ seconds per phase, end, reset) — the full workspace UI and phase-transition wo
 | `ProblemState` | `NOT_STARTED, IN_PROGRESS, SOLVED, NEEDS_REVISIT` | `ProblemProgress.state` |
 | `SubmissionResult` | `AC, ACX, CS, WA, TLE, RTE, MLE` | `ProblemAttempt.submissionResult` |
 | `SolvedWith` | `SELF, HINT, EDITORIAL, SOLUTION, PREVIOUSLY_SOLVED` | `ProblemProgress.solvedWith` |
-| `DifficultyLevel` | `EASY, MEDIUM, HARD` | `RoadmapEntry.suggestedLevel`, `ProblemProgress.perceivedDifficulty` |
+| `DifficultyLevel` | `EASY, MEDIUM, HARD` | `RoadmapEntry.suggestedLevel` |
 | `FinalCategory` | `STRONG, SHAKY, WEAK` | `ProblemProgress.finalCategory` |
 | `SolvingPhase` | `READING, THINKING, CODING, DEBUGGING` | `ProblemAttempt`'s four time fields, `ProblemSolvingSession` |
+| `ComplexityClass` | `O_1, O_LOG_N, O_N, O_N_LOG_N, O_N_SQUARED, O_N_CUBED, O_EXPONENTIAL, O_FACTORIAL, OTHER` | `ProblemProgress.timeComplexity`/`spaceComplexity` (#146) |
 
-`DifficultyLevel` is intentionally shared between "how hard the curriculum expects this to be"
-(`RoadmapEntry.suggestedLevel`) and "how hard it actually felt" (`ProblemProgress.perceivedDifficulty`)
-so the two are directly comparable rather than tracked on two incompatible scales.
+`DifficultyLevel` only covers "how hard the curriculum expects this to be"
+(`RoadmapEntry.suggestedLevel`). "How hard it actually felt" is `ProblemProgress.perceivedDifficultyRating`,
+a free 1-10 integer (#146) rather than the same three-value enum — a curriculum-author's coarse
+`EASY`/`MEDIUM`/`HARD` estimate and a learner's own self-reported feeling turned out to need different
+resolutions, so they're intentionally on separate scales instead of being forced to share one.
 
 `FinalCategory` is a coaching-facing signal, independent of both `SolvedWith` (how much help was
 used) and `ProblemState` (workflow position) — a problem can be `SOLVED` with `SELF` help and still

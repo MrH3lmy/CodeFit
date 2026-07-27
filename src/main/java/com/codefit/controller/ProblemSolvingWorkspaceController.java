@@ -1,12 +1,17 @@
 package com.codefit.controller;
 
+import com.codefit.model.ComplexityClass;
+import com.codefit.model.FinalCategory;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
+import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.RoadmapEntry;
 import com.codefit.model.SessionFinishOutcome;
+import com.codefit.model.SolvedWith;
 import com.codefit.model.SolvingPhase;
 import com.codefit.model.SubmissionResult;
+import com.codefit.service.ProblemReflection;
 import com.codefit.service.ProblemSolvingWorkspaceService;
 import com.codefit.service.SolvingCheckpointPreferenceService;
 import com.codefit.ui.NavigationService;
@@ -14,10 +19,12 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.util.Duration;
 
 import java.awt.Desktop;
@@ -31,6 +38,11 @@ import java.util.Optional;
  * accumulated time, and finish the session as Submitted/Accepted/Could Not Solve/Abandoned. All
  * timer/session logic lives in {@link ProblemSolvingWorkspaceService}; this controller only renders
  * whatever session state that service returns and forwards user actions to it.
+ *
+ * <p>Also hosts the post-solve reflection form (#146): every field is optional and editable at any
+ * time, entirely independent of the timer/finish controls above it — saving a reflection never
+ * changes the problem's workflow state, and finishing a session never touches a reflection already
+ * recorded.
  *
  * <p>The timer advances via a one-second {@link Timeline} that persists elapsed time in one-second
  * increments (see {@code ProblemSolvingSessionService#recordElapsedTime}), so at most a couple of
@@ -61,6 +73,21 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     @FXML private MenuButton verdictMenuButton;
     @FXML private TextArea notesArea;
 
+    @FXML private MenuButton difficultyRatingMenuButton;
+    @FXML private MenuButton solvedWithMenuButton;
+    @FXML private MenuButton finalCategoryMenuButton;
+    @FXML private MenuButton timeComplexityMenuButton;
+    @FXML private MenuButton spaceComplexityMenuButton;
+    @FXML private TextField actualTopicField;
+    @FXML private TextArea approachNotesArea;
+    @FXML private TextArea mistakeNotesArea;
+    @FXML private TextArea importantObservationArea;
+    @FXML private TextArea lessonLearnedArea;
+    @FXML private CheckBox editorialUnderstoodCheckBox;
+    @FXML private CheckBox otherSolutionsReviewedCheckBox;
+    @FXML private CheckBox simplerImplementationCheckBox;
+    @FXML private CheckBox betterComplexityCheckBox;
+
     private final ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
     private final SolvingCheckpointPreferenceService checkpointPreferenceService = new SolvingCheckpointPreferenceService();
 
@@ -68,12 +95,18 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     private String problemUrl;
     private ProblemSolvingSession currentSession;
     private SubmissionResult selectedVerdict = SubmissionResult.AC;
+    private Integer selectedDifficultyRating;
+    private SolvedWith selectedSolvedWith;
+    private FinalCategory selectedFinalCategory;
+    private ComplexityClass selectedTimeComplexity;
+    private ComplexityClass selectedSpaceComplexity;
     private Timeline timer;
 
     @FXML
     public void initialize() {
         problemId = NavigationService.consumePendingWorkspaceProblemId();
         configureVerdictMenu();
+        configureReflectionMenus();
         if (problemId == null) {
             setStatus(messageLabel, "No problem selected. Return to Problems and choose one to work on.");
             setControlsDisabled(true);
@@ -81,6 +114,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
             return;
         }
         loadProblemContext();
+        loadReflection();
         currentSession = workspaceService.loadWorkspace(problemId).session().orElse(null);
         renderSession();
         startTimerLoop();
@@ -101,6 +135,119 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         }
         subtitleLabel.setText(subtitle.toString());
         progressStateLabel.setText("Status: " + capitalize(view.progress().getState().name()));
+    }
+
+    private void loadReflection() {
+        ProblemProgress progress = workspaceService.loadWorkspace(problemId).progress();
+        selectedDifficultyRating = progress.getPerceivedDifficultyRating();
+        difficultyRatingMenuButton.setText(selectedDifficultyRating == null ? "Not rated" : selectedDifficultyRating + "/10");
+        selectedSolvedWith = progress.getSolvedWith();
+        solvedWithMenuButton.setText(selectedSolvedWith == null ? "Not set" : capitalize(selectedSolvedWith.name()));
+        selectedFinalCategory = progress.getFinalCategory();
+        finalCategoryMenuButton.setText(selectedFinalCategory == null ? "Not set" : capitalize(selectedFinalCategory.name()));
+        selectedTimeComplexity = progress.getTimeComplexity();
+        timeComplexityMenuButton.setText(selectedTimeComplexity == null ? "Not set" : displayComplexity(selectedTimeComplexity));
+        selectedSpaceComplexity = progress.getSpaceComplexity();
+        spaceComplexityMenuButton.setText(selectedSpaceComplexity == null ? "Not set" : displayComplexity(selectedSpaceComplexity));
+        actualTopicField.setText(progress.getActualTopic() == null ? "" : progress.getActualTopic());
+        approachNotesArea.setText(progress.getApproachNotes() == null ? "" : progress.getApproachNotes());
+        mistakeNotesArea.setText(progress.getMistakeNotes() == null ? "" : progress.getMistakeNotes());
+        importantObservationArea.setText(progress.getImportantObservation() == null ? "" : progress.getImportantObservation());
+        lessonLearnedArea.setText(progress.getLessonLearned() == null ? "" : progress.getLessonLearned());
+        editorialUnderstoodCheckBox.setSelected(progress.isEditorialUnderstood());
+        otherSolutionsReviewedCheckBox.setSelected(progress.isOtherSolutionsReviewed());
+        simplerImplementationCheckBox.setSelected(progress.isSimplerImplementationConsidered());
+        betterComplexityCheckBox.setSelected(progress.isBetterComplexityConsidered());
+    }
+
+    private void configureReflectionMenus() {
+        for (int rating = 1; rating <= 10; rating++) {
+            int value = rating;
+            MenuItem item = new MenuItem(value + "/10");
+            item.setOnAction(event -> {
+                selectedDifficultyRating = value;
+                difficultyRatingMenuButton.setText(value + "/10");
+            });
+            difficultyRatingMenuButton.getItems().add(item);
+        }
+        for (SolvedWith solvedWith : SolvedWith.values()) {
+            MenuItem item = new MenuItem(capitalize(solvedWith.name()));
+            item.setOnAction(event -> {
+                selectedSolvedWith = solvedWith;
+                solvedWithMenuButton.setText(capitalize(solvedWith.name()));
+            });
+            solvedWithMenuButton.getItems().add(item);
+        }
+        for (FinalCategory finalCategory : FinalCategory.values()) {
+            MenuItem item = new MenuItem(capitalize(finalCategory.name()));
+            item.setOnAction(event -> {
+                selectedFinalCategory = finalCategory;
+                finalCategoryMenuButton.setText(capitalize(finalCategory.name()));
+            });
+            finalCategoryMenuButton.getItems().add(item);
+        }
+        for (ComplexityClass complexityClass : ComplexityClass.values()) {
+            MenuItem timeItem = new MenuItem(displayComplexity(complexityClass));
+            timeItem.setOnAction(event -> {
+                selectedTimeComplexity = complexityClass;
+                timeComplexityMenuButton.setText(displayComplexity(complexityClass));
+            });
+            timeComplexityMenuButton.getItems().add(timeItem);
+
+            MenuItem spaceItem = new MenuItem(displayComplexity(complexityClass));
+            spaceItem.setOnAction(event -> {
+                selectedSpaceComplexity = complexityClass;
+                spaceComplexityMenuButton.setText(displayComplexity(complexityClass));
+            });
+            spaceComplexityMenuButton.getItems().add(spaceItem);
+        }
+    }
+
+    private String displayComplexity(ComplexityClass complexityClass) {
+        return switch (complexityClass) {
+            case O_1 -> "O(1)";
+            case O_LOG_N -> "O(log n)";
+            case O_N -> "O(n)";
+            case O_N_LOG_N -> "O(n log n)";
+            case O_N_SQUARED -> "O(n²)";
+            case O_N_CUBED -> "O(n³)";
+            case O_EXPONENTIAL -> "O(2ⁿ)";
+            case O_FACTORIAL -> "O(n!)";
+            case OTHER -> "Other";
+        };
+    }
+
+    @FXML
+    public void saveReflection() {
+        if (problemId == null) {
+            return;
+        }
+        ProblemReflection reflection = new ProblemReflection(selectedDifficultyRating, selectedSolvedWith, selectedFinalCategory,
+                blankToNull(approachNotesArea.getText()), blankToNull(mistakeNotesArea.getText()),
+                blankToNull(importantObservationArea.getText()), selectedTimeComplexity, selectedSpaceComplexity,
+                blankToNull(lessonLearnedArea.getText()), blankToNull(actualTopicField.getText()),
+                editorialUnderstoodCheckBox.isSelected(), otherSolutionsReviewedCheckBox.isSelected(),
+                simplerImplementationCheckBox.isSelected(), betterComplexityCheckBox.isSelected());
+        workspaceService.updateReflection(problemId, reflection);
+        setStatus(messageLabel, "Reflection saved.");
+    }
+
+    @FXML
+    public void markPreviouslySolved() {
+        if (problemId == null) {
+            return;
+        }
+        ProblemAttempt attempt = workspaceService.markPreviouslySolved(problemId, notesArea.getText());
+        currentSession = null;
+        setStatus(messageLabel, "Recorded attempt #" + attempt.attemptNumber() + " as previously solved (ACX).");
+        notesArea.clear();
+        renderSession();
+        loadProblemContext();
+        loadReflection();
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 
     private void configureVerdictMenu() {

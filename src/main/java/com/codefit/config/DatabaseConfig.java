@@ -160,6 +160,7 @@ public final class DatabaseConfig {
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");
             createProblemSolvingTables(connection);
             ensureProblemSolvingWorkspaceColumns(connection);
+            ensureProblemProgressReflectionColumns(connection);
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
             seedAssessmentBank(connection);
@@ -330,6 +331,29 @@ public final class DatabaseConfig {
         // Set only for attempts created by finishing a workspace session; null for attempts recorded
         // any other way (e.g. the workbook importer never sets this).
         addColumnIfMissing(connection, "problem_attempts", "session_outcome", "TEXT");
+    }
+
+    /**
+     * Post-solve reflection fields (#146), additive on {@code problem_progress}. The original
+     * {@code perceived_difficulty} column (a 3-point {@code DifficultyLevel}, #142) is superseded by
+     * {@code perceived_difficulty_rating} (a 1-10 self-rated scale, matching this issue's spec) and is
+     * left in place unused rather than dropped, per this file's additive-only migration convention;
+     * no shipped code path ever wrote a value into it.
+     */
+    private static void ensureProblemProgressReflectionColumns(Connection connection) throws SQLException {
+        addColumnIfMissing(connection, "problem_progress", "perceived_difficulty_rating",
+                "INTEGER CHECK (perceived_difficulty_rating IS NULL OR perceived_difficulty_rating BETWEEN 1 AND 10)");
+        addColumnIfMissing(connection, "problem_progress", "important_observation", "TEXT");
+        addColumnIfMissing(connection, "problem_progress", "time_complexity", "TEXT");
+        addColumnIfMissing(connection, "problem_progress", "space_complexity", "TEXT");
+        addColumnIfMissing(connection, "problem_progress", "lesson_learned", "TEXT");
+        addColumnIfMissing(connection, "problem_progress", "actual_topic", "TEXT");
+        // AC-only optional checks; meaningful only once state is SOLVED, but not enforced at the
+        // schema level since they're harmless metadata otherwise.
+        addColumnIfMissing(connection, "problem_progress", "editorial_understood", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "problem_progress", "other_solutions_reviewed", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "problem_progress", "simpler_implementation_considered", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "problem_progress", "better_complexity_considered", "INTEGER NOT NULL DEFAULT 0");
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

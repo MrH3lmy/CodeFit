@@ -3,9 +3,11 @@ package com.codefit.service;
 import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
+import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.ProblemState;
 import com.codefit.model.SessionFinishOutcome;
+import com.codefit.model.SolvedWith;
 import com.codefit.model.SolvingPhase;
 import com.codefit.model.SubmissionResult;
 import org.junit.jupiter.api.BeforeAll;
@@ -164,5 +166,52 @@ class ProblemSolvingWorkspaceServiceTest {
         workspaceService.reset(problemId);
 
         assertTrue(sessionService.findSession(problemId).isEmpty());
+    }
+
+    @Test
+    void markingPreviouslySolvedRecordsAnAcxAttemptWithoutRequiringAnyTimedSession() {
+        long problemId = fixtureProblemId("previously-solved");
+        assertTrue(sessionService.findSession(problemId).isEmpty(), "no session should exist yet");
+
+        ProblemAttempt attempt = workspaceService.markPreviouslySolved(problemId, "already knew this pattern");
+
+        assertEquals(SubmissionResult.ACX, attempt.submissionResult());
+        assertEquals(SessionFinishOutcome.SUBMITTED, attempt.sessionOutcome());
+        assertEquals(0, attempt.readingTimeSeconds());
+        assertEquals(0, attempt.codingTimeSeconds());
+        assertEquals("already knew this pattern", attempt.notes());
+
+        ProblemSolvingWorkspaceService.WorkspaceView view = workspaceService.loadWorkspace(problemId);
+        assertEquals(ProblemState.SOLVED, view.progress().getState());
+        assertEquals(SolvedWith.PREVIOUSLY_SOLVED, view.progress().getSolvedWith());
+        assertTrue(sessionService.findSession(problemId).isEmpty(), "finishing resets the session so a future attempt starts fresh");
+    }
+
+    @Test
+    void markingPreviouslySolvedPreservesOtherReflectionFieldsAlreadySet() {
+        long problemId = fixtureProblemId("previously-solved-preserve");
+        workspaceService.updateReflection(problemId, new ProblemReflection(6, null, null,
+                "earlier approach notes", null, null, null, null, null, "Two Pointers", false, false, false, false));
+
+        workspaceService.markPreviouslySolved(problemId, null);
+
+        ProblemProgress progress = workspaceService.loadWorkspace(problemId).progress();
+        assertEquals(SolvedWith.PREVIOUSLY_SOLVED, progress.getSolvedWith());
+        assertEquals(6, progress.getPerceivedDifficultyRating());
+        assertEquals("earlier approach notes", progress.getApproachNotes());
+        assertEquals("Two Pointers", progress.getActualTopic());
+    }
+
+    @Test
+    void markingPreviouslySolvedAfterEarlierAttemptsKeepsThemAllAndAppendsANewOne() {
+        long problemId = fixtureProblemId("previously-solved-history");
+        workspaceService.finish(problemId, SessionFinishOutcome.SUBMITTED, SubmissionResult.WA, "failed try");
+
+        workspaceService.markPreviouslySolved(problemId, "actually solved it before");
+
+        List<ProblemAttempt> attempts = attemptService.getAttempts(problemId);
+        assertEquals(2, attempts.size());
+        assertEquals(SubmissionResult.WA, attempts.get(0).submissionResult());
+        assertEquals(SubmissionResult.ACX, attempts.get(1).submissionResult());
     }
 }

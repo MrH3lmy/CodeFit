@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -60,5 +61,45 @@ class ProblemAttemptServiceTest {
         // getOrCreate must still resolve to exactly one progress row, independent of how many attempts exist.
         assertEquals(progressService.getOrCreate(problem.getId()).getId(),
                 progressService.getOrCreate(problem.getId()).getId());
+    }
+
+    @Test
+    void isFirstSubmissionAccurateIsTrueWhenTheFirstAttemptWasAcOrAcx() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-146-ATTEMPT-3",
+                "First Submission Accurate Fixture", null, "General", null, List.of());
+
+        attemptService.recordAttempt(problem.getId(), SubmissionResult.AC, null, null, null, null, null);
+        attemptService.recordAttempt(problem.getId(), SubmissionResult.WA, null, null, null, null, null);
+
+        assertTrue(attemptService.isFirstSubmissionAccurate(problem.getId()));
+    }
+
+    @Test
+    void isFirstSubmissionAccurateIsTrueForAnAcxFirstAttempt() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-146-ATTEMPT-4",
+                "First Submission Accurate ACX Fixture", null, "General", null, List.of());
+
+        attemptService.recordAttempt(problem.getId(), SubmissionResult.ACX, null, null, null, null, null);
+
+        assertTrue(attemptService.isFirstSubmissionAccurate(problem.getId()));
+    }
+
+    @Test
+    void isFirstSubmissionAccurateIsFalseWhenTheFirstAttemptFailed() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-146-ATTEMPT-5",
+                "First Submission Inaccurate Fixture", null, "General", null, List.of());
+
+        attemptService.recordAttempt(problem.getId(), SubmissionResult.WA, null, null, null, null, null);
+        attemptService.recordAttempt(problem.getId(), SubmissionResult.AC, null, null, null, null, null);
+
+        assertFalse(attemptService.isFirstSubmissionAccurate(problem.getId()));
+    }
+
+    @Test
+    void isFirstSubmissionAccurateIsFalseWhenThereAreNoAttemptsYet() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-146-ATTEMPT-6",
+                "No Attempts Fixture", null, "General", null, List.of());
+
+        assertFalse(attemptService.isFirstSubmissionAccurate(problem.getId()));
     }
 }

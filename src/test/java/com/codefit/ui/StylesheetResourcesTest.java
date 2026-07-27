@@ -33,7 +33,7 @@ class StylesheetResourcesTest {
     void sharedShellAndControlStylesheetsLoadBeforeScreenSpecificOnes() {
         int shellIndex = indexOf("/css/shell.css");
         for (String screenSpecific : new String[] {"/css/review.css", "/css/library.css", "/css/forms.css",
-                "/css/progress.css", "/css/today.css", "/css/problems.css"}) {
+                "/css/progress.css", "/css/today.css", "/css/problems.css", "/css/solving-workspace.css"}) {
             assertTrue(shellIndex < indexOf(screenSpecific), screenSpecific + " must load after shell.css");
         }
     }

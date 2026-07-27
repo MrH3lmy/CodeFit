@@ -8,6 +8,7 @@ import com.codefit.service.ProblemLibraryEntry;
 import com.codefit.service.ProblemLibraryFilter;
 import com.codefit.service.ProblemLibraryService;
 import com.codefit.service.ProblemSolvingSessionService;
+import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -281,8 +282,7 @@ public class ProblemsController extends BaseController {
 
     private void startOrResumeSession(long problemId) {
         solvingSessionService.startOrResume(problemId);
-        setStatus(messageLabel, "Solving session ready — continue in the Problem-Solving Workspace.");
-        refresh();
+        NavigationService.showSolvingWorkspace(problemId);
     }
 
     private void openExternally(String url) {

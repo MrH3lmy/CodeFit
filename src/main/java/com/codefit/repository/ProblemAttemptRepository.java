@@ -2,6 +2,7 @@ package com.codefit.repository;
 
 import com.codefit.config.DatabaseConfig;
 import com.codefit.model.ProblemAttempt;
+import com.codefit.model.SessionFinishOutcome;
 import com.codefit.model.SubmissionResult;
 
 import java.sql.Connection;
@@ -50,8 +51,8 @@ public class ProblemAttemptRepository {
 
     public ProblemAttempt save(ProblemAttempt attempt) {
         String sql = "INSERT INTO problem_attempts (problem_id, attempt_number, submission_result, "
-                + "reading_time_seconds, thinking_time_seconds, coding_time_seconds, debugging_time_seconds, notes) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                + "reading_time_seconds, thinking_time_seconds, coding_time_seconds, debugging_time_seconds, notes, session_outcome) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, attempt.problemId());
@@ -62,6 +63,7 @@ public class ProblemAttemptRepository {
             setNullableInt(statement, 6, attempt.codingTimeSeconds());
             setNullableInt(statement, 7, attempt.debuggingTimeSeconds());
             statement.setString(8, attempt.notes());
+            statement.setString(9, attempt.sessionOutcome() == null ? null : attempt.sessionOutcome().name());
             statement.executeUpdate();
             long id = 0;
             try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -71,7 +73,7 @@ public class ProblemAttemptRepository {
             }
             return new ProblemAttempt(id, attempt.problemId(), attempt.attemptNumber(), attempt.submissionResult(),
                     attempt.readingTimeSeconds(), attempt.thinkingTimeSeconds(), attempt.codingTimeSeconds(),
-                    attempt.debuggingTimeSeconds(), attempt.submittedAt(), attempt.notes());
+                    attempt.debuggingTimeSeconds(), attempt.submittedAt(), attempt.notes(), attempt.sessionOutcome());
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to save problem attempt", exception);
         }
@@ -88,6 +90,7 @@ public class ProblemAttemptRepository {
     private List<ProblemAttempt> mapAll(ResultSet resultSet) throws SQLException {
         List<ProblemAttempt> attempts = new ArrayList<>();
         while (resultSet.next()) {
+            String sessionOutcome = resultSet.getString("session_outcome");
             attempts.add(new ProblemAttempt(
                     resultSet.getLong("id"),
                     resultSet.getLong("problem_id"),
@@ -98,7 +101,8 @@ public class ProblemAttemptRepository {
                     nullableInteger(resultSet, "coding_time_seconds"),
                     nullableInteger(resultSet, "debugging_time_seconds"),
                     LocalDateTime.parse(resultSet.getString("submitted_at").replace(' ', 'T')),
-                    resultSet.getString("notes")));
+                    resultSet.getString("notes"),
+                    sessionOutcome == null ? null : SessionFinishOutcome.valueOf(sessionOutcome)));
         }
         return attempts;
     }

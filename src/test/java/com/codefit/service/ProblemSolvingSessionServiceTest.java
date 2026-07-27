@@ -77,4 +77,85 @@ class ProblemSolvingSessionServiceTest {
 
         assertTrue(sessionService.findSession(problem.getId()).isEmpty());
     }
+
+    @Test
+    void pausingExcludesFurtherElapsedTimeUntilResumed() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-145-SESSION-5",
+                "Pause Fixture", null, "General", null, List.of());
+        sessionService.reset(problem.getId());
+        sessionService.recordElapsedTime(problem.getId(), SolvingPhase.CODING, 30);
+
+        ProblemSolvingSession paused = sessionService.pause(problem.getId());
+        assertTrue(paused.isPaused());
+
+        ProblemSolvingSession stillPaused = sessionService.recordElapsedTime(problem.getId(), SolvingPhase.CODING, 20);
+        assertEquals(30, stillPaused.getCodingSecondsElapsed(), "paused time must never accumulate");
+
+        ProblemSolvingSession resumed = sessionService.resume(problem.getId());
+        assertFalse(resumed.isPaused());
+
+        ProblemSolvingSession afterResume = sessionService.recordElapsedTime(problem.getId(), SolvingPhase.CODING, 20);
+        assertEquals(50, afterResume.getCodingSecondsElapsed(), "elapsed time accumulates again once resumed");
+    }
+
+    @Test
+    void onlyOnePhaseAccumulatesTimeAtATimeAndSwitchingNeverLosesAnEarlierPhasesTotal() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-145-SESSION-6",
+                "Phase Switch Fixture", null, "General", null, List.of());
+        sessionService.reset(problem.getId());
+
+        sessionService.recordElapsedTime(problem.getId(), SolvingPhase.READING, 60);
+        sessionService.recordElapsedTime(problem.getId(), SolvingPhase.THINKING, 0); // an accidental-switch correction
+        ProblemSolvingSession afterSwitchBack = sessionService.recordElapsedTime(problem.getId(), SolvingPhase.READING, 15);
+
+        assertEquals(75, afterSwitchBack.getReadingSecondsElapsed(), "switching away and back must not lose the earlier reading total");
+        assertEquals(0, afterSwitchBack.getThinkingSecondsElapsed());
+        assertEquals(SolvingPhase.READING, afterSwitchBack.getPhase());
+    }
+
+    @Test
+    void startOrResumeUnpausesAnExistingSession() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-145-SESSION-7",
+                "Unpause Fixture", null, "General", null, List.of());
+        sessionService.reset(problem.getId());
+        sessionService.recordElapsedTime(problem.getId(), SolvingPhase.READING, 10);
+        sessionService.pause(problem.getId());
+
+        ProblemSolvingSession resumed = sessionService.startOrResume(problem.getId());
+
+        assertFalse(resumed.isPaused());
+        assertTrue(resumed.isActive());
+    }
+
+    @Test
+    void resumingAnEndedSessionReactivatesItWithoutLosingAccumulatedTime() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-145-SESSION-8",
+                "Reactivate Fixture", null, "General", null, List.of());
+        sessionService.reset(problem.getId());
+        sessionService.recordElapsedTime(problem.getId(), SolvingPhase.CODING, 40);
+        sessionService.endSession(problem.getId());
+        assertFalse(sessionService.findSession(problem.getId()).orElseThrow().isActive());
+
+        ProblemSolvingSession reactivated = sessionService.resume(problem.getId());
+
+        assertTrue(reactivated.isActive());
+        assertEquals(40, reactivated.getCodingSecondsElapsed());
+    }
+
+    @Test
+    void aSessionSurvivesReloadingFromAFreshServiceInstanceSimulatingAnApplicationRestart() {
+        Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-145-SESSION-9",
+                "Restart Fixture", null, "General", null, List.of());
+        sessionService.reset(problem.getId());
+        sessionService.recordElapsedTime(problem.getId(), SolvingPhase.THINKING, 77);
+        sessionService.pause(problem.getId());
+
+        // A brand-new service (and repository) instance stands in for the app being restarted:
+        // there is no in-memory state to carry over, only what was persisted.
+        ProblemSolvingSessionService afterRestart = new ProblemSolvingSessionService();
+        ProblemSolvingSession reloaded = afterRestart.findSession(problem.getId()).orElseThrow();
+
+        assertEquals(77, reloaded.getThinkingSecondsElapsed());
+        assertTrue(reloaded.isPaused(), "the session must resume in the same paused state it was left in");
+    }
 }

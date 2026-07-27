@@ -35,8 +35,8 @@ public class ProblemSolvingSessionRepository {
 
     public ProblemSolvingSession save(ProblemSolvingSession session) {
         String sql = "INSERT INTO problem_solving_sessions (problem_id, phase, reading_seconds_elapsed, "
-                + "thinking_seconds_elapsed, coding_seconds_elapsed, debugging_seconds_elapsed, notes, active) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                + "thinking_seconds_elapsed, coding_seconds_elapsed, debugging_seconds_elapsed, notes, active, paused) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bindInsertFields(statement, session);
@@ -55,7 +55,7 @@ public class ProblemSolvingSessionRepository {
     public void update(ProblemSolvingSession session) {
         String sql = "UPDATE problem_solving_sessions SET phase = ?, reading_seconds_elapsed = ?, "
                 + "thinking_seconds_elapsed = ?, coding_seconds_elapsed = ?, debugging_seconds_elapsed = ?, "
-                + "notes = ?, active = ?, last_active_at = CURRENT_TIMESTAMP WHERE problem_id = ?";
+                + "notes = ?, active = ?, paused = ?, last_active_at = CURRENT_TIMESTAMP WHERE problem_id = ?";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, session.getPhase().name());
@@ -65,7 +65,8 @@ public class ProblemSolvingSessionRepository {
             statement.setInt(5, session.getDebuggingSecondsElapsed());
             statement.setString(6, session.getNotes());
             statement.setInt(7, session.isActive() ? 1 : 0);
-            statement.setLong(8, session.getProblemId());
+            statement.setInt(8, session.isPaused() ? 1 : 0);
+            statement.setLong(9, session.getProblemId());
             statement.executeUpdate();
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to update problem solving session", exception);
@@ -92,6 +93,7 @@ public class ProblemSolvingSessionRepository {
         statement.setInt(6, session.getDebuggingSecondsElapsed());
         statement.setString(7, session.getNotes());
         statement.setInt(8, session.isActive() ? 1 : 0);
+        statement.setInt(9, session.isPaused() ? 1 : 0);
     }
 
     private ProblemSolvingSession mapSession(ResultSet resultSet) throws SQLException {
@@ -105,6 +107,7 @@ public class ProblemSolvingSessionRepository {
                 resultSet.getInt("debugging_seconds_elapsed"),
                 resultSet.getString("notes"),
                 resultSet.getInt("active") == 1,
+                resultSet.getInt("paused") == 1,
                 LocalDateTime.parse(resultSet.getString("started_at").replace(' ', 'T')),
                 LocalDateTime.parse(resultSet.getString("last_active_at").replace(' ', 'T'))
         );

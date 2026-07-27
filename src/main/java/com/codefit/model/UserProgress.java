@@ -1,6 +1,8 @@
 package com.codefit.model;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserProgress {
     /** Default share (0-100) of leftover session budget reserved for mature-card interleaving from non-focus modules (#110). */
@@ -10,6 +12,8 @@ public class UserProgress {
     public static final int DEFAULT_DAILY_NEW_CARD_LIMIT = 2;
     /** Default guided-routine session length in minutes, matching {@code SessionBudgetService.STANDARD_MINUTES} (#111). */
     public static final int DEFAULT_GUIDED_SESSION_MINUTES = 15;
+    /** Default solving-workspace coaching checkpoints, in minutes of total elapsed session time (#145). */
+    public static final String DEFAULT_SOLVING_CHECKPOINT_MINUTES = "20,60,120";
 
     private long id;
     private int xp;
@@ -26,6 +30,8 @@ public class UserProgress {
     private int matureInterleavePercent;
     private int dailyNewCardLimit;
     private int guidedSessionMinutes;
+    private boolean solvingCheckpointsEnabled;
+    private String solvingCheckpointMinutesCsv;
 
     public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews) {
         this(id, xp, level, streakDays, lastReviewDate, totalReviews, 0, 0, false, DailyWorkloadMode.NORMAL,
@@ -64,6 +70,22 @@ public class UserProgress {
                         int missedDayCount, int streakFreezeCount, boolean recoveryQuestActive,
                         DailyWorkloadMode dailyWorkloadMode, String activeTrainingPath, int focusModuleOrder,
                         int matureInterleavePercent, int dailyNewCardLimit, int guidedSessionMinutes) {
+        this(id, xp, level, streakDays, lastReviewDate, totalReviews, missedDayCount, streakFreezeCount,
+                recoveryQuestActive, dailyWorkloadMode, activeTrainingPath, focusModuleOrder, matureInterleavePercent,
+                dailyNewCardLimit, guidedSessionMinutes, true, DEFAULT_SOLVING_CHECKPOINT_MINUTES);
+    }
+
+    /**
+     * @param solvingCheckpointsEnabled  whether the solving workspace (#145) shows coaching
+     *                                   checkpoint reminders at all
+     * @param solvingCheckpointMinutesCsv ascending comma-separated total-elapsed-minute thresholds
+     *                                    (e.g. {@code "20,60,120"}) at which a reminder is shown
+     */
+    public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews,
+                        int missedDayCount, int streakFreezeCount, boolean recoveryQuestActive,
+                        DailyWorkloadMode dailyWorkloadMode, String activeTrainingPath, int focusModuleOrder,
+                        int matureInterleavePercent, int dailyNewCardLimit, int guidedSessionMinutes,
+                        boolean solvingCheckpointsEnabled, String solvingCheckpointMinutesCsv) {
         this.id = id;
         this.xp = xp;
         this.level = level;
@@ -79,6 +101,9 @@ public class UserProgress {
         this.matureInterleavePercent = matureInterleavePercent;
         this.dailyNewCardLimit = dailyNewCardLimit;
         this.guidedSessionMinutes = guidedSessionMinutes;
+        this.solvingCheckpointsEnabled = solvingCheckpointsEnabled;
+        this.solvingCheckpointMinutesCsv = solvingCheckpointMinutesCsv == null || solvingCheckpointMinutesCsv.isBlank()
+                ? DEFAULT_SOLVING_CHECKPOINT_MINUTES : solvingCheckpointMinutesCsv;
     }
 
     public long getId() { return id; }
@@ -120,4 +145,28 @@ public class UserProgress {
     public void setDailyNewCardLimit(int dailyNewCardLimit) { this.dailyNewCardLimit = dailyNewCardLimit; }
     public int getGuidedSessionMinutes() { return guidedSessionMinutes; }
     public void setGuidedSessionMinutes(int guidedSessionMinutes) { this.guidedSessionMinutes = guidedSessionMinutes; }
+    public boolean isSolvingCheckpointsEnabled() { return solvingCheckpointsEnabled; }
+    public void setSolvingCheckpointsEnabled(boolean solvingCheckpointsEnabled) { this.solvingCheckpointsEnabled = solvingCheckpointsEnabled; }
+    public String getSolvingCheckpointMinutesCsv() { return solvingCheckpointMinutesCsv; }
+    public void setSolvingCheckpointMinutesCsv(String solvingCheckpointMinutesCsv) {
+        this.solvingCheckpointMinutesCsv = solvingCheckpointMinutesCsv == null || solvingCheckpointMinutesCsv.isBlank()
+                ? DEFAULT_SOLVING_CHECKPOINT_MINUTES : solvingCheckpointMinutesCsv;
+    }
+
+    /** Parses {@link #getSolvingCheckpointMinutesCsv()} into ascending minute thresholds, ignoring any malformed entries. */
+    public List<Integer> getSolvingCheckpointMinutes() {
+        List<Integer> minutes = new ArrayList<>();
+        for (String token : solvingCheckpointMinutesCsv.split(",")) {
+            try {
+                int value = Integer.parseInt(token.strip());
+                if (value > 0) {
+                    minutes.add(value);
+                }
+            } catch (NumberFormatException ignored) {
+                // malformed token from a hand-edited preference value; skip rather than fail the whole list
+            }
+        }
+        minutes.sort(Integer::compareTo);
+        return minutes;
+    }
 }

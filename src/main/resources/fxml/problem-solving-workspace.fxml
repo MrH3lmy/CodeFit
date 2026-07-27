@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ProblemSolvingWorkspaceController">
+    <content>
+        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button text="&#8249; Problems" onAction="#goProblems" styleClass="ghost-button" />
+            </HBox>
+
+            <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
+                <Label fx:id="titleLabel" text="Solving Workspace" styleClass="page-title" wrapText="true" />
+                <Label fx:id="subtitleLabel" styleClass="page-subtitle" wrapText="true" />
+            </VBox>
+
+            <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+            <Label fx:id="checkpointBanner" styleClass="status-banner, checkpoint-banner" wrapText="true" visible="false" managed="false" />
+
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label fx:id="progressStateLabel" styleClass="pill" />
+                <Button text="Open Problem ↗" onAction="#openProblem" styleClass="ghost-button" />
+            </HBox>
+
+            <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                <Label text="Timer" styleClass="section-title" />
+                <HBox spacing="16" alignment="CENTER_LEFT">
+                    <VBox spacing="2">
+                        <Label text="Current phase" styleClass="dashboard-card-helper" />
+                        <Label fx:id="currentPhaseLabel" styleClass="problem-row-title" />
+                    </VBox>
+                    <VBox spacing="2">
+                        <Label text="Total elapsed" styleClass="dashboard-card-helper" />
+                        <Label fx:id="totalElapsedLabel" styleClass="problem-row-title" />
+                    </VBox>
+                </HBox>
+
+                <HBox spacing="18">
+                    <VBox spacing="2" alignment="CENTER">
+                        <Label text="Reading" styleClass="dashboard-card-helper" />
+                        <Label fx:id="readingTimeLabel" styleClass="problem-row-subtitle" />
+                    </VBox>
+                    <VBox spacing="2" alignment="CENTER">
+                        <Label text="Thinking" styleClass="dashboard-card-helper" />
+                        <Label fx:id="thinkingTimeLabel" styleClass="problem-row-subtitle" />
+                    </VBox>
+                    <VBox spacing="2" alignment="CENTER">
+                        <Label text="Coding" styleClass="dashboard-card-helper" />
+                        <Label fx:id="codingTimeLabel" styleClass="problem-row-subtitle" />
+                    </VBox>
+                    <VBox spacing="2" alignment="CENTER">
+                        <Label text="Debugging" styleClass="dashboard-card-helper" />
+                        <Label fx:id="debuggingTimeLabel" styleClass="problem-row-subtitle" />
+                    </VBox>
+                </HBox>
+
+                <Label text="Phase" styleClass="dashboard-card-helper" />
+                <HBox spacing="8">
+                    <Button fx:id="readingPhaseButton" text="Reading" onAction="#switchToReading" styleClass="ghost-button" />
+                    <Button fx:id="thinkingPhaseButton" text="Thinking" onAction="#switchToThinking" styleClass="ghost-button" />
+                    <Button fx:id="codingPhaseButton" text="Coding" onAction="#switchToCoding" styleClass="ghost-button" />
+                    <Button fx:id="debuggingPhaseButton" text="Debugging" onAction="#switchToDebugging" styleClass="ghost-button" />
+                </HBox>
+
+                <HBox spacing="8">
+                    <Button fx:id="startButton" text="Start" onAction="#startSession" styleClass="primary-button" />
+                    <Button fx:id="pauseButton" text="Pause" onAction="#pauseSession" styleClass="ghost-button" />
+                    <Button fx:id="resumeButton" text="Resume" onAction="#resumeSession" styleClass="primary-button" />
+                    <Button fx:id="resetButton" text="Reset" onAction="#resetSession" styleClass="ghost-button" />
+                </HBox>
+            </VBox>
+
+            <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                <Label text="Finish" styleClass="section-title" />
+                <Label text="Submitted / Could Not Solve record the verdict picked below; Accepted always records AC." styleClass="muted" wrapText="true" />
+                <MenuButton fx:id="verdictMenuButton" text="Verdict: AC" styleClass="ghost-button" />
+                <TextArea fx:id="notesArea" promptText="Optional notes for this attempt…" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
+                <HBox spacing="8">
+                    <Button text="Mark Submitted" onAction="#finishAsSubmitted" styleClass="action-button" />
+                    <Button text="Mark Accepted" onAction="#finishAsAccepted" styleClass="action-button" />
+                    <Button text="Could Not Solve" onAction="#finishAsCouldNotSolve" styleClass="ghost-button" />
+                    <Button text="Abandon" onAction="#finishAsAbandoned" styleClass="ghost-button" />
+                </HBox>
+            </VBox>
+        </VBox>
+    </content>
+</ScrollPane>

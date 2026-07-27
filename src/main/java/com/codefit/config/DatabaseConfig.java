@@ -159,6 +159,7 @@ public final class DatabaseConfig {
             ensureUserProgressColumns(connection);
             statement.execute("INSERT OR IGNORE INTO user_progress (id, xp, level, streak_days, total_reviews) VALUES (1, 0, 1, 0, 0)");
             createProblemSolvingTables(connection);
+            ensureProblemSolvingWorkspaceColumns(connection);
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
             seedAssessmentBank(connection);
@@ -209,6 +210,11 @@ public final class DatabaseConfig {
         // cards may be introduced per day, and how long a standard guided session runs.
         addColumnIfMissing(connection, "user_progress", "daily_new_card_limit", "INTEGER NOT NULL DEFAULT 2");
         addColumnIfMissing(connection, "user_progress", "guided_session_minutes", "INTEGER NOT NULL DEFAULT 15");
+        // Solving-workspace coaching checkpoints (#145): reminders only, never enforced, and fully
+        // learner-configurable (disable, or change the thresholds) the same way every other
+        // preference here is a plain column rather than a separate settings table.
+        addColumnIfMissing(connection, "user_progress", "solving_checkpoints_enabled", "INTEGER NOT NULL DEFAULT 1");
+        addColumnIfMissing(connection, "user_progress", "solving_checkpoint_minutes", "TEXT NOT NULL DEFAULT '20,60,120'");
     }
 
     /**
@@ -309,6 +315,21 @@ public final class DatabaseConfig {
                     )
                     """);
         }
+    }
+
+    /**
+     * Additive columns for the solving workspace (#145), added the same way every other
+     * post-launch column in this file is: {@code addColumnIfMissing} against tables
+     * {@link #createProblemSolvingTables} already created, so an existing #142/#143 database upgrades
+     * in place without ever recreating those tables.
+     */
+    private static void ensureProblemSolvingWorkspaceColumns(Connection connection) throws SQLException {
+        // Lets a restart resume in the same paused/running state instead of silently accumulating
+        // time while the app was closed (see ProblemSolvingSession's class-level docs).
+        addColumnIfMissing(connection, "problem_solving_sessions", "paused", "INTEGER NOT NULL DEFAULT 0");
+        // Set only for attempts created by finishing a workspace session; null for attempts recorded
+        // any other way (e.g. the workbook importer never sets this).
+        addColumnIfMissing(connection, "problem_attempts", "session_outcome", "TEXT");
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

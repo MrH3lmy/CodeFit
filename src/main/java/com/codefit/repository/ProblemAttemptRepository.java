@@ -36,6 +36,19 @@ public class ProblemAttemptRepository {
         }
     }
 
+    /** Every attempt across every problem, for dashboard aggregation (#147) — one query rather than
+     *  one round trip per problem, so aggregation stays responsive with the full imported roadmap. */
+    public List<ProblemAttempt> findAll() {
+        String sql = "SELECT * FROM problem_attempts ORDER BY problem_id, attempt_number";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            return mapAll(resultSet);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load all problem attempts", exception);
+        }
+    }
+
     public int countByProblemId(long problemId) {
         String sql = "SELECT COUNT(*) FROM problem_attempts WHERE problem_id = ?";
         try (Connection connection = DatabaseConfig.getConnection();

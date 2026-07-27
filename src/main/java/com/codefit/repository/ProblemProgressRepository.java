@@ -15,6 +15,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -45,6 +47,22 @@ public class ProblemProgressRepository {
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? Optional.of(mapProgress(resultSet)) : Optional.empty();
             }
+        }
+    }
+
+    /** Every progress row, for dashboard aggregation (#147) — loaded once rather than per-problem. */
+    public List<ProblemProgress> findAll() {
+        String sql = "SELECT * FROM problem_progress";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            List<ProblemProgress> all = new ArrayList<>();
+            while (resultSet.next()) {
+                all.add(mapProgress(resultSet));
+            }
+            return all;
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load all problem progress", exception);
         }
     }
 

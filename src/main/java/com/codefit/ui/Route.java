@@ -13,6 +13,7 @@ public enum Route {
     PROGRESS("stats.fxml", "Progress", "CodeFit - Progress", NavItem.PROGRESS),
     ADD_CARD("add-card.fxml", "New Card", "CodeFit - New Card", null),
     SOLVING_WORKSPACE("problem-solving-workspace.fxml", "Solving Workspace", "CodeFit - Solving Workspace", null),
+    PROBLEM_DASHBOARD("problem-dashboard.fxml", "Dashboard", "CodeFit - Problem-Solving Dashboard", null),
     GUIDED_TRAINING("guided-training.fxml", "Today's Training", "CodeFit - Today's Training", null),
     REFLECTION("reflection.fxml", "Reflection", "CodeFit - Reflection", null),
     ASSESSMENT("weekly-assessment.fxml", "Assessment", "CodeFit - Weekly Transfer Assessment", null),

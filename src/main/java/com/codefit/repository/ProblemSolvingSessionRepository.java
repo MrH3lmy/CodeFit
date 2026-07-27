@@ -10,6 +10,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -30,6 +32,23 @@ public class ProblemSolvingSessionRepository {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to load problem solving session", exception);
+        }
+    }
+
+    /** Every session left active (started but neither finished nor abandoned) — surfaced on the
+     *  dashboard (#147) as "unfinished attempts" separate from the roadmap recommendation. */
+    public List<ProblemSolvingSession> findAllActive() {
+        String sql = "SELECT * FROM problem_solving_sessions WHERE active = 1";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            List<ProblemSolvingSession> sessions = new ArrayList<>();
+            while (resultSet.next()) {
+                sessions.add(mapSession(resultSet));
+            }
+            return sessions;
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load active problem solving sessions", exception);
         }
     }
 

@@ -168,6 +168,11 @@ public final class NavigationService {
         return problemId;
     }
 
+    /** Opens the problem-solving progress dashboard (#147). */
+    public static void showProblemDashboard() {
+        navigate(Route.PROBLEM_DASHBOARD);
+    }
+
     /**
      * Starts the guided daily routine (#111) fresh: one dashboard action instead of the learner
      * manually choosing Review, then Reflection, then Assessment themselves. Review/Reflection/

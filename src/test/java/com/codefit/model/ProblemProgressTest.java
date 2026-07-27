@@ -13,7 +13,7 @@ class ProblemProgressTest {
 
         assertEquals(7L, progress.getProblemId());
         assertEquals(ProblemState.NOT_STARTED, progress.getState());
-        assertNull(progress.getPerceivedDifficulty());
+        assertNull(progress.getPerceivedDifficultyRating());
         assertNull(progress.getSolvedWith());
         assertNull(progress.getFinalCategory());
         assertNull(progress.getCompletedAt());

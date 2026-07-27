@@ -86,7 +86,7 @@ class ProblemLibraryServiceTest {
         String platform = uniquePlatform("shared-progress");
         Problem problem = createProblem(platform, "P1", "Shared Progress", "General", null);
         problemService.addToRoadmap(problem.getId(), RoadmapStage.B, nextOrder++, null, true, null);
-        progressService.updateProgress(problem.getId(), ProblemState.SOLVED, null, null, null, null, null, null);
+        progressService.updateProgress(problem.getId(), ProblemState.SOLVED, null);
 
         ProblemLibraryEntry blindOrderEntry = libraryService.getBlindOrderEntries().stream()
                 .filter(entry -> entry.problem().getId() == problem.getId())
@@ -152,7 +152,7 @@ class ProblemLibraryServiceTest {
         // another test's D3 fixtures (which use their own random sequence numbers).
         problemService.addToRoadmap(solved.getId(), RoadmapStage.D3, baseOrder, null, true, null);
         problemService.addToRoadmap(unsolved.getId(), RoadmapStage.D3, baseOrder + 1, null, true, null);
-        progressService.updateProgress(solved.getId(), ProblemState.SOLVED, null, null, null, null, null, null);
+        progressService.updateProgress(solved.getId(), ProblemState.SOLVED, null);
 
         Optional<ProblemLibraryEntry> recommended = libraryService.getBlindOrderEntries().stream()
                 .filter(entry -> entry.problem().getPlatform().equals(platform))

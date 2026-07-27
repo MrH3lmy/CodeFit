@@ -68,7 +68,7 @@ class ProblemSolvingIsolationTest {
 
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-142-ISOLATION-1",
                 "Isolation Fixture", null, "General", null, List.of());
-        progressService.updateProgress(problem.getId(), ProblemState.SOLVED, null, null, null, null, null, null);
+        progressService.updateProgress(problem.getId(), ProblemState.SOLVED, null);
         attemptService.recordAttempt(problem.getId(), SubmissionResult.AC, null, null, null, null, null);
 
         Flashcard afterProblemActivity = flashcardRepository.findById(card.getId()).orElseThrow();
@@ -90,8 +90,9 @@ class ProblemSolvingIsolationTest {
 
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-142-ISOLATION-2",
                 "Reverse Isolation Fixture", null, "General", null, List.of());
-        progressService.updateProgress(problem.getId(), ProblemState.IN_PROGRESS, null, null, null,
-                "still working on it", null, null);
+        progressService.updateProgress(problem.getId(), ProblemState.IN_PROGRESS, null);
+        progressService.updateReflection(problem.getId(), new ProblemReflection(null, null, null,
+                "still working on it", null, null, null, null, null, null, false, false, false, false));
         int attemptCountBefore = attemptService.getAttempts(problem.getId()).size();
         ProblemState stateBefore = progressService.getOrCreate(problem.getId()).getState();
 

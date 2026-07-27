@@ -29,6 +29,25 @@ public class ProblemAttemptService {
         return attemptRepository.findByProblemId(problemId);
     }
 
+    /**
+     * Whether the problem's very first submission was itself a success (#146). {@code ACX} counts:
+     * it means the learner already knew the solution going in, which is still "got it right the
+     * first time" for accuracy purposes, just not from a fresh timed attempt. Returns {@code false}
+     * for a problem with no attempts yet, rather than throwing, so it can be safely used while
+     * computing accuracy across a whole roadmap.
+     */
+    public boolean isFirstSubmissionAccurate(long problemId) {
+        return isFirstSubmissionAccurate(getAttempts(problemId));
+    }
+
+    static boolean isFirstSubmissionAccurate(List<ProblemAttempt> attempts) {
+        return attempts.stream()
+                .filter(attempt -> attempt.attemptNumber() == 1)
+                .findFirst()
+                .map(attempt -> attempt.submissionResult() == SubmissionResult.AC || attempt.submissionResult() == SubmissionResult.ACX)
+                .orElse(false);
+    }
+
     public ProblemAttempt recordAttempt(long problemId, SubmissionResult submissionResult, Integer readingTimeSeconds,
                                         Integer thinkingTimeSeconds, Integer codingTimeSeconds,
                                         Integer debuggingTimeSeconds, String notes) {

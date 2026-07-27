@@ -17,6 +17,7 @@ public abstract class BaseController {
 
     public void goDashboard() { NavigationService.showDashboard(); }
     public void goDecks() { NavigationService.showDecks(); }
+    public void goProblems() { NavigationService.showProblems(); }
     public void goAddCard() { NavigationService.showAddCard(); }
     public void goReview() { NavigationService.showReview(); }
     public void goSyllabus() { NavigationService.showSyllabus(); }

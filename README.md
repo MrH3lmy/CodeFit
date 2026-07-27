@@ -110,6 +110,11 @@ progress already recorded locally. See
 workbook shape and the exact rules the importer follows. The real Junior Training Sheet is never
 committed to this repository — only synthetic, programmatically-generated fixtures are used in tests.
 
+Imported problems show up on the **Problems** screen (its own sidebar entry), which defaults to
+following the roadmap in Blind Order and highlights the next recommended unsolved problem, or can be
+switched to a filterable Topics view over the exact same problems and progress. See
+[`docs/problem-library.md`](docs/problem-library.md) for how the two views stay in sync.
+
 ## Anki-compatible card import/export
 
 Decks can import and export tab-separated text files (`.tsv` or `.txt`) from the Decks screen with the **Import Cards** and **Export Cards** buttons. Choose a deck first, then select a file.

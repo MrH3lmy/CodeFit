@@ -13,6 +13,7 @@
         <Button fx:id="todayButton" text="Today" onAction="#goToday" maxWidth="Infinity" />
         <Button fx:id="reviewButton" text="Review" onAction="#goReview" maxWidth="Infinity" />
         <Button fx:id="libraryButton" text="Library" onAction="#goLibrary" maxWidth="Infinity" />
+        <Button fx:id="problemsButton" text="Problems" onAction="#goProblems" maxWidth="Infinity" />
         <Button fx:id="progressButton" text="Progress" onAction="#goProgress" maxWidth="Infinity" />
     </VBox>
 

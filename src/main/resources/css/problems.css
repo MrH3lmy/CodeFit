@@ -1,0 +1,55 @@
+/* Problem Library (#144): problem row cards, mandatory/optional and state badges, and the
+ * next-recommended-problem highlight card. */
+
+.problem-row-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+.problem-row-subtitle {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+}
+
+.problem-row-meta {
+    -fx-text-fill: -color-accent;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.pill-mandatory {
+    -fx-border-color: -color-accent;
+    -fx-text-fill: -color-accent;
+}
+
+.pill-optional {
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-secondary;
+}
+
+.pill-state-solved {
+    -fx-border-color: -color-success;
+    -fx-text-fill: -color-success;
+}
+
+.pill-state-in-progress {
+    -fx-border-color: -color-warning;
+    -fx-text-fill: -color-warning;
+}
+
+.pill-state-needs-revisit {
+    -fx-border-color: -color-danger;
+    -fx-text-fill: -color-danger;
+}
+
+.pill-state-not-started {
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-secondary;
+}
+
+.next-recommended-card {
+    -fx-border-color: -color-accent;
+    -fx-border-width: 1 1 1 4;
+}

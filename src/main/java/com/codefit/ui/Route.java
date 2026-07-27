@@ -9,6 +9,7 @@ public enum Route {
     REVIEW("review.fxml", "Review", "CodeFit - Review", NavItem.REVIEW),
     LIBRARY("decks.fxml", "Library", "CodeFit - Library", NavItem.LIBRARY),
     SYLLABUS("syllabus.fxml", "Java Backend Syllabus", "CodeFit - Java Backend Syllabus", NavItem.LIBRARY),
+    PROBLEMS("problems.fxml", "Problems", "CodeFit - Problems", NavItem.PROBLEMS),
     PROGRESS("stats.fxml", "Progress", "CodeFit - Progress", NavItem.PROGRESS),
     ADD_CARD("add-card.fxml", "New Card", "CodeFit - New Card", null),
     GUIDED_TRAINING("guided-training.fxml", "Today's Training", "CodeFit - Today's Training", null),
@@ -50,11 +51,12 @@ public enum Route {
         return navItem;
     }
 
-    /** The four persistent primary navigation destinations shown in the sidebar. */
+    /** The five persistent primary navigation destinations shown in the sidebar. */
     public enum NavItem {
         TODAY,
         REVIEW,
         LIBRARY,
+        PROBLEMS,
         PROGRESS
     }
 }

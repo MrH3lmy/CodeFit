@@ -60,6 +60,7 @@ class RouteTest {
         assertEquals(Route.NavItem.TODAY, Route.TODAY.navItem());
         assertEquals(Route.NavItem.REVIEW, Route.REVIEW.navItem());
         assertEquals(Route.NavItem.LIBRARY, Route.LIBRARY.navItem());
+        assertEquals(Route.NavItem.PROBLEMS, Route.PROBLEMS.navItem());
         assertEquals(Route.NavItem.PROGRESS, Route.PROGRESS.navItem());
     }
 

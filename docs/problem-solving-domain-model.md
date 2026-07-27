@@ -4,11 +4,11 @@ Problem-solving training is a workflow entirely separate from flashcard review (
 document describes the persistent data model introduced for it, the invariants each table enforces,
 and why the five entities are split the way they are. It's the schema/naming reference the
 acceptance criteria for #142 call for; the workbook importer (#143, see
-[`problem-solving-workbook-import.md`](problem-solving-workbook-import.md)), Problem Library (#144),
-solving workspace (#145), submission/reflection tracking (#146), dashboards (#147), and flashcard
-integration (#148) all build on top of it. The importer needed one small additive extension to this
-layer — see "Connection-scoped overloads" in the importer doc — but no table, constraint, or existing
-method signature described below changed.
+[`problem-solving-workbook-import.md`](problem-solving-workbook-import.md)), Problem Library (#144,
+see [`problem-library.md`](problem-library.md)), solving workspace (#145), submission/reflection
+tracking (#146), dashboards (#147), and flashcard integration (#148) all build on top of it. The
+importer needed one small additive extension to this layer — see "Connection-scoped overloads" in
+the importer doc — but no table, constraint, or existing method signature described below changed.
 
 ## Why five tables, not one
 

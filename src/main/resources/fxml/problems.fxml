@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.ProblemsController">
+    <content>
+        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+            <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
+                <Label text="Problems" styleClass="page-title" wrapText="true" />
+                <Label text="Follow the blind roadmap by default, or browse the same problems and progress by topic." styleClass="page-subtitle" wrapText="true" />
+            </VBox>
+
+            <Label fx:id="messageLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+
+            <HBox spacing="8">
+                <Button fx:id="blindOrderToggleButton" text="Blind Order" onAction="#showBlindOrderView" styleClass="primary-button" />
+                <Button fx:id="topicsToggleButton" text="Topics" onAction="#showTopicsView" styleClass="ghost-button" />
+            </HBox>
+
+            <VBox fx:id="nextRecommendedCard" spacing="6" styleClass="panel, next-recommended-card" maxWidth="Infinity" visible="false" managed="false">
+                <Label text="Next Recommended" styleClass="section-title" />
+                <Label fx:id="nextRecommendedLabel" wrapText="true" />
+                <Button fx:id="nextRecommendedResumeButton" text="Start / Resume" onAction="#resumeNextRecommended" styleClass="action-button" />
+            </VBox>
+
+            <TextField fx:id="searchField" promptText="Search title, code, or platform…" maxWidth="Infinity" />
+
+            <HBox spacing="8">
+                <MenuButton fx:id="topicMenuButton" text="Topic: All" styleClass="ghost-button" />
+                <MenuButton fx:id="levelMenuButton" text="Level: All" styleClass="ghost-button" />
+                <MenuButton fx:id="qualityMenuButton" text="Quality: All" styleClass="ghost-button" />
+                <MenuButton fx:id="platformMenuButton" text="Platform: All" styleClass="ghost-button" />
+                <MenuButton fx:id="stateMenuButton" text="Status: All" styleClass="ghost-button" />
+                <Button text="Clear Filters" onAction="#clearFilters" styleClass="ghost-button" />
+            </HBox>
+
+            <Label fx:id="emptyStateLabel" styleClass="muted" wrapText="true" visible="false" managed="false" />
+            <VBox fx:id="problemsList" spacing="12" maxWidth="Infinity" />
+        </VBox>
+    </content>
+</ScrollPane>

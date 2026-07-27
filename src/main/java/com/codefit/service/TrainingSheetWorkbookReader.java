@@ -1,8 +1,10 @@
 package com.codefit.service;
 
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Hyperlink;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -18,19 +20,45 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Reads a Junior Training Sheet-style {@code .xlsx} workbook (roadmap sheets plus an optional
  * {@code Topics} sheet) into a plain in-memory {@link ParsedWorkbook}, entirely separate from the
  * import/matching logic in {@link TrainingSheetImportService}. Every cell is read through POI's
  * {@link DataFormatter} against the evaluated formula result, so numeric, text, and formula cells
- * are all read the same way without hand-rolled per-type branching.
+ * are all read the same way without hand-rolled per-type branching. Notably, POI's
+ * {@link FormulaEvaluator} evaluates a {@code =HYPERLINK(url, "text")} formula cell to {@code "text"}
+ * even when the workbook has no cached value for it, unlike tools that only trust a cached formula
+ * result (#159).
  *
  * <p>A sheet's header row (its first non-empty row) is matched against
  * {@link TrainingSheetColumns#canonicalize}; unrecognized header columns are ignored rather than
  * rejected, and rows that are entirely blank (e.g. a spacer row) are skipped.
+ *
+ * <p>Two real-workbook accommodations (#159) live here rather than in the importer, since they are
+ * about recognizing the workbook's shape, not about matching/import semantics:
+ * <ul>
+ *   <li>A header row whose problem-code column is recognized but whose immediately preceding column
+ *       has no (or unrecognized) header text is assumed to be the title column anyway — the real
+ *       workbook's "B" stage sheet omits that one header label while every other stage spells it out,
+ *       and the column position is otherwise identical across every roadmap sheet.</li>
+ *   <li>Rows that are clearly not real problems — an aggregate "AC Averages =&gt;" row, or one of the
+ *       real workbook's five literal "Sample Name/Link" placeholder rows — are dropped here, the same
+ *       way an entirely blank row is, so they never reach the importer as (or generate warnings about)
+ *       invalid data.</li>
+ * </ul>
  */
 final class TrainingSheetWorkbookReader {
+
+    private static final Pattern SAMPLE_ROW_PATTERN = Pattern.compile("^Sample (Name|Link)\\d*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HYPERLINK_FORMULA_PATTERN =
+            Pattern.compile("HYPERLINK\\(\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
+
+    /** Synthetic column keys, not header-matched: hyperlink targets recovered from the code/title cells (#159). */
+    static final String CODE_URL = "CODE_URL";
+    static final String TITLE_URL = "TITLE_URL";
 
     private TrainingSheetWorkbookReader() {
     }
@@ -69,6 +97,7 @@ final class TrainingSheetWorkbookReader {
                 canonicalColumnByIndex.put(cell.getColumnIndex(), canonical);
             }
         }
+        applyTitleBeforeCodePositionalFallback(canonicalColumnByIndex);
 
         List<ParsedWorkbookRow> rows = new ArrayList<>();
         for (int rowIndex = headerRow.getRowNum() + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
@@ -79,10 +108,12 @@ final class TrainingSheetWorkbookReader {
             Map<String, String> values = new LinkedHashMap<>();
             for (Map.Entry<Integer, String> entry : canonicalColumnByIndex.entrySet()) {
                 Cell cell = row.getCell(entry.getKey());
-                String value = cell == null ? "" : formatter.formatCellValue(cell, evaluator).strip();
-                values.put(entry.getValue(), value);
+                values.put(entry.getValue(), formatCellValueSafely(cell, formatter, evaluator));
             }
-            if (values.values().stream().allMatch(String::isBlank)) {
+            addHyperlinkIfPresent(row, canonicalColumnByIndex, TrainingSheetColumns.CODE, CODE_URL, values);
+            addHyperlinkIfPresent(row, canonicalColumnByIndex, TrainingSheetColumns.TITLE, TITLE_URL, values);
+
+            if (isBlankOrInstructionalRow(values)) {
                 continue;
             }
             // Spreadsheet row numbers are 1-based; rowIndex is 0-based.
@@ -90,6 +121,109 @@ final class TrainingSheetWorkbookReader {
         }
 
         return new ParsedSheet(sheet.getSheetName(), new LinkedHashSet<>(canonicalColumnByIndex.values()), rows);
+    }
+
+    /**
+     * If the header row recognized a problem-code column but not a title column, and the column
+     * immediately before the code column exists and has no recognized header of its own, treat that
+     * column as the title column. This is the real workbook's "B" stage sheet: every other roadmap
+     * sheet spells out a title header in that position, but its position (immediately left of the
+     * code column) is identical across every sheet.
+     */
+    private static void applyTitleBeforeCodePositionalFallback(Map<Integer, String> canonicalColumnByIndex) {
+        if (canonicalColumnByIndex.containsValue(TrainingSheetColumns.TITLE)) {
+            return;
+        }
+        Integer codeColumnIndex = null;
+        for (Map.Entry<Integer, String> entry : canonicalColumnByIndex.entrySet()) {
+            if (TrainingSheetColumns.CODE.equals(entry.getValue())) {
+                codeColumnIndex = entry.getKey();
+                break;
+            }
+        }
+        if (codeColumnIndex == null || codeColumnIndex < 1) {
+            return;
+        }
+        int titleColumnIndex = codeColumnIndex - 1;
+        if (!canonicalColumnByIndex.containsKey(titleColumnIndex)) {
+            canonicalColumnByIndex.put(titleColumnIndex, TrainingSheetColumns.TITLE);
+        }
+    }
+
+    /**
+     * Formats one cell's value, falling back to its last-saved cached value (or blank) if POI's
+     * formula evaluator can't evaluate it. A real-world workbook can carry aggregate/summary formulas
+     * (e.g. an averages row using a function POI's evaluator doesn't implement) in cells this reader
+     * never treats as real problem data anyway (see {@link #isBlankOrInstructionalRow}); a formula POI
+     * can't evaluate must never fail the whole import over a row that was going to be skipped regardless.
+     */
+    private static String formatCellValueSafely(Cell cell, DataFormatter formatter, FormulaEvaluator evaluator) {
+        if (cell == null) {
+            return "";
+        }
+        try {
+            return formatter.formatCellValue(cell, evaluator).strip();
+        } catch (RuntimeException unevaluableFormula) {
+            try {
+                return formatter.formatCellValue(cell).strip();
+            } catch (RuntimeException stillUnreadable) {
+                return "";
+            }
+        }
+    }
+
+    /** Recovers a hyperlink target for {@code canonicalColumn}'s cell (native hyperlink, or the URL
+     *  argument of a {@code =HYPERLINK(url, text)} formula) into {@code syntheticKey}, if present. */
+    private static void addHyperlinkIfPresent(Row row, Map<Integer, String> canonicalColumnByIndex,
+                                              String canonicalColumn, String syntheticKey, Map<String, String> values) {
+        Integer columnIndex = null;
+        for (Map.Entry<Integer, String> entry : canonicalColumnByIndex.entrySet()) {
+            if (canonicalColumn.equals(entry.getValue())) {
+                columnIndex = entry.getKey();
+                break;
+            }
+        }
+        if (columnIndex == null) {
+            return;
+        }
+        Cell cell = row.getCell(columnIndex);
+        if (cell == null) {
+            return;
+        }
+        Hyperlink hyperlink = cell.getHyperlink();
+        if (hyperlink != null && hyperlink.getAddress() != null && !hyperlink.getAddress().isBlank()) {
+            values.put(syntheticKey, hyperlink.getAddress().strip());
+            return;
+        }
+        if (cell.getCellType() == CellType.FORMULA) {
+            Matcher matcher = HYPERLINK_FORMULA_PATTERN.matcher(cell.getCellFormula());
+            if (matcher.find()) {
+                values.put(syntheticKey, matcher.group(1).strip());
+            }
+        }
+    }
+
+    /**
+     * A row is dropped here (never reaching the importer) if it's blank, an aggregate/summary row, or
+     * one of the real workbook's literal "Sample Name/Link" placeholder rows (#159). A row with a code
+     * or title that merely fails other validation (e.g. one of the two present but not the other)
+     * still reaches the importer, which reports it as an invalid row rather than silently dropping it.
+     */
+    private static boolean isBlankOrInstructionalRow(Map<String, String> values) {
+        String title = blankToNull(values.get(TrainingSheetColumns.TITLE));
+        String code = blankToNull(values.get(TrainingSheetColumns.CODE));
+        if (title == null && code == null) {
+            return true;
+        }
+        if (code != null && code.toLowerCase(java.util.Locale.ROOT).contains("average")) {
+            return true;
+        }
+        return (title != null && SAMPLE_ROW_PATTERN.matcher(title).matches())
+                || (code != null && SAMPLE_ROW_PATTERN.matcher(code).matches());
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 
     /** The first row in the sheet that isn't entirely empty, treated as the header row. */
@@ -101,7 +235,7 @@ final class TrainingSheetWorkbookReader {
             }
             boolean hasContent = false;
             for (Cell cell : row) {
-                if (cell.getCellType() != org.apache.poi.ss.usermodel.CellType.BLANK) {
+                if (cell.getCellType() != CellType.BLANK) {
                     hasContent = true;
                     break;
                 }

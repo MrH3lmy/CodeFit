@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,10 +19,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Touches the local sqlite database the same way {@code AssessmentIsolationTest} does (idempotently,
  * using fixed TEST-FIXTURE identifiers safe to re-insert across repeated runs), verifying the
  * uniqueness and roadmap-membership invariants {@link ProblemService} is responsible for (#142).
+ *
+ * <p>Roadmap slot numbers are randomly offset (like {@code TrainingSheetImportServiceTest}'s
+ * {@code nextOrder}) rather than small fixed literals: {@code addToRoadmap}/
+ * {@code upsertRoadmapMembership}'s reposition-not-duplicate and slot-conflict behavior doesn't care
+ * what the actual numbers are, and a real curriculum import (#159) legitimately wants the low,
+ * naturally-ordered stage-A/B/D2 slots this test used to hard-code, permanently, across every future
+ * run of this shared local `codefit.db`.
  */
 class ProblemServiceTest {
 
     private final ProblemService problemService = new ProblemService();
+    private final Random random = new Random();
+    private int nextOrder = 20_000_000 + random.nextInt(1_000_000);
 
     @BeforeAll
     static void initializeDatabase() {
@@ -57,8 +67,8 @@ class ProblemServiceTest {
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-142-3",
                 "Repeated Across Stages", null, "General", null, List.of());
 
-        problemService.addToRoadmap(problem.getId(), RoadmapStage.A, 1, 1, true, DifficultyLevel.EASY);
-        problemService.addToRoadmap(problem.getId(), RoadmapStage.C1, 3, 2, false, DifficultyLevel.MEDIUM);
+        problemService.addToRoadmap(problem.getId(), RoadmapStage.A, nextOrder++, 1, true, DifficultyLevel.EASY);
+        problemService.addToRoadmap(problem.getId(), RoadmapStage.C1, nextOrder++, 2, false, DifficultyLevel.MEDIUM);
 
         List<RoadmapEntry> entries = problemService.getRoadmapEntriesForProblem(problem.getId());
         assertEquals(2, entries.size());
@@ -71,15 +81,17 @@ class ProblemServiceTest {
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-142-4",
                 "Repositioned Problem", null, "General", null, List.of());
 
-        problemService.addToRoadmap(problem.getId(), RoadmapStage.B, 5, 1, true, DifficultyLevel.EASY);
-        problemService.addToRoadmap(problem.getId(), RoadmapStage.B, 9, 2, false, DifficultyLevel.HARD);
+        int firstSlot = nextOrder++;
+        int repositionedSlot = nextOrder++;
+        problemService.addToRoadmap(problem.getId(), RoadmapStage.B, firstSlot, 1, true, DifficultyLevel.EASY);
+        problemService.addToRoadmap(problem.getId(), RoadmapStage.B, repositionedSlot, 2, false, DifficultyLevel.HARD);
 
         List<RoadmapEntry> entries = problemService.getRoadmapEntriesForProblem(problem.getId());
         long stageBCount = entries.stream().filter(entry -> entry.getStage() == RoadmapStage.B).count();
         assertEquals(1, stageBCount, "re-registering in the same stage must update, not duplicate, the membership");
 
         RoadmapEntry entry = entries.stream().filter(candidate -> candidate.getStage() == RoadmapStage.B).findFirst().orElseThrow();
-        assertEquals(9, entry.getSequenceOrder());
+        assertEquals(repositionedSlot, entry.getSequenceOrder());
         assertEquals(DifficultyLevel.HARD, entry.getSuggestedLevel());
     }
 
@@ -90,10 +102,11 @@ class ProblemServiceTest {
         Problem second = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-142-6",
                 "Slot Challenger", null, "General", null, List.of());
 
-        problemService.addToRoadmap(first.getId(), RoadmapStage.D2, 42, null, true, null);
+        int contestedSlot = nextOrder++;
+        problemService.addToRoadmap(first.getId(), RoadmapStage.D2, contestedSlot, null, true, null);
 
         assertThrows(IllegalStateException.class,
-                () -> problemService.addToRoadmap(second.getId(), RoadmapStage.D2, 42, null, true, null));
+                () -> problemService.addToRoadmap(second.getId(), RoadmapStage.D2, contestedSlot, null, true, null));
     }
 
     @Test

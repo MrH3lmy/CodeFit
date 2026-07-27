@@ -4,9 +4,13 @@ import com.codefit.config.DatabaseConfig;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.ImportBatch;
 import com.codefit.model.Problem;
+import com.codefit.model.ProblemAttempt;
 import com.codefit.model.ProblemState;
 import com.codefit.model.RoadmapStage;
+import com.codefit.model.SolvedWith;
+import com.codefit.model.SubmissionResult;
 import com.codefit.repository.ImportBatchRepository;
+import com.codefit.repository.ProblemAttemptRepository;
 import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.RoadmapEntryRepository;
@@ -14,6 +18,7 @@ import com.codefit.repository.RoadmapEntryRepository;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -79,6 +84,7 @@ public class TrainingSheetImportService {
     private final ProblemProgressService progressService;
     private final RoadmapEntryRepository roadmapEntryRepository;
     private final ImportBatchRepository importBatchRepository;
+    private final ProblemAttemptRepository problemAttemptRepository;
 
     public TrainingSheetImportService() {
         this(new ProblemRepository(), new RoadmapEntryRepository(), new ProblemProgressRepository(), new ImportBatchRepository());
@@ -96,6 +102,7 @@ public class TrainingSheetImportService {
         this.progressService = new ProblemProgressService(progressRepository);
         this.roadmapEntryRepository = roadmapEntryRepository;
         this.importBatchRepository = importBatchRepository;
+        this.problemAttemptRepository = new ProblemAttemptRepository();
     }
 
     /** Checks the workbook's structure without writing anything to the database. */
@@ -211,7 +218,13 @@ public class TrainingSheetImportService {
                 continue;
             }
 
-            String platform = Optional.ofNullable(row.get(TrainingSheetColumns.PLATFORM)).orElse(DEFAULT_PLATFORM);
+            String url = firstNonBlank(row.get(TrainingSheetColumns.URL),
+                    row.get(TrainingSheetWorkbookReader.CODE_URL), row.get(TrainingSheetWorkbookReader.TITLE_URL));
+            String platform = row.get(TrainingSheetColumns.PLATFORM);
+            if (platform == null) {
+                platform = PlatformInference.infer(code, url).orElse(DEFAULT_PLATFORM);
+            }
+
             String dedupeKey = platform.toLowerCase(Locale.ROOT) + "::" + code.toLowerCase(Locale.ROOT);
             if (!seenKeysInSheet.add(dedupeKey)) {
                 context.duplicateRowsSkipped++;
@@ -220,7 +233,6 @@ public class TrainingSheetImportService {
                 continue;
             }
 
-            String url = row.get(TrainingSheetColumns.URL);
             String topic = row.get(TrainingSheetColumns.TOPIC);
             Integer quality = parseQuality(row, stage, context);
             String resource = row.get(TrainingSheetColumns.RESOURCES);
@@ -267,6 +279,57 @@ public class TrainingSheetImportService {
                 context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
                         + ": unrecognized status '" + rawStatus + "', progress not imported for this row.");
             }
+
+            importAttemptSnapshot(connection, problemResult.problem().getId(), rawStatus, row, stage, context);
+            importReflectionSnapshot(connection, problemResult.problem().getId(), topic, row, stage, context);
+        }
+    }
+
+    /**
+     * The workbook records one coarse row per problem — aggregate phase timings and a submission
+     * count, not a per-submission log — so this creates at most one {@link ProblemAttempt} "snapshot"
+     * per problem, only the first time the problem is imported (guarded by
+     * {@link ProblemAttemptRepository#countByProblemId}) so a re-import, or the same problem appearing
+     * in a second roadmap stage, never overwrites or duplicates attempts the learner already has,
+     * imported or recorded live through the app (#159).
+     */
+    private void importAttemptSnapshot(Connection connection, long problemId, String rawStatus, ParsedWorkbookRow row,
+                                       RoadmapStage stage, ImportContext context) throws SQLException {
+        SubmissionResult submissionResult = parseSubmissionResult(rawStatus);
+        if (submissionResult == null) {
+            return;
+        }
+        if (problemAttemptRepository.countByProblemId(connection, problemId) > 0) {
+            return;
+        }
+        Integer submitCount = parsePositiveInt(row.get(TrainingSheetColumns.SUBMIT_COUNT));
+        int attemptNumber = submitCount != null && submitCount > 0 ? submitCount : 1;
+        Integer readingSeconds = parseMinutesToSeconds(row.get(TrainingSheetColumns.READING_TIME_MINUTES));
+        Integer thinkingSeconds = parseMinutesToSeconds(row.get(TrainingSheetColumns.THINKING_TIME_MINUTES));
+        Integer codingSeconds = parseMinutesToSeconds(row.get(TrainingSheetColumns.CODING_TIME_MINUTES));
+        Integer debuggingSeconds = parseMinutesToSeconds(row.get(TrainingSheetColumns.DEBUG_TIME_MINUTES));
+        String notes = row.get(TrainingSheetColumns.APPROACH_NOTES);
+
+        problemAttemptRepository.save(connection, new ProblemAttempt(0, problemId, attemptNumber, submissionResult,
+                readingSeconds, thinkingSeconds, codingSeconds, debuggingSeconds, LocalDateTime.now(), notes));
+        context.attemptsImported++;
+    }
+
+    /** Fills in {@link com.codefit.model.ProblemProgress} reflection fields the workbook carries
+     *  (perceived difficulty, assistance level, actual topic, approach notes), never overwriting a
+     *  field the learner already has (see {@link ProblemProgressService#applyImportedReflection}). */
+    private void importReflectionSnapshot(Connection connection, long problemId, String actualTopic, ParsedWorkbookRow row,
+                                          RoadmapStage stage, ImportContext context) throws SQLException {
+        Integer perceivedDifficulty = parsePerceivedDifficulty(row, stage, context);
+        SolvedWith solvedWith = parseSolvedWith(row.get(TrainingSheetColumns.INDEPENDENCE));
+        String approachNotes = row.get(TrainingSheetColumns.APPROACH_NOTES);
+        if (perceivedDifficulty == null && solvedWith == null && actualTopic == null && approachNotes == null) {
+            return;
+        }
+        boolean applied = progressService.applyImportedReflection(
+                connection, problemId, perceivedDifficulty, solvedWith, actualTopic, approachNotes);
+        if (applied) {
+            context.reflectionFieldsImported++;
         }
     }
 
@@ -420,6 +483,84 @@ public class TrainingSheetImportService {
         return RECOGNIZED_NON_ADVANCING_STATUSES.contains(raw.strip().toLowerCase(Locale.ROOT));
     }
 
+    private static String firstNonBlank(String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.isBlank()) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /** The workbook's status token as a judge verdict, or {@code null} if blank/unrecognized (e.g. "In Progress" isn't a verdict). */
+    private SubmissionResult parseSubmissionResult(String rawStatus) {
+        if (rawStatus == null) {
+            return null;
+        }
+        try {
+            return SubmissionResult.valueOf(rawStatus.strip().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException notAVerdict) {
+            return null;
+        }
+    }
+
+    /** "By yourself? Yes/No/Hint" — "No" is treated as editorial-assisted rather than a full solution
+     *  copy, since the workbook doesn't distinguish the two; see {@link SolvedWith}. */
+    private SolvedWith parseSolvedWith(String rawIndependence) {
+        if (rawIndependence == null) {
+            return null;
+        }
+        return switch (rawIndependence.strip().toLowerCase(Locale.ROOT)) {
+            case "yes", "y" -> SolvedWith.SELF;
+            case "hint" -> SolvedWith.HINT;
+            case "no", "n" -> SolvedWith.EDITORIAL;
+            default -> null;
+        };
+    }
+
+    private Integer parsePerceivedDifficulty(ParsedWorkbookRow row, RoadmapStage stage, ImportContext context) {
+        String raw = row.get(TrainingSheetColumns.PERCEIVED_DIFFICULTY);
+        if (raw == null) {
+            return null;
+        }
+        try {
+            int value = (int) Math.round(Double.parseDouble(raw));
+            if (value < 1 || value > 10) {
+                context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
+                        + ": perceived difficulty '" + raw + "' is outside 1-10, ignored.");
+                return null;
+            }
+            return value;
+        } catch (NumberFormatException exception) {
+            context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
+                    + ": unrecognized perceived difficulty '" + raw + "', ignored.");
+            return null;
+        }
+    }
+
+    private Integer parsePositiveInt(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return (int) Math.round(Double.parseDouble(raw));
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private Integer parseMinutesToSeconds(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        try {
+            double minutes = Double.parseDouble(raw);
+            return (int) Math.round(minutes * 60);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
     private static final class ImportContext {
         int problemsCreated;
         int problemsUpdated;
@@ -428,6 +569,8 @@ public class TrainingSheetImportService {
         int progressRecordsImported;
         int duplicateRowsSkipped;
         int invalidRows;
+        int attemptsImported;
+        int reflectionFieldsImported;
         long importBatchId;
         final List<String> warnings = new ArrayList<>();
 
@@ -437,7 +580,7 @@ public class TrainingSheetImportService {
             Long reportedBatchId = dryRun ? null : importBatchId;
             return new TrainingSheetImportSummary(dryRun, problemsCreated, problemsUpdated, problemsReused,
                     roadmapMembershipsCreated, progressRecordsImported, duplicateRowsSkipped, invalidRows,
-                    List.copyOf(warnings), reportedBatchId);
+                    attemptsImported, reflectionFieldsImported, List.copyOf(warnings), reportedBatchId);
         }
     }
 }

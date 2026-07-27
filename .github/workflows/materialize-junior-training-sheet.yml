@@ -1,0 +1,57 @@
+name: Materialize approved training sheet fixture
+
+on:
+  push:
+    branches:
+      - chore/add-junior-training-sheet-fixture
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out fixture branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/add-junior-training-sheet-fixture
+          fetch-depth: 0
+
+      - name: Download public workbook export
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/import-fixtures
+          curl --fail --location --retry 3 --retry-delay 2 \
+            'https://docs.google.com/spreadsheets/d/1jZjaGtG-N_-dZfBPQJ3sRS0mmC-F0J4c/export?format=xlsx' \
+            --output 'data/import-fixtures/Ahmed-Junior-Training-Sheet-V7.0.xlsx'
+
+      - name: Validate workbook and write checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import is_zipfile
+
+          path = Path('data/import-fixtures/Ahmed-Junior-Training-Sheet-V7.0.xlsx')
+          if not path.is_file() or path.stat().st_size == 0:
+              raise SystemExit('Downloaded workbook is missing or empty')
+          if not is_zipfile(path):
+              raise SystemExit('Downloaded file is not a valid XLSX/ZIP workbook')
+          print(f'Validated {path} ({path.stat().st_size} bytes)')
+          PY
+          sha256sum 'data/import-fixtures/Ahmed-Junior-Training-Sheet-V7.0.xlsx' \
+            > 'data/import-fixtures/Ahmed-Junior-Training-Sheet-V7.0.xlsx.sha256'
+
+      - name: Commit the workbook and remove this one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm '.github/workflows/materialize-junior-training-sheet.yml'
+          git add data/import-fixtures
+          git commit -m 'Add approved Junior Training Sheet workbook fixture'
+          git push origin HEAD:chore/add-junior-training-sheet-fixture

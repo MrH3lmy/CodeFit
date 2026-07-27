@@ -23,27 +23,42 @@ import java.util.Optional;
  * {@code ProblemProgressService}) decide which one applies by checking {@link #findByProblemId(long)}
  * first, which keeps the "exactly one progress record per problem" invariant explicit at the call
  * site instead of hidden behind a single ambiguous method.
+ *
+ * <p>Every operation has a {@link Connection}-scoped overload so the workbook importer (#143) can
+ * run every row inside one shared transaction.
  */
 public class ProblemProgressRepository {
 
     public Optional<ProblemProgress> findByProblemId(long problemId) {
-        String sql = "SELECT * FROM problem_progress WHERE problem_id = ?";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, problemId);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next() ? Optional.of(mapProgress(resultSet)) : Optional.empty();
-            }
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return findByProblemId(connection, problemId);
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to load problem progress", exception);
         }
     }
 
+    public Optional<ProblemProgress> findByProblemId(Connection connection, long problemId) throws SQLException {
+        String sql = "SELECT * FROM problem_progress WHERE problem_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, problemId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? Optional.of(mapProgress(resultSet)) : Optional.empty();
+            }
+        }
+    }
+
     public ProblemProgress save(ProblemProgress progress) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return save(connection, progress);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to save problem progress", exception);
+        }
+    }
+
+    public ProblemProgress save(Connection connection, ProblemProgress progress) throws SQLException {
         String sql = "INSERT INTO problem_progress (problem_id, state, perceived_difficulty, solved_with, "
                 + "final_category, approach_notes, mistake_notes, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bindInsertFields(statement, progress);
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -51,18 +66,23 @@ public class ProblemProgressRepository {
                     progress.setId(keys.getLong(1));
                 }
             }
-            return findByProblemId(progress.getProblemId()).orElseThrow();
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to save problem progress", exception);
         }
+        return findByProblemId(connection, progress.getProblemId()).orElseThrow();
     }
 
     public void update(ProblemProgress progress) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            update(connection, progress);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to update problem progress", exception);
+        }
+    }
+
+    public void update(Connection connection, ProblemProgress progress) throws SQLException {
         String sql = "UPDATE problem_progress SET state = ?, perceived_difficulty = ?, solved_with = ?, "
                 + "final_category = ?, approach_notes = ?, mistake_notes = ?, completed_at = ?, "
                 + "updated_at = CURRENT_TIMESTAMP WHERE problem_id = ?";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, progress.getState().name());
             statement.setString(2, progress.getPerceivedDifficulty() == null ? null : progress.getPerceivedDifficulty().name());
             statement.setString(3, progress.getSolvedWith() == null ? null : progress.getSolvedWith().name());
@@ -72,8 +92,6 @@ public class ProblemProgressRepository {
             statement.setString(7, progress.getCompletedAt() == null ? null : progress.getCompletedAt().toString());
             statement.setLong(8, progress.getProblemId());
             statement.executeUpdate();
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to update problem progress", exception);
         }
     }
 

@@ -38,6 +38,12 @@
                 <ChoiceBox fx:id="dailyNewCardLimitChoiceBox" maxWidth="Infinity" />
                 <Label fx:id="guidedRoutineDetailLabel" styleClass="dashboard-card-helper" wrapText="true" />
             </VBox>
+
+            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
+                <Label text="Problem-Solving Training" styleClass="section-title" />
+                <Label text="Import a local Junior Training Sheet workbook (.xlsx) to build your problem roadmap. Re-importing the same file is always safe: it never creates duplicates and never overwrites progress you've already recorded." styleClass="muted" wrapText="true" />
+                <Button text="Import Training Sheet…" onAction="#importTrainingSheet" />
+            </VBox>
         </VBox>
     </content>
 </ScrollPane>

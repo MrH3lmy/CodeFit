@@ -179,6 +179,10 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "flashcards", "time_limit_seconds", "INTEGER");
         addColumnIfMissing(connection, "flashcards", "card_state", "TEXT NOT NULL DEFAULT 'NEW'");
         addColumnIfMissing(connection, "flashcards", "introduced_at", "TEXT");
+        // Deliberately no FOREIGN KEY / ON DELETE clause on source_problem_id (#148): deleting the
+        // source problem must never cascade-delete a flashcard already created from it.
+        addColumnIfMissing(connection, "flashcards", "source_problem_id", "INTEGER");
+        addColumnIfMissing(connection, "flashcards", "source_reflection_field", "TEXT");
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("UPDATE flashcards SET accepted_answers = back WHERE accepted_answers IS NULL OR trim(accepted_answers) = ''");
             statement.executeUpdate("UPDATE flashcards SET skill_category = 'General' WHERE skill_category IS NULL OR trim(skill_category) = ''");

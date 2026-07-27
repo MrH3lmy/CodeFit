@@ -4,8 +4,11 @@ import com.codefit.model.ComplexityClass;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.FinalCategory;
+import com.codefit.model.GuidanceSource;
+import com.codefit.model.HintLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
+import com.codefit.model.ProblemGuidance;
 import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.ReflectionCardSource;
@@ -15,6 +18,7 @@ import com.codefit.model.SolvedWith;
 import com.codefit.model.SolvingPhase;
 import com.codefit.model.SubmissionResult;
 import com.codefit.service.ProblemFlashcardService;
+import com.codefit.service.ProblemGuidanceService;
 import com.codefit.service.ProblemReflection;
 import com.codefit.service.ProblemSolvingWorkspaceService;
 import com.codefit.service.SolvingCheckpointPreferenceService;
@@ -31,10 +35,12 @@ import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 import java.awt.Desktop;
 import java.net.URI;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -101,9 +107,21 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     @FXML private TextArea flashcardBackArea;
     @FXML private MenuButton flashcardDeckMenuButton;
 
+    @FXML private Label prerequisitesLabel;
+    @FXML private Label referenceLinksLabel;
+    @FXML private VBox revealedHintsBox;
+    @FXML private Label hintsExhaustedLabel;
+    @FXML private Button revealHintButton;
+    @FXML private VBox guidanceEditorBox;
+    @FXML private TextArea clarifyEditArea;
+    @FXML private TextArea observationEditArea;
+    @FXML private TextArea approachEditArea;
+    @FXML private TextArea explanationEditArea;
+
     private final ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
     private final SolvingCheckpointPreferenceService checkpointPreferenceService = new SolvingCheckpointPreferenceService();
     private final ProblemFlashcardService problemFlashcardService = new ProblemFlashcardService();
+    private final ProblemGuidanceService guidanceService = new ProblemGuidanceService();
 
     private Long problemId;
     private String problemUrl;
@@ -134,7 +152,79 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         loadReflection();
         currentSession = workspaceService.loadWorkspace(problemId).session().orElse(null);
         renderSession();
+        loadGuidance();
         startTimerLoop();
+    }
+
+    /** Prerequisites/reference links (static, from the authored guidance) plus every hint level
+     *  already opened this attempt (from the current session), rendered in ladder order (#162). */
+    private void loadGuidance() {
+        List<String> prerequisites = guidanceService.getPrerequisites(problemId);
+        setStatus(prerequisitesLabel, prerequisites.isEmpty() ? "" : "Prerequisites: " + String.join(", ", prerequisites));
+
+        List<String> referenceLinks = guidanceService.getReferenceLinks(problemId);
+        setStatus(referenceLinksLabel, referenceLinks.isEmpty() ? "" : "References: " + String.join(", ", referenceLinks));
+
+        revealedHintsBox.getChildren().clear();
+        Optional<HintLevel> openedLevel = guidanceService.getOpenedLevel(problemId);
+        openedLevel.ifPresent(level -> {
+            for (HintLevel each : HintLevel.values()) {
+                revealedHintsBox.getChildren().add(hintLevelRow(guidanceService.revealLevel(problemId, each)));
+                if (each == level) {
+                    break;
+                }
+            }
+        });
+        updateHintButtonState(openedLevel.orElse(null));
+    }
+
+    private javafx.scene.Node hintLevelRow(ProblemGuidanceService.HintReveal reveal) {
+        Label levelLabel = new Label(capitalize(reveal.level().name()));
+        levelLabel.getStyleClass().add("problem-row-subtitle");
+        Label textLabel = new Label(reveal.hasContent() ? reveal.text() : "No guidance authored yet for this level.");
+        textLabel.setWrapText(true);
+        return new VBox(2, levelLabel, textLabel);
+    }
+
+    private void updateHintButtonState(HintLevel openedLevel) {
+        boolean atMax = openedLevel == HintLevel.EXPLANATION;
+        setVisible(hintsExhaustedLabel, atMax);
+        revealHintButton.setDisable(atMax);
+    }
+
+    @FXML
+    public void revealNextHint() {
+        if (problemId == null) {
+            return;
+        }
+        guidanceService.openNextHintLevel(problemId);
+        loadGuidance();
+    }
+
+    @FXML
+    public void toggleGuidanceEditor() {
+        boolean showing = !guidanceEditorBox.isVisible();
+        if (showing) {
+            ProblemGuidance guidance = guidanceService.getGuidance(problemId).orElse(null);
+            clarifyEditArea.setText(guidance == null || guidance.getClarifyText() == null ? "" : guidance.getClarifyText());
+            observationEditArea.setText(guidance == null || guidance.getObservationText() == null ? "" : guidance.getObservationText());
+            approachEditArea.setText(guidance == null || guidance.getApproachText() == null ? "" : guidance.getApproachText());
+            explanationEditArea.setText(guidance == null || guidance.getExplanationText() == null ? "" : guidance.getExplanationText());
+        }
+        setVisible(guidanceEditorBox, showing);
+    }
+
+    @FXML
+    public void saveGuidanceEdits() {
+        if (problemId == null) {
+            return;
+        }
+        guidanceService.saveGuidance(problemId, GuidanceSource.LEARNER, blankToNull(clarifyEditArea.getText()),
+                blankToNull(observationEditArea.getText()), blankToNull(approachEditArea.getText()),
+                blankToNull(explanationEditArea.getText()), null, null);
+        setStatus(messageLabel, "Guidance saved.");
+        setVisible(guidanceEditorBox, false);
+        loadGuidance();
     }
 
     private void loadProblemContext() {
@@ -474,6 +564,25 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         notesArea.clear();
         renderSession();
         loadProblemContext();
+        loadGuidance();
+        if (outcome == SessionFinishOutcome.ACCEPTED) {
+            showExplanationAfterAccepted();
+        }
+    }
+
+    /** "Show the concept explanation after AC" (#162): the full explanation is shown directly here
+     *  regardless of how far up the ladder the learner got this attempt — once solved, there's no
+     *  remaining pedagogical reason to keep it behind further clicks. */
+    private void showExplanationAfterAccepted() {
+        ProblemGuidanceService.HintReveal explanation = guidanceService.revealLevel(problemId, HintLevel.EXPLANATION);
+        if (!explanation.hasContent()) {
+            return;
+        }
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Explanation");
+        alert.setHeaderText("Now that you've solved it — here's the full explanation.");
+        alert.setContentText(explanation.text());
+        alert.showAndWait();
     }
 
     @FXML

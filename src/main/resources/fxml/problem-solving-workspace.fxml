@@ -71,6 +71,29 @@
             </VBox>
 
             <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                <Label text="Hints" styleClass="section-title" />
+                <Label fx:id="prerequisitesLabel" wrapText="true" styleClass="muted" visible="false" managed="false" />
+                <Label fx:id="referenceLinksLabel" wrapText="true" styleClass="muted" visible="false" managed="false" />
+                <VBox fx:id="revealedHintsBox" spacing="8" maxWidth="Infinity" />
+                <Label fx:id="hintsExhaustedLabel" text="No more hints — you're at the full explanation." styleClass="muted" wrapText="true" visible="false" managed="false" />
+                <HBox spacing="8">
+                    <Button fx:id="revealHintButton" text="Reveal Next Hint" onAction="#revealNextHint" styleClass="action-button" />
+                    <Button text="Edit Guidance" onAction="#toggleGuidanceEditor" styleClass="ghost-button" />
+                </HBox>
+                <VBox fx:id="guidanceEditorBox" spacing="6" maxWidth="Infinity" visible="false" managed="false">
+                    <Label text="Clarify" styleClass="problem-row-subtitle" />
+                    <TextArea fx:id="clarifyEditArea" wrapText="true" prefRowCount="2" maxWidth="Infinity" />
+                    <Label text="Observation" styleClass="problem-row-subtitle" />
+                    <TextArea fx:id="observationEditArea" wrapText="true" prefRowCount="2" maxWidth="Infinity" />
+                    <Label text="Approach" styleClass="problem-row-subtitle" />
+                    <TextArea fx:id="approachEditArea" wrapText="true" prefRowCount="2" maxWidth="Infinity" />
+                    <Label text="Explanation" styleClass="problem-row-subtitle" />
+                    <TextArea fx:id="explanationEditArea" wrapText="true" prefRowCount="3" maxWidth="Infinity" />
+                    <Button text="Save Guidance" onAction="#saveGuidanceEdits" styleClass="action-button" />
+                </VBox>
+            </VBox>
+
+            <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
                 <Label text="Finish" styleClass="section-title" />
                 <Label text="Submitted / Could Not Solve record the verdict picked below; Accepted always records AC." styleClass="muted" wrapText="true" />
                 <MenuButton fx:id="verdictMenuButton" text="Verdict: AC" styleClass="ghost-button" />

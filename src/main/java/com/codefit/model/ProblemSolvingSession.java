@@ -31,10 +31,21 @@ public class ProblemSolvingSession {
     private boolean paused;
     private LocalDateTime startedAt;
     private LocalDateTime lastActiveAt;
+    private HintLevel highestHintLevelOpened;
 
     public ProblemSolvingSession(long id, long problemId, SolvingPhase phase, int readingSecondsElapsed,
                                  int thinkingSecondsElapsed, int codingSecondsElapsed, int debuggingSecondsElapsed,
                                  String notes, boolean active, boolean paused, LocalDateTime startedAt, LocalDateTime lastActiveAt) {
+        this(id, problemId, phase, readingSecondsElapsed, thinkingSecondsElapsed, codingSecondsElapsed,
+                debuggingSecondsElapsed, notes, active, paused, startedAt, lastActiveAt, null);
+    }
+
+    /** @param highestHintLevelOpened the highest hint ladder level opened so far this attempt (#162),
+     *                                or {@code null} if no hint has been opened yet */
+    public ProblemSolvingSession(long id, long problemId, SolvingPhase phase, int readingSecondsElapsed,
+                                 int thinkingSecondsElapsed, int codingSecondsElapsed, int debuggingSecondsElapsed,
+                                 String notes, boolean active, boolean paused, LocalDateTime startedAt,
+                                 LocalDateTime lastActiveAt, HintLevel highestHintLevelOpened) {
         this.id = id;
         this.problemId = problemId;
         this.phase = phase == null ? SolvingPhase.READING : phase;
@@ -47,12 +58,13 @@ public class ProblemSolvingSession {
         this.paused = paused;
         this.startedAt = startedAt;
         this.lastActiveAt = lastActiveAt;
+        this.highestHintLevelOpened = highestHintLevelOpened;
     }
 
     /** A freshly started session for a problem with no prior in-progress state. */
     public static ProblemSolvingSession start(long problemId) {
         LocalDateTime now = LocalDateTime.now();
-        return new ProblemSolvingSession(0, problemId, SolvingPhase.READING, 0, 0, 0, 0, null, true, false, now, now);
+        return new ProblemSolvingSession(0, problemId, SolvingPhase.READING, 0, 0, 0, 0, null, true, false, now, now, null);
     }
 
     public long getId() { return id; }
@@ -76,6 +88,8 @@ public class ProblemSolvingSession {
     public LocalDateTime getStartedAt() { return startedAt; }
     public LocalDateTime getLastActiveAt() { return lastActiveAt; }
     public void setLastActiveAt(LocalDateTime lastActiveAt) { this.lastActiveAt = lastActiveAt; }
+    public HintLevel getHighestHintLevelOpened() { return highestHintLevelOpened; }
+    public void setHighestHintLevelOpened(HintLevel highestHintLevelOpened) { this.highestHintLevelOpened = highestHintLevelOpened; }
 
     /** Adds elapsed seconds to whichever phase's counter this session is currently timing. */
     public void addElapsedSeconds(SolvingPhase phase, int seconds) {

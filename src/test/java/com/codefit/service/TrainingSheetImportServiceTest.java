@@ -92,6 +92,17 @@ class TrainingSheetImportServiceTest {
 
         ProblemProgress progress = progressRepository.findByProblemId(problem.getId()).orElseThrow();
         assertEquals(ProblemState.SOLVED, progress.getState());
+
+        WorkbookPreviewDetails details = summary.details();
+        assertEquals(1, details.stageMembershipCounts().get(RoadmapStage.A));
+        assertEquals(1, details.solvedCount());
+        assertEquals(1, details.hyperlinksFound(), "the row's explicit Link column resolves as a found hyperlink");
+        assertEquals(1, details.platformCounts().get(platform));
+        assertEquals(1, details.qualityMetadataCount());
+
+        String report = WorkbookPreviewReportFormatter.format("first-import.xlsx", summary);
+        assertTrue(report.contains("A: 1"), "the report shows per-stage counts");
+        assertTrue(report.contains(platform), "the report lists the inferred/explicit platform");
     }
 
     @Test

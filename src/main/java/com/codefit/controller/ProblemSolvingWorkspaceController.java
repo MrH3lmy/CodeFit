@@ -4,8 +4,12 @@ import com.codefit.model.ComplexityClass;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.FinalCategory;
+import com.codefit.model.GuidanceSource;
+import com.codefit.model.HintLevel;
+import com.codefit.model.JavaSolutionDraft;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
+import com.codefit.model.ProblemGuidance;
 import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.ReflectionCardSource;
@@ -14,13 +18,22 @@ import com.codefit.model.SessionFinishOutcome;
 import com.codefit.model.SolvedWith;
 import com.codefit.model.SolvingPhase;
 import com.codefit.model.SubmissionResult;
+import com.codefit.service.CompileDiagnostic;
+import com.codefit.service.CompileOutcome;
+import com.codefit.service.JavaSolutionWorkspaceService;
 import com.codefit.service.ProblemFlashcardService;
+import com.codefit.service.ProblemGuidanceService;
 import com.codefit.service.ProblemReflection;
 import com.codefit.service.ProblemSolvingWorkspaceService;
+import com.codefit.service.RunCancellationToken;
+import com.codefit.service.RunLimits;
+import com.codefit.service.RunResult;
 import com.codefit.service.SolvingCheckpointPreferenceService;
 import com.codefit.ui.NavigationService;
 import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -31,10 +44,14 @@ import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 import java.awt.Desktop;
 import java.net.URI;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -101,9 +118,39 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     @FXML private TextArea flashcardBackArea;
     @FXML private MenuButton flashcardDeckMenuButton;
 
+    @FXML private Label prerequisitesLabel;
+    @FXML private Label referenceLinksLabel;
+    @FXML private VBox revealedHintsBox;
+    @FXML private Label hintsExhaustedLabel;
+    @FXML private Button revealHintButton;
+    @FXML private VBox guidanceEditorBox;
+    @FXML private TextArea clarifyEditArea;
+    @FXML private TextArea observationEditArea;
+    @FXML private TextArea approachEditArea;
+    @FXML private TextArea explanationEditArea;
+
+    @FXML private Label javaRunnerUnavailableLabel;
+    @FXML private TextField javaClassNameField;
+    @FXML private TextArea javaSourceArea;
+    @FXML private TextArea javaStdinArea;
+    @FXML private TextArea javaExpectedOutputArea;
+    @FXML private Button javaCompileButton;
+    @FXML private Button javaRunButton;
+    @FXML private Button javaCancelButton;
+    @FXML private VBox javaDiagnosticsBox;
+    @FXML private Label javaRunStatusLabel;
+    @FXML private TextArea javaOutputArea;
+
     private final ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
     private final SolvingCheckpointPreferenceService checkpointPreferenceService = new SolvingCheckpointPreferenceService();
     private final ProblemFlashcardService problemFlashcardService = new ProblemFlashcardService();
+    private final ProblemGuidanceService guidanceService = new ProblemGuidanceService();
+    private final JavaSolutionWorkspaceService javaWorkspaceService = new JavaSolutionWorkspaceService();
+
+    private CompileOutcome currentCompileOutcome;
+    private RunCancellationToken currentCancellationToken;
+    private PauseTransition javaAutosaveDebounce;
+    private boolean loadingJavaDraft;
 
     private Long problemId;
     private String problemUrl;
@@ -134,7 +181,260 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         loadReflection();
         currentSession = workspaceService.loadWorkspace(problemId).session().orElse(null);
         renderSession();
+        loadGuidance();
+        loadJavaDraft();
         startTimerLoop();
+    }
+
+    // ---- Java Runner (#163) --------------------------------------------------------------------
+
+    private void loadJavaDraft() {
+        if (!javaWorkspaceService.isRunnerAvailable()) {
+            setStatus(javaRunnerUnavailableLabel, javaWorkspaceService.getRunnerUnavailabilityReason());
+            javaCompileButton.setDisable(true);
+            javaRunButton.setDisable(true);
+        }
+        loadingJavaDraft = true;
+        JavaSolutionDraft draft = javaWorkspaceService.loadDraft(problemId);
+        javaClassNameField.setText(draft.getMainClassName());
+        javaSourceArea.setText(draft.getSourceCode() == null ? "" : draft.getSourceCode());
+        javaStdinArea.setText(draft.getStdin() == null ? "" : draft.getStdin());
+        javaExpectedOutputArea.setText(draft.getExpectedOutput() == null ? "" : draft.getExpectedOutput());
+        loadingJavaDraft = false;
+
+        javaAutosaveDebounce = new PauseTransition(Duration.millis(800));
+        javaAutosaveDebounce.setOnFinished(event -> autosaveJavaDraft());
+        javaClassNameField.textProperty().addListener((observable, oldValue, newValue) -> scheduleJavaAutosave());
+        javaSourceArea.textProperty().addListener((observable, oldValue, newValue) -> scheduleJavaAutosave());
+        javaStdinArea.textProperty().addListener((observable, oldValue, newValue) -> scheduleJavaAutosave());
+        javaExpectedOutputArea.textProperty().addListener((observable, oldValue, newValue) -> scheduleJavaAutosave());
+
+        javaDiagnosticsBox.getChildren().clear();
+        setStatus(javaRunStatusLabel, "");
+        javaOutputArea.clear();
+        javaRunButton.setDisable(true);
+    }
+
+    private void scheduleJavaAutosave() {
+        if (loadingJavaDraft || problemId == null) {
+            return;
+        }
+        javaAutosaveDebounce.stop();
+        javaAutosaveDebounce.playFromStart();
+    }
+
+    private void autosaveJavaDraft() {
+        if (problemId == null) {
+            return;
+        }
+        javaWorkspaceService.saveDraft(problemId, javaClassNameField.getText(), javaSourceArea.getText(),
+                javaStdinArea.getText(), javaExpectedOutputArea.getText());
+    }
+
+    @FXML
+    public void compileJavaSolution() {
+        if (problemId == null || !javaWorkspaceService.isRunnerAvailable()) {
+            return;
+        }
+        autosaveJavaDraft();
+        String source = javaSourceArea.getText();
+        String className = blankToNull(javaClassNameField.getText()) == null ? "Solution" : javaClassNameField.getText().strip();
+        javaCompileButton.setDisable(true);
+        javaRunButton.setDisable(true);
+        setStatus(javaRunStatusLabel, "Compiling…");
+        javaDiagnosticsBox.getChildren().clear();
+
+        Thread thread = new Thread(() -> {
+            CompileOutcome outcome = javaWorkspaceService.compile(source, className);
+            Platform.runLater(() -> onCompileFinished(outcome));
+        }, "java-runner-compile");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void onCompileFinished(CompileOutcome outcome) {
+        if (currentCompileOutcome != null) {
+            currentCompileOutcome.close();
+        }
+        currentCompileOutcome = outcome;
+        javaCompileButton.setDisable(false);
+        javaDiagnosticsBox.getChildren().clear();
+
+        if (outcome.success()) {
+            setStatus(javaRunStatusLabel, "Compiled successfully.");
+            javaRunButton.setDisable(!javaWorkspaceService.isRunnerAvailable());
+            return;
+        }
+        setStatus(javaRunStatusLabel, "Compilation failed — see diagnostics below.");
+        javaRunButton.setDisable(true);
+        for (CompileDiagnostic diagnostic : outcome.diagnostics()) {
+            javaDiagnosticsBox.getChildren().add(diagnosticRow(diagnostic));
+        }
+    }
+
+    private javafx.scene.Node diagnosticRow(CompileDiagnostic diagnostic) {
+        String locationText = diagnostic.file() + ":" + diagnostic.line()
+                + (diagnostic.column() == null ? "" : ":" + diagnostic.column());
+        Button jumpButton = new Button((diagnostic.error() ? "Error " : "Warning ") + locationText + " — " + diagnostic.message());
+        jumpButton.getStyleClass().add("ghost-button");
+        jumpButton.setWrapText(true);
+        jumpButton.setMaxWidth(Double.MAX_VALUE);
+        jumpButton.setOnAction(event -> jumpSourceCaretToLine(diagnostic.line(), diagnostic.column()));
+        return jumpButton;
+    }
+
+    /** "Compiler diagnostics link to the corresponding editor line" (#163): moves the source editor's
+     *  caret (and scrolls it into view) to the diagnostic's reported line/column. */
+    private void jumpSourceCaretToLine(int line, Integer column) {
+        String text = javaSourceArea.getText();
+        String[] lines = text.split("\\R", -1);
+        int offset = 0;
+        for (int i = 0; i < line - 1 && i < lines.length; i++) {
+            offset += lines[i].length() + 1;
+        }
+        offset += column == null ? 0 : Math.max(0, column - 1);
+        javaSourceArea.requestFocus();
+        javaSourceArea.positionCaret(Math.min(offset, text.length()));
+    }
+
+    @FXML
+    public void runJavaSolution() {
+        if (currentCompileOutcome == null || !currentCompileOutcome.success()) {
+            return;
+        }
+        String stdin = javaStdinArea.getText();
+        String expectedOutput = blankToNull(javaExpectedOutputArea.getText());
+        currentCancellationToken = new RunCancellationToken();
+        javaRunButton.setDisable(true);
+        javaCompileButton.setDisable(true);
+        setVisible(javaCancelButton, true);
+        setStatus(javaRunStatusLabel, "Running…");
+        javaOutputArea.clear();
+
+        CompileOutcome compiledForThisRun = currentCompileOutcome;
+        RunCancellationToken tokenForThisRun = currentCancellationToken;
+        Thread thread = new Thread(() -> {
+            RunResult result = javaWorkspaceService.run(compiledForThisRun, stdin, RunLimits.defaults(), tokenForThisRun);
+            Platform.runLater(() -> onRunFinished(result, expectedOutput));
+        }, "java-runner-run");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void onRunFinished(RunResult result, String expectedOutput) {
+        javaRunButton.setDisable(currentCompileOutcome == null || !currentCompileOutcome.success());
+        javaCompileButton.setDisable(false);
+        setVisible(javaCancelButton, false);
+
+        StringBuilder output = new StringBuilder();
+        output.append("stdout:\n").append(result.stdout()).append('\n');
+        if (result.stderr() != null && !result.stderr().isBlank()) {
+            output.append("\nstderr:\n").append(result.stderr()).append('\n');
+        }
+        javaOutputArea.setText(output.toString());
+
+        StringBuilder status = new StringBuilder();
+        if (result.cancelled()) {
+            status.append("Cancelled.");
+        } else if (result.timedOut()) {
+            status.append("Timed out (possible infinite loop).");
+        } else {
+            status.append("Exit status ").append(result.exitCode());
+            if (expectedOutput != null) {
+                status.append(result.matchesExpectedOutput(expectedOutput) ? " — matches expected output." : " — does not match expected output.");
+            }
+        }
+        status.append(" (").append(result.elapsedMillis()).append(" ms)");
+        if (result.outputTruncated()) {
+            status.append(" Output was truncated at the size limit.");
+        }
+        setStatus(javaRunStatusLabel, status.toString());
+    }
+
+    @FXML
+    public void cancelJavaRun() {
+        if (currentCancellationToken != null) {
+            currentCancellationToken.cancel();
+        }
+    }
+
+    @FXML
+    public void copyJavaSolution() {
+        ClipboardContent content = new ClipboardContent();
+        content.putString(javaSourceArea.getText());
+        Clipboard.getSystemClipboard().setContent(content);
+        setStatus(javaRunStatusLabel, "Solution copied — paste it into the external judge to submit.");
+    }
+
+    /** Prerequisites/reference links (static, from the authored guidance) plus every hint level
+     *  already opened this attempt (from the current session), rendered in ladder order (#162). */
+    private void loadGuidance() {
+        List<String> prerequisites = guidanceService.getPrerequisites(problemId);
+        setStatus(prerequisitesLabel, prerequisites.isEmpty() ? "" : "Prerequisites: " + String.join(", ", prerequisites));
+
+        List<String> referenceLinks = guidanceService.getReferenceLinks(problemId);
+        setStatus(referenceLinksLabel, referenceLinks.isEmpty() ? "" : "References: " + String.join(", ", referenceLinks));
+
+        revealedHintsBox.getChildren().clear();
+        Optional<HintLevel> openedLevel = guidanceService.getOpenedLevel(problemId);
+        openedLevel.ifPresent(level -> {
+            for (HintLevel each : HintLevel.values()) {
+                revealedHintsBox.getChildren().add(hintLevelRow(guidanceService.revealLevel(problemId, each)));
+                if (each == level) {
+                    break;
+                }
+            }
+        });
+        updateHintButtonState(openedLevel.orElse(null));
+    }
+
+    private javafx.scene.Node hintLevelRow(ProblemGuidanceService.HintReveal reveal) {
+        Label levelLabel = new Label(capitalize(reveal.level().name()));
+        levelLabel.getStyleClass().add("problem-row-subtitle");
+        Label textLabel = new Label(reveal.hasContent() ? reveal.text() : "No guidance authored yet for this level.");
+        textLabel.setWrapText(true);
+        return new VBox(2, levelLabel, textLabel);
+    }
+
+    private void updateHintButtonState(HintLevel openedLevel) {
+        boolean atMax = openedLevel == HintLevel.EXPLANATION;
+        setVisible(hintsExhaustedLabel, atMax);
+        revealHintButton.setDisable(atMax);
+    }
+
+    @FXML
+    public void revealNextHint() {
+        if (problemId == null) {
+            return;
+        }
+        guidanceService.openNextHintLevel(problemId);
+        loadGuidance();
+    }
+
+    @FXML
+    public void toggleGuidanceEditor() {
+        boolean showing = !guidanceEditorBox.isVisible();
+        if (showing) {
+            ProblemGuidance guidance = guidanceService.getGuidance(problemId).orElse(null);
+            clarifyEditArea.setText(guidance == null || guidance.getClarifyText() == null ? "" : guidance.getClarifyText());
+            observationEditArea.setText(guidance == null || guidance.getObservationText() == null ? "" : guidance.getObservationText());
+            approachEditArea.setText(guidance == null || guidance.getApproachText() == null ? "" : guidance.getApproachText());
+            explanationEditArea.setText(guidance == null || guidance.getExplanationText() == null ? "" : guidance.getExplanationText());
+        }
+        setVisible(guidanceEditorBox, showing);
+    }
+
+    @FXML
+    public void saveGuidanceEdits() {
+        if (problemId == null) {
+            return;
+        }
+        guidanceService.saveGuidance(problemId, GuidanceSource.LEARNER, blankToNull(clarifyEditArea.getText()),
+                blankToNull(observationEditArea.getText()), blankToNull(approachEditArea.getText()),
+                blankToNull(explanationEditArea.getText()), null, null);
+        setStatus(messageLabel, "Guidance saved.");
+        setVisible(guidanceEditorBox, false);
+        loadGuidance();
     }
 
     private void loadProblemContext() {
@@ -474,6 +774,25 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         notesArea.clear();
         renderSession();
         loadProblemContext();
+        loadGuidance();
+        if (outcome == SessionFinishOutcome.ACCEPTED) {
+            showExplanationAfterAccepted();
+        }
+    }
+
+    /** "Show the concept explanation after AC" (#162): the full explanation is shown directly here
+     *  regardless of how far up the ladder the learner got this attempt — once solved, there's no
+     *  remaining pedagogical reason to keep it behind further clicks. */
+    private void showExplanationAfterAccepted() {
+        ProblemGuidanceService.HintReveal explanation = guidanceService.revealLevel(problemId, HintLevel.EXPLANATION);
+        if (!explanation.hasContent()) {
+            return;
+        }
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Explanation");
+        alert.setHeaderText("Now that you've solved it — here's the full explanation.");
+        alert.setContentText(explanation.text());
+        alert.showAndWait();
     }
 
     @FXML

@@ -3,7 +3,9 @@ package com.codefit.service;
 import com.codefit.config.DatabaseConfig;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
+import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemState;
+import com.codefit.model.RoadmapEntry;
 import com.codefit.model.RoadmapStage;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -161,6 +163,71 @@ class ProblemLibraryServiceTest {
 
         assertTrue(recommended.isPresent());
         assertEquals(unsolved.getId(), recommended.get().problem().getId());
+    }
+
+    @Test
+    void selectNextRecommendedPrefersAnEarlierUnsolvedMandatoryPositionOverALaterOptionalOne() {
+        // #161: an unsolved optional problem must never block a later, still-unsolved mandatory one
+        // from being the guided recommendation.
+        ProblemLibraryEntry optionalButEarlier = libraryEntry(1, RoadmapStage.A, 1, false, ProblemState.NOT_STARTED);
+        ProblemLibraryEntry mandatoryButLater = libraryEntry(2, RoadmapStage.A, 2, true, ProblemState.NOT_STARTED);
+
+        Optional<ProblemLibraryEntry> recommended =
+                ProblemLibraryService.selectNextRecommended(List.of(optionalButEarlier, mandatoryButLater));
+
+        assertTrue(recommended.isPresent());
+        assertEquals(2, recommended.get().problem().getId(), "the mandatory position wins even though it's later");
+    }
+
+    @Test
+    void selectNextRecommendedFallsBackToOptionalWorkOnceEveryMandatoryPositionIsSolved() {
+        ProblemLibraryEntry mandatorySolved = libraryEntry(1, RoadmapStage.A, 1, true, ProblemState.SOLVED);
+        ProblemLibraryEntry optionalUnsolved = libraryEntry(2, RoadmapStage.A, 2, false, ProblemState.NOT_STARTED);
+
+        Optional<ProblemLibraryEntry> recommended =
+                ProblemLibraryService.selectNextRecommended(List.of(mandatorySolved, optionalUnsolved));
+
+        assertTrue(recommended.isPresent());
+        assertEquals(2, recommended.get().problem().getId(), "optional work is recommended once mandatory work is exhausted");
+    }
+
+    @Test
+    void selectNextRecommendedIsEmptyOnceEverythingIsSolved() {
+        ProblemLibraryEntry solved = libraryEntry(1, RoadmapStage.A, 1, true, ProblemState.SOLVED);
+
+        assertTrue(ProblemLibraryService.selectNextRecommended(List.of(solved)).isEmpty());
+    }
+
+    private ProblemLibraryEntry libraryEntry(long problemId, RoadmapStage stage, int sequenceOrder, boolean mandatory, ProblemState state) {
+        Problem problem = new Problem(problemId, "CODE-" + problemId, "TEST-FIXTURE-PLATFORM", "Problem " + problemId,
+                null, "General", null, null, null, null);
+        RoadmapEntry roadmapEntry = new RoadmapEntry(problemId, stage, sequenceOrder, null, mandatory, null);
+        ProblemProgress progress = new ProblemProgress(0, problemId, state, null, null, null, null, null, null,
+                null, null, null, null, false, false, false, false, null, null);
+        return new ProblemLibraryEntry(problem, roadmapEntry, progress);
+    }
+
+    @Test
+    void revisitQueueListsOnlyNeedsRevisitPositionsInBlindOrder() {
+        String platform = uniquePlatform("revisit-queue");
+        Problem needsRevisit = createProblem(platform, "V1", "Needs Another Look", "General", null);
+        Problem solved = createProblem(platform, "V2", "Already Solved", "General", null);
+        Problem notStarted = createProblem(platform, "V3", "Not Started Yet", "General", null);
+
+        int baseOrder = nextOrder;
+        nextOrder += 3;
+        problemService.addToRoadmap(needsRevisit.getId(), RoadmapStage.D3, baseOrder, null, true, null);
+        problemService.addToRoadmap(solved.getId(), RoadmapStage.D3, baseOrder + 1, null, true, null);
+        problemService.addToRoadmap(notStarted.getId(), RoadmapStage.D3, baseOrder + 2, null, true, null);
+        progressService.updateProgress(needsRevisit.getId(), ProblemState.NEEDS_REVISIT, null);
+        progressService.updateProgress(solved.getId(), ProblemState.SOLVED, null);
+
+        List<ProblemLibraryEntry> revisitQueue = libraryService.getRevisitQueue().stream()
+                .filter(entry -> entry.problem().getPlatform().equals(platform))
+                .toList();
+
+        assertEquals(1, revisitQueue.size());
+        assertEquals(needsRevisit.getId(), revisitQueue.get(0).problem().getId());
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.codefit.service;
 
 import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemState;
+import com.codefit.model.SolvedWith;
 import com.codefit.repository.ProblemProgressRepository;
 
 import java.sql.Connection;
@@ -110,5 +111,39 @@ public class ProblemProgressService {
         progress.setState(importedState);
         progressRepository.update(connection, progress);
         return true;
+    }
+
+    /**
+     * Fills in reflection fields read from an imported workbook row (#159), one field at a time and
+     * only where that specific field is still unset — a learner's own already-recorded difficulty
+     * rating, assistance level, actual topic, or approach notes is never overwritten by a (re-)import,
+     * the same non-destructive contract {@link #applyImportedState} already gives the workflow state.
+     *
+     * @return {@code true} if at least one field was filled in
+     */
+    public boolean applyImportedReflection(Connection connection, long problemId, Integer perceivedDifficultyRating,
+                                           SolvedWith solvedWith, String actualTopic, String approachNotes) throws SQLException {
+        ProblemProgress progress = getOrCreate(connection, problemId);
+        boolean changed = false;
+        if (progress.getPerceivedDifficultyRating() == null && perceivedDifficultyRating != null) {
+            progress.setPerceivedDifficultyRating(perceivedDifficultyRating);
+            changed = true;
+        }
+        if (progress.getSolvedWith() == null && solvedWith != null) {
+            progress.setSolvedWith(solvedWith);
+            changed = true;
+        }
+        if ((progress.getActualTopic() == null || progress.getActualTopic().isBlank()) && actualTopic != null) {
+            progress.setActualTopic(actualTopic);
+            changed = true;
+        }
+        if ((progress.getApproachNotes() == null || progress.getApproachNotes().isBlank()) && approachNotes != null) {
+            progress.setApproachNotes(approachNotes);
+            changed = true;
+        }
+        if (changed) {
+            progressRepository.update(connection, progress);
+        }
+        return changed;
     }
 }

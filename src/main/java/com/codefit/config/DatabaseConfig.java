@@ -162,6 +162,8 @@ public final class DatabaseConfig {
             ensureProblemSolvingWorkspaceColumns(connection);
             ensureProblemProgressReflectionColumns(connection);
             ensureImportAttributionSchema(connection);
+            ensureProblemGuidanceSchema(connection);
+            ensureJavaSolutionDraftSchema(connection);
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
             seedAssessmentBank(connection);
@@ -221,6 +223,8 @@ public final class DatabaseConfig {
         // preference here is a plain column rather than a separate settings table.
         addColumnIfMissing(connection, "user_progress", "solving_checkpoints_enabled", "INTEGER NOT NULL DEFAULT 1");
         addColumnIfMissing(connection, "user_progress", "solving_checkpoint_minutes", "TEXT NOT NULL DEFAULT '20,60,120'");
+        // The guided curriculum practice loop's (#161) daily target, in problems.
+        addColumnIfMissing(connection, "user_progress", "daily_target_problems", "INTEGER NOT NULL DEFAULT 3");
     }
 
     /**
@@ -336,6 +340,11 @@ public final class DatabaseConfig {
         // Set only for attempts created by finishing a workspace session; null for attempts recorded
         // any other way (e.g. the workbook importer never sets this).
         addColumnIfMissing(connection, "problem_attempts", "session_outcome", "TEXT");
+        // The highest hint ladder level opened so far *this attempt* (#162): null until the learner
+        // opens the first hint. Living on the session row (not problem_progress) means it resets for
+        // free the moment a new attempt starts, since finishing a session deletes this row (see
+        // ProblemSolvingSessionService#reset) rather than needing separate reset bookkeeping.
+        addColumnIfMissing(connection, "problem_solving_sessions", "highest_hint_level_opened", "TEXT");
     }
 
     /**
@@ -387,6 +396,58 @@ public final class DatabaseConfig {
                     """);
         }
         addColumnIfMissing(connection, "roadmap_entries", "import_batch_id", "INTEGER");
+    }
+
+    /**
+     * Guidance content behind the progressive hint ladder (#162): one row per {@link com.codefit.model.Problem}
+     * ({@code UNIQUE(problem_id)}, mirroring {@code problem_progress}), holding up to four
+     * increasingly explicit levels (Clarify/Observation/Approach/Explanation), optional prerequisite
+     * topics, and reference links — entirely separate from problem identity and learner progress, so
+     * editing guidance never touches either. {@code source} records provenance (learner-authored,
+     * CodeFit-authored, imported, or a future provider integration) without ever storing bundled
+     * third-party editorial text.
+     */
+    private static void ensureProblemGuidanceSchema(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS problem_guidance (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        problem_id INTEGER NOT NULL UNIQUE,
+                        source TEXT NOT NULL DEFAULT 'LEARNER',
+                        clarify_text TEXT,
+                        observation_text TEXT,
+                        approach_text TEXT,
+                        explanation_text TEXT,
+                        prerequisites TEXT,
+                        reference_links TEXT,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE
+                    )
+                    """);
+        }
+    }
+
+    /**
+     * A learner's saved Java solution-in-progress per problem (#163): one row per {@code problem_id}
+     * ({@code UNIQUE}), so autosaving on every edit is just an upsert against this one row — surviving
+     * an application restart is the entire point of this table.
+     */
+    private static void ensureJavaSolutionDraftSchema(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS java_solution_drafts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        problem_id INTEGER NOT NULL UNIQUE,
+                        main_class_name TEXT NOT NULL DEFAULT 'Solution',
+                        source_code TEXT,
+                        stdin TEXT,
+                        expected_output TEXT,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE
+                    )
+                    """);
+        }
     }
 
     private static void addColumnIfMissing(Connection connection, String tableName, String columnName, String definition) throws SQLException {

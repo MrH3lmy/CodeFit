@@ -16,15 +16,80 @@ programmatically at test time.
 - An optional `Topics` sheet: alternative classification metadata over problems the roadmap sheets
   already imported, not a source of new problems in its own right.
 - Each roadmap sheet's header row is matched against the canonical columns in
-  `TrainingSheetColumns`, case-insensitively and under several common aliases (e.g. "Link" or "URL"
-  both mean the problem link; "Required" or "Mandatory" both mean the mandatory flag). See that
-  class for the full alias list.
+  `TrainingSheetColumns`, case-insensitively, with embedded line breaks normalized to spaces, and
+  under several common aliases (e.g. "Link" or "URL" both mean the problem link; "Required" or
+  "Mandatory" both mean the mandatory flag). See that class for the full alias list. Two headers are
+  matched structurally rather than by literal alias — a compound "&lt;something&gt; Category" column
+  and its paired "Category Code" column — since a real workbook's authors may qualify a
+  classification column with their own name, which this importer must never hard-code (see
+  `WorkbookContentPolicyTest`).
 
-The exact header text of the real Junior Training Sheet wasn't available while building this
-importer (the epic's rules keep the real file out of this repository), so the alias list is a
-best-effort guess at common spellings. If a real workbook uses a header this importer doesn't
-recognize, `validate()` reports that sheet as unusable rather than the importer silently skipping
-every row in it.
+### The real Junior Training Sheet (#159)
+
+The approved real-workbook fixture (`docs/junior-training-sheet-fixture.md`) exposed shapes a
+purely alias-based reader couldn't handle:
+
+- **A missing title header.** Every roadmap sheet except one spells out a title header in the
+  column immediately before the problem-code column; that one sheet leaves it blank. If a header row
+  recognizes a code column but no title column, `TrainingSheetWorkbookReader` assumes the column
+  immediately to its left is the title column anyway, rather than rejecting the sheet.
+- **Embedded hyperlinks instead of a URL column.** The workbook has no explicit URL column at all —
+  the judge link lives on the code (or title) cell itself, either as a native Excel hyperlink or as
+  the URL argument of a `=HYPERLINK(url, "text")` formula. The reader recovers whichever is present;
+  POI's formula evaluator resolves a `HYPERLINK()` formula to its display text even when the
+  workbook has no cached value for that cell, so the same code path handles both cases.
+- **No platform column.** Platform is inferred from the code's prefix (e.g. `CF` → Codeforces,
+  `UVA` → UVA) and, failing that, from the recovered URL's host — see `PlatformInference`. A
+  code/URL neither recognizes falls back to the workbook's generic default platform rather than
+  guessing.
+- **Instructional, aggregate, and sample rows interleaved with real data.** An "AC Averages =&gt;"
+  summary row and a handful of literal "Sample Name"/"Sample Link" placeholder rows are dropped by
+  the reader before the importer ever sees them (see `TrainingSheetWorkbookReader`), the same way an
+  entirely blank spacer row is — they are never counted as invalid rows, since they were never
+  candidate problems to begin with.
+- **Aggregate performance data per row**: submission count, four phase timings (minutes in the
+  workbook, stored in seconds), a 1-10 perceived difficulty, an independence flag ("By yourself?
+  Yes/No/Hint"), and a short approach note. The importer turns these into one `ProblemAttempt`
+  "snapshot" and a set of `ProblemProgress` reflection fields per problem — see "Attempts and
+  reflection data" below.
+- **A cell formula POI's evaluator can't compute** (e.g. an aggregate row using a function outside
+  POI's supported set) no longer fails the whole read; the reader falls back to that cell's
+  last-saved value, or blank, rather than raising `WorkbookImportException` for a row that was never
+  going to be treated as real problem data anyway.
+
+`RealJuniorTrainingSheetImportTest` imports the approved fixture directly and asserts the product's
+exact expected counts (926 roadmap memberships, 923 unique problems, all 172 Stage B problems) as a
+standing regression test, in addition to the synthetic-fixture coverage in
+`TrainingSheetImportServiceTest`.
+
+## Import preview screen (#160)
+
+Selecting a workbook in **Settings → Problem-Solving Training → Import Training Sheet…** never
+immediately writes anything. `SettingsController#analyzeAndConfirmImport` is a two-step flow:
+
+1. **Analyze.** The file is run through `TrainingSheetImportService#preview` — the exact same
+   row-by-row logic and mapping rules a real import uses, always rolled back at the end — and the
+   resulting `TrainingSheetImportSummary` (plain counts) plus its `WorkbookPreviewDetails` (the richer
+   per-stage/hyperlink/platform/status/topic/skip-reason breakdown) are rendered into a plain-text
+   report by `WorkbookPreviewReportFormatter`.
+2. **Review and confirm.** The report is shown in a dialog with "Import Now", "Copy Report", and
+   Cancel. Copying leaves the dialog open; cancelling (or closing it any other way) leaves the
+   database exactly as the preview found it, since the preview itself already rolled back. Only
+   clicking "Import Now" runs `TrainingSheetImportService#importWorkbook` for real, against the same
+   file — producing the same counts the preview just showed, since it's the same file through the
+   same code path.
+
+A structurally invalid workbook (see `validate`) shows its blocking errors — which name the sheet and,
+where the affected row is known, the row number — before the review dialog would even appear, since
+`preview` itself refuses to run past `validateStructure` for such a workbook.
+
+The import-complete dialog offers a "Go to Problem Library" button
+(`NavigationService#showProblems`) so a multi-hundred-problem import doesn't end in a dead-end alert.
+
+`WorkbookPreviewReportFormatter` has no JavaFX dependency, so its output is covered by plain unit
+tests (`TrainingSheetImportServiceTest`) without needing a UI toolkit; `RealJuniorTrainingSheetImportTest`
+additionally asserts that `preview()` and `importWorkbook()` against the real fixture produce
+byte-for-byte matching `WorkbookPreviewDetails`.
 
 ## Local, transactional, idempotent, repeatable
 
@@ -91,14 +156,36 @@ returning richer result types (`created`/`fieldsUpdated`/`applied` flags) the im
 summary counts. Every existing public method kept its original signature and behavior — this was a
 purely additive change from #142.
 
+## Attempts and reflection data (#159)
+
+When a row's status column resolves to a judge verdict (`AC`, `WA`, `TLE`, etc. — matching
+`SubmissionResult`), the importer creates **at most one** `ProblemAttempt` "snapshot" per problem:
+the workbook describes aggregate per-problem statistics (a submission count, four phase timings), not
+a per-submission log, so this is one attempt representing that aggregate rather than a fabricated
+sequence of individual submissions. Its `attemptNumber` is the workbook's own submit count when
+present (so the count itself isn't lost), phase timings convert from the workbook's minutes to the
+model's seconds, and its notes come from the "1-2 line comments about your approach" column.
+
+This only ever happens the first time a problem is imported (guarded by
+`ProblemAttemptRepository#countByProblemId`): a re-import, or the same problem appearing in a second
+roadmap stage, never adds a second attempt or touches an attempt the learner already recorded live
+through the app.
+
+Alongside progress state, `ProblemProgressService#applyImportedReflection` fills in perceived
+difficulty (the "Problem Level /10" column), assistance level (the "By yourself?" column: `Yes` →
+`SELF`, `Hint` → `HINT`, `No` → `EDITORIAL` — the workbook doesn't distinguish "read the editorial"
+from "copied a full solution", so `No` maps to the more common of the two), actual topic (the
+per-row Category column), and approach notes — one field at a time, and only where that specific
+field is still unset, so a learner's own already-recorded value is never overwritten.
+
 ## Known limitations
 
 - The workbook's status column is matched against a small set of common tokens (`AC`, `Accepted`,
   `In Progress`, `Revisit`, etc. — see `TrainingSheetImportService`'s alias maps); an unrecognized,
   non-blank status is reported as a warning rather than silently ignored.
-- The importer only ever sets progress state, never `perceivedDifficulty`, `solvedWith`,
-  `finalCategory`, or notes — the workbook doesn't carry that information, and those fields are
-  populated later through the in-app workflow (#145/#146).
-- Attempts (`problem_attempts`) and solving sessions (`problem_solving_sessions`) are never touched by
-  import; the workbook only describes the roadmap and a coarse current status, not submission
-  history.
+- Solving sessions (`problem_solving_sessions`) are never touched by import — those are live,
+  resumable in-app state, not something a workbook snapshot should seed.
+- The `Topics` sheet's own numeric "Level"/"Quality" columns (present in the real workbook on a
+  different scale than the product's 1-5 `qualityRating`) are read from the sheet but not applied to
+  `Problem.qualityRating`, to avoid silently misrepresenting the scale; only its classification
+  columns (topic/category) are applied.

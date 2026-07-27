@@ -14,6 +14,8 @@ public class UserProgress {
     public static final int DEFAULT_GUIDED_SESSION_MINUTES = 15;
     /** Default solving-workspace coaching checkpoints, in minutes of total elapsed session time (#145). */
     public static final String DEFAULT_SOLVING_CHECKPOINT_MINUTES = "20,60,120";
+    /** Default daily target for the guided curriculum practice loop, in problems (#161). */
+    public static final int DEFAULT_DAILY_TARGET_PROBLEMS = 3;
 
     private long id;
     private int xp;
@@ -32,6 +34,7 @@ public class UserProgress {
     private int guidedSessionMinutes;
     private boolean solvingCheckpointsEnabled;
     private String solvingCheckpointMinutesCsv;
+    private int dailyTargetProblems;
 
     public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews) {
         this(id, xp, level, streakDays, lastReviewDate, totalReviews, 0, 0, false, DailyWorkloadMode.NORMAL,
@@ -86,6 +89,19 @@ public class UserProgress {
                         DailyWorkloadMode dailyWorkloadMode, String activeTrainingPath, int focusModuleOrder,
                         int matureInterleavePercent, int dailyNewCardLimit, int guidedSessionMinutes,
                         boolean solvingCheckpointsEnabled, String solvingCheckpointMinutesCsv) {
+        this(id, xp, level, streakDays, lastReviewDate, totalReviews, missedDayCount, streakFreezeCount,
+                recoveryQuestActive, dailyWorkloadMode, activeTrainingPath, focusModuleOrder, matureInterleavePercent,
+                dailyNewCardLimit, guidedSessionMinutes, solvingCheckpointsEnabled, solvingCheckpointMinutesCsv,
+                DEFAULT_DAILY_TARGET_PROBLEMS);
+    }
+
+    /** @param dailyTargetProblems the learner's preferred number of problems per day for the guided
+     *                             curriculum practice loop's daily target (#161) */
+    public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews,
+                        int missedDayCount, int streakFreezeCount, boolean recoveryQuestActive,
+                        DailyWorkloadMode dailyWorkloadMode, String activeTrainingPath, int focusModuleOrder,
+                        int matureInterleavePercent, int dailyNewCardLimit, int guidedSessionMinutes,
+                        boolean solvingCheckpointsEnabled, String solvingCheckpointMinutesCsv, int dailyTargetProblems) {
         this.id = id;
         this.xp = xp;
         this.level = level;
@@ -104,6 +120,7 @@ public class UserProgress {
         this.solvingCheckpointsEnabled = solvingCheckpointsEnabled;
         this.solvingCheckpointMinutesCsv = solvingCheckpointMinutesCsv == null || solvingCheckpointMinutesCsv.isBlank()
                 ? DEFAULT_SOLVING_CHECKPOINT_MINUTES : solvingCheckpointMinutesCsv;
+        this.dailyTargetProblems = dailyTargetProblems > 0 ? dailyTargetProblems : DEFAULT_DAILY_TARGET_PROBLEMS;
     }
 
     public long getId() { return id; }
@@ -151,6 +168,11 @@ public class UserProgress {
     public void setSolvingCheckpointMinutesCsv(String solvingCheckpointMinutesCsv) {
         this.solvingCheckpointMinutesCsv = solvingCheckpointMinutesCsv == null || solvingCheckpointMinutesCsv.isBlank()
                 ? DEFAULT_SOLVING_CHECKPOINT_MINUTES : solvingCheckpointMinutesCsv;
+    }
+
+    public int getDailyTargetProblems() { return dailyTargetProblems; }
+    public void setDailyTargetProblems(int dailyTargetProblems) {
+        this.dailyTargetProblems = dailyTargetProblems > 0 ? dailyTargetProblems : DEFAULT_DAILY_TARGET_PROBLEMS;
     }
 
     /** Parses {@link #getSolvingCheckpointMinutesCsv()} into ascending minute thresholds, ignoring any malformed entries. */

@@ -1,6 +1,7 @@
 package com.codefit.repository;
 
 import com.codefit.config.DatabaseConfig;
+import com.codefit.model.HintLevel;
 import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.SolvingPhase;
 
@@ -74,7 +75,8 @@ public class ProblemSolvingSessionRepository {
     public void update(ProblemSolvingSession session) {
         String sql = "UPDATE problem_solving_sessions SET phase = ?, reading_seconds_elapsed = ?, "
                 + "thinking_seconds_elapsed = ?, coding_seconds_elapsed = ?, debugging_seconds_elapsed = ?, "
-                + "notes = ?, active = ?, paused = ?, last_active_at = CURRENT_TIMESTAMP WHERE problem_id = ?";
+                + "notes = ?, active = ?, paused = ?, highest_hint_level_opened = ?, "
+                + "last_active_at = CURRENT_TIMESTAMP WHERE problem_id = ?";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, session.getPhase().name());
@@ -85,7 +87,8 @@ public class ProblemSolvingSessionRepository {
             statement.setString(6, session.getNotes());
             statement.setInt(7, session.isActive() ? 1 : 0);
             statement.setInt(8, session.isPaused() ? 1 : 0);
-            statement.setLong(9, session.getProblemId());
+            statement.setString(9, session.getHighestHintLevelOpened() == null ? null : session.getHighestHintLevelOpened().name());
+            statement.setLong(10, session.getProblemId());
             statement.executeUpdate();
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to update problem solving session", exception);
@@ -116,6 +119,7 @@ public class ProblemSolvingSessionRepository {
     }
 
     private ProblemSolvingSession mapSession(ResultSet resultSet) throws SQLException {
+        String hintLevel = resultSet.getString("highest_hint_level_opened");
         return new ProblemSolvingSession(
                 resultSet.getLong("id"),
                 resultSet.getLong("problem_id"),
@@ -128,7 +132,8 @@ public class ProblemSolvingSessionRepository {
                 resultSet.getInt("active") == 1,
                 resultSet.getInt("paused") == 1,
                 LocalDateTime.parse(resultSet.getString("started_at").replace(' ', 'T')),
-                LocalDateTime.parse(resultSet.getString("last_active_at").replace(' ', 'T'))
+                LocalDateTime.parse(resultSet.getString("last_active_at").replace(' ', 'T')),
+                hintLevel == null ? null : HintLevel.valueOf(hintLevel)
         );
     }
 }

@@ -23,6 +23,7 @@ public class RoadmapEntry {
     private boolean mandatory;
     private DifficultyLevel suggestedLevel;
     private LocalDateTime createdAt;
+    private Long importBatchId;
 
     public RoadmapEntry(long id, long problemId, RoadmapStage stage, int sequenceOrder, Integer setNumber,
                          boolean mandatory, DifficultyLevel suggestedLevel, LocalDateTime createdAt) {
@@ -55,4 +56,8 @@ public class RoadmapEntry {
     public DifficultyLevel getSuggestedLevel() { return suggestedLevel; }
     public void setSuggestedLevel(DifficultyLevel suggestedLevel) { this.suggestedLevel = suggestedLevel; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    /** Which {@link ImportBatch} created or last touched this membership (#149); null for one added
+     *  manually rather than through a workbook import. */
+    public Long getImportBatchId() { return importBatchId; }
+    public void setImportBatchId(Long importBatchId) { this.importBatchId = importBatchId; }
 }

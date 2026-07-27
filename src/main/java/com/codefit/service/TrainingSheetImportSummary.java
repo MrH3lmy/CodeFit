@@ -8,7 +8,8 @@ import java.util.List;
  */
 public record TrainingSheetImportSummary(boolean dryRun, int problemsCreated, int problemsUpdated, int problemsReused,
                                          int roadmapMembershipsCreated, int progressRecordsImported,
-                                         int duplicateRowsSkipped, int invalidRows, List<String> warnings) {
+                                         int duplicateRowsSkipped, int invalidRows, List<String> warnings,
+                                         Long importBatchId) {
 
     public String message() {
         String prefix = dryRun ? "Preview: would create " : "Created ";

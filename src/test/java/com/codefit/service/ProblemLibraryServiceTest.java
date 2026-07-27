@@ -126,6 +126,56 @@ class ProblemLibraryServiceTest {
     }
 
     @Test
+    void stageFilterNarrowsToOnlyThatStage() {
+        String platform = uniquePlatform("stage-filter");
+        Problem stageAProblem = createProblem(platform, "SA1", "Stage A Problem", "General", null);
+        Problem stageBProblem = createProblem(platform, "SB1", "Stage B Problem", "General", null);
+        problemService.addToRoadmap(stageAProblem.getId(), RoadmapStage.A, nextOrder++, null, true, null);
+        problemService.addToRoadmap(stageBProblem.getId(), RoadmapStage.B, nextOrder++, null, true, null);
+
+        List<ProblemLibraryEntry> all = libraryService.getBlindOrderEntries().stream()
+                .filter(entry -> entry.problem().getPlatform().equals(platform))
+                .toList();
+
+        List<ProblemLibraryEntry> stageAOnly = libraryService.applyFilter(all, ProblemLibraryFilter.empty().withStage(RoadmapStage.A));
+        assertEquals(1, stageAOnly.size());
+        assertEquals(stageAProblem.getId(), stageAOnly.get(0).problem().getId());
+    }
+
+    @Test
+    void hasAnyProblemsIsTrueOnceAtLeastOneProblemExists() {
+        assertTrue(problemService.findOrCreateProblem(uniquePlatform("has-any"), "H1", "Has Any", "https://example.test/h1",
+                "General", null, List.of()) != null);
+        assertTrue(libraryService.hasAnyProblems());
+    }
+
+    @Test
+    void nextRecommendedAndRevisitQueueOverloadsReuseAPassedInBlindOrderListInsteadOfRequerying() {
+        String platform = uniquePlatform("reuse-list");
+        Problem needsRevisit = createProblem(platform, "RU1", "Needs Revisit", "General", null);
+        Problem unsolved = createProblem(platform, "RU2", "Unsolved", "General", null);
+
+        int baseOrder = nextOrder;
+        nextOrder += 2;
+        problemService.addToRoadmap(needsRevisit.getId(), RoadmapStage.C1, baseOrder, null, true, null);
+        problemService.addToRoadmap(unsolved.getId(), RoadmapStage.C1, baseOrder + 1, null, true, null);
+        progressService.updateProgress(needsRevisit.getId(), ProblemState.NEEDS_REVISIT, null);
+
+        List<ProblemLibraryEntry> blindOrder = libraryService.getBlindOrderEntries();
+
+        Optional<ProblemLibraryEntry> recommendedFromList = libraryService.getNextRecommendedProblem(blindOrder);
+        Optional<ProblemLibraryEntry> recommendedFresh = libraryService.getNextRecommendedProblem();
+        assertEquals(recommendedFresh.map(ProblemLibraryEntry::problem).map(Problem::getId),
+                recommendedFromList.map(ProblemLibraryEntry::problem).map(Problem::getId));
+
+        List<ProblemLibraryEntry> revisitFromList = libraryService.getRevisitQueue(blindOrder).stream()
+                .filter(entry -> entry.problem().getPlatform().equals(platform))
+                .toList();
+        assertEquals(1, revisitFromList.size());
+        assertEquals(needsRevisit.getId(), revisitFromList.get(0).problem().getId());
+    }
+
+    @Test
     void clearingTheFilterRestoresEveryEntry() {
         String platform = uniquePlatform("clear-filter");
         Problem problem = createProblem(platform, "C1", "Clearable", "General", null);

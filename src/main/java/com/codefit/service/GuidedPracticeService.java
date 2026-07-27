@@ -48,13 +48,16 @@ public class GuidedPracticeService {
     TodayPlan buildTodayPlan(LocalDate today) {
         ProblemDashboard dashboard = dashboardService.build();
         ProblemDashboard.CoreProgress coreProgress = dashboard.coreProgress();
-        Optional<ProblemLibraryEntry> nextRecommended = libraryService.getNextRecommendedProblem();
+        // One Blind Order fetch (three bulk queries, see #166) feeds both the recommendation and the
+        // revisit queue below, instead of each redoing it independently.
+        List<ProblemLibraryEntry> blindOrder = libraryService.getBlindOrderEntries();
+        Optional<ProblemLibraryEntry> nextRecommended = libraryService.getNextRecommendedProblem(blindOrder);
         String reason = nextRecommended.map(ProblemDashboardService::describeRecommendation)
                 .orElse("Every roadmap problem is already solved — nothing left to recommend.");
 
         return new TodayPlan(coreProgress.currentStage(), coreProgress.currentSet(), coreProgress.mandatoryTotal(),
                 coreProgress.mandatoryCompleted(), getDailyTargetProblems(), countSolvedOn(progressRepository.findAll(), today),
-                nextRecommended, reason, libraryService.getRevisitQueue(), dashboard.timingInsights().bottleneckPhase());
+                nextRecommended, reason, libraryService.getRevisitQueue(blindOrder), dashboard.timingInsights().bottleneckPhase());
     }
 
     public int getDailyTargetProblems() {

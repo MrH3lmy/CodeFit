@@ -221,6 +221,8 @@ public final class DatabaseConfig {
         // preference here is a plain column rather than a separate settings table.
         addColumnIfMissing(connection, "user_progress", "solving_checkpoints_enabled", "INTEGER NOT NULL DEFAULT 1");
         addColumnIfMissing(connection, "user_progress", "solving_checkpoint_minutes", "TEXT NOT NULL DEFAULT '20,60,120'");
+        // The guided curriculum practice loop's (#161) daily target, in problems.
+        addColumnIfMissing(connection, "user_progress", "daily_target_problems", "INTEGER NOT NULL DEFAULT 3");
     }
 
     /**

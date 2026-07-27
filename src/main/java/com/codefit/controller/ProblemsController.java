@@ -4,10 +4,12 @@ import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemState;
 import com.codefit.model.RoadmapEntry;
+import com.codefit.service.GuidedPracticeService;
 import com.codefit.service.ProblemLibraryEntry;
 import com.codefit.service.ProblemLibraryFilter;
 import com.codefit.service.ProblemLibraryService;
 import com.codefit.service.ProblemSolvingSessionService;
+import com.codefit.service.TodayPlan;
 import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -39,8 +41,13 @@ public class ProblemsController extends BaseController {
     @FXML private Button blindOrderToggleButton;
     @FXML private Button topicsToggleButton;
     @FXML private VBox nextRecommendedCard;
+    @FXML private Label todayStageSetLabel;
+    @FXML private Label todayMandatoryProgressLabel;
+    @FXML private Label todayTargetLabel;
+    @FXML private Label todayBottleneckLabel;
     @FXML private Label nextRecommendedLabel;
     @FXML private Button nextRecommendedResumeButton;
+    @FXML private Button revisitQueueButton;
     @FXML private TextField searchField;
     @FXML private MenuButton topicMenuButton;
     @FXML private MenuButton levelMenuButton;
@@ -52,10 +59,12 @@ public class ProblemsController extends BaseController {
 
     private final ProblemLibraryService problemLibraryService = new ProblemLibraryService();
     private final ProblemSolvingSessionService solvingSessionService = new ProblemSolvingSessionService();
+    private final GuidedPracticeService guidedPracticeService = new GuidedPracticeService();
 
     private ViewMode viewMode = ViewMode.BLIND_ORDER;
     private ProblemLibraryFilter filter = ProblemLibraryFilter.empty();
     private Long pendingResumeProblemId;
+    private Long pendingRevisitProblemId;
 
     @FXML
     public void initialize() {
@@ -107,6 +116,16 @@ public class ProblemsController extends BaseController {
             return;
         }
         startOrResumeSession(pendingResumeProblemId);
+    }
+
+    /** Starts the first revisit-queue problem directly — an explicit override of the guided
+     *  recommendation (#161), the same way starting any other row directly is. */
+    @FXML
+    public void practiceRevisitQueue() {
+        if (pendingRevisitProblemId == null) {
+            return;
+        }
+        startOrResumeSession(pendingRevisitProblemId);
     }
 
     private void configureStaticFilterMenus() {
@@ -202,22 +221,50 @@ public class ProblemsController extends BaseController {
         filtered.forEach(entry -> problemsList.getChildren().add(createProblemRow(entry)));
     }
 
+    /**
+     * The guided curriculum practice loop's "Today" panel (#161): current stage/set, mandatory
+     * progress, the learner's daily target vs. how many problems were solved today, the most recent
+     * solving bottleneck, and the mandatory-gated next recommendation "Start Today's Practice" opens
+     * directly in the Solving Workspace. Only shown in the Blind Order view, since it describes
+     * progress through the roadmap sequence the Topics view deliberately doesn't follow.
+     */
     private void updateNextRecommendedCard() {
         if (viewMode != ViewMode.BLIND_ORDER) {
             setVisible(nextRecommendedCard, false);
             pendingResumeProblemId = null;
+            pendingRevisitProblemId = null;
             return;
         }
-        problemLibraryService.getNextRecommendedProblem().ifPresentOrElse(entry -> {
+        TodayPlan plan = guidedPracticeService.buildTodayPlan();
+
+        todayStageSetLabel.setText(plan.currentStage() == null ? "Roadmap complete — every problem is solved."
+                : "Stage " + plan.currentStage() + (plan.currentSet() == null ? "" : ", Set " + plan.currentSet()));
+        todayMandatoryProgressLabel.setText("Mandatory progress: " + plan.mandatoryCompleted() + " / " + plan.mandatoryTotal()
+                + " (" + Math.round(plan.mandatoryCompletionPercent()) + "%)");
+        todayTargetLabel.setText("Today: " + plan.solvedToday() + " / " + plan.dailyTargetProblems() + " problems"
+                + (plan.dailyTargetMet() ? " — target met!" : ""));
+        todayBottleneckLabel.setText(plan.recentBottleneck() == null ? "Not enough timing data yet to spot a bottleneck."
+                : "Recent bottleneck: " + capitalize(plan.recentBottleneck().name()));
+
+        plan.nextRecommended().ifPresentOrElse(entry -> {
             Problem problem = entry.problem();
             pendingResumeProblemId = problem.getId();
-            String stageLabel = entry.roadmapEntry() == null ? "" : " (" + entry.roadmapEntry().getStage() + ")";
-            nextRecommendedLabel.setText("[" + problem.getExternalCode() + "] " + problem.getTitle() + stageLabel);
+            nextRecommendedLabel.setText("[" + problem.getExternalCode() + "] " + problem.getTitle() + " — " + plan.nextRecommendedReason());
             setVisible(nextRecommendedCard, true);
         }, () -> {
             pendingResumeProblemId = null;
-            setVisible(nextRecommendedCard, false);
+            nextRecommendedLabel.setText(plan.nextRecommendedReason());
+            setVisible(nextRecommendedCard, true);
         });
+
+        if (plan.hasRevisitWork()) {
+            pendingRevisitProblemId = plan.revisitQueue().get(0).problem().getId();
+            revisitQueueButton.setText("Practice Revisit Queue (" + plan.revisitQueue().size() + ")");
+            setVisible(revisitQueueButton, true);
+        } else {
+            pendingRevisitProblemId = null;
+            setVisible(revisitQueueButton, false);
+        }
     }
 
     private VBox createProblemRow(ProblemLibraryEntry entry) {

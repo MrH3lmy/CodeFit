@@ -70,15 +70,52 @@ public class ProblemLibraryService {
     }
 
     /**
-     * The first Blind Order row that isn't yet {@code SOLVED}. A workbook status of {@code ACX}
-     * (accepted after retries) is imported as {@link ProblemState#SOLVED} the same as a plain
-     * {@code AC} (see {@code TrainingSheetImportService}), so excluding {@code SOLVED} here already
-     * excludes both — there is no separate {@code ACX} state to check.
+     * The first Blind Order row that isn't yet {@code SOLVED}, preferring mandatory work: while any
+     * mandatory roadmap position remains unsolved, this is the first such position (never a
+     * later-stage or optional one) — see #161's "do not introduce a later-stage problem while
+     * required earlier work remains". Once every mandatory position is solved, this falls through to
+     * the first unsolved position overall (mandatory or optional), so optional work is recommended
+     * rather than left to stall the roadmap forever.
+     *
+     * <p>This is the <em>default, guided</em> recommendation only — a learner can always start any
+     * specific problem directly from its own row (see {@code ProblemsController}'s per-row Start
+     * action), which is the "unless the learner explicitly overrides" escape hatch; this method never
+     * needs its own separate override parameter because of that.
+     *
+     * <p>A workbook status of {@code ACX} (accepted after retries) is imported as
+     * {@link ProblemState#SOLVED} the same as a plain {@code AC} (see
+     * {@code TrainingSheetImportService}), so excluding {@code SOLVED} here already excludes both —
+     * there is no separate {@code ACX} state to check.
      */
     public Optional<ProblemLibraryEntry> getNextRecommendedProblem() {
-        return getBlindOrderEntries().stream()
+        return selectNextRecommended(getBlindOrderEntries());
+    }
+
+    /** Package-visible, DB-free selection logic (mirrors {@code ProblemDashboardService}'s
+     *  static-method-over-plain-lists convention) so the mandatory-gating rule is unit testable
+     *  directly against a hand-built list, without the shared test database's cross-test noise. */
+    static Optional<ProblemLibraryEntry> selectNextRecommended(List<ProblemLibraryEntry> blindOrder) {
+        Optional<ProblemLibraryEntry> nextMandatory = blindOrder.stream()
+                .filter(entry -> entry.progress().getState() != ProblemState.SOLVED)
+                .filter(entry -> entry.roadmapEntry() == null || entry.roadmapEntry().isMandatory())
+                .findFirst();
+        if (nextMandatory.isPresent()) {
+            return nextMandatory;
+        }
+        return blindOrder.stream()
                 .filter(entry -> entry.progress().getState() != ProblemState.SOLVED)
                 .findFirst();
+    }
+
+    /**
+     * Roadmap positions currently flagged {@link ProblemState#NEEDS_REVISIT} ("Could Not Solve" in the
+     * Solving Workspace), in Blind Order — a queue to work back through without disturbing the main
+     * roadmap sequence or the frontier {@link #getNextRecommendedProblem()} tracks (#161).
+     */
+    public List<ProblemLibraryEntry> getRevisitQueue() {
+        return getBlindOrderEntries().stream()
+                .filter(entry -> entry.progress().getState() == ProblemState.NEEDS_REVISIT)
+                .toList();
     }
 
     public List<String> getDistinctTopics() {

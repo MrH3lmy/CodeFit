@@ -22,9 +22,16 @@
             </HBox>
 
             <VBox fx:id="nextRecommendedCard" spacing="6" styleClass="panel, next-recommended-card" maxWidth="Infinity" visible="false" managed="false">
-                <Label text="Next Recommended" styleClass="section-title" />
+                <Label text="Today" styleClass="section-title" />
+                <Label fx:id="todayStageSetLabel" wrapText="true" />
+                <Label fx:id="todayMandatoryProgressLabel" wrapText="true" />
+                <Label fx:id="todayTargetLabel" wrapText="true" />
+                <Label fx:id="todayBottleneckLabel" wrapText="true" />
                 <Label fx:id="nextRecommendedLabel" wrapText="true" />
-                <Button fx:id="nextRecommendedResumeButton" text="Start / Resume" onAction="#resumeNextRecommended" styleClass="action-button" />
+                <HBox spacing="8">
+                    <Button fx:id="nextRecommendedResumeButton" text="Start Today's Practice" onAction="#resumeNextRecommended" styleClass="action-button" />
+                    <Button fx:id="revisitQueueButton" text="Practice Revisit Queue" onAction="#practiceRevisitQueue" styleClass="ghost-button" visible="false" managed="false" />
+                </HBox>
             </VBox>
 
             <TextField fx:id="searchField" promptText="Search title, code, or platform…" maxWidth="Infinity" />

@@ -12,7 +12,7 @@ import java.time.LocalDate;
 
 public class UserProgressRepository {
     public UserProgress getProgress() {
-        String sql = "SELECT id, xp, level, streak_days, last_review_date, total_reviews, missed_day_count, streak_freeze_count, recovery_quest_active, daily_workload_mode, active_training_path, focus_module_order, mature_interleave_percent, daily_new_card_limit, guided_session_minutes, solving_checkpoints_enabled, solving_checkpoint_minutes FROM user_progress WHERE id = 1";
+        String sql = "SELECT id, xp, level, streak_days, last_review_date, total_reviews, missed_day_count, streak_freeze_count, recovery_quest_active, daily_workload_mode, active_training_path, focus_module_order, mature_interleave_percent, daily_new_card_limit, guided_session_minutes, solving_checkpoints_enabled, solving_checkpoint_minutes, daily_target_problems FROM user_progress WHERE id = 1";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
@@ -35,7 +35,8 @@ public class UserProgressRepository {
                         resultSet.getInt("daily_new_card_limit"),
                         resultSet.getInt("guided_session_minutes"),
                         resultSet.getInt("solving_checkpoints_enabled") == 1,
-                        resultSet.getString("solving_checkpoint_minutes")
+                        resultSet.getString("solving_checkpoint_minutes"),
+                        resultSet.getInt("daily_target_problems")
                 );
             }
             return new UserProgress(1, 0, 1, 0, null, 0);
@@ -47,7 +48,7 @@ public class UserProgressRepository {
     public void save(UserProgress progress) {
         String sql = """
                 UPDATE user_progress
-                SET xp = ?, level = ?, streak_days = ?, last_review_date = ?, total_reviews = ?, missed_day_count = ?, streak_freeze_count = ?, recovery_quest_active = ?, daily_workload_mode = ?, active_training_path = ?, focus_module_order = ?, mature_interleave_percent = ?, daily_new_card_limit = ?, guided_session_minutes = ?, solving_checkpoints_enabled = ?, solving_checkpoint_minutes = ?
+                SET xp = ?, level = ?, streak_days = ?, last_review_date = ?, total_reviews = ?, missed_day_count = ?, streak_freeze_count = ?, recovery_quest_active = ?, daily_workload_mode = ?, active_training_path = ?, focus_module_order = ?, mature_interleave_percent = ?, daily_new_card_limit = ?, guided_session_minutes = ?, solving_checkpoints_enabled = ?, solving_checkpoint_minutes = ?, daily_target_problems = ?
                 WHERE id = 1
                 """;
         try (Connection connection = DatabaseConfig.getConnection();
@@ -72,6 +73,7 @@ public class UserProgressRepository {
             statement.setInt(14, progress.getGuidedSessionMinutes());
             statement.setInt(15, progress.isSolvingCheckpointsEnabled() ? 1 : 0);
             statement.setString(16, progress.getSolvingCheckpointMinutesCsv());
+            statement.setInt(17, progress.getDailyTargetProblems());
             statement.executeUpdate();
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to save user progress", exception);

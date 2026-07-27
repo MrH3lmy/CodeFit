@@ -1,22 +1,25 @@
 # Source attribution, licensing, and safe packaging for imported training roadmaps (#149)
 
-CodeFit's problem-solving roadmap is built from a workbook the learner imports locally — most
+CodeFit's problem-solving roadmap is normally built from a workbook the learner imports locally — most
 commonly a Junior Training Sheet-style spreadsheet whose ordering, annotations, and curated links are
-someone else's curated curriculum, not CodeFit's own content. This document is the policy this repo
-follows so that support is never confused with redistribution.
+not CodeFit's own content. This document keeps local-import support separate from redistribution while
+also documenting the single workbook fixture explicitly approved for importer validation.
 
 ## What stays out of the repository
 
-- **No third-party workbook, or any dataset extracted from one, is ever committed to this repository**
-  — not the original `.xlsx`, not a JSON/CSV export of its rows, not a "sample" trimmed down from real
-  content. Every importer test fixture (`TrainingSheetFixtures`) is built programmatically from
-  made-up problems and titles; `WorkbookContentPolicyTest` enforces this in CI by scanning the
-  repository for any `.xlsx` file and for the real Junior Training Sheet's known authorship, failing
-  the build if either ever appears.
+- **No third-party workbook or extracted dataset is committed by default.** The only approved exception
+  is `data/import-fixtures/Ahmed-Junior-Training-Sheet-V7.0.xlsx`, included so the real importer can be
+  validated against the workbook structure the product must support and so the repository owner can
+  import that exact file locally. The application does not seed it, load it automatically, or package
+  it as a built-in curriculum.
+- Any additional or replacement workbook requires an explicit pull request that documents its source,
+  intended use, packaging boundary, and test impact. `WorkbookContentPolicyTest` enforces the exact
+  allow-listed path.
+- Synthetic importer fixtures remain programmatically generated from made-up problems and titles.
 - CodeFit's own bundled content (the flashcard decks/paths shipped with the app, e.g. the Java Backend
   and Database Internals learning paths) is unaffected by any of this — it was authored for CodeFit and
-  is licensed under this repository's own license. This policy is specifically about *imported*
-  problem-solving roadmaps, which are the learner's own local data.
+  is licensed under this repository's own license. This policy is specifically about imported
+  problem-solving roadmaps.
 
 ## What CodeFit stores after import
 
@@ -108,5 +111,5 @@ every item below must be checked off and recorded (e.g. in the PR that adds it) 
 - [ ] A maintainer with authority to accept third-party content on behalf of the project signs off in
       the PR, separate from whoever implemented the integration.
 
-Until every box above is checked for a specific curriculum, roadmap content stays exactly as it is
-today: something the learner imports locally, never something CodeFit bundles or redistributes.
+Unless a workbook is explicitly approved as an importer-validation fixture, roadmap content stays as
+learner-imported local data rather than a built-in CodeFit curriculum.

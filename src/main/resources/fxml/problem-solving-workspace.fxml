@@ -94,6 +94,39 @@
             </VBox>
 
             <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                <Label text="Java Runner" styleClass="section-title" />
+                <Label fx:id="javaRunnerUnavailableLabel" wrapText="true" styleClass="status-banner" visible="false" managed="false" />
+                <Label text="Local execution is not the authoritative judge result — always submit to the external judge to confirm." styleClass="muted" wrapText="true" />
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Class name:" />
+                    <TextField fx:id="javaClassNameField" text="Solution" />
+                </HBox>
+                <TextArea fx:id="javaSourceArea" promptText="Java source…" prefRowCount="14" wrapText="false" maxWidth="Infinity" styleClass="code-editor" />
+                <HBox spacing="12">
+                    <VBox spacing="4" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                        <Label text="Standard input" styleClass="problem-row-subtitle" />
+                        <TextArea fx:id="javaStdinArea" prefRowCount="4" wrapText="true" maxWidth="Infinity" />
+                    </VBox>
+                    <VBox spacing="4" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                        <Label text="Expected output (optional)" styleClass="problem-row-subtitle" />
+                        <TextArea fx:id="javaExpectedOutputArea" prefRowCount="4" wrapText="true" maxWidth="Infinity" />
+                    </VBox>
+                </HBox>
+                <HBox spacing="8">
+                    <Button fx:id="javaCompileButton" text="Compile" onAction="#compileJavaSolution" styleClass="ghost-button" />
+                    <Button fx:id="javaRunButton" text="Run" onAction="#runJavaSolution" styleClass="action-button" disable="true" />
+                    <Button fx:id="javaCancelButton" text="Cancel" onAction="#cancelJavaRun" styleClass="ghost-button" visible="false" managed="false" />
+                    <Button text="Copy Solution" onAction="#copyJavaSolution" styleClass="ghost-button" />
+                </HBox>
+                <VBox fx:id="javaDiagnosticsBox" spacing="4" maxWidth="Infinity" />
+                <Label fx:id="javaRunStatusLabel" wrapText="true" />
+                <VBox spacing="4" maxWidth="Infinity">
+                    <Label text="Output" styleClass="problem-row-subtitle" />
+                    <TextArea fx:id="javaOutputArea" editable="false" prefRowCount="8" wrapText="true" maxWidth="Infinity" />
+                </VBox>
+            </VBox>
+
+            <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
                 <Label text="Finish" styleClass="section-title" />
                 <Label text="Submitted / Could Not Solve record the verdict picked below; Accepted always records AC." styleClass="muted" wrapText="true" />
                 <MenuButton fx:id="verdictMenuButton" text="Verdict: AC" styleClass="ghost-button" />

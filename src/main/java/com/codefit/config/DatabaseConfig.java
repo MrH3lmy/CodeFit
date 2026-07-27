@@ -163,6 +163,7 @@ public final class DatabaseConfig {
             ensureProblemProgressReflectionColumns(connection);
             ensureImportAttributionSchema(connection);
             ensureProblemGuidanceSchema(connection);
+            ensureJavaSolutionDraftSchema(connection);
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
             seedAssessmentBank(connection);
@@ -420,6 +421,28 @@ public final class DatabaseConfig {
                         prerequisites TEXT,
                         reference_links TEXT,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE
+                    )
+                    """);
+        }
+    }
+
+    /**
+     * A learner's saved Java solution-in-progress per problem (#163): one row per {@code problem_id}
+     * ({@code UNIQUE}), so autosaving on every edit is just an upsert against this one row — surviving
+     * an application restart is the entire point of this table.
+     */
+    private static void ensureJavaSolutionDraftSchema(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS java_solution_drafts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        problem_id INTEGER NOT NULL UNIQUE,
+                        main_class_name TEXT NOT NULL DEFAULT 'Solution',
+                        source_code TEXT,
+                        stdin TEXT,
+                        expected_output TEXT,
                         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE
                     )

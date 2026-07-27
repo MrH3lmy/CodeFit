@@ -4,3 +4,9 @@
 .checkpoint-banner {
     -fx-border-color: -color-warning;
 }
+
+/* Java Runner (#163): a plain monospace font stands in for real syntax highlighting, which is out
+ * of scope for this iteration (see docs/problem-solving-java-runner.md's known limitations). */
+.code-editor {
+    -fx-font-family: "Monospaced";
+}

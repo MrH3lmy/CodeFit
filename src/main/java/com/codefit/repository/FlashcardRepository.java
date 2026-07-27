@@ -4,6 +4,7 @@ import com.codefit.config.DatabaseConfig;
 import com.codefit.model.CardState;
 import com.codefit.model.CardType;
 import com.codefit.model.Flashcard;
+import com.codefit.model.ReflectionCardSource;
 import com.codefit.model.ValidationMode;
 
 import java.sql.Connection;
@@ -88,6 +89,52 @@ public class FlashcardRepository {
         }
     }
 
+    /** The card, if any, already linked to this exact (problem, reflection field) pair (#148) — the
+     *  duplicate-protection check before generating another card from the same source. */
+    public Optional<Flashcard> findBySourceProblemIdAndReflectionField(long problemId, ReflectionCardSource sourceReflectionField) {
+        String sql = "SELECT * FROM flashcards WHERE source_problem_id = ? AND source_reflection_field = ? LIMIT 1";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, problemId);
+            statement.setString(2, sourceReflectionField.name());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? Optional.of(mapFlashcard(resultSet)) : Optional.empty();
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to check for an existing linked card", exception);
+        }
+    }
+
+    /** Every card linked back to a problem, regardless of which reflection field produced it. */
+    public List<Flashcard> findBySourceProblemId(long problemId) {
+        String sql = "SELECT * FROM flashcards WHERE source_problem_id = ? ORDER BY created_at";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, problemId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return mapAll(resultSet);
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load cards linked to problem", exception);
+        }
+    }
+
+    /** Stamps provenance onto an already-saved card; kept separate from {@link #save} so
+     *  {@link com.codefit.service.FlashcardService#addCard} stays the single place that builds and
+     *  validates ordinary card content, with source-linking as a distinct follow-up step (#148). */
+    public void updateSourceLink(long cardId, long sourceProblemId, ReflectionCardSource sourceReflectionField) {
+        String sql = "UPDATE flashcards SET source_problem_id = ?, source_reflection_field = ? WHERE id = ?";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, sourceProblemId);
+            statement.setString(2, sourceReflectionField.name());
+            statement.setLong(3, cardId);
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to link card to its source problem", exception);
+        }
+    }
+
     public boolean existsByDeckIdAndFront(long deckId, String front) {
         String sql = "SELECT 1 FROM flashcards WHERE deck_id = ? AND lower(front) = lower(?) LIMIT 1";
         try (Connection connection = DatabaseConfig.getConnection();
@@ -103,7 +150,7 @@ public class FlashcardRepository {
     }
 
     public Flashcard save(Flashcard flashcard) {
-        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, hint, skill_category, time_limit_seconds, due_date, interval_days, ease_factor, review_count, card_state, introduced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, validation_mode, simulated_output, hint, skill_category, time_limit_seconds, due_date, interval_days, ease_factor, review_count, card_state, introduced_at, source_problem_id, source_reflection_field) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, flashcard.getDeckId());
@@ -126,6 +173,12 @@ public class FlashcardRepository {
             statement.setInt(14, flashcard.getReviewCount());
             statement.setString(15, flashcard.getCardState().name());
             statement.setString(16, flashcard.getIntroducedAt() == null ? null : flashcard.getIntroducedAt().toString());
+            if (flashcard.getSourceProblemId() == null) {
+                statement.setNull(17, java.sql.Types.INTEGER);
+            } else {
+                statement.setLong(17, flashcard.getSourceProblemId());
+            }
+            statement.setString(18, flashcard.getSourceReflectionField() == null ? null : flashcard.getSourceReflectionField().name());
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -272,11 +325,19 @@ public class FlashcardRepository {
         );
         flashcard.setCardState(enumValue(CardState.class, resultSet.getString("card_state"), CardState.NEW));
         flashcard.setIntroducedAt(nullableDateTime(resultSet, "introduced_at"));
+        flashcard.setSourceProblemId(nullableLong(resultSet, "source_problem_id"));
+        String sourceReflectionField = resultSet.getString("source_reflection_field");
+        flashcard.setSourceReflectionField(sourceReflectionField == null ? null : ReflectionCardSource.valueOf(sourceReflectionField));
         return flashcard;
     }
 
     private Integer nullableInteger(ResultSet resultSet, String columnName) throws SQLException {
         int value = resultSet.getInt(columnName);
+        return resultSet.wasNull() ? null : value;
+    }
+
+    private Long nullableLong(ResultSet resultSet, String columnName) throws SQLException {
+        long value = resultSet.getLong(columnName);
         return resultSet.wasNull() ? null : value;
     }
 

@@ -118,6 +118,29 @@
 
                 <Button text="Save Reflection" onAction="#saveReflection" styleClass="primary-button" />
             </VBox>
+
+            <VBox spacing="10" styleClass="panel" maxWidth="Infinity">
+                <Label text="Create Flashcard" styleClass="section-title" />
+                <Label text="Turn a reflection field into a flashcard without retyping it." styleClass="muted" wrapText="true" />
+
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="From" styleClass="dashboard-card-helper" />
+                    <MenuButton fx:id="flashcardSourceMenuButton" text="Lesson Learned" styleClass="ghost-button" />
+                    <Button text="Generate Draft" onAction="#generateFlashcardDraft" styleClass="ghost-button" />
+                </HBox>
+
+                <Label fx:id="flashcardDraftEmptyLabel" text="Pick a reflection field and click Generate Draft." styleClass="dashboard-card-helper" wrapText="true" />
+
+                <VBox fx:id="flashcardDraftBox" spacing="10" maxWidth="Infinity" visible="false" managed="false">
+                    <TextField fx:id="flashcardFrontField" promptText="Card prompt…" maxWidth="Infinity" />
+                    <TextArea fx:id="flashcardBackArea" promptText="Card answer…" prefRowCount="3" wrapText="true" maxWidth="Infinity" />
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Deck" styleClass="dashboard-card-helper" />
+                        <MenuButton fx:id="flashcardDeckMenuButton" text="Problem-Solving Lessons" styleClass="ghost-button" />
+                    </HBox>
+                    <Button text="Save Flashcard" onAction="#saveFlashcard" styleClass="primary-button" />
+                </VBox>
+            </VBox>
         </VBox>
     </content>
 </ScrollPane>

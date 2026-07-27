@@ -1,16 +1,20 @@
 package com.codefit.controller;
 
 import com.codefit.model.ComplexityClass;
+import com.codefit.model.Deck;
+import com.codefit.model.Flashcard;
 import com.codefit.model.FinalCategory;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
 import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemSolvingSession;
+import com.codefit.model.ReflectionCardSource;
 import com.codefit.model.RoadmapEntry;
 import com.codefit.model.SessionFinishOutcome;
 import com.codefit.model.SolvedWith;
 import com.codefit.model.SolvingPhase;
 import com.codefit.model.SubmissionResult;
+import com.codefit.service.ProblemFlashcardService;
 import com.codefit.service.ProblemReflection;
 import com.codefit.service.ProblemSolvingWorkspaceService;
 import com.codefit.service.SolvingCheckpointPreferenceService;
@@ -18,7 +22,9 @@ import com.codefit.ui.NavigationService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
@@ -88,8 +94,16 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     @FXML private CheckBox simplerImplementationCheckBox;
     @FXML private CheckBox betterComplexityCheckBox;
 
+    @FXML private MenuButton flashcardSourceMenuButton;
+    @FXML private Label flashcardDraftEmptyLabel;
+    @FXML private javafx.scene.layout.VBox flashcardDraftBox;
+    @FXML private TextField flashcardFrontField;
+    @FXML private TextArea flashcardBackArea;
+    @FXML private MenuButton flashcardDeckMenuButton;
+
     private final ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
     private final SolvingCheckpointPreferenceService checkpointPreferenceService = new SolvingCheckpointPreferenceService();
+    private final ProblemFlashcardService problemFlashcardService = new ProblemFlashcardService();
 
     private Long problemId;
     private String problemUrl;
@@ -100,6 +114,8 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     private FinalCategory selectedFinalCategory;
     private ComplexityClass selectedTimeComplexity;
     private ComplexityClass selectedSpaceComplexity;
+    private ReflectionCardSource selectedFlashcardSource = ReflectionCardSource.LESSON_LEARNED;
+    private Long selectedFlashcardDeckId;
     private Timeline timer;
 
     @FXML
@@ -107,6 +123,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         problemId = NavigationService.consumePendingWorkspaceProblemId();
         configureVerdictMenu();
         configureReflectionMenus();
+        configureFlashcardMenus();
         if (problemId == null) {
             setStatus(messageLabel, "No problem selected. Return to Problems and choose one to work on.");
             setControlsDisabled(true);
@@ -215,6 +232,90 @@ public class ProblemSolvingWorkspaceController extends BaseController {
             case O_FACTORIAL -> "O(n!)";
             case OTHER -> "Other";
         };
+    }
+
+    private void configureFlashcardMenus() {
+        flashcardSourceMenuButton.getItems().setAll(java.util.Arrays.stream(ReflectionCardSource.values())
+                .map(source -> {
+                    MenuItem item = new MenuItem(capitalize(source.name()));
+                    item.setOnAction(event -> {
+                        selectedFlashcardSource = source;
+                        flashcardSourceMenuButton.setText(capitalize(source.name()));
+                        setVisible(flashcardDraftBox, false);
+                        setVisible(flashcardDraftEmptyLabel, true);
+                    });
+                    return item;
+                }).toList());
+        refreshDeckMenu();
+    }
+
+    private void refreshDeckMenu() {
+        flashcardDeckMenuButton.getItems().clear();
+        MenuItem lessonsDeckItem = new MenuItem(ProblemFlashcardService.LESSONS_DECK_NAME);
+        lessonsDeckItem.setOnAction(event -> {
+            selectedFlashcardDeckId = null;
+            flashcardDeckMenuButton.setText(ProblemFlashcardService.LESSONS_DECK_NAME);
+        });
+        flashcardDeckMenuButton.getItems().add(lessonsDeckItem);
+        for (Deck deck : problemFlashcardService.getAvailableDecks()) {
+            if (deck.getName().equalsIgnoreCase(ProblemFlashcardService.LESSONS_DECK_NAME)) {
+                continue;
+            }
+            MenuItem item = new MenuItem(deck.getName());
+            item.setOnAction(event -> {
+                selectedFlashcardDeckId = deck.getId();
+                flashcardDeckMenuButton.setText(deck.getName());
+            });
+            flashcardDeckMenuButton.getItems().add(item);
+        }
+        selectedFlashcardDeckId = null;
+        flashcardDeckMenuButton.setText(ProblemFlashcardService.LESSONS_DECK_NAME);
+    }
+
+    @FXML
+    public void generateFlashcardDraft() {
+        if (problemId == null) {
+            return;
+        }
+        ProblemFlashcardService.ProblemFlashcardDraft draft = problemFlashcardService.buildDraft(problemId, selectedFlashcardSource);
+        flashcardFrontField.setText(draft.front());
+        flashcardBackArea.setText(draft.back());
+        setVisible(flashcardDraftEmptyLabel, false);
+        setVisible(flashcardDraftBox, true);
+    }
+
+    @FXML
+    public void saveFlashcard() {
+        if (problemId == null) {
+            return;
+        }
+        String front = flashcardFrontField.getText();
+        String back = flashcardBackArea.getText();
+        if (front == null || front.isBlank() || back == null || back.isBlank()) {
+            setStatus(messageLabel, "Both the card prompt and answer are required.");
+            return;
+        }
+
+        long deckId = selectedFlashcardDeckId != null ? selectedFlashcardDeckId : problemFlashcardService.resolveLessonsDeckId();
+        boolean allowDuplicate = false;
+        Optional<Flashcard> existing = problemFlashcardService.findExistingLinkedCard(problemId, selectedFlashcardSource);
+        if (existing.isPresent()) {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Flashcard already exists");
+            alert.setHeaderText("A flashcard was already created from this reflection field.");
+            alert.setContentText("Existing prompt: " + existing.get().getFront() + "\n\nCreate another one anyway?");
+            allowDuplicate = alert.showAndWait().filter(button -> button == ButtonType.OK).isPresent();
+            if (!allowDuplicate) {
+                setStatus(messageLabel, "Kept the existing linked flashcard — nothing new was created.");
+                return;
+            }
+        }
+
+        problemFlashcardService.createCard(deckId, problemId, selectedFlashcardSource, front, back, allowDuplicate);
+        setStatus(messageLabel, "Flashcard saved to " + flashcardDeckMenuButton.getText() + ".");
+        setVisible(flashcardDraftBox, false);
+        setVisible(flashcardDraftEmptyLabel, true);
+        refreshDeckMenu();
     }
 
     @FXML

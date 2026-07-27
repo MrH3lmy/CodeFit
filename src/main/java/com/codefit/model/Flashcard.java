@@ -22,6 +22,8 @@ public class Flashcard {
     private Integer timeLimitSeconds;
     private CardState cardState = CardState.NEW;
     private LocalDateTime introducedAt;
+    private Long sourceProblemId;
+    private ReflectionCardSource sourceReflectionField;
 
     public Flashcard(long id, long deckId, String front, String back, LocalDate dueDate,
                      int intervalDays, double easeFactor, int reviewCount, LocalDateTime createdAt) {
@@ -126,6 +128,12 @@ public class Flashcard {
     public void setCardState(CardState cardState) { this.cardState = cardState == null ? CardState.NEW : cardState; }
     public LocalDateTime getIntroducedAt() { return introducedAt; }
     public void setIntroducedAt(LocalDateTime introducedAt) { this.introducedAt = introducedAt; }
+    /** The problem this card was generated from (#148), or null for a card created any other way. */
+    public Long getSourceProblemId() { return sourceProblemId; }
+    public void setSourceProblemId(Long sourceProblemId) { this.sourceProblemId = sourceProblemId; }
+    public ReflectionCardSource getSourceReflectionField() { return sourceReflectionField; }
+    public void setSourceReflectionField(ReflectionCardSource sourceReflectionField) { this.sourceReflectionField = sourceReflectionField; }
+    public boolean hasSourceProblem() { return sourceProblemId != null; }
 
     private String normalizeSkillCategory(String skillCategory) {
         return skillCategory == null || skillCategory.isBlank() ? "General" : skillCategory.strip();

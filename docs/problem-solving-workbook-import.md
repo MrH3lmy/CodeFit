@@ -65,23 +65,37 @@ standing regression test, in addition to the synthetic-fixture coverage in
 ## Import preview screen (#160)
 
 Selecting a workbook in **Settings → Problem-Solving Training → Import Training Sheet…** never
-immediately writes anything. `SettingsController#analyzeAndConfirmImport` is a two-step flow:
+immediately writes anything. `SettingsController#analyzeWorkbookInBackground` is a two-step flow:
 
 1. **Analyze.** The file is run through `TrainingSheetImportService#preview` — the exact same
-   row-by-row logic and mapping rules a real import uses, always rolled back at the end — and the
-   resulting `TrainingSheetImportSummary` (plain counts) plus its `WorkbookPreviewDetails` (the richer
-   per-stage/hyperlink/platform/status/topic/skip-reason breakdown) are rendered into a plain-text
-   report by `WorkbookPreviewReportFormatter`.
+   row-by-row logic and mapping rules a real import uses, always rolled back at the end — on a
+   background thread, not the JavaFX Application Thread: the real workbook has ~926 rows across seven
+   sheets, and blocking the UI for the duration of that parse-and-analyze pass would freeze the whole
+   app. The "Import Training Sheet…" button is disabled and a status label shows "Analyzing…" while
+   this runs; the result is marshalled back to the UI thread via `Platform.runLater`. The resulting
+   `TrainingSheetImportSummary` (plain counts) plus its `WorkbookPreviewDetails` (the richer
+   per-stage/hyperlink/platform/status/topic/skip-reason/recognized-ignored-missing-sheet breakdown)
+   are rendered into a plain-text report by `WorkbookPreviewReportFormatter`.
 2. **Review and confirm.** The report is shown in a dialog with "Import Now", "Copy Report", and
    Cancel. Copying leaves the dialog open; cancelling (or closing it any other way) leaves the
    database exactly as the preview found it, since the preview itself already rolled back. Only
-   clicking "Import Now" runs `TrainingSheetImportService#importWorkbook` for real, against the same
-   file — producing the same counts the preview just showed, since it's the same file through the
-   same code path.
+   clicking "Import Now" runs `TrainingSheetImportService#importWorkbook` for real (also off the UI
+   thread, with the same busy/status treatment), against the same file — producing the same counts the
+   preview just showed, since it's the same file through the same code path.
 
-A structurally invalid workbook (see `validate`) shows its blocking errors — which name the sheet and,
-where the affected row is known, the row number — before the review dialog would even appear, since
-`preview` itself refuses to run past `validateStructure` for such a workbook.
+A workbook with nothing importable at all (no usable roadmap sheet) no longer short-circuits straight
+to a bare error alert: `preview()` returns a `TrainingSheetImportSummary` with zero counts and a single
+`BLOCKING` `TrainingSheetDiagnostic`, so the review dialog still opens and shows exactly what was and
+wasn't recognized (`Recognized sheets` / `Ignored sheets` / `Missing sheets`) — it just keeps "Import
+Now" disabled (`TrainingSheetImportSummary#hasBlockingDiagnostics`). A real `importWorkbook` call still
+refuses outright for such a workbook — there's nothing valid to write. Only an unreadable/corrupt
+`.xlsx` file (can't even be parsed) falls back to the plain error alert, since there's no structured
+report to show for it at all.
+
+Every other finding (a skipped row, a duplicate code, an unrecognized value, an ignored sheet) is a
+`WARNING`-severity `TrainingSheetDiagnostic` carrying the sheet name, 1-based row number when known,
+and column name when known (see `TrainingSheetDiagnostic#describe`) — one bad row never blocks the
+rest of a 926-row import.
 
 The import-complete dialog offers a "Go to Problem Library" button
 (`NavigationService#showProblems`) so a multi-hundred-problem import doesn't end in a dead-end alert.
@@ -89,7 +103,8 @@ The import-complete dialog offers a "Go to Problem Library" button
 `WorkbookPreviewReportFormatter` has no JavaFX dependency, so its output is covered by plain unit
 tests (`TrainingSheetImportServiceTest`) without needing a UI toolkit; `RealJuniorTrainingSheetImportTest`
 additionally asserts that `preview()` and `importWorkbook()` against the real fixture produce
-byte-for-byte matching `WorkbookPreviewDetails`.
+byte-for-byte matching `WorkbookPreviewDetails`, and that the approved workbook has zero blocking
+diagnostics.
 
 ## Local, transactional, idempotent, repeatable
 
@@ -189,3 +204,15 @@ field is still unset, so a learner's own already-recorded value is never overwri
   different scale than the product's 1-5 `qualityRating`) are read from the sheet but not applied to
   `Problem.qualityRating`, to avoid silently misrepresenting the scale; only its classification
   columns (topic/category) are applied.
+- Every current `TrainingSheetDiagnostic` a real workbook produces is `WARNING` severity; `BLOCKING`
+  is only ever raised for "no usable roadmap sheet at all" (see `validateStructure`). A single bad
+  row/column is designed to be skipped-and-reported, not to halt an otherwise-importable workbook — so
+  there's currently no per-row condition that disables "Import Now" the way the workbook-wide case
+  does.
+- The background-thread analyze/import flow in `SettingsController` (loading state, busy/status label,
+  blocking-disable on the review dialog) is backed by the same `TrainingSheetImportSummary`/
+  `hasBlockingDiagnostics` logic the service-layer tests above cover directly, and `settings.fxml`'s
+  new `fx:id`s (`importTrainingSheetButton`, `importStatusLabel`) load under `FxmlLoadingTest`. There
+  is no automated end-to-end JavaFX interaction test driving a real `FileChooser` selection and dialog
+  click, since a native file-picker dialog can't be scripted headlessly — that path was checked by code
+  review, not exercised by an automated test.

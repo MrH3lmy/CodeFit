@@ -2,6 +2,7 @@ package com.codefit.service;
 
 import com.codefit.model.RoadmapStage;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,9 +27,14 @@ import java.util.Map;
  *                                {@code "blank row"}, {@code "aggregate row"},
  *                                {@code "sample placeholder row"}, {@code "missing problem code or title"},
  *                                {@code "duplicate problem code within sheet"}, {@code "roadmap slot conflict"})
+ * @param recognizedSheets        sheet names the import actually reads from
+ * @param ignoredSheets           sheet names present in the workbook but never read (unrecognized
+ *                                extra sheets, or a roadmap sheet with no usable code/title columns)
+ * @param missingSheets           roadmap stage sheets not present in the workbook at all
  */
 public record WorkbookPreviewDetails(Map<RoadmapStage, Integer> stageMembershipCounts, int hyperlinksFound,
                                      int hyperlinksMissing, Map<String, Integer> platformCounts, int solvedCount,
                                      int inProgressCount, int revisitCount, Map<String, Integer> topicCounts,
-                                     int qualityMetadataCount, Map<String, Integer> rowsSkippedByReason) {
+                                     int qualityMetadataCount, Map<String, Integer> rowsSkippedByReason,
+                                     List<String> recognizedSheets, List<String> ignoredSheets, List<String> missingSheets) {
 }

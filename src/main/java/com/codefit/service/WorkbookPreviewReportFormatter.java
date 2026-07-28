@@ -3,6 +3,7 @@ package com.codefit.service;
 import com.codefit.model.RoadmapStage;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,8 +22,16 @@ public final class WorkbookPreviewReportFormatter {
         StringBuilder report = new StringBuilder();
         report.append(summary.dryRun() ? "PREVIEW — nothing has been written to the database yet" : "IMPORT COMPLETE")
                 .append('\n')
-                .append("Workbook: ").append(workbookFileName).append('\n')
-                .append('\n');
+                .append("Workbook: ").append(workbookFileName).append('\n');
+        if (summary.hasBlockingDiagnostics()) {
+            report.append("BLOCKING ERRORS FOUND — nothing can be imported until these are resolved.\n");
+        }
+        report.append('\n');
+
+        report.append("Recognized sheets: ").append(joinOrNone(details.recognizedSheets())).append('\n');
+        report.append("Ignored sheets: ").append(joinOrNone(details.ignoredSheets())).append('\n');
+        report.append("Missing sheets: ").append(joinOrNone(details.missingSheets())).append('\n');
+        report.append('\n');
 
         report.append("Per-stage roadmap memberships (").append(totalMemberships(details)).append(" total):\n");
         for (RoadmapStage stage : RoadmapStage.values()) {
@@ -54,11 +63,23 @@ public final class WorkbookPreviewReportFormatter {
         report.append("Duplicate rows skipped: ").append(summary.duplicateRowsSkipped()).append('\n');
         report.append("Invalid rows skipped: ").append(summary.invalidRows()).append('\n');
 
-        if (!summary.warnings().isEmpty()) {
-            report.append('\n').append("Warnings (").append(summary.warnings().size()).append("):\n");
-            summary.warnings().forEach(warning -> report.append("  - ").append(warning).append('\n'));
+        List<TrainingSheetDiagnostic> blocking = summary.diagnostics().stream()
+                .filter(diagnostic -> diagnostic.severity() == TrainingSheetDiagnosticSeverity.BLOCKING).toList();
+        List<TrainingSheetDiagnostic> warnings = summary.diagnostics().stream()
+                .filter(diagnostic -> diagnostic.severity() == TrainingSheetDiagnosticSeverity.WARNING).toList();
+        if (!blocking.isEmpty()) {
+            report.append('\n').append("Blocking errors (").append(blocking.size()).append("):\n");
+            blocking.forEach(diagnostic -> report.append("  - ").append(diagnostic.describe()).append('\n'));
+        }
+        if (!warnings.isEmpty()) {
+            report.append('\n').append("Warnings (").append(warnings.size()).append("):\n");
+            warnings.forEach(diagnostic -> report.append("  - ").append(diagnostic.describe()).append('\n'));
         }
         return report.toString();
+    }
+
+    private static String joinOrNone(List<String> sheetNames) {
+        return sheetNames.isEmpty() ? "none" : String.join(", ", sheetNames);
     }
 
     private static int totalMemberships(WorkbookPreviewDetails details) {

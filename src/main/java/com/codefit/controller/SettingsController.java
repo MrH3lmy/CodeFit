@@ -13,6 +13,7 @@ import com.codefit.service.WorkbookImportException;
 import com.codefit.service.WorkbookPreviewReportFormatter;
 import com.codefit.service.WorkbookValidationResult;
 import com.codefit.ui.NavigationService;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -55,6 +56,8 @@ public class SettingsController extends BaseController {
     @FXML private TextField importSourceUrlField;
     @FXML private TextField importAuthorField;
     @FXML private TextField importVersionField;
+    @FXML private Button importTrainingSheetButton;
+    @FXML private Label importStatusLabel;
     @FXML private Label importBatchesEmptyLabel;
     @FXML private VBox importBatchesBox;
 
@@ -79,10 +82,10 @@ public class SettingsController extends BaseController {
 
     /**
      * Local-only workbook import (#159/#160): the file never leaves the machine. Selecting a workbook
-     * only ever analyzes it — see {@link #analyzeAndConfirmImport} — a real import only happens if the
-     * learner explicitly confirms after reviewing the preview report. Re-importing the same workbook
-     * is always safe — {@link TrainingSheetImportService} never creates duplicate problems/memberships
-     * and never downgrades progress the learner has already recorded.
+     * only ever analyzes it — see {@link #analyzeWorkbookInBackground} — a real import only happens if
+     * the learner explicitly confirms after reviewing the preview report. Re-importing the same
+     * workbook is always safe — {@link TrainingSheetImportService} never creates duplicate
+     * problems/memberships and never downgrades progress the learner has already recorded.
      */
     @FXML
     public void importTrainingSheet() {
@@ -93,51 +96,106 @@ public class SettingsController extends BaseController {
         if (file == null) {
             return;
         }
-        analyzeAndConfirmImport(file);
+        analyzeWorkbookInBackground(file);
     }
 
     /**
      * Step 1, "Analyze workbook": runs the exact same row-by-row logic a real import would (see
-     * {@link TrainingSheetImportService#preview}), rolling back every write, and shows the resulting
-     * report. Step 2, "review and confirm": the learner reads the report and explicitly clicks
-     * "Import Now" before anything is written — cancelling (closing the dialog any other way) leaves
-     * the database exactly as it was.
+     * {@link TrainingSheetImportService#preview}), rolling back every write. The real workbook has
+     * ~926 rows across seven sheets, so parsing and analyzing it runs on a background thread —
+     * blocking the JavaFX Application Thread here would freeze the whole UI for the duration — with
+     * the result marshalled back via {@link Platform#runLater}. Step 2, "review and confirm", happens
+     * on {@link #onWorkbookAnalyzed}: the learner reads the report and explicitly clicks "Import Now"
+     * before anything is written — cancelling (closing the dialog any other way) leaves the database
+     * exactly as it was.
      */
-    private void analyzeAndConfirmImport(File file) {
-        TrainingSheetImportSummary preview;
-        try {
-            preview = trainingSheetImportService.preview(file.toPath());
-        } catch (WorkbookImportException exception) {
-            WorkbookValidationResult validation = safeValidate(file);
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Training Sheet Import");
-            alert.setHeaderText("This workbook can't be imported; no changes were made");
-            String detail = validation == null
-                    ? exception.getMessage()
-                    : exception.getMessage() + "\n\n" + String.join("\n", validation.structuralWarnings());
-            alert.setContentText(detail);
-            alert.showAndWait();
-            return;
-        }
+    private void analyzeWorkbookInBackground(File file) {
+        setImportBusy(true, "Analyzing \"" + file.getName() + "\"… this can take a few seconds for a large workbook.");
+        Thread analyzeThread = new Thread(() -> {
+            TrainingSheetImportSummary preview = null;
+            WorkbookImportException failure = null;
+            WorkbookValidationResult validation = null;
+            try {
+                preview = trainingSheetImportService.preview(file.toPath());
+            } catch (WorkbookImportException exception) {
+                failure = exception;
+                validation = safeValidate(file);
+            } catch (RuntimeException exception) {
+                failure = new WorkbookImportException(exception.getMessage(), exception);
+            }
+            TrainingSheetImportSummary finalPreview = preview;
+            WorkbookImportException finalFailure = failure;
+            WorkbookValidationResult finalValidation = validation;
+            Platform.runLater(() -> {
+                setImportBusy(false, null);
+                if (finalFailure != null) {
+                    showAnalysisFailedAlert(finalFailure, finalValidation);
+                } else {
+                    onWorkbookAnalyzed(file, finalPreview);
+                }
+            });
+        }, "training-sheet-analyze");
+        analyzeThread.setDaemon(true);
+        analyzeThread.start();
+    }
 
-        String reportText = WorkbookPreviewReportFormatter.format(file.getName(), preview);
-        if (!showPreviewReportDialog(file.getName(), reportText)) {
-            return; // cancelled: the preview above already rolled back, nothing to undo
-        }
+    private void showAnalysisFailedAlert(WorkbookImportException exception, WorkbookValidationResult validation) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Training Sheet Import");
+        alert.setHeaderText("This workbook can't be analyzed; no changes were made");
+        String detail = validation == null
+                ? exception.getMessage()
+                : exception.getMessage() + "\n\n" + String.join("\n", validation.structuralWarnings());
+        alert.setContentText(detail);
+        alert.showAndWait();
+    }
 
+    /** Shows the review-and-confirm dialog for a completed analysis, then — only if the learner
+     *  explicitly clicks "Import Now" — runs the real import, also off the JavaFX Application Thread. */
+    private void onWorkbookAnalyzed(File file, TrainingSheetImportSummary preview) {
+        if (!showPreviewReportDialog(file.getName(), preview)) {
+            return; // cancelled, or blocked by errors: the preview above already rolled back, nothing to undo
+        }
+        importWorkbookInBackground(file);
+    }
+
+    private void importWorkbookInBackground(File file) {
+        setImportBusy(true, "Importing \"" + file.getName() + "\"…");
         ImportSourceMetadata sourceMetadata = new ImportSourceMetadata(blankToNull(importSourceNameField.getText()),
                 blankToNull(importSourceUrlField.getText()), blankToNull(importAuthorField.getText()), blankToNull(importVersionField.getText()));
-        try {
-            TrainingSheetImportSummary summary = trainingSheetImportService.importWorkbook(file.toPath(), sourceMetadata);
-            showImportCompleteDialog(file.getName(), summary);
-            refreshImportBatches();
-        } catch (WorkbookImportException exception) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Training Sheet Import");
-            alert.setHeaderText("Import failed; no changes were made");
-            alert.setContentText(exception.getMessage());
-            alert.showAndWait();
-        }
+        Thread importThread = new Thread(() -> {
+            TrainingSheetImportSummary summary = null;
+            WorkbookImportException failure = null;
+            try {
+                summary = trainingSheetImportService.importWorkbook(file.toPath(), sourceMetadata);
+            } catch (WorkbookImportException exception) {
+                failure = exception;
+            }
+            TrainingSheetImportSummary finalSummary = summary;
+            WorkbookImportException finalFailure = failure;
+            Platform.runLater(() -> {
+                setImportBusy(false, null);
+                if (finalFailure != null) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Training Sheet Import");
+                    alert.setHeaderText("Import failed; no changes were made");
+                    alert.setContentText(finalFailure.getMessage());
+                    alert.showAndWait();
+                } else {
+                    showImportCompleteDialog(file.getName(), finalSummary);
+                    refreshImportBatches();
+                }
+            });
+        }, "training-sheet-import");
+        importThread.setDaemon(true);
+        importThread.start();
+    }
+
+    private void setImportBusy(boolean busy, String statusText) {
+        importTrainingSheetButton.setDisable(busy);
+        importStatusLabel.setText(statusText == null ? "" : statusText);
+        importStatusLabel.setVisible(statusText != null);
+        importStatusLabel.setManaged(statusText != null);
     }
 
     private WorkbookValidationResult safeValidate(File file) {
@@ -148,11 +206,23 @@ public class SettingsController extends BaseController {
         }
     }
 
-    /** @return {@code true} if the learner clicked "Import Now", {@code false} for cancel/close. */
-    private boolean showPreviewReportDialog(String workbookFileName, String reportText) {
+    /**
+     * The "Preview & Diagnostics" screen (#160): the plain-text report plus every diagnostic's
+     * severity. "Import Now" is disabled whenever the workbook has a BLOCKING diagnostic (nothing
+     * importable at all) — the learner can still read the report and copy it, but there's nothing to
+     * confirm.
+     *
+     * @return {@code true} if the learner clicked "Import Now", {@code false} for cancel/close/blocked.
+     */
+    private boolean showPreviewReportDialog(String workbookFileName, TrainingSheetImportSummary preview) {
+        String reportText = WorkbookPreviewReportFormatter.format(workbookFileName, preview);
+        boolean blocked = preview.hasBlockingDiagnostics();
+
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Training Sheet Import — Preview");
-        dialog.setHeaderText("Review \"" + workbookFileName + "\" before importing — nothing has been written yet.");
+        dialog.setHeaderText(blocked
+                ? "\"" + workbookFileName + "\" has blocking errors and can't be imported — nothing has been written."
+                : "Review \"" + workbookFileName + "\" before importing — nothing has been written yet.");
 
         TextArea reportArea = new TextArea(reportText);
         reportArea.setEditable(false);
@@ -171,6 +241,9 @@ public class SettingsController extends BaseController {
             Clipboard.getSystemClipboard().setContent(content);
             event.consume(); // stay open after copying
         });
+
+        Button importButton = (Button) pane.lookupButton(IMPORT_NOW_BUTTON);
+        importButton.setDisable(blocked);
 
         return dialog.showAndWait().filter(button -> button == IMPORT_NOW_BUTTON).isPresent();
     }

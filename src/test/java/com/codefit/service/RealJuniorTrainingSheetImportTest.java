@@ -106,6 +106,9 @@ class RealJuniorTrainingSheetImportTest {
         assertTrue(details.platformCounts().getOrDefault("Codeforces", 0) > 500, "Codeforces dominates the inferred platforms");
         assertTrue(details.rowsSkippedByReason().getOrDefault("sample placeholder row", 0) >= 5,
                 "the five literal sample rows are reported as a skip reason, not silently vanished");
+        assertFalse(summary.hasBlockingDiagnostics(), "the approved workbook has no blocking errors, so Import stays enabled");
+        assertTrue(details.recognizedSheets().containsAll(
+                List.of("A", "B", "C1", "C2", "D1", "D2", "D3")), "every roadmap stage sheet is recognized: " + details.recognizedSheets());
 
         // No instructional/sample rows became problems.
         for (Long problemId : uniqueProblemIds) {

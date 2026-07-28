@@ -17,12 +17,22 @@ import java.util.List;
  * import preview screen (#160) shows before the learner commits to a real import. It comes from the
  * exact same row-by-row pass as everything else in this summary, whether this run was a real import
  * or a {@link TrainingSheetImportService#preview} dry run.
+ *
+ * <p>{@code diagnostics} is {@code warnings} restated as structured, severity-tagged
+ * {@link TrainingSheetDiagnostic}s (#160) — the same findings, but with sheet/row/column context a UI
+ * can render as a table and use to gate the "Import Now" action (see {@link #hasBlockingDiagnostics()}).
  */
 public record TrainingSheetImportSummary(boolean dryRun, int problemsCreated, int problemsUpdated, int problemsReused,
                                          int roadmapMembershipsCreated, int progressRecordsImported,
                                          int duplicateRowsSkipped, int invalidRows, int attemptsImported,
                                          int reflectionFieldsImported, List<String> warnings, Long importBatchId,
-                                         WorkbookPreviewDetails details) {
+                                         WorkbookPreviewDetails details, List<TrainingSheetDiagnostic> diagnostics) {
+
+    /** {@code true} when this workbook has nothing importable at all (e.g. no usable roadmap sheet) —
+     *  the import preview screen must keep "Import Now" disabled while this holds. */
+    public boolean hasBlockingDiagnostics() {
+        return diagnostics.stream().anyMatch(diagnostic -> diagnostic.severity() == TrainingSheetDiagnosticSeverity.BLOCKING);
+    }
 
     public String message() {
         String prefix = dryRun ? "Preview: would create " : "Created ";

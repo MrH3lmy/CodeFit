@@ -134,6 +134,13 @@ public class TrainingSheetImportService {
         ParsedWorkbook workbook = TrainingSheetWorkbookReader.read(workbookPath);
         WorkbookValidationResult validation = validateStructure(workbook);
         if (!validation.valid()) {
+            if (dryRun) {
+                // Nothing importable at all: report it as a blocked preview (with a BLOCKING
+                // diagnostic) rather than throwing, so the review screen (#160) can still show the
+                // learner what was and wasn't recognized instead of just a bare error dialog. A real
+                // import still refuses outright - there is nothing valid to write.
+                return blockedPreviewSummary(validation);
+            }
             throw new WorkbookImportException("Workbook failed validation: " + String.join("; ", validation.structuralWarnings()));
         }
 
@@ -142,7 +149,9 @@ public class TrainingSheetImportService {
             connection.setAutoCommit(false);
             try {
                 ImportContext context = new ImportContext();
+                context.validation = validation;
                 context.warnings.addAll(validation.structuralWarnings());
+                context.diagnostics.addAll(validation.diagnostics());
 
                 String sourceName = sourceMetadata.sourceName() == null || sourceMetadata.sourceName().isBlank()
                         ? workbookPath.getFileName().toString()
@@ -206,6 +215,16 @@ public class TrainingSheetImportService {
         return importBatchRepository.findAll();
     }
 
+    /** A dry-run preview for a workbook with no usable roadmap sheet at all: every count is zero and
+     *  the single BLOCKING diagnostic explains why, without ever opening a database connection. */
+    private TrainingSheetImportSummary blockedPreviewSummary(WorkbookValidationResult validation) {
+        WorkbookPreviewDetails details = new WorkbookPreviewDetails(Map.of(), 0, 0, Map.of(), 0, 0, 0, Map.of(), 0, Map.of(),
+                List.copyOf(validation.recognizedSheets()), List.copyOf(validation.ignoredSheets()),
+                List.copyOf(validation.missingRoadmapSheets()));
+        return new TrainingSheetImportSummary(true, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                List.copyOf(validation.structuralWarnings()), null, details, List.copyOf(validation.diagnostics()));
+    }
+
     private void importRoadmapSheet(Connection connection, RoadmapStage stage, ParsedSheet sheet, ImportContext context) throws SQLException {
         context.mergeSkippedReasons(sheet.droppedRowReasons());
         Set<String> seenKeysInSheet = new HashSet<>();
@@ -217,7 +236,7 @@ public class TrainingSheetImportService {
             if (code == null || title == null) {
                 context.invalidRows++;
                 context.rowsSkippedByReason.merge("missing problem code or title", 1, Integer::sum);
-                context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber() + ": missing problem code or title, skipped.");
+                context.warn(stage.name(), row.rowNumber(), null, "missing problem code or title, skipped.");
                 continue;
             }
 
@@ -232,8 +251,8 @@ public class TrainingSheetImportService {
             if (!seenKeysInSheet.add(dedupeKey)) {
                 context.duplicateRowsSkipped++;
                 context.rowsSkippedByReason.merge("duplicate problem code within sheet", 1, Integer::sum);
-                context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
-                        + ": duplicate problem code '" + code + "' within this sheet, skipped.");
+                context.warn(stage.name(), row.rowNumber(), "Code",
+                        "duplicate problem code '" + code + "' within this sheet, skipped.");
                 continue;
             }
 
@@ -256,7 +275,7 @@ public class TrainingSheetImportService {
             int sequenceOrder = parseOrder(row, sequenceCounter);
             Integer setNumber = parseSetNumber(row, stage, context);
             boolean mandatory = parseMandatory(row);
-            DifficultyLevel suggestedLevel = parseDifficultyLevel(row.get(TrainingSheetColumns.LEVEL), stage, context);
+            DifficultyLevel suggestedLevel = parseDifficultyLevel(row, stage, context);
 
             ProblemService.RoadmapMembershipResult membershipResult;
             try {
@@ -265,7 +284,7 @@ public class TrainingSheetImportService {
             } catch (IllegalStateException conflict) {
                 context.invalidRows++;
                 context.rowsSkippedByReason.merge("roadmap slot conflict", 1, Integer::sum);
-                context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber() + ": " + conflict.getMessage());
+                context.warn(stage.name(), row.rowNumber(), null, conflict.getMessage());
                 continue;
             }
             if (membershipResult.created()) {
@@ -300,8 +319,8 @@ public class TrainingSheetImportService {
                     context.progressRecordsImported++;
                 }
             } else if (rawStatus != null && !isRecognizedStatusToken(rawStatus)) {
-                context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
-                        + ": unrecognized status '" + rawStatus + "', progress not imported for this row.");
+                context.warn(stage.name(), row.rowNumber(), "Status",
+                        "unrecognized status '" + rawStatus + "', progress not imported for this row.");
             }
 
             importAttemptSnapshot(connection, problemResult.problem().getId(), rawStatus, row, stage, context);
@@ -371,7 +390,7 @@ public class TrainingSheetImportService {
             if (code == null || topic == null) {
                 context.invalidRows++;
                 context.rowsSkippedByReason.merge("missing problem code or topic (Topics sheet)", 1, Integer::sum);
-                context.warnings.add("Sheet " + TOPICS_SHEET_NAME + ", row " + row.rowNumber() + ": missing problem code or topic, skipped.");
+                context.warn(TOPICS_SHEET_NAME, row.rowNumber(), null, "missing problem code or topic, skipped.");
                 continue;
             }
 
@@ -381,8 +400,8 @@ public class TrainingSheetImportService {
                     : problemRepository.findAllByExternalCode(connection, code);
             if (matches.isEmpty()) {
                 context.rowsSkippedByReason.merge("Topics row with no matching problem", 1, Integer::sum);
-                context.warnings.add("Sheet " + TOPICS_SHEET_NAME + ", row " + row.rowNumber()
-                        + ": no imported problem found for code '" + code + "', topic not applied.");
+                context.warn(TOPICS_SHEET_NAME, row.rowNumber(), "Code",
+                        "no imported problem found for code '" + code + "', topic not applied.");
                 continue;
             }
             context.topicCounts.merge(topic, 1, Integer::sum);
@@ -398,8 +417,12 @@ public class TrainingSheetImportService {
 
     private WorkbookValidationResult validateStructure(ParsedWorkbook workbook) {
         List<String> missingRoadmapSheets = new ArrayList<>();
+        List<String> recognizedSheets = new ArrayList<>();
+        List<String> ignoredSheets = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        List<TrainingSheetDiagnostic> diagnostics = new ArrayList<>();
         int usableRoadmapSheets = 0;
+        Set<String> consumedSheetNames = new HashSet<>();
 
         for (RoadmapStage stage : RoadmapStage.values()) {
             Optional<ParsedSheet> sheet = workbook.sheet(stage.name());
@@ -407,24 +430,42 @@ public class TrainingSheetImportService {
                 missingRoadmapSheets.add(stage.name());
                 continue;
             }
+            consumedSheetNames.add(stage.name());
             ParsedSheet parsedSheet = sheet.get();
             if (!parsedSheet.hasColumn(TrainingSheetColumns.CODE) || !parsedSheet.hasColumn(TrainingSheetColumns.TITLE)) {
-                warnings.add("Sheet " + stage.name() + " is present but its header row has no recognizable "
-                        + "problem code/title columns; it will be skipped.");
+                String reason = "header row has no recognizable problem code/title columns; it will be skipped.";
+                warnings.add("Sheet " + stage.name() + " is present but its " + reason);
+                diagnostics.add(new TrainingSheetDiagnostic(stage.name(), null, null, reason, TrainingSheetDiagnosticSeverity.WARNING));
+                ignoredSheets.add(stage.name());
                 continue;
             }
             usableRoadmapSheets++;
+            recognizedSheets.add(stage.name());
         }
+        if (workbook.sheet(TOPICS_SHEET_NAME).isPresent()) {
+            consumedSheetNames.add(TOPICS_SHEET_NAME);
+            recognizedSheets.add(TOPICS_SHEET_NAME);
+        }
+        for (String sheetName : workbook.sheetsByName().keySet()) {
+            if (!consumedSheetNames.contains(sheetName)) {
+                ignoredSheets.add(sheetName);
+            }
+        }
+
         if (!missingRoadmapSheets.isEmpty()) {
-            warnings.add("Workbook has no sheet for roadmap stage(s): " + String.join(", ", missingRoadmapSheets) + ".");
+            String reason = "Workbook has no sheet for roadmap stage(s): " + String.join(", ", missingRoadmapSheets) + ".";
+            warnings.add(reason);
+            diagnostics.add(new TrainingSheetDiagnostic(null, null, null, reason, TrainingSheetDiagnosticSeverity.WARNING));
         }
 
         boolean valid = usableRoadmapSheets > 0;
         if (!valid) {
-            warnings.add(0, "No usable roadmap sheet found (expected sheets named A, B, C1, C2, D1, D2, D3 "
-                    + "with recognizable code/title columns).");
+            String reason = "No usable roadmap sheet found (expected sheets named A, B, C1, C2, D1, D2, D3 "
+                    + "with recognizable code/title columns).";
+            warnings.add(0, reason);
+            diagnostics.add(0, new TrainingSheetDiagnostic(null, null, null, reason, TrainingSheetDiagnosticSeverity.BLOCKING));
         }
-        return new WorkbookValidationResult(valid, missingRoadmapSheets, warnings);
+        return new WorkbookValidationResult(valid, missingRoadmapSheets, warnings, recognizedSheets, ignoredSheets, diagnostics);
     }
 
     private Integer parseQuality(ParsedWorkbookRow row, RoadmapStage stage, ImportContext context) {
@@ -435,14 +476,12 @@ public class TrainingSheetImportService {
         try {
             int value = (int) Math.round(Double.parseDouble(raw));
             if (value < 1 || value > 5) {
-                context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
-                        + ": quality '" + raw + "' is outside 1-5, ignored.");
+                context.warn(stage.name(), row.rowNumber(), "Quality", "quality '" + raw + "' is outside 1-5, ignored.");
                 return null;
             }
             return value;
         } catch (NumberFormatException exception) {
-            context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
-                    + ": unrecognized quality value '" + raw + "', ignored.");
+            context.warn(stage.name(), row.rowNumber(), "Quality", "unrecognized quality value '" + raw + "', ignored.");
             return null;
         }
     }
@@ -454,8 +493,7 @@ public class TrainingSheetImportService {
         }
         String digits = raw.replaceAll("[^0-9]", "");
         if (digits.isEmpty()) {
-            context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
-                    + ": unrecognized set number '" + raw + "', ignored.");
+            context.warn(stage.name(), row.rowNumber(), "Set", "unrecognized set number '" + raw + "', ignored.");
             return null;
         }
         return Integer.parseInt(digits);
@@ -483,13 +521,14 @@ public class TrainingSheetImportService {
         return !MANDATORY_FALSE_VALUES.contains(raw.strip().toLowerCase(Locale.ROOT));
     }
 
-    private DifficultyLevel parseDifficultyLevel(String raw, RoadmapStage stage, ImportContext context) {
+    private DifficultyLevel parseDifficultyLevel(ParsedWorkbookRow row, RoadmapStage stage, ImportContext context) {
+        String raw = row.get(TrainingSheetColumns.LEVEL);
         if (raw == null) {
             return null;
         }
         DifficultyLevel level = LEVEL_ALIASES.get(raw.strip().toLowerCase(Locale.ROOT));
         if (level == null) {
-            context.warnings.add("Sheet " + stage.name() + ": unrecognized level '" + raw + "', ignored.");
+            context.warn(stage.name(), row.rowNumber(), "Level", "unrecognized level '" + raw + "', ignored.");
         }
         return level;
     }
@@ -555,14 +594,14 @@ public class TrainingSheetImportService {
         try {
             int value = (int) Math.round(Double.parseDouble(raw));
             if (value < 1 || value > 10) {
-                context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
-                        + ": perceived difficulty '" + raw + "' is outside 1-10, ignored.");
+                context.warn(stage.name(), row.rowNumber(), "Perceived Difficulty",
+                        "perceived difficulty '" + raw + "' is outside 1-10, ignored.");
                 return null;
             }
             return value;
         } catch (NumberFormatException exception) {
-            context.warnings.add("Sheet " + stage.name() + ", row " + row.rowNumber()
-                    + ": unrecognized perceived difficulty '" + raw + "', ignored.");
+            context.warn(stage.name(), row.rowNumber(), "Perceived Difficulty",
+                    "unrecognized perceived difficulty '" + raw + "', ignored.");
             return null;
         }
     }
@@ -601,7 +640,9 @@ public class TrainingSheetImportService {
         int attemptsImported;
         int reflectionFieldsImported;
         long importBatchId;
+        WorkbookValidationResult validation;
         final List<String> warnings = new ArrayList<>();
+        final List<TrainingSheetDiagnostic> diagnostics = new ArrayList<>();
 
         final Map<RoadmapStage, Integer> stageMembershipCounts = new LinkedHashMap<>();
         int hyperlinksFound;
@@ -618,16 +659,29 @@ public class TrainingSheetImportService {
             reasons.forEach((reason, count) -> rowsSkippedByReason.merge(reason, count, Integer::sum));
         }
 
+        /** Records one row/sheet-level finding as both a plain-text warning (unchanged, existing
+         *  format) and a structured {@link TrainingSheetDiagnostic} the review screen can render as a
+         *  table (#160). Every finding recorded here is {@code WARNING} severity: it means one row or
+         *  sheet was skipped, never that the whole import is blocked. */
+        void warn(String sheet, Integer row, String column, String reason) {
+            TrainingSheetDiagnostic diagnostic = new TrainingSheetDiagnostic(sheet, row, column, reason, TrainingSheetDiagnosticSeverity.WARNING);
+            diagnostics.add(diagnostic);
+            warnings.add(diagnostic.describe());
+        }
+
         TrainingSheetImportSummary toSummary(boolean dryRun) {
             // A dry run's batch row is rolled back along with everything else, so it never durably
             // exists - reporting its id would let a caller try to reference/delete a batch that isn't there.
             Long reportedBatchId = dryRun ? null : importBatchId;
             WorkbookPreviewDetails details = new WorkbookPreviewDetails(Map.copyOf(stageMembershipCounts), hyperlinksFound,
                     hyperlinksMissing, Map.copyOf(platformCounts), solvedCount, inProgressCount, revisitCount,
-                    Map.copyOf(topicCounts), qualityMetadataCount, Map.copyOf(rowsSkippedByReason));
+                    Map.copyOf(topicCounts), qualityMetadataCount, Map.copyOf(rowsSkippedByReason),
+                    List.copyOf(validation.recognizedSheets()), List.copyOf(validation.ignoredSheets()),
+                    List.copyOf(validation.missingRoadmapSheets()));
             return new TrainingSheetImportSummary(dryRun, problemsCreated, problemsUpdated, problemsReused,
                     roadmapMembershipsCreated, progressRecordsImported, duplicateRowsSkipped, invalidRows,
-                    attemptsImported, reflectionFieldsImported, List.copyOf(warnings), reportedBatchId, details);
+                    attemptsImported, reflectionFieldsImported, List.copyOf(warnings), reportedBatchId, details,
+                    List.copyOf(diagnostics));
         }
     }
 }

@@ -110,6 +110,18 @@ class RealJuniorTrainingSheetImportTest {
         assertTrue(details.recognizedSheets().containsAll(
                 List.of("A", "B", "C1", "C2", "D1", "D2", "D3")), "every roadmap stage sheet is recognized: " + details.recognizedSheets());
 
+        // #160: profile/version detected honestly from the workbook's own content (an "Info" sheet
+        // cell reading "Currenet Version V7.0"), never from the file name or a hard-coded author name.
+        assertEquals("Junior Training Sheet", details.profile().name());
+        assertEquals("V7.0", details.profile().version());
+
+        TrainingSheetStageSummary stageBSummary = details.stageSummaries().stream()
+                .filter(stageSummary -> stageSummary.stage() == RoadmapStage.B).findFirst().orElseThrow();
+        assertEquals(172, stageBSummary.validRows());
+        assertTrue(stageBSummary.detectedRows() >= stageBSummary.validRows(),
+                "detected rows must be at least the valid rows - some are instructional/sample/skipped");
+        assertEquals(7, details.stageSummaries().size(), "all seven roadmap stages appear in the per-stage summary");
+
         // No instructional/sample rows became problems.
         for (Long problemId : uniqueProblemIds) {
             Problem problem = problemRepository.findById(problemId).orElseThrow();

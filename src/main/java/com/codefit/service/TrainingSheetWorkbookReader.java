@@ -56,6 +56,13 @@ final class TrainingSheetWorkbookReader {
     private static final Pattern HYPERLINK_FORMULA_PATTERN =
             Pattern.compile("HYPERLINK\\(\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
 
+    /** Matches a cell whose text mentions "version" alongside a version-shaped token, e.g. the real
+     *  workbook's "Currenet Version V7.0" cell (#160) - content-based, never derived from the file name. */
+    private static final Pattern VERSION_MENTION_PATTERN =
+            Pattern.compile("version[^0-9A-Za-z]*([vV]?\\d+(?:\\.\\d+)*)", Pattern.CASE_INSENSITIVE);
+    /** Fallback: a cell whose entire (trimmed) content is just a version-shaped token on its own. */
+    private static final Pattern STANDALONE_VERSION_PATTERN = Pattern.compile("^[vV]\\d+(?:\\.\\d+){1,2}$");
+
     /** Synthetic column keys, not header-matched: hyperlink targets recovered from the code/title cells (#159). */
     static final String CODE_URL = "CODE_URL";
     static final String TITLE_URL = "TITLE_URL";
@@ -81,7 +88,37 @@ final class TrainingSheetWorkbookReader {
             Sheet sheet = workbook.getSheetAt(sheetIndex);
             sheets.put(sheet.getSheetName(), readSheet(sheet, formatter, evaluator));
         }
-        return new ParsedWorkbook(sheets);
+        return new ParsedWorkbook(sheets, detectVersion(workbook, formatter, evaluator));
+    }
+
+    /**
+     * Scans every cell of every sheet (not just recognized roadmap columns) for a version marker
+     * (#160), honestly derived from the workbook's own content: a cell mentioning "version" alongside
+     * a version-shaped token (e.g. the real workbook's "Currenet Version V7.0" cell on its Info sheet),
+     * or, failing that, any cell whose entire content is just a standalone version-shaped token.
+     * Returns {@code null} rather than guessing when neither is found — never derived from the file name.
+     */
+    private static String detectVersion(Workbook workbook, DataFormatter formatter, FormulaEvaluator evaluator) {
+        String standaloneFallback = null;
+        for (int sheetIndex = 0; sheetIndex < workbook.getNumberOfSheets(); sheetIndex++) {
+            Sheet sheet = workbook.getSheetAt(sheetIndex);
+            for (Row row : sheet) {
+                for (Cell cell : row) {
+                    String text = formatCellValueSafely(cell, formatter, evaluator);
+                    if (text == null || text.isBlank()) {
+                        continue;
+                    }
+                    Matcher mentionMatcher = VERSION_MENTION_PATTERN.matcher(text);
+                    if (mentionMatcher.find()) {
+                        return mentionMatcher.group(1);
+                    }
+                    if (standaloneFallback == null && STANDALONE_VERSION_PATTERN.matcher(text.strip()).matches()) {
+                        standaloneFallback = text.strip();
+                    }
+                }
+            }
+        }
+        return standaloneFallback;
     }
 
     private static ParsedSheet readSheet(Sheet sheet, DataFormatter formatter, FormulaEvaluator evaluator) {
@@ -123,7 +160,12 @@ final class TrainingSheetWorkbookReader {
             rows.add(new ParsedWorkbookRow(rowIndex + 1, values));
         }
 
-        return new ParsedSheet(sheet.getSheetName(), new LinkedHashSet<>(canonicalColumnByIndex.values()), rows, droppedRowReasons);
+        // Every row slot below the header, including entirely-empty ones the loop above never turns
+        // into a ParsedWorkbookRow at all - the raw "detected rows" a preview reports (#160), as
+        // opposed to validRows/skippedRows which only make sense relative to this raw total.
+        int detectedRowCount = Math.max(0, sheet.getLastRowNum() - headerRow.getRowNum());
+        return new ParsedSheet(sheet.getSheetName(), new LinkedHashSet<>(canonicalColumnByIndex.values()), rows,
+                droppedRowReasons, detectedRowCount);
     }
 
     /**

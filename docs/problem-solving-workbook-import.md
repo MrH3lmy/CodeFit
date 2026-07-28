@@ -83,17 +83,19 @@ AnalyzedTrainingWorkbook
    `TrainingSheetAnalyzer`, which normalizes, deduplicates, validates, and diagnoses every row entirely
    in memory, producing an `AnalyzedTrainingWorkbook` (its problems, roadmap memberships, content
    counts, and diagnostics — see `TrainingSheetAnalyzerTest` for direct
-   proof no database write ever happens here). This runs on `SettingsController`'s shared
-   `ExecutorService`, not the JavaFX Application Thread — the real workbook has ~926 rows across seven
-   sheets — via a `javafx.concurrent.Task`, whose `setOnFailed` handler (not a hand-rolled try/catch)
-   guarantees the busy state clears even if something unexpected throws. The button is disabled and a
-   status label shows "Analyzing…" while this runs.
+   proof no database write ever happens here). This runs on `BackgroundImportExecutor`'s shared,
+   **non-daemon** worker thread, not the JavaFX Application Thread — the real workbook has ~926 rows
+   across seven sheets — via a `javafx.concurrent.Task`, whose `setOnFailed` handler (not a hand-rolled
+   try/catch) guarantees the busy state clears even if something unexpected throws. The button is
+   disabled and a status label shows "Analyzing…" while this runs.
 2. **Review and confirm.** The *exact* `AnalyzedTrainingWorkbook` from step 1 — never a fresh
-   re-parse — is rendered into a structured dialog: summary cards (unique problems, roadmap
-   memberships, blocking/warning counts), a stage table (all seven stages, including zero-count ones),
-   a progress summary (solved/in progress/needs revisit/not started), a metadata summary (hyperlinks,
-   explicit/inferred/unknown platform coverage, topic/level/quality/assistance coverage), a
-   severity/sheet/row/column/reason diagnostics table, and a plain-text report (via
+   re-parse — is rendered into a structured dialog: summary cards (detected profile/version, unique
+   problems, roadmap memberships, blocking/warning counts), a stage table (all seven stages, each with
+   detected/valid/skipped row counts — not just a membership count, since instructional/duplicate/invalid
+   rows can make "detected" and "valid" very different numbers), a progress summary (solved/in
+   progress/needs revisit/not started), a metadata summary (hyperlinks, explicit/inferred/unknown
+   platform coverage, topic/level/quality/assistance coverage, and workbook-content attempt/reflection
+   coverage), a severity/sheet/row/column/reason diagnostics table, and a plain-text report (via
    `WorkbookPreviewReportFormatter`) behind "Copy Report". "Import Now" is disabled exactly when
    `AnalyzedTrainingWorkbook#hasBlockingDiagnostics()` is true; warning-only diagnostics never disable
    it. Cancelling (or closing the dialog any other way) leaves the database untouched, since nothing
@@ -102,8 +104,9 @@ AnalyzedTrainingWorkbook
    with that same `AnalyzedTrainingWorkbook` — the source file is **never re-read**. Editing, replacing,
    or even deleting the file after analysis cannot change what gets imported (see
    `TrainingSheetAnalyzerTest#changingTheWorkbookFileAfterAnalysisCannotChangeTheConfirmedImport` /
-   `#importDoesNotReReadOrDependOnTheOriginalFileAfterAnalysis`). This also runs on the shared
-   `ExecutorService`, with the same busy/status treatment and `Task`-based failure handling.
+   `#importDoesNotReReadOrDependOnTheOriginalFileAfterAnalysis`). This also runs on
+   `BackgroundImportExecutor`, with the same busy/status treatment and `Task`-based failure handling —
+   see "Background execution and application shutdown" below for why its worker thread is non-daemon.
 
 A workbook with nothing importable at all (no usable roadmap sheet) doesn't short-circuit to a bare
 error alert: `analyze()` returns an `AnalyzedTrainingWorkbook` with zero content counts and a single
@@ -124,22 +127,70 @@ workbook being analyzed), so that rarer case is still caught and reported at imp
 **Stable workbook-content counts vs. database-dependent counts.** `WorkbookPreviewDetails` (shared,
 unchanged, by the preview and the import result) reports what the *workbook itself* contains —
 `uniqueProblemCount`, `roadmapMembershipCount`, per-stage counts, solved/in-progress/needs-revisit/not-started,
-hyperlink and platform-source coverage, topic/level/quality/assistance coverage — and reads identically
-whether the workbook has never been imported or is being re-imported for the tenth time. The approved
-workbook always previews **923 unique problems / 926 roadmap memberships / 172 Stage B** — even
-immediately after it has already been imported (see
+hyperlink and platform-source coverage, topic/level/quality/assistance coverage, and (see below)
+detected profile/version and per-stage row accounting — and reads identically whether the workbook has
+never been imported or is being re-imported for the tenth time. The approved workbook always previews
+**923 unique problems / 926 roadmap memberships / 172 Stage B** — even immediately after it has already
+been imported (see
 `RealJuniorTrainingSheetImportTest#previewAfterAnAlreadyCompletedImportStillReportsTheSameStableCounts`).
 `TrainingSheetImportSummary`'s separate `problemsCreated`/`problemsUpdated`/`problemsReused`/
-`roadmapMembershipsCreated` fields are the only database-dependent numbers, and they're always `0` on a
-pure preview (`previewOf`), since a preview never opens a connection to know what already exists.
+`roadmapMembershipsCreated`/`attemptsImported`/`reflectionFieldsImported` fields are the only
+database-dependent numbers, and they're always `0` on a pure preview (`previewOf`), since a preview
+never opens a connection to know what already exists.
+
+**A pure preview never displays those zeros as if they were results.** `problemsCreated == 0` on a
+preview means "unevaluated," not "nothing to import" — printing "0 problem(s) created" or "Attempt
+snapshots imported: 0" for a workbook that plainly has importable content would be misleading, so
+`WorkbookPreviewReportFormatter#format` branches on `TrainingSheetImportSummary#dryRun()`: a preview
+shows `Database effect: evaluated only after confirmation` plus the workbook-content counts
+`WorkbookPreviewDetails#attemptSnapshotsFound`/`#problemsWithReflectionMetadata` ("N problem(s) in the
+workbook", never "imported"); only a completed import shows the actual created/updated/reused/imported
+numbers. See `WorkbookPreviewReportFormatterTest`.
+
+**Detected profile/version and per-stage row accounting (#160).** `TrainingSheetWorkbookReader` scans
+every cell of every sheet (not just recognized roadmap columns) for a version marker — a cell
+mentioning "version" alongside a version-shaped token (the real workbook has an "Info" sheet cell
+reading "Currenet Version V7.0"), falling back to a standalone version-shaped cell, and finally to
+`"Not detected"` — entirely from the workbook's own content, never the file name and never a
+hard-coded author's name. `TrainingSheetAnalyzer` pairs that with a structural profile name:
+`"Junior Training Sheet"` when at least one usable roadmap sheet was found, `"Generic training
+workbook"` otherwise. Per-stage, `WorkbookPreviewDetails#stageSummaries` reports `detectedRows` (every
+row slot below the sheet's header, including entirely blank ones), `validRows` (what became a roadmap
+membership), and `skippedRows` (the difference) — a stage membership count alone can't distinguish "this
+sheet only has 5 rows" from "this sheet has 900 rows and 895 were instructional/duplicate/invalid". See
+`TrainingSheetAnalyzerTest`'s profile/version/row-accounting tests and
+`RealJuniorTrainingSheetImportTest`'s assertions against the real fixture.
 
 The import-complete dialog offers a "Go to Problem Library" button
 (`NavigationService#showProblems`) so a multi-hundred-problem import doesn't end in a dead-end alert.
 
 `WorkbookPreviewReportFormatter` has no JavaFX dependency, so its output is covered by plain unit
-tests (`TrainingSheetImportServiceTest`) without needing a UI toolkit; `RealJuniorTrainingSheetImportTest`
-additionally asserts that `preview()` and `importWorkbook()` against the real fixture produce
-matching `WorkbookPreviewDetails`, and that the approved workbook has zero blocking diagnostics.
+tests (`TrainingSheetImportServiceTest`, `WorkbookPreviewReportFormatterTest`) without needing a UI
+toolkit; `RealJuniorTrainingSheetImportTest` additionally asserts that `preview()` and
+`importWorkbook()` against the real fixture produce matching `WorkbookPreviewDetails`, and that the
+approved workbook has zero blocking diagnostics.
+
+## Background execution and application shutdown (#160)
+
+`BackgroundImportExecutor` is the single, application-owned executor every analyze/import `Task` runs
+on — its worker thread is deliberately **non-daemon**: a daemon thread can be killed mid-transaction the
+instant the JVM decides to exit, with no warning and no chance to finish or roll back cleanly. An active
+database import needs to survive on its own terms, not "as long as the JVM happened to still be
+running."
+
+- `BackgroundImportExecutor#markImportActive` brackets only the transactional (write) phase of an
+  import — analysis is read-only, bounded, and safe to simply abandon, so it never sets this.
+- `NavigationService#setPrimaryStage` registers a close-request handler that checks
+  `BackgroundImportExecutor#hasActiveImport()`: if a real import is writing, closing the window asks the
+  learner to confirm first (quitting cancels it before anything is saved, since import is one
+  all-or-nothing transaction — there's no partial-write risk, just the risk of silently losing an
+  in-flight import).
+- `CodeFitApplication#stop()` calls `BackgroundImportExecutor#shutdown`, which stops accepting new work
+  and waits briefly for anything still running before force-cancelling via `shutdownNow()` — the
+  standard graceful-then-forceful `ExecutorService` shutdown contract (see
+  `BackgroundImportExecutorTest`, which exercises the shutdown sequence against a disposable executor
+  rather than the shared singleton, so a test run doesn't leave the real one unusable for the rest of
+  the suite).
 
 ## Local, transactional, idempotent, repeatable
 
@@ -286,3 +337,15 @@ field is still unset, so a learner's own already-recorded value is never overwri
   dialog's buttons, since a native file-picker dialog can't be scripted headlessly — that path is
   covered by the service-layer analyze/import tests plus code review, not by a single automated test
   exercising the whole click-through.
+- `BackgroundImportExecutor#shutdown`'s force-cancel path (`shutdownNow()`, which interrupts the worker
+  thread) is the standard best-effort `ExecutorService` shutdown contract, not a guarantee that a
+  blocking JDBC call actually aborts instantly or cleanly — some drivers don't honor thread
+  interruption for an in-flight call. In practice, quitting while an import is active is a rare,
+  learner-confirmed action (see "Background execution and application shutdown"), not a routine path.
+- Platform-source coverage (`explicitPlatformCount`/`inferredPlatformCount`/`unknownPlatformCount`) is
+  now counted only for rows actually accepted into a roadmap membership — resolving a row's platform
+  (`TrainingSheetAnalyzer#resolvePlatform`, via the side-effect-free `PlatformResolution`) no longer has
+  any counting effect on its own, so a within-sheet duplicate or a roadmap-slot-conflict row can never
+  inflate these counts the way it previously could. See
+  `TrainingSheetAnalyzerTest#aDuplicateRowNeverInflatesThePlatformSourceCounts` /
+  `#aRoadmapSlotConflictRowNeverInflatesThePlatformSourceCounts`.

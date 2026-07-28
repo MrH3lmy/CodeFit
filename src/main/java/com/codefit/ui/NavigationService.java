@@ -1,12 +1,16 @@
 package com.codefit.ui;
 
 import com.codefit.model.ReflectionType;
+import com.codefit.service.BackgroundImportExecutor;
 import com.codefit.service.GuidedStage;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 import java.io.IOException;
 import java.net.URL;
@@ -64,6 +68,28 @@ public final class NavigationService {
 
     public static void setPrimaryStage(Stage stage) {
         primaryStage = stage;
+        stage.setOnCloseRequest(NavigationService::confirmCloseWhileImportActive);
+    }
+
+    /**
+     * Lets the window close normally unless a workbook import is actively writing to the database
+     * (#160) — {@link BackgroundImportExecutor}'s non-daemon worker thread means the JVM would
+     * otherwise just wait on it silently, or the learner could force-quit and lose it. Import is
+     * transactional (commit only at the very end), so quitting cancels it rather than leaving a
+     * partial write behind — the confirmation exists to avoid silently losing the learner's in-flight
+     * import, not to prevent data corruption.
+     */
+    private static void confirmCloseWhileImportActive(WindowEvent event) {
+        if (!BackgroundImportExecutor.hasActiveImport()) {
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Import in progress");
+        confirm.setHeaderText("A workbook import is still writing to the database.");
+        confirm.setContentText("Quitting now will cancel it before anything is saved. Quit anyway?");
+        if (confirm.showAndWait().filter(button -> button == ButtonType.OK).isEmpty()) {
+            event.consume();
+        }
     }
 
     public static void showDashboard() {

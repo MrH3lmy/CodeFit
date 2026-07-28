@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -256,5 +257,104 @@ class TrainingSheetAnalyzerTest {
         assertEquals(beforeImport.details().roadmapMembershipCount(), afterImport.details().roadmapMembershipCount());
         assertEquals(2, afterImport.details().uniqueProblemCount());
         assertEquals(2, afterImport.details().roadmapMembershipCount());
+    }
+
+    @Test
+    void aWorkbookWithNoVersionOrRecognizableStructureFallsBackToGenericProfile(@TempDir Path tempDir) throws Exception {
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "generic.xlsx", List.of(
+                new TrainingSheetFixtures.SheetSpec("Notes", List.of("Comment"), List.of(List.of("just some spreadsheet, nothing recognizable")))));
+
+        AnalyzedTrainingWorkbook analyzed = importService.analyze(workbookPath);
+
+        assertEquals("Generic training workbook", analyzed.details().profile().name());
+        assertEquals("Not detected", analyzed.details().profile().version());
+    }
+
+    @Test
+    void aVersionMentionAnywhereInTheWorkbookIsDetectedHonestlyFromContentNotTheFileName(@TempDir Path tempDir) throws Exception {
+        String platform = uniquePlatform("version-detect");
+        TrainingSheetFixtures.SheetSpec infoSheet = new TrainingSheetFixtures.SheetSpec("Info",
+                List.of("Note"), List.of(List.of("Current Version V3.2")));
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "totally-unrelated-file-name.xlsx", List.of(
+                infoSheet, sheet("A", List.of(row("P1", "Two Sum", platform, "")))));
+
+        AnalyzedTrainingWorkbook analyzed = importService.analyze(workbookPath);
+
+        assertEquals("Junior Training Sheet", analyzed.details().profile().name());
+        assertEquals("V3.2", analyzed.details().profile().version(),
+                "the version comes from the workbook's own cell content, not the file name");
+    }
+
+    @Test
+    void detectedValidAndSkippedRowCountsAccountForInstructionalAndInvalidRows(@TempDir Path tempDir) throws Exception {
+        String platform = uniquePlatform("row-accounting");
+        TrainingSheetFixtures.SheetSpec sheetWithMixedRows = new TrainingSheetFixtures.SheetSpec("A",
+                List.of("Code", "Title", "Platform", "Order"),
+                List.of(
+                        List.of("P1", "Valid Problem", platform, String.valueOf(nextOrder++)),
+                        Arrays.asList((String) null, null, null, null), // blank row - dropped by the reader
+                        List.of("Sample Name", "Placeholder", platform, String.valueOf(nextOrder++)), // sample row - dropped by the reader
+                        Arrays.asList(null, "Only A Title", platform, String.valueOf(nextOrder++)))); // missing code - invalid, dropped by the analyzer
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "row-accounting.xlsx", List.of(sheetWithMixedRows));
+
+        AnalyzedTrainingWorkbook analyzed = importService.analyze(workbookPath);
+
+        TrainingSheetStageSummary stageA = analyzed.details().stageSummaries().stream()
+                .filter(summary -> summary.stage() == RoadmapStage.A).findFirst().orElseThrow();
+        assertEquals(4, stageA.detectedRows(), "every row slot below the header, regardless of why it was later dropped");
+        assertEquals(1, stageA.validRows());
+        assertEquals(3, stageA.skippedRows());
+        assertEquals(1, stageA.roadmapMemberships());
+    }
+
+    @Test
+    void allSevenStagesAppearInStageSummariesEvenWhenTheirSheetIsMissing(@TempDir Path tempDir) throws Exception {
+        String platform = uniquePlatform("seven-stage-summaries");
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "seven-stage-summaries.xlsx", List.of(
+                sheet("A", List.of(row("P1", "Two Sum", platform, "")))));
+
+        AnalyzedTrainingWorkbook analyzed = importService.analyze(workbookPath);
+
+        assertEquals(7, analyzed.details().stageSummaries().size());
+        assertEquals(List.of(RoadmapStage.values()),
+                List.of(analyzed.details().stageSummaries().stream().map(TrainingSheetStageSummary::stage).toArray(RoadmapStage[]::new)));
+        TrainingSheetStageSummary stageB = analyzed.details().stageSummaries().stream()
+                .filter(summary -> summary.stage() == RoadmapStage.B).findFirst().orElseThrow();
+        assertEquals(0, stageB.detectedRows());
+        assertEquals(0, stageB.validRows());
+        assertEquals(0, stageB.skippedRows());
+    }
+
+    @Test
+    void aDuplicateRowNeverInflatesThePlatformSourceCounts(@TempDir Path tempDir) throws Exception {
+        String platform = uniquePlatform("duplicate-platform-source");
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "duplicate-platform-source.xlsx", List.of(
+                sheet("A", List.of(
+                        row("P1", "Two Sum", platform, ""),
+                        row("P1", "Two Sum (accidental duplicate)", platform, "")))));
+
+        AnalyzedTrainingWorkbook analyzed = importService.analyze(workbookPath);
+
+        assertEquals(1, analyzed.details().explicitPlatformCount(),
+                "the second row is a duplicate and must not count a second time toward platform-source coverage");
+        assertEquals(1, analyzed.details().roadmapMembershipCount());
+    }
+
+    @Test
+    void aRoadmapSlotConflictRowNeverInflatesThePlatformSourceCounts(@TempDir Path tempDir) throws Exception {
+        String platform = uniquePlatform("conflict-platform-source");
+        String contestedOrder = String.valueOf(nextOrder++);
+        TrainingSheetFixtures.SheetSpec sheetWithOrder = new TrainingSheetFixtures.SheetSpec("A",
+                List.of("Code", "Title", "Platform", "Order"),
+                List.of(
+                        List.of("P1", "First Problem", platform, contestedOrder),
+                        List.of("P2", "Second Problem", platform, contestedOrder)));
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "conflict-platform-source.xlsx", List.of(sheetWithOrder));
+
+        AnalyzedTrainingWorkbook analyzed = importService.analyze(workbookPath);
+
+        assertEquals(1, analyzed.details().roadmapMembershipCount(), "only the first problem wins the contested slot");
+        assertEquals(1, analyzed.details().explicitPlatformCount(),
+                "the second row loses its roadmap slot and must not count toward platform-source coverage either");
     }
 }

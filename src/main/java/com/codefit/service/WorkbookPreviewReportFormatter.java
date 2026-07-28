@@ -1,7 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.model.RoadmapStage;
-
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +26,10 @@ public final class WorkbookPreviewReportFormatter {
         }
         report.append('\n');
 
+        report.append("Profile: ").append(details.profile().name()).append('\n');
+        report.append("Version: ").append(details.profile().version()).append('\n');
+        report.append('\n');
+
         report.append("Unique problems: ").append(details.uniqueProblemCount()).append('\n');
         report.append("Roadmap memberships: ").append(details.roadmapMembershipCount()).append('\n');
         report.append('\n');
@@ -37,9 +39,12 @@ public final class WorkbookPreviewReportFormatter {
         report.append("Missing sheets: ").append(joinOrNone(details.missingSheets())).append('\n');
         report.append('\n');
 
-        report.append("Per-stage roadmap memberships:\n");
-        for (RoadmapStage stage : RoadmapStage.values()) {
-            report.append("  ").append(stage.name()).append(": ").append(details.stageMembershipCounts().getOrDefault(stage, 0)).append('\n');
+        report.append("Per-stage rows (detected / valid / skipped):\n");
+        for (TrainingSheetStageSummary stageSummary : details.stageSummaries()) {
+            report.append("  ").append(stageSummary.stage().name()).append(": ")
+                    .append(stageSummary.detectedRows()).append(" / ")
+                    .append(stageSummary.validRows()).append(" / ")
+                    .append(stageSummary.skippedRows()).append('\n');
         }
         report.append('\n');
 
@@ -47,13 +52,24 @@ public final class WorkbookPreviewReportFormatter {
                 .append(details.inProgressCount()).append(" in progress, ")
                 .append(details.revisitCount()).append(" needs revisit, ")
                 .append(details.notStartedCount()).append(" not started\n");
-        report.append("Database effect: ").append(summary.problemsCreated()).append(" problem(s) created, ")
-                .append(summary.problemsUpdated()).append(" updated, ")
-                .append(summary.problemsReused()).append(" reused; ")
-                .append(summary.roadmapMembershipsCreated()).append(" new roadmap membership(s); ")
-                .append(summary.progressRecordsImported()).append(" progress state change(s)\n");
-        report.append("Attempt snapshots imported: ").append(summary.attemptsImported()).append('\n');
-        report.append("Reflection fields imported: ").append(summary.reflectionFieldsImported()).append('\n');
+        if (summary.dryRun()) {
+            // #160: previewOf() never opens a database connection, so it cannot know whether a
+            // problem would be created vs. reused - reporting those fields as "0" here would read as
+            // "zero problems will be imported", which is actively misleading for a workbook that has
+            // plenty to import. Show the workbook's own content counts instead, and say plainly that
+            // the database effect itself is only known after confirmation.
+            report.append("Database effect: evaluated only after confirmation\n");
+            report.append("Attempt snapshots found in workbook: ").append(details.attemptSnapshotsFound()).append(" problem(s)\n");
+            report.append("Problems with reflection metadata: ").append(details.problemsWithReflectionMetadata()).append(" problem(s)\n");
+        } else {
+            report.append("Database effect: ").append(summary.problemsCreated()).append(" problem(s) created, ")
+                    .append(summary.problemsUpdated()).append(" updated, ")
+                    .append(summary.problemsReused()).append(" reused; ")
+                    .append(summary.roadmapMembershipsCreated()).append(" new roadmap membership(s); ")
+                    .append(summary.progressRecordsImported()).append(" progress state change(s)\n");
+            report.append("Attempt snapshots imported: ").append(summary.attemptsImported()).append('\n');
+            report.append("Reflection fields imported: ").append(summary.reflectionFieldsImported()).append('\n');
+        }
         report.append('\n');
 
         report.append("Judge links: ").append(details.hyperlinksFound()).append(" found, ")

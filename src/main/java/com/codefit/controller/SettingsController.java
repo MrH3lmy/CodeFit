@@ -2,9 +2,9 @@ package com.codefit.controller;
 
 import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.ImportBatch;
-import com.codefit.model.RoadmapStage;
 import com.codefit.model.UserProgress;
 import com.codefit.service.AnalyzedTrainingWorkbook;
+import com.codefit.service.BackgroundImportExecutor;
 import com.codefit.service.FocusPreferenceService;
 import com.codefit.service.GuidedTrainingService;
 import com.codefit.service.ImportSourceMetadata;
@@ -13,6 +13,7 @@ import com.codefit.service.TrainingSheetDiagnostic;
 import com.codefit.service.TrainingSheetDiagnosticSeverity;
 import com.codefit.service.TrainingSheetImportService;
 import com.codefit.service.TrainingSheetImportSummary;
+import com.codefit.service.TrainingSheetStageSummary;
 import com.codefit.service.WorkbookImportException;
 import com.codefit.service.WorkbookPreviewDetails;
 import com.codefit.service.WorkbookPreviewReportFormatter;
@@ -50,25 +51,12 @@ import javafx.stage.Window;
 import java.io.File;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SettingsController extends BaseController {
     private static final List<Integer> MATURE_INTERLEAVE_PERCENT_OPTIONS = List.of(0, 5, 10, 15, 20, 25, 30, 40, 50);
     private static final List<Integer> GUIDED_SESSION_MINUTES_OPTIONS = List.of(5, 10, 15, 20, 30, 45);
     private static final List<Integer> DAILY_NEW_CARD_LIMIT_OPTIONS = List.of(0, 1, 2, 3, 4, 5, 8, 10);
-
-    /** Owns every background analyze/import task (#160): a single shared, daemon-threaded executor
-     *  rather than one raw {@code Thread} per action, so completion (success, failure, or an
-     *  unexpected {@link RuntimeException}) is always routed through {@link Task}'s own
-     *  succeeded/failed/cancelled handlers instead of a hand-rolled try/catch that could leave the UI
-     *  stuck "busy" if something unforeseen throws. */
-    private static final ExecutorService IMPORT_EXECUTOR = Executors.newSingleThreadExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "training-sheet-import-worker");
-        thread.setDaemon(true);
-        return thread;
-    });
 
     @FXML private ChoiceBox<String> themeChoiceBox;
     @FXML private ChoiceBox<DailyWorkloadMode> workloadModeChoiceBox;
@@ -136,11 +124,12 @@ public class SettingsController extends BaseController {
     /**
      * Step 1, "Analyze workbook" (#160): {@link TrainingSheetImportService#analyze} parses and
      * evaluates the workbook entirely in memory — no database connection is ever opened for this. The
-     * real workbook has ~926 rows across seven sheets, so this runs on {@link #IMPORT_EXECUTOR}, not
-     * the JavaFX Application Thread, with the "Import Training Sheet…" button disabled and a status
+     * real workbook has ~926 rows across seven sheets, so this runs on {@link BackgroundImportExecutor},
+     * not the JavaFX Application Thread, with the "Import Training Sheet…" button disabled and a status
      * label shown while it runs. {@link Task#setOnFailed} covers every failure mode, including an
      * unexpected {@link RuntimeException} the try/catch in an earlier version of this flow could have
-     * missed, so the busy state is always cleared.
+     * missed, so the busy state is always cleared. Analysis is read-only and bounded, so unlike the
+     * real import below, it never marks {@link BackgroundImportExecutor#markImportActive}.
      */
     private void analyzeWorkbook(File file) {
         setImportBusy(true, "Analyzing \"" + file.getName() + "\"… this can take a few seconds for a large workbook.");
@@ -156,7 +145,7 @@ public class SettingsController extends BaseController {
             showAnalysisFailedAlert(task.getException());
         });
         task.setOnCancelled(event -> setImportBusy(false, null));
-        IMPORT_EXECUTOR.submit(task);
+        BackgroundImportExecutor.submit(task);
     }
 
     private void showAnalysisFailedAlert(Throwable exception) {
@@ -186,10 +175,13 @@ public class SettingsController extends BaseController {
      * Step 3, "Transactional import" (#160): applies the exact {@link AnalyzedTrainingWorkbook} the
      * learner just reviewed — the source file is never re-read or re-parsed, so nothing that happened
      * to the file after analysis (edited, replaced, deleted) can change what gets imported. Also runs
-     * on {@link #IMPORT_EXECUTOR}, since a real 926-row import is real database work.
+     * on {@link BackgroundImportExecutor}'s non-daemon worker, since a real 926-row import is real
+     * database work — {@link BackgroundImportExecutor#markImportActive} brackets the whole task so the
+     * primary window's close handler can warn the learner instead of silently losing an in-flight write.
      */
     private void importAnalyzedWorkbook(File file, AnalyzedTrainingWorkbook analyzed) {
         setImportBusy(true, "Importing \"" + file.getName() + "\"…");
+        BackgroundImportExecutor.markImportActive(true);
         ImportSourceMetadata sourceMetadata = new ImportSourceMetadata(blankToNull(importSourceNameField.getText()),
                 blankToNull(importSourceUrlField.getText()), blankToNull(importAuthorField.getText()), blankToNull(importVersionField.getText()));
         Task<TrainingSheetImportSummary> task = new Task<>() {
@@ -199,11 +191,13 @@ public class SettingsController extends BaseController {
             }
         };
         task.setOnSucceeded(event -> {
+            BackgroundImportExecutor.markImportActive(false);
             setImportBusy(false, null);
             showImportCompleteDialog(file.getName(), task.getValue());
             refreshImportBatches();
         });
         task.setOnFailed(event -> {
+            BackgroundImportExecutor.markImportActive(false);
             setImportBusy(false, null);
             Throwable exception = task.getException();
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -214,8 +208,11 @@ public class SettingsController extends BaseController {
                     : String.valueOf(exception.getMessage()));
             alert.showAndWait();
         });
-        task.setOnCancelled(event -> setImportBusy(false, null));
-        IMPORT_EXECUTOR.submit(task);
+        task.setOnCancelled(event -> {
+            BackgroundImportExecutor.markImportActive(false);
+            setImportBusy(false, null);
+        });
+        BackgroundImportExecutor.submit(task);
     }
 
     /** The single place busy state changes: always keeps {@link #importBusy}, the button, and the
@@ -284,23 +281,33 @@ public class SettingsController extends BaseController {
         long blockingCount = diagnostics.stream().filter(diagnostic -> diagnostic.severity() == TrainingSheetDiagnosticSeverity.BLOCKING).count();
         long warningCount = diagnostics.stream().filter(diagnostic -> diagnostic.severity() == TrainingSheetDiagnosticSeverity.WARNING).count();
         return sectionBox("Summary", labeledGrid(
+                "Profile", details.profile().name(),
+                "Version", details.profile().version(),
                 "Unique problems", String.valueOf(details.uniqueProblemCount()),
                 "Roadmap memberships", String.valueOf(details.roadmapMembershipCount()),
                 "Blocking errors", String.valueOf(blockingCount),
                 "Warnings", String.valueOf(warningCount)));
     }
 
+    /** Detected/valid/skipped rows per stage (#160) - a membership count alone can't distinguish "this
+     *  sheet only has 5 rows" from "this sheet has 900 rows and 895 were instructional/duplicate/invalid". */
     private Node buildStageTableSection(WorkbookPreviewDetails details) {
         GridPane grid = new GridPane();
         grid.setHgap(16);
         grid.setVgap(4);
-        int row = 0;
-        for (RoadmapStage stage : RoadmapStage.values()) {
-            grid.add(new Label(stage.name()), 0, row);
-            grid.add(new Label(String.valueOf(details.stageMembershipCounts().getOrDefault(stage, 0))), 1, row);
-            row++;
+        grid.addRow(0, boldLabel("Stage"), boldLabel("Detected"), boldLabel("Valid"), boldLabel("Skipped"));
+        int row = 1;
+        for (TrainingSheetStageSummary stageSummary : details.stageSummaries()) {
+            grid.addRow(row++, new Label(stageSummary.stage().name()), new Label(String.valueOf(stageSummary.detectedRows())),
+                    new Label(String.valueOf(stageSummary.validRows())), new Label(String.valueOf(stageSummary.skippedRows())));
         }
         return sectionBox("Stage breakdown", grid);
+    }
+
+    private Label boldLabel(String text) {
+        Label label = new Label(text);
+        label.getStyleClass().add("dashboard-card-helper");
+        return label;
     }
 
     private Node buildProgressSection(WorkbookPreviewDetails details) {
@@ -322,7 +329,9 @@ public class SettingsController extends BaseController {
                 "Topic coverage", topicCoverage + " row(s)",
                 "Suggested-level coverage", details.suggestedLevelMetadataCount() + " row(s)",
                 "Quality coverage", details.qualityMetadataCount() + " row(s)",
-                "Assistance/independence coverage", details.assistanceMetadataCount() + " row(s)"));
+                "Assistance/independence coverage", details.assistanceMetadataCount() + " row(s)",
+                "Attempt snapshots found", details.attemptSnapshotsFound() + " problem(s) in the workbook",
+                "Reflection metadata found", details.problemsWithReflectionMetadata() + " problem(s) in the workbook"));
     }
 
     private Node buildDiagnosticsSection(List<TrainingSheetDiagnostic> diagnostics) {

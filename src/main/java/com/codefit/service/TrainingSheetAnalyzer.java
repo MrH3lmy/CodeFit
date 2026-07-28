@@ -69,7 +69,10 @@ final class TrainingSheetAnalyzer {
 
     static AnalyzedTrainingWorkbook analyze(String workbookName, ParsedWorkbook workbook, String fileFingerprint) {
         WorkbookValidationResult validation = validateStructure(workbook);
-        AnalysisContext context = new AnalysisContext(validation);
+        WorkbookProfile profile = new WorkbookProfile(
+                validation.valid() ? "Junior Training Sheet" : "Generic training workbook",
+                workbook.detectedVersion() != null ? workbook.detectedVersion() : "Not detected");
+        AnalysisContext context = new AnalysisContext(validation, profile);
         if (validation.valid()) {
             for (RoadmapStage stage : RoadmapStage.values()) {
                 workbook.sheet(stage.name()).ifPresent(sheet -> analyzeRoadmapSheet(stage, sheet, context));
@@ -134,6 +137,7 @@ final class TrainingSheetAnalyzer {
 
     private static void analyzeRoadmapSheet(RoadmapStage stage, ParsedSheet sheet, AnalysisContext context) {
         context.mergeSkippedReasons(sheet.droppedRowReasons());
+        context.detectedRowCountByStage.put(stage, sheet.detectedRowCount());
         Set<String> seenKeysInSheet = new HashSet<>();
         Map<Integer, String> slotOwnersInStage = context.slotOwnersByStage.computeIfAbsent(stage, ignored -> new HashMap<>());
         int sequenceCounter = 0;
@@ -150,7 +154,12 @@ final class TrainingSheetAnalyzer {
 
             String url = firstNonBlank(row.get(TrainingSheetColumns.URL),
                     row.get(TrainingSheetWorkbookReader.CODE_URL), row.get(TrainingSheetWorkbookReader.TITLE_URL));
-            String platform = resolvePlatform(row, code, url, context);
+            // Resolving the platform has no counting side effects (#160): a row can still turn out to
+            // be a duplicate or lose a roadmap-slot conflict below, and neither should inflate the
+            // explicit/inferred/unknown platform-source counts - those only count rows actually
+            // accepted into a membership, right alongside platformCounts itself.
+            PlatformResolution platformResolution = resolvePlatform(row, code, url);
+            String platform = platformResolution.platform();
 
             String dedupeKey = platform.toLowerCase(Locale.ROOT) + "::" + code.toLowerCase(Locale.ROOT);
             if (!seenKeysInSheet.add(dedupeKey)) {
@@ -196,6 +205,11 @@ final class TrainingSheetAnalyzer {
             context.memberships.add(new AnalyzedRoadmapMembership(dedupeKey, stage, sequenceOrder, setNumber, mandatory, suggestedLevel));
             context.stageMembershipCounts.merge(stage, 1, Integer::sum);
             context.platformCounts.merge(platform, 1, Integer::sum);
+            switch (platformResolution.source()) {
+                case EXPLICIT -> context.explicitPlatformCount++;
+                case INFERRED -> context.inferredPlatformCount++;
+                case UNKNOWN -> context.unknownPlatformCount++;
+            }
             if (url != null) {
                 context.hyperlinksFound++;
             } else {
@@ -242,19 +256,18 @@ final class TrainingSheetAnalyzer {
         }
     }
 
-    private static String resolvePlatform(ParsedWorkbookRow row, String code, String url, AnalysisContext context) {
+    /** Pure: resolves a row's platform with no counting side effects (#160) — see the call site for
+     *  why the resulting {@link PlatformResolution#source()} is only counted once the row is accepted. */
+    private static PlatformResolution resolvePlatform(ParsedWorkbookRow row, String code, String url) {
         String explicitPlatform = row.get(TrainingSheetColumns.PLATFORM);
         if (explicitPlatform != null) {
-            context.explicitPlatformCount++;
-            return explicitPlatform;
+            return new PlatformResolution(explicitPlatform, PlatformSource.EXPLICIT);
         }
         Optional<String> inferred = PlatformInference.infer(code, url);
         if (inferred.isPresent()) {
-            context.inferredPlatformCount++;
-            return inferred.get();
+            return new PlatformResolution(inferred.get(), PlatformSource.INFERRED);
         }
-        context.unknownPlatformCount++;
-        return DEFAULT_PLATFORM;
+        return new PlatformResolution(DEFAULT_PLATFORM, PlatformSource.UNKNOWN);
     }
 
     /**
@@ -542,11 +555,13 @@ final class TrainingSheetAnalyzer {
 
     private static final class AnalysisContext {
         final WorkbookValidationResult validation;
+        final WorkbookProfile profile;
         final Map<String, ProblemAccumulator> problemsByKey = new LinkedHashMap<>();
         final List<AnalyzedRoadmapMembership> memberships = new ArrayList<>();
         final List<String> warnings = new ArrayList<>();
         final List<TrainingSheetDiagnostic> diagnostics = new ArrayList<>();
         final Map<RoadmapStage, Map<Integer, String>> slotOwnersByStage = new EnumMap<>(RoadmapStage.class);
+        final Map<RoadmapStage, Integer> detectedRowCountByStage = new EnumMap<>(RoadmapStage.class);
 
         final Map<RoadmapStage, Integer> stageMembershipCounts = new EnumMap<>(RoadmapStage.class);
         int hyperlinksFound;
@@ -567,8 +582,9 @@ final class TrainingSheetAnalyzer {
         int duplicateRowsSkipped;
         int invalidRows;
 
-        AnalysisContext(WorkbookValidationResult validation) {
+        AnalysisContext(WorkbookValidationResult validation, WorkbookProfile profile) {
             this.validation = validation;
+            this.profile = profile;
             for (RoadmapStage stage : RoadmapStage.values()) {
                 stageMembershipCounts.put(stage, 0);
             }
@@ -595,11 +611,24 @@ final class TrainingSheetAnalyzer {
             List<AnalyzedProblem> problems = problemsByKey.entrySet().stream()
                     .map(entry -> entry.getValue().toAnalyzedProblem(entry.getKey()))
                     .toList();
-            WorkbookPreviewDetails details = new WorkbookPreviewDetails(problems.size(), memberships.size(),
-                    Map.copyOf(stageMembershipCounts), hyperlinksFound, hyperlinksMissing, Map.copyOf(platformCounts),
-                    explicitPlatformCount, inferredPlatformCount, unknownPlatformCount,
+            int attemptSnapshotsFound = (int) problems.stream().filter(problem -> problem.submissionResult() != null).count();
+            int problemsWithReflectionMetadata = (int) problems.stream()
+                    .filter(problem -> problem.perceivedDifficulty() != null || problem.solvedWith() != null
+                            || problem.actualTopic() != null || problem.approachNotes() != null)
+                    .count();
+            List<TrainingSheetStageSummary> stageSummaries = new ArrayList<>();
+            for (RoadmapStage stage : RoadmapStage.values()) {
+                int detected = detectedRowCountByStage.getOrDefault(stage, 0);
+                int valid = stageMembershipCounts.getOrDefault(stage, 0);
+                int skipped = Math.max(0, detected - valid);
+                stageSummaries.add(new TrainingSheetStageSummary(stage, detected, valid, skipped, valid));
+            }
+            WorkbookPreviewDetails details = new WorkbookPreviewDetails(profile, problems.size(), memberships.size(),
+                    Map.copyOf(stageMembershipCounts), List.copyOf(stageSummaries), hyperlinksFound, hyperlinksMissing,
+                    Map.copyOf(platformCounts), explicitPlatformCount, inferredPlatformCount, unknownPlatformCount,
                     solvedCount, inProgressCount, revisitCount, notStartedCount, Map.copyOf(topicCounts),
                     qualityMetadataCount, suggestedLevelMetadataCount, assistanceMetadataCount,
+                    attemptSnapshotsFound, problemsWithReflectionMetadata,
                     Map.copyOf(rowsSkippedByReason), duplicateRowsSkipped, invalidRows,
                     List.copyOf(validation.recognizedSheets()), List.copyOf(validation.ignoredSheets()),
                     List.copyOf(validation.missingRoadmapSheets()));

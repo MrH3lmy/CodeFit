@@ -137,6 +137,22 @@ class RealJuniorTrainingSheetImportTest {
     }
 
     @Test
+    void previewAfterAnAlreadyCompletedImportStillReportsTheSameStableCounts() throws Exception {
+        // #160's core complaint: previewing an already-imported workbook must still show the
+        // workbook's own content (923/926/172), not degrade toward zero because most of it is now
+        // "reused" rather than "created" in the database.
+        importAndTrack();
+
+        TrainingSheetImportSummary previewAfterImport = importService.preview(WORKBOOK_PATH);
+
+        assertTrue(previewAfterImport.dryRun());
+        assertEquals(923, previewAfterImport.details().uniqueProblemCount());
+        assertEquals(926, previewAfterImport.details().roadmapMembershipCount());
+        assertEquals(172, previewAfterImport.details().stageMembershipCounts().get(RoadmapStage.B));
+        assertFalse(previewAfterImport.hasBlockingDiagnostics());
+    }
+
+    @Test
     void reimportingTheApprovedWorkbookIsFullyIdempotent() throws Exception {
         importAndTrack();
         TrainingSheetImportSummary second = importAndTrack();

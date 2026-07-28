@@ -2,21 +2,29 @@ package com.codefit.controller;
 
 import com.codefit.model.DailyWorkloadMode;
 import com.codefit.model.ImportBatch;
+import com.codefit.model.RoadmapStage;
 import com.codefit.model.UserProgress;
+import com.codefit.service.AnalyzedTrainingWorkbook;
 import com.codefit.service.FocusPreferenceService;
 import com.codefit.service.GuidedTrainingService;
 import com.codefit.service.ImportSourceMetadata;
 import com.codefit.service.ProgressService;
+import com.codefit.service.TrainingSheetDiagnostic;
+import com.codefit.service.TrainingSheetDiagnosticSeverity;
 import com.codefit.service.TrainingSheetImportService;
 import com.codefit.service.TrainingSheetImportSummary;
 import com.codefit.service.WorkbookImportException;
+import com.codefit.service.WorkbookPreviewDetails;
 import com.codefit.service.WorkbookPreviewReportFormatter;
-import com.codefit.service.WorkbookValidationResult;
 import com.codefit.ui.NavigationService;
-import javafx.application.Platform;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
@@ -25,10 +33,14 @@ import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -38,11 +50,25 @@ import javafx.stage.Window;
 import java.io.File;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SettingsController extends BaseController {
     private static final List<Integer> MATURE_INTERLEAVE_PERCENT_OPTIONS = List.of(0, 5, 10, 15, 20, 25, 30, 40, 50);
     private static final List<Integer> GUIDED_SESSION_MINUTES_OPTIONS = List.of(5, 10, 15, 20, 30, 45);
     private static final List<Integer> DAILY_NEW_CARD_LIMIT_OPTIONS = List.of(0, 1, 2, 3, 4, 5, 8, 10);
+
+    /** Owns every background analyze/import task (#160): a single shared, daemon-threaded executor
+     *  rather than one raw {@code Thread} per action, so completion (success, failure, or an
+     *  unexpected {@link RuntimeException}) is always routed through {@link Task}'s own
+     *  succeeded/failed/cancelled handlers instead of a hand-rolled try/catch that could leave the UI
+     *  stuck "busy" if something unforeseen throws. */
+    private static final ExecutorService IMPORT_EXECUTOR = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "training-sheet-import-worker");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     @FXML private ChoiceBox<String> themeChoiceBox;
     @FXML private ChoiceBox<DailyWorkloadMode> workloadModeChoiceBox;
@@ -68,6 +94,11 @@ public class SettingsController extends BaseController {
     private final GuidedTrainingService guidedTrainingService = new GuidedTrainingService();
     private final TrainingSheetImportService trainingSheetImportService = new TrainingSheetImportService();
 
+    /** {@code true} from the moment a workbook is chosen until the analyze-review-import cycle it
+     *  started fully finishes (success, cancel, block, or failure) — a second click while this is set
+     *  is ignored rather than starting a second concurrent import (#160). */
+    private final AtomicBoolean importBusy = new AtomicBoolean(false);
+
     @FXML
     public void initialize() {
         configureThemePreference();
@@ -82,13 +113,16 @@ public class SettingsController extends BaseController {
 
     /**
      * Local-only workbook import (#159/#160): the file never leaves the machine. Selecting a workbook
-     * only ever analyzes it — see {@link #analyzeWorkbookInBackground} — a real import only happens if
-     * the learner explicitly confirms after reviewing the preview report. Re-importing the same
-     * workbook is always safe — {@link TrainingSheetImportService} never creates duplicate
-     * problems/memberships and never downgrades progress the learner has already recorded.
+     * only ever analyzes it — see {@link #analyzeWorkbook} — a real import only happens if the learner
+     * explicitly confirms after reviewing the preview. Re-importing the same workbook is always safe —
+     * {@link TrainingSheetImportService} never creates duplicate problems/memberships and never
+     * downgrades progress the learner has already recorded.
      */
     @FXML
     public void importTrainingSheet() {
+        if (importBusy.get()) {
+            return; // an analyze/import cycle is already running; ignore the extra click
+        }
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Import Training Sheet");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel workbook", "*.xlsx"));
@@ -96,127 +130,118 @@ public class SettingsController extends BaseController {
         if (file == null) {
             return;
         }
-        analyzeWorkbookInBackground(file);
+        analyzeWorkbook(file);
     }
 
     /**
-     * Step 1, "Analyze workbook": runs the exact same row-by-row logic a real import would (see
-     * {@link TrainingSheetImportService#preview}), rolling back every write. The real workbook has
-     * ~926 rows across seven sheets, so parsing and analyzing it runs on a background thread —
-     * blocking the JavaFX Application Thread here would freeze the whole UI for the duration — with
-     * the result marshalled back via {@link Platform#runLater}. Step 2, "review and confirm", happens
-     * on {@link #onWorkbookAnalyzed}: the learner reads the report and explicitly clicks "Import Now"
-     * before anything is written — cancelling (closing the dialog any other way) leaves the database
-     * exactly as it was.
+     * Step 1, "Analyze workbook" (#160): {@link TrainingSheetImportService#analyze} parses and
+     * evaluates the workbook entirely in memory — no database connection is ever opened for this. The
+     * real workbook has ~926 rows across seven sheets, so this runs on {@link #IMPORT_EXECUTOR}, not
+     * the JavaFX Application Thread, with the "Import Training Sheet…" button disabled and a status
+     * label shown while it runs. {@link Task#setOnFailed} covers every failure mode, including an
+     * unexpected {@link RuntimeException} the try/catch in an earlier version of this flow could have
+     * missed, so the busy state is always cleared.
      */
-    private void analyzeWorkbookInBackground(File file) {
+    private void analyzeWorkbook(File file) {
         setImportBusy(true, "Analyzing \"" + file.getName() + "\"… this can take a few seconds for a large workbook.");
-        Thread analyzeThread = new Thread(() -> {
-            TrainingSheetImportSummary preview = null;
-            WorkbookImportException failure = null;
-            WorkbookValidationResult validation = null;
-            try {
-                preview = trainingSheetImportService.preview(file.toPath());
-            } catch (WorkbookImportException exception) {
-                failure = exception;
-                validation = safeValidate(file);
-            } catch (RuntimeException exception) {
-                failure = new WorkbookImportException(exception.getMessage(), exception);
+        Task<AnalyzedTrainingWorkbook> task = new Task<>() {
+            @Override
+            protected AnalyzedTrainingWorkbook call() {
+                return trainingSheetImportService.analyze(file.toPath());
             }
-            TrainingSheetImportSummary finalPreview = preview;
-            WorkbookImportException finalFailure = failure;
-            WorkbookValidationResult finalValidation = validation;
-            Platform.runLater(() -> {
-                setImportBusy(false, null);
-                if (finalFailure != null) {
-                    showAnalysisFailedAlert(finalFailure, finalValidation);
-                } else {
-                    onWorkbookAnalyzed(file, finalPreview);
-                }
-            });
-        }, "training-sheet-analyze");
-        analyzeThread.setDaemon(true);
-        analyzeThread.start();
+        };
+        task.setOnSucceeded(event -> onWorkbookAnalyzed(file, task.getValue()));
+        task.setOnFailed(event -> {
+            setImportBusy(false, null);
+            showAnalysisFailedAlert(task.getException());
+        });
+        task.setOnCancelled(event -> setImportBusy(false, null));
+        IMPORT_EXECUTOR.submit(task);
     }
 
-    private void showAnalysisFailedAlert(WorkbookImportException exception, WorkbookValidationResult validation) {
+    private void showAnalysisFailedAlert(Throwable exception) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Training Sheet Import");
         alert.setHeaderText("This workbook can't be analyzed; no changes were made");
-        String detail = validation == null
-                ? exception.getMessage()
-                : exception.getMessage() + "\n\n" + String.join("\n", validation.structuralWarnings());
-        alert.setContentText(detail);
+        alert.setContentText(exception instanceof WorkbookImportException workbookImportException
+                ? workbookImportException.getMessage()
+                : String.valueOf(exception.getMessage()));
         alert.showAndWait();
     }
 
-    /** Shows the review-and-confirm dialog for a completed analysis, then — only if the learner
-     *  explicitly clicks "Import Now" — runs the real import, also off the JavaFX Application Thread. */
-    private void onWorkbookAnalyzed(File file, TrainingSheetImportSummary preview) {
-        if (!showPreviewReportDialog(file.getName(), preview)) {
-            return; // cancelled, or blocked by errors: the preview above already rolled back, nothing to undo
+    /**
+     * Step 2, "Preview & Diagnostics, then confirm" (#160): shows the analyzed workbook — the exact
+     * object step 3 will import unchanged, never re-read from disk — and, only if the learner
+     * explicitly clicks "Import Now", proceeds to {@link #importAnalyzedWorkbook}.
+     */
+    private void onWorkbookAnalyzed(File file, AnalyzedTrainingWorkbook analyzed) {
+        setImportBusy(false, null);
+        if (!showPreviewDialog(file.getName(), analyzed)) {
+            return; // cancelled, or blocked by errors: analysis never touched the database, nothing to undo
         }
-        importWorkbookInBackground(file);
+        importAnalyzedWorkbook(file, analyzed);
     }
 
-    private void importWorkbookInBackground(File file) {
+    /**
+     * Step 3, "Transactional import" (#160): applies the exact {@link AnalyzedTrainingWorkbook} the
+     * learner just reviewed — the source file is never re-read or re-parsed, so nothing that happened
+     * to the file after analysis (edited, replaced, deleted) can change what gets imported. Also runs
+     * on {@link #IMPORT_EXECUTOR}, since a real 926-row import is real database work.
+     */
+    private void importAnalyzedWorkbook(File file, AnalyzedTrainingWorkbook analyzed) {
         setImportBusy(true, "Importing \"" + file.getName() + "\"…");
         ImportSourceMetadata sourceMetadata = new ImportSourceMetadata(blankToNull(importSourceNameField.getText()),
                 blankToNull(importSourceUrlField.getText()), blankToNull(importAuthorField.getText()), blankToNull(importVersionField.getText()));
-        Thread importThread = new Thread(() -> {
-            TrainingSheetImportSummary summary = null;
-            WorkbookImportException failure = null;
-            try {
-                summary = trainingSheetImportService.importWorkbook(file.toPath(), sourceMetadata);
-            } catch (WorkbookImportException exception) {
-                failure = exception;
+        Task<TrainingSheetImportSummary> task = new Task<>() {
+            @Override
+            protected TrainingSheetImportSummary call() {
+                return trainingSheetImportService.importAnalyzed(analyzed, sourceMetadata);
             }
-            TrainingSheetImportSummary finalSummary = summary;
-            WorkbookImportException finalFailure = failure;
-            Platform.runLater(() -> {
-                setImportBusy(false, null);
-                if (finalFailure != null) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Training Sheet Import");
-                    alert.setHeaderText("Import failed; no changes were made");
-                    alert.setContentText(finalFailure.getMessage());
-                    alert.showAndWait();
-                } else {
-                    showImportCompleteDialog(file.getName(), finalSummary);
-                    refreshImportBatches();
-                }
-            });
-        }, "training-sheet-import");
-        importThread.setDaemon(true);
-        importThread.start();
+        };
+        task.setOnSucceeded(event -> {
+            setImportBusy(false, null);
+            showImportCompleteDialog(file.getName(), task.getValue());
+            refreshImportBatches();
+        });
+        task.setOnFailed(event -> {
+            setImportBusy(false, null);
+            Throwable exception = task.getException();
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Training Sheet Import");
+            alert.setHeaderText("Import failed; no changes were made");
+            alert.setContentText(exception instanceof WorkbookImportException workbookImportException
+                    ? workbookImportException.getMessage()
+                    : String.valueOf(exception.getMessage()));
+            alert.showAndWait();
+        });
+        task.setOnCancelled(event -> setImportBusy(false, null));
+        IMPORT_EXECUTOR.submit(task);
     }
 
+    /** The single place busy state changes: always keeps {@link #importBusy}, the button, and the
+     *  status label in lockstep, so every completion path (success, expected failure, or an unexpected
+     *  exception via {@link Task#setOnFailed}) restores the UI the same way. */
     private void setImportBusy(boolean busy, String statusText) {
+        importBusy.set(busy);
         importTrainingSheetButton.setDisable(busy);
         importStatusLabel.setText(statusText == null ? "" : statusText);
         importStatusLabel.setVisible(statusText != null);
         importStatusLabel.setManaged(statusText != null);
     }
 
-    private WorkbookValidationResult safeValidate(File file) {
-        try {
-            return trainingSheetImportService.validate(file.toPath());
-        } catch (RuntimeException validationAlsoFailed) {
-            return null;
-        }
-    }
-
     /**
-     * The "Preview & Diagnostics" screen (#160): the plain-text report plus every diagnostic's
-     * severity. "Import Now" is disabled whenever the workbook has a BLOCKING diagnostic (nothing
-     * importable at all) — the learner can still read the report and copy it, but there's nothing to
-     * confirm.
+     * The structured "Preview & Diagnostics" screen (#160): summary cards, a stage table (all seven
+     * stages, including zero-count ones), a progress summary, a metadata summary, and a diagnostics
+     * table (severity/sheet/row/column/reason) — plus the plain-text report underneath "Copy Report"
+     * for exporting. "Import Now" is disabled whenever the workbook has a BLOCKING diagnostic (nothing
+     * importable at all); warning-only diagnostics never disable it.
      *
      * @return {@code true} if the learner clicked "Import Now", {@code false} for cancel/close/blocked.
      */
-    private boolean showPreviewReportDialog(String workbookFileName, TrainingSheetImportSummary preview) {
-        String reportText = WorkbookPreviewReportFormatter.format(workbookFileName, preview);
-        boolean blocked = preview.hasBlockingDiagnostics();
+    private boolean showPreviewDialog(String workbookFileName, AnalyzedTrainingWorkbook analyzed) {
+        boolean blocked = analyzed.hasBlockingDiagnostics();
+        WorkbookPreviewDetails details = analyzed.details();
+        String reportText = WorkbookPreviewReportFormatter.format(workbookFileName, trainingSheetImportService.previewOf(analyzed));
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Training Sheet Import — Preview");
@@ -224,21 +249,28 @@ public class SettingsController extends BaseController {
                 ? "\"" + workbookFileName + "\" has blocking errors and can't be imported — nothing has been written."
                 : "Review \"" + workbookFileName + "\" before importing — nothing has been written yet.");
 
-        TextArea reportArea = new TextArea(reportText);
-        reportArea.setEditable(false);
-        reportArea.setWrapText(false);
-        reportArea.setPrefColumnCount(72);
-        reportArea.setPrefRowCount(24);
+        VBox content = new VBox(14,
+                buildSummarySection(details, analyzed.diagnostics()),
+                buildStageTableSection(details),
+                buildProgressSection(details),
+                buildMetadataSection(details),
+                buildDiagnosticsSection(analyzed.diagnostics()));
+        content.setPadding(new Insets(4));
+
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefSize(720, 540);
 
         DialogPane pane = dialog.getDialogPane();
-        pane.setContent(reportArea);
+        pane.setContent(scrollPane);
+        pane.setPrefSize(760, 620);
         pane.getButtonTypes().addAll(COPY_REPORT_BUTTON, ButtonType.CANCEL, IMPORT_NOW_BUTTON);
 
         Button copyButton = (Button) pane.lookupButton(COPY_REPORT_BUTTON);
-        copyButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
-            ClipboardContent content = new ClipboardContent();
-            content.putString(reportText);
-            Clipboard.getSystemClipboard().setContent(content);
+        copyButton.addEventFilter(ActionEvent.ACTION, event -> {
+            ClipboardContent clipboardContent = new ClipboardContent();
+            clipboardContent.putString(reportText);
+            Clipboard.getSystemClipboard().setContent(clipboardContent);
             event.consume(); // stay open after copying
         });
 
@@ -246,6 +278,96 @@ public class SettingsController extends BaseController {
         importButton.setDisable(blocked);
 
         return dialog.showAndWait().filter(button -> button == IMPORT_NOW_BUTTON).isPresent();
+    }
+
+    private Node buildSummarySection(WorkbookPreviewDetails details, List<TrainingSheetDiagnostic> diagnostics) {
+        long blockingCount = diagnostics.stream().filter(diagnostic -> diagnostic.severity() == TrainingSheetDiagnosticSeverity.BLOCKING).count();
+        long warningCount = diagnostics.stream().filter(diagnostic -> diagnostic.severity() == TrainingSheetDiagnosticSeverity.WARNING).count();
+        return sectionBox("Summary", labeledGrid(
+                "Unique problems", String.valueOf(details.uniqueProblemCount()),
+                "Roadmap memberships", String.valueOf(details.roadmapMembershipCount()),
+                "Blocking errors", String.valueOf(blockingCount),
+                "Warnings", String.valueOf(warningCount)));
+    }
+
+    private Node buildStageTableSection(WorkbookPreviewDetails details) {
+        GridPane grid = new GridPane();
+        grid.setHgap(16);
+        grid.setVgap(4);
+        int row = 0;
+        for (RoadmapStage stage : RoadmapStage.values()) {
+            grid.add(new Label(stage.name()), 0, row);
+            grid.add(new Label(String.valueOf(details.stageMembershipCounts().getOrDefault(stage, 0))), 1, row);
+            row++;
+        }
+        return sectionBox("Stage breakdown", grid);
+    }
+
+    private Node buildProgressSection(WorkbookPreviewDetails details) {
+        return sectionBox("Progress", labeledGrid(
+                "Solved", String.valueOf(details.solvedCount()),
+                "In Progress", String.valueOf(details.inProgressCount()),
+                "Needs Revisit", String.valueOf(details.revisitCount()),
+                "Not Started", String.valueOf(details.notStartedCount())));
+    }
+
+    private Node buildMetadataSection(WorkbookPreviewDetails details) {
+        int topicCoverage = details.topicCounts().values().stream().mapToInt(Integer::intValue).sum();
+        return sectionBox("Metadata", labeledGrid(
+                "Hyperlinks found", String.valueOf(details.hyperlinksFound()),
+                "Hyperlinks missing", String.valueOf(details.hyperlinksMissing()),
+                "Explicit platforms", String.valueOf(details.explicitPlatformCount()),
+                "Inferred platforms", String.valueOf(details.inferredPlatformCount()),
+                "Unknown platforms", String.valueOf(details.unknownPlatformCount()),
+                "Topic coverage", topicCoverage + " row(s)",
+                "Suggested-level coverage", details.suggestedLevelMetadataCount() + " row(s)",
+                "Quality coverage", details.qualityMetadataCount() + " row(s)",
+                "Assistance/independence coverage", details.assistanceMetadataCount() + " row(s)"));
+    }
+
+    private Node buildDiagnosticsSection(List<TrainingSheetDiagnostic> diagnostics) {
+        TableView<TrainingSheetDiagnostic> table = new TableView<>(FXCollections.observableArrayList(diagnostics));
+
+        TableColumn<TrainingSheetDiagnostic, String> severityColumn = new TableColumn<>("Severity");
+        severityColumn.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().severity().name()));
+        TableColumn<TrainingSheetDiagnostic, String> sheetColumn = new TableColumn<>("Sheet");
+        sheetColumn.setCellValueFactory(data -> new ReadOnlyStringWrapper(nullToDash(data.getValue().sheet())));
+        TableColumn<TrainingSheetDiagnostic, String> rowColumn = new TableColumn<>("Row");
+        rowColumn.setCellValueFactory(data -> new ReadOnlyStringWrapper(
+                data.getValue().row() == null ? "-" : String.valueOf(data.getValue().row())));
+        TableColumn<TrainingSheetDiagnostic, String> columnColumn = new TableColumn<>("Column");
+        columnColumn.setCellValueFactory(data -> new ReadOnlyStringWrapper(nullToDash(data.getValue().column())));
+        TableColumn<TrainingSheetDiagnostic, String> reasonColumn = new TableColumn<>("Reason");
+        reasonColumn.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().reason()));
+        reasonColumn.setPrefWidth(320);
+
+        table.getColumns().addAll(List.of(severityColumn, sheetColumn, rowColumn, columnColumn, reasonColumn));
+        table.setPrefHeight(220);
+        table.setPlaceholder(new Label("No diagnostics — the workbook is clean."));
+        return sectionBox("Diagnostics (" + diagnostics.size() + ")", table);
+    }
+
+    private Node sectionBox(String title, Node body) {
+        Label heading = new Label(title);
+        heading.getStyleClass().add("section-title");
+        return new VBox(6, heading, body);
+    }
+
+    private GridPane labeledGrid(String... labelsAndValues) {
+        GridPane grid = new GridPane();
+        grid.setHgap(16);
+        grid.setVgap(4);
+        for (int i = 0; i < labelsAndValues.length; i += 2) {
+            Label label = new Label(labelsAndValues[i]);
+            label.getStyleClass().add("dashboard-card-helper");
+            grid.add(label, 0, i / 2);
+            grid.add(new Label(labelsAndValues[i + 1]), 1, i / 2);
+        }
+        return grid;
+    }
+
+    private String nullToDash(String value) {
+        return value == null ? "-" : value;
     }
 
     /** Links directly to the Problem Library so a learner can see what just landed in it. */

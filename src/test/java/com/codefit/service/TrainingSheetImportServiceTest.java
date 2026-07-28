@@ -230,6 +230,11 @@ class TrainingSheetImportServiceTest {
 
     @Test
     void dryRunPreviewComputesTheSummaryButWritesNothing(@TempDir Path tempDir) throws Exception {
+        // #160: preview() is pure analysis - it never opens a database connection at all, so it can't
+        // (and shouldn't) report database-dependent created/updated/reused counts; those are only
+        // meaningful once a real import runs. What preview() reports instead are the workbook's own
+        // stable content counts, which are identical before and after the workbook has ever been
+        // imported (see AnalyzedTrainingWorkbookTest for that non-degradation guarantee).
         String platform = uniquePlatform("dry-run");
         Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "dry-run.xlsx", List.of(
                 sheet("A", List.of(row("P1", "Two Sum", platform, "AC")))));
@@ -237,14 +242,18 @@ class TrainingSheetImportServiceTest {
         TrainingSheetImportSummary preview = importService.preview(workbookPath);
 
         assertTrue(preview.dryRun());
-        assertEquals(1, preview.problemsCreated());
-        assertEquals(1, preview.roadmapMembershipsCreated());
+        assertEquals(0, preview.problemsCreated(), "a pure analysis never touches the database, so it can't know created-vs-reused");
+        assertEquals(0, preview.roadmapMembershipsCreated());
+        assertEquals(1, preview.details().uniqueProblemCount());
+        assertEquals(1, preview.details().roadmapMembershipCount());
         assertTrue(problemRepository.findByPlatformAndExternalCode(platform, "P1").isEmpty(),
                 "a dry-run preview must not write anything to the database");
 
         TrainingSheetImportSummary realImport = importService.importWorkbook(workbookPath);
-        assertEquals(preview.problemsCreated(), realImport.problemsCreated());
-        assertEquals(preview.roadmapMembershipsCreated(), realImport.roadmapMembershipsCreated());
+        assertEquals(1, realImport.problemsCreated());
+        assertEquals(1, realImport.roadmapMembershipsCreated());
+        assertEquals(preview.details().uniqueProblemCount(), realImport.details().uniqueProblemCount());
+        assertEquals(preview.details().roadmapMembershipCount(), realImport.details().roadmapMembershipCount());
         assertTrue(problemRepository.findByPlatformAndExternalCode(platform, "P1").isPresent());
     }
 
@@ -288,7 +297,7 @@ class TrainingSheetImportServiceTest {
         assertEquals(2, summary.problemsCreated(), "both problems are still created even though one membership conflicts");
         assertEquals(1, summary.roadmapMembershipsCreated());
         assertEquals(1, summary.invalidRows());
-        assertTrue(summary.warnings().stream().anyMatch(warning -> warning.contains("already held by")));
+        assertTrue(summary.warnings().stream().anyMatch(warning -> warning.contains("already claimed by another problem")));
     }
 
     @Test

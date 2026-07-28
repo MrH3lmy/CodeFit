@@ -28,35 +28,45 @@ public final class WorkbookPreviewReportFormatter {
         }
         report.append('\n');
 
+        report.append("Unique problems: ").append(details.uniqueProblemCount()).append('\n');
+        report.append("Roadmap memberships: ").append(details.roadmapMembershipCount()).append('\n');
+        report.append('\n');
+
         report.append("Recognized sheets: ").append(joinOrNone(details.recognizedSheets())).append('\n');
         report.append("Ignored sheets: ").append(joinOrNone(details.ignoredSheets())).append('\n');
         report.append("Missing sheets: ").append(joinOrNone(details.missingSheets())).append('\n');
         report.append('\n');
 
-        report.append("Per-stage roadmap memberships (").append(totalMemberships(details)).append(" total):\n");
+        report.append("Per-stage roadmap memberships:\n");
         for (RoadmapStage stage : RoadmapStage.values()) {
-            int count = details.stageMembershipCounts().getOrDefault(stage, 0);
-            if (count > 0) {
-                report.append("  ").append(stage.name()).append(": ").append(count).append('\n');
-            }
+            report.append("  ").append(stage.name()).append(": ").append(details.stageMembershipCounts().getOrDefault(stage, 0)).append('\n');
         }
         report.append('\n');
 
-        report.append("Problems: ").append(summary.problemsCreated()).append(" created, ")
-                .append(summary.problemsUpdated()).append(" updated, ")
-                .append(summary.problemsReused()).append(" reused\n");
-        report.append("Progress: ").append(summary.progressRecordsImported()).append(" state change(s) — ")
-                .append(details.solvedCount()).append(" solved, ")
+        report.append("Workbook progress: ").append(details.solvedCount()).append(" solved, ")
                 .append(details.inProgressCount()).append(" in progress, ")
-                .append(details.revisitCount()).append(" needs revisit\n");
+                .append(details.revisitCount()).append(" needs revisit, ")
+                .append(details.notStartedCount()).append(" not started\n");
+        report.append("Database effect: ").append(summary.problemsCreated()).append(" problem(s) created, ")
+                .append(summary.problemsUpdated()).append(" updated, ")
+                .append(summary.problemsReused()).append(" reused; ")
+                .append(summary.roadmapMembershipsCreated()).append(" new roadmap membership(s); ")
+                .append(summary.progressRecordsImported()).append(" progress state change(s)\n");
         report.append("Attempt snapshots imported: ").append(summary.attemptsImported()).append('\n');
         report.append("Reflection fields imported: ").append(summary.reflectionFieldsImported()).append('\n');
-        report.append("Judge links: ").append(details.hyperlinksFound()).append(" found, ")
-                .append(details.hyperlinksMissing()).append(" missing\n");
-        report.append("Quality metadata found on ").append(details.qualityMetadataCount()).append(" row(s)\n");
         report.append('\n');
 
-        appendCountMap(report, "Platforms", details.platformCounts());
+        report.append("Judge links: ").append(details.hyperlinksFound()).append(" found, ")
+                .append(details.hyperlinksMissing()).append(" missing\n");
+        report.append("Platforms: ").append(details.explicitPlatformCount()).append(" explicit, ")
+                .append(details.inferredPlatformCount()).append(" inferred, ")
+                .append(details.unknownPlatformCount()).append(" unknown\n");
+        report.append("Suggested-level coverage: ").append(details.suggestedLevelMetadataCount()).append(" row(s)\n");
+        report.append("Quality metadata coverage: ").append(details.qualityMetadataCount()).append(" row(s)\n");
+        report.append("Assistance/independence coverage: ").append(details.assistanceMetadataCount()).append(" row(s)\n");
+        report.append('\n');
+
+        appendCountMap(report, "Platforms breakdown", details.platformCounts());
         appendCountMap(report, "Topics", details.topicCounts());
         appendCountMap(report, "Rows skipped", details.rowsSkippedByReason());
 
@@ -80,10 +90,6 @@ public final class WorkbookPreviewReportFormatter {
 
     private static String joinOrNone(List<String> sheetNames) {
         return sheetNames.isEmpty() ? "none" : String.join(", ", sheetNames);
-    }
-
-    private static int totalMemberships(WorkbookPreviewDetails details) {
-        return details.stageMembershipCounts().values().stream().mapToInt(Integer::intValue).sum();
     }
 
     private static void appendCountMap(StringBuilder report, String label, Map<String, Integer> counts) {

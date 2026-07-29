@@ -23,6 +23,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -158,6 +159,33 @@ public class ProblemsController extends BaseController {
             return;
         }
         startOrResumeSession(pendingRevisitProblemId);
+    }
+
+    /** Lets the learner set their own daily target (#161) — the number only ever changes here, so the
+     *  Today card's "N / target" figure always reflects a value the learner actually chose. */
+    @FXML
+    public void editDailyTarget() {
+        TextInputDialog dialog = new TextInputDialog(Integer.toString(guidedPracticeService.getDailyTargetProblems()));
+        dialog.setTitle("Daily Target");
+        dialog.setHeaderText("How many problems do you want to solve per day?");
+        dialog.setContentText("Target:");
+        dialog.showAndWait().ifPresent(this::applyDailyTarget);
+    }
+
+    private void applyDailyTarget(String rawValue) {
+        int target;
+        try {
+            target = Integer.parseInt(rawValue.strip());
+        } catch (NumberFormatException exception) {
+            setStatus(messageLabel, "Daily target must be a whole number.");
+            return;
+        }
+        if (target <= 0) {
+            setStatus(messageLabel, "Daily target must be a positive number of problems.");
+            return;
+        }
+        guidedPracticeService.setDailyTargetProblems(target);
+        refresh();
     }
 
     private void configureStaticFilterMenus() {

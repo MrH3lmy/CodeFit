@@ -4,6 +4,7 @@ import com.codefit.model.Problem;
 import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemState;
 import com.codefit.model.RoadmapEntry;
+import com.codefit.model.SolvedWith;
 import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.RoadmapEntryRepository;
@@ -108,22 +109,14 @@ public class ProblemLibraryService {
     }
 
     /**
-     * The first Blind Order row that isn't yet {@code SOLVED}, preferring mandatory work: while any
-     * mandatory roadmap position remains unsolved, this is the first such position (never a
-     * later-stage or optional one) — see #161's "do not introduce a later-stage problem while
-     * required earlier work remains". Once every mandatory position is solved, this falls through to
-     * the first unsolved position overall (mandatory or optional), so optional work is recommended
-     * rather than left to stall the roadmap forever.
+     * Chooses the guided curriculum frontier in roadmap order while keeping failed/in-progress work in
+     * the revisit queue instead of repeatedly trapping the learner on the same row. Untouched mandatory
+     * work is always preferred over untouched optional work. Once every untouched position has been
+     * attempted, the method falls back to earlier in-progress/revisit positions so nothing is lost.
      *
-     * <p>This is the <em>default, guided</em> recommendation only — a learner can always start any
-     * specific problem directly from its own row (see {@code ProblemsController}'s per-row Start
-     * action), which is the "unless the learner explicitly overrides" escape hatch; this method never
-     * needs its own separate override parameter because of that.
-     *
-     * <p>A workbook status of {@code ACX} (accepted after retries) is imported as
-     * {@link ProblemState#SOLVED} the same as a plain {@code AC} (see
-     * {@code TrainingSheetImportService}), so excluding {@code SOLVED} here already excludes both —
-     * there is no separate {@code ACX} state to check.
+     * <p>This keeps Blind Order as the default while allowing the workspace's explicit "Next Curriculum
+     * Problem" action to advance after a failed attempt. The failed position remains visible through
+     * {@link #getRevisitQueue(List)} and never loses its progress state.
      */
     public Optional<ProblemLibraryEntry> getNextRecommendedProblem() {
         return getNextRecommendedProblem(getBlindOrderEntries());
@@ -138,25 +131,43 @@ public class ProblemLibraryService {
     }
 
     /** Package-visible, DB-free selection logic (mirrors {@code ProblemDashboardService}'s
-     *  static-method-over-plain-lists convention) so the mandatory-gating rule is unit testable
-     *  directly against a hand-built list, without the shared test database's cross-test noise. */
+     *  static-method-over-plain-lists convention) so the recommendation rule is unit testable directly
+     *  against a hand-built list, without the shared test database's cross-test noise. */
     static Optional<ProblemLibraryEntry> selectNextRecommended(List<ProblemLibraryEntry> blindOrder) {
-        Optional<ProblemLibraryEntry> nextMandatory = blindOrder.stream()
+        Optional<ProblemLibraryEntry> untouchedMandatory = blindOrder.stream()
+                .filter(entry -> entry.progress().getState() == ProblemState.NOT_STARTED)
+                .filter(entry -> entry.roadmapEntry() == null || entry.roadmapEntry().isMandatory())
+                .findFirst();
+        if (untouchedMandatory.isPresent()) {
+            return untouchedMandatory;
+        }
+
+        Optional<ProblemLibraryEntry> untouched = blindOrder.stream()
+                .filter(entry -> entry.progress().getState() == ProblemState.NOT_STARTED)
+                .findFirst();
+        if (untouched.isPresent()) {
+            return untouched;
+        }
+
+        Optional<ProblemLibraryEntry> unfinishedMandatory = blindOrder.stream()
                 .filter(entry -> entry.progress().getState() != ProblemState.SOLVED)
                 .filter(entry -> entry.roadmapEntry() == null || entry.roadmapEntry().isMandatory())
                 .findFirst();
-        if (nextMandatory.isPresent()) {
-            return nextMandatory;
+        if (unfinishedMandatory.isPresent()) {
+            return unfinishedMandatory;
         }
+
         return blindOrder.stream()
                 .filter(entry -> entry.progress().getState() != ProblemState.SOLVED)
                 .findFirst();
     }
 
     /**
-     * Roadmap positions currently flagged {@link ProblemState#NEEDS_REVISIT} ("Could Not Solve" in the
-     * Solving Workspace), in Blind Order — a queue to work back through without disturbing the main
-     * roadmap sequence or the frontier {@link #getNextRecommendedProblem()} tracks (#161).
+     * Roadmap positions that need deliberate follow-up, in Blind Order, without changing their main
+     * roadmap state (#161): explicitly failed positions ({@code NEEDS_REVISIT}), submitted/in-progress
+     * positions, and solved positions whose recorded assistance shows hint/editorial/solution
+     * dependence. A hint-dependent solved problem remains {@code SOLVED}; revisit is supplemental and
+     * therefore does not damage completion percentages or the main roadmap order.
      */
     public List<ProblemLibraryEntry> getRevisitQueue() {
         return getRevisitQueue(getBlindOrderEntries());
@@ -166,8 +177,21 @@ public class ProblemLibraryService {
      *  {@link #getNextRecommendedProblem(List)}. */
     public List<ProblemLibraryEntry> getRevisitQueue(List<ProblemLibraryEntry> blindOrderEntries) {
         return blindOrderEntries.stream()
-                .filter(entry -> entry.progress().getState() == ProblemState.NEEDS_REVISIT)
+                .filter(entry -> needsRevisit(entry.progress()))
                 .toList();
+    }
+
+    private static boolean needsRevisit(ProblemProgress progress) {
+        if (progress.getState() == ProblemState.NEEDS_REVISIT || progress.getState() == ProblemState.IN_PROGRESS) {
+            return true;
+        }
+        if (progress.getState() != ProblemState.SOLVED) {
+            return false;
+        }
+        SolvedWith solvedWith = progress.getSolvedWith();
+        return solvedWith == SolvedWith.HINT
+                || solvedWith == SolvedWith.EDITORIAL
+                || solvedWith == SolvedWith.SOLUTION;
     }
 
     public List<String> getDistinctTopics() {

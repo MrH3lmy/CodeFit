@@ -1,12 +1,15 @@
 package com.codefit.ui;
 
 import com.codefit.model.ReflectionType;
+import com.codefit.service.BackgroundImportExecutor;
 import com.codefit.service.GuidedStage;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 import java.io.IOException;
 import java.net.URL;
@@ -64,6 +67,30 @@ public final class NavigationService {
 
     public static void setPrimaryStage(Stage stage) {
         primaryStage = stage;
+        stage.setOnCloseRequest(NavigationService::confirmCloseWhileImportActive);
+    }
+
+    /**
+     * Prevents application shutdown while a confirmed workbook import is queued or writing to the
+     * database (#160). The executor uses a non-daemon worker and graceful shutdown, so promising that
+     * "Quit" would deterministically cancel and roll back the import was inaccurate. The honest and
+     * safe behavior is to keep the window open until every reserved import has finished.
+     */
+    private static void confirmCloseWhileImportActive(WindowEvent event) {
+        if (!shouldBlockCloseForActiveImport(BackgroundImportExecutor.hasActiveImport())) {
+            return;
+        }
+        event.consume();
+        Alert notice = new Alert(Alert.AlertType.INFORMATION);
+        notice.setTitle("Import in progress");
+        notice.setHeaderText("A workbook import is still running.");
+        notice.setContentText("Please wait for the import to finish before closing CodeFit. You can close the application safely once the import completes.");
+        notice.showAndWait();
+    }
+
+    /** Pure close-policy decision extracted so it can be tested without opening a JavaFX dialog. */
+    static boolean shouldBlockCloseForActiveImport(boolean activeImport) {
+        return activeImport;
     }
 
     public static void showDashboard() {

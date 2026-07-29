@@ -49,7 +49,8 @@
                 <TextField fx:id="importSourceUrlField" promptText="Source URL" maxWidth="Infinity" />
                 <TextField fx:id="importAuthorField" promptText="Author" maxWidth="Infinity" />
                 <TextField fx:id="importVersionField" promptText="Version" maxWidth="Infinity" />
-                <Button text="Import Training Sheet…" onAction="#importTrainingSheet" />
+                <Button fx:id="importTrainingSheetButton" text="Import Training Sheet…" onAction="#importTrainingSheet" />
+                <Label fx:id="importStatusLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
 
                 <Label text="Imported Roadmaps" styleClass="dashboard-card-helper" />
                 <Label text="Deleting an import only removes its roadmap positions — your solved/in-progress records and any flashcards you've created stay exactly as they are." styleClass="muted" wrapText="true" />

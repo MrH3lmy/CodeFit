@@ -230,6 +230,11 @@ class TrainingSheetImportServiceTest {
 
     @Test
     void dryRunPreviewComputesTheSummaryButWritesNothing(@TempDir Path tempDir) throws Exception {
+        // #160: preview() is pure analysis - it never opens a database connection at all, so it can't
+        // (and shouldn't) report database-dependent created/updated/reused counts; those are only
+        // meaningful once a real import runs. What preview() reports instead are the workbook's own
+        // stable content counts, which are identical before and after the workbook has ever been
+        // imported (see AnalyzedTrainingWorkbookTest for that non-degradation guarantee).
         String platform = uniquePlatform("dry-run");
         Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "dry-run.xlsx", List.of(
                 sheet("A", List.of(row("P1", "Two Sum", platform, "AC")))));
@@ -237,14 +242,18 @@ class TrainingSheetImportServiceTest {
         TrainingSheetImportSummary preview = importService.preview(workbookPath);
 
         assertTrue(preview.dryRun());
-        assertEquals(1, preview.problemsCreated());
-        assertEquals(1, preview.roadmapMembershipsCreated());
+        assertEquals(0, preview.problemsCreated(), "a pure analysis never touches the database, so it can't know created-vs-reused");
+        assertEquals(0, preview.roadmapMembershipsCreated());
+        assertEquals(1, preview.details().uniqueProblemCount());
+        assertEquals(1, preview.details().roadmapMembershipCount());
         assertTrue(problemRepository.findByPlatformAndExternalCode(platform, "P1").isEmpty(),
                 "a dry-run preview must not write anything to the database");
 
         TrainingSheetImportSummary realImport = importService.importWorkbook(workbookPath);
-        assertEquals(preview.problemsCreated(), realImport.problemsCreated());
-        assertEquals(preview.roadmapMembershipsCreated(), realImport.roadmapMembershipsCreated());
+        assertEquals(1, realImport.problemsCreated());
+        assertEquals(1, realImport.roadmapMembershipsCreated());
+        assertEquals(preview.details().uniqueProblemCount(), realImport.details().uniqueProblemCount());
+        assertEquals(preview.details().roadmapMembershipCount(), realImport.details().roadmapMembershipCount());
         assertTrue(problemRepository.findByPlatformAndExternalCode(platform, "P1").isPresent());
     }
 
@@ -288,6 +297,77 @@ class TrainingSheetImportServiceTest {
         assertEquals(2, summary.problemsCreated(), "both problems are still created even though one membership conflicts");
         assertEquals(1, summary.roadmapMembershipsCreated());
         assertEquals(1, summary.invalidRows());
-        assertTrue(summary.warnings().stream().anyMatch(warning -> warning.contains("already held by")));
+        assertTrue(summary.warnings().stream().anyMatch(warning -> warning.contains("already claimed by another problem")));
+    }
+
+    @Test
+    void previewOfAnUnusableWorkbookReturnsABlockedSummaryInsteadOfThrowing(@TempDir Path tempDir) throws Exception {
+        // #160: the review screen must be able to show *something* for a completely unusable
+        // workbook - a BLOCKING diagnostic with zero counts - rather than the caller only getting a
+        // thrown exception with no structured report to render. importWorkbook() still refuses outright.
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "no-roadmap-sheets-preview.xlsx", List.of(
+                new TrainingSheetFixtures.SheetSpec("RandomNotes", List.of("Comment"), List.of(List.of("nothing useful here")))));
+
+        TrainingSheetImportSummary preview = importService.preview(workbookPath);
+
+        assertTrue(preview.dryRun());
+        assertTrue(preview.hasBlockingDiagnostics());
+        assertEquals(0, preview.problemsCreated());
+        assertEquals(0, preview.roadmapMembershipsCreated());
+        assertTrue(preview.diagnostics().stream().anyMatch(
+                diagnostic -> diagnostic.severity() == com.codefit.service.TrainingSheetDiagnosticSeverity.BLOCKING));
+        assertTrue(preview.details().ignoredSheets().contains("RandomNotes"),
+                "the unrecognized extra sheet is reported as ignored, not silently dropped");
+
+        String report = WorkbookPreviewReportFormatter.format("no-roadmap-sheets-preview.xlsx", preview);
+        assertTrue(report.contains("BLOCKING ERRORS FOUND"));
+
+        assertThrows(WorkbookImportException.class, () -> importService.importWorkbook(workbookPath),
+                "a real import must still refuse a workbook with nothing importable");
+    }
+
+    @Test
+    void aValidImportHasNoBlockingDiagnostics(@TempDir Path tempDir) throws Exception {
+        String platform = uniquePlatform("no-blocking");
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "no-blocking.xlsx", List.of(
+                sheet("A", List.of(row("P1", "Two Sum", platform, "")))));
+
+        TrainingSheetImportSummary summary = importService.preview(workbookPath);
+
+        assertFalse(summary.hasBlockingDiagnostics());
+    }
+
+    @Test
+    void rowLevelDiagnosticsCarryStructuredSheetRowAndColumnContext(@TempDir Path tempDir) throws Exception {
+        String platform = uniquePlatform("structured-diagnostics");
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "structured-diagnostics.xlsx", List.of(
+                sheet("A", List.of(
+                        row("P1", "Two Sum", platform, ""),
+                        row("P1", "Two Sum (accidental copy-paste)", platform, "")))));
+
+        TrainingSheetImportSummary summary = importService.importWorkbook(workbookPath);
+
+        com.codefit.service.TrainingSheetDiagnostic duplicateDiagnostic = summary.diagnostics().stream()
+                .filter(diagnostic -> "Code".equals(diagnostic.column()) && diagnostic.reason().contains("duplicate problem code"))
+                .findFirst().orElseThrow(() -> new AssertionError("expected a structured duplicate-code diagnostic"));
+
+        assertEquals("A", duplicateDiagnostic.sheet());
+        assertEquals(3, duplicateDiagnostic.row(), "the second (duplicate) row is spreadsheet row 3 (header is row 1)");
+        assertEquals(com.codefit.service.TrainingSheetDiagnosticSeverity.WARNING, duplicateDiagnostic.severity(),
+                "one skipped row never blocks the rest of the import");
+    }
+
+    @Test
+    void validateReportsRecognizedIgnoredAndMissingSheets(@TempDir Path tempDir) throws Exception {
+        String platform = uniquePlatform("sheet-lists");
+        Path workbookPath = TrainingSheetFixtures.writeWorkbook(tempDir, "sheet-lists.xlsx", List.of(
+                sheet("A", List.of(row("P1", "Two Sum", platform, ""))),
+                new TrainingSheetFixtures.SheetSpec("Extra Notes", List.of("Comment"), List.of(List.of("not a roadmap sheet")))));
+
+        WorkbookValidationResult validation = importService.validate(workbookPath);
+
+        assertTrue(validation.recognizedSheets().contains("A"));
+        assertTrue(validation.ignoredSheets().contains("Extra Notes"));
+        assertTrue(validation.missingRoadmapSheets().containsAll(List.of("B", "C1", "C2", "D1", "D2", "D3")));
     }
 }

@@ -106,6 +106,21 @@ class RealJuniorTrainingSheetImportTest {
         assertTrue(details.platformCounts().getOrDefault("Codeforces", 0) > 500, "Codeforces dominates the inferred platforms");
         assertTrue(details.rowsSkippedByReason().getOrDefault("sample placeholder row", 0) >= 5,
                 "the five literal sample rows are reported as a skip reason, not silently vanished");
+        assertFalse(summary.hasBlockingDiagnostics(), "the approved workbook has no blocking errors, so Import stays enabled");
+        assertTrue(details.recognizedSheets().containsAll(
+                List.of("A", "B", "C1", "C2", "D1", "D2", "D3")), "every roadmap stage sheet is recognized: " + details.recognizedSheets());
+
+        // #160: profile/version detected honestly from the workbook's own content (an "Info" sheet
+        // cell reading "Currenet Version V7.0"), never from the file name or a hard-coded author name.
+        assertEquals("Junior Training Sheet", details.profile().name());
+        assertEquals("V7.0", details.profile().version());
+
+        TrainingSheetStageSummary stageBSummary = details.stageSummaries().stream()
+                .filter(stageSummary -> stageSummary.stage() == RoadmapStage.B).findFirst().orElseThrow();
+        assertEquals(172, stageBSummary.validRows());
+        assertTrue(stageBSummary.detectedRows() >= stageBSummary.validRows(),
+                "detected rows must be at least the valid rows - some are instructional/sample/skipped");
+        assertEquals(7, details.stageSummaries().size(), "all seven roadmap stages appear in the per-stage summary");
 
         // No instructional/sample rows became problems.
         for (Long problemId : uniqueProblemIds) {
@@ -131,6 +146,22 @@ class RealJuniorTrainingSheetImportTest {
         assertEquals(preview.details().platformCounts(), realImport.details().platformCounts());
         assertEquals(preview.details().solvedCount(), realImport.details().solvedCount());
         assertEquals(preview.details().rowsSkippedByReason(), realImport.details().rowsSkippedByReason());
+    }
+
+    @Test
+    void previewAfterAnAlreadyCompletedImportStillReportsTheSameStableCounts() throws Exception {
+        // #160's core complaint: previewing an already-imported workbook must still show the
+        // workbook's own content (923/926/172), not degrade toward zero because most of it is now
+        // "reused" rather than "created" in the database.
+        importAndTrack();
+
+        TrainingSheetImportSummary previewAfterImport = importService.preview(WORKBOOK_PATH);
+
+        assertTrue(previewAfterImport.dryRun());
+        assertEquals(923, previewAfterImport.details().uniqueProblemCount());
+        assertEquals(926, previewAfterImport.details().roadmapMembershipCount());
+        assertEquals(172, previewAfterImport.details().stageMembershipCounts().get(RoadmapStage.B));
+        assertFalse(previewAfterImport.hasBlockingDiagnostics());
     }
 
     @Test

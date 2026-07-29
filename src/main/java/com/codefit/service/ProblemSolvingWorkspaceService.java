@@ -1,5 +1,6 @@
 package com.codefit.service;
 
+import com.codefit.model.HintLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
 import com.codefit.model.ProblemProgress;
@@ -104,6 +105,11 @@ public class ProblemSolvingWorkspaceService {
      *       learner resumes later) without touching progress.</li>
      * </ul>
      *
+     * <p>For successful outcomes, the highest hint level opened in the just-finished session is also
+     * converted into the persisted {@link SolvedWith} assistance value before the session is reset.
+     * This lets the revisit queue schedule hint/editorial-dependent solves without changing their
+     * {@code SOLVED} workflow state.
+     *
      * <p>Every non-abandoned outcome resets the session afterward, so a future re-attempt at this
      * problem starts its own phase timers from zero rather than continuing to accumulate into an
      * already-finalized attempt's numbers.
@@ -127,6 +133,7 @@ public class ProblemSolvingWorkspaceService {
                 session.getCodingSecondsElapsed(), session.getDebuggingSecondsElapsed(), notes, outcome);
 
         applyProgressForOutcome(problemId, outcome, resolvedResult);
+        applyAssistanceForSuccessfulCompletion(problemId, outcome, resolvedResult, session.getHighestHintLevelOpened());
         sessionService.reset(problemId);
         return Optional.of(recorded);
     }
@@ -150,6 +157,26 @@ public class ProblemSolvingWorkspaceService {
         ProblemProgress existing = progressService.getOrCreate(problemId);
         progressService.updateProgress(problemId, newState,
                 newState == ProblemState.SOLVED ? LocalDateTime.now() : existing.getCompletedAt());
+    }
+
+    private void applyAssistanceForSuccessfulCompletion(long problemId, SessionFinishOutcome outcome,
+                                                        SubmissionResult resolvedResult, HintLevel highestHintLevelOpened) {
+        boolean completedSuccessfully = outcome == SessionFinishOutcome.ACCEPTED
+                || (outcome == SessionFinishOutcome.SUBMITTED && isSuccessful(resolvedResult));
+        if (!completedSuccessfully) {
+            return;
+        }
+
+        SolvedWith inferredAssistance = highestHintLevelOpened == null
+                ? SolvedWith.SELF
+                : highestHintLevelOpened == HintLevel.EXPLANATION ? SolvedWith.EDITORIAL : SolvedWith.HINT;
+        ProblemProgress progress = progressService.getOrCreate(problemId);
+        progressService.updateReflection(problemId, new ProblemReflection(
+                progress.getPerceivedDifficultyRating(), inferredAssistance, progress.getFinalCategory(),
+                progress.getApproachNotes(), progress.getMistakeNotes(), progress.getImportantObservation(),
+                progress.getTimeComplexity(), progress.getSpaceComplexity(), progress.getLessonLearned(),
+                progress.getActualTopic(), progress.isEditorialUnderstood(), progress.isOtherSolutionsReviewed(),
+                progress.isSimplerImplementationConsidered(), progress.isBetterComplexityConsidered()));
     }
 
     private boolean isSuccessful(SubmissionResult result) {

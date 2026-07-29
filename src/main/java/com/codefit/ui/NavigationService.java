@@ -7,7 +7,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
@@ -72,24 +71,26 @@ public final class NavigationService {
     }
 
     /**
-     * Lets the window close normally unless a workbook import is actively writing to the database
-     * (#160) — {@link BackgroundImportExecutor}'s non-daemon worker thread means the JVM would
-     * otherwise just wait on it silently, or the learner could force-quit and lose it. Import is
-     * transactional (commit only at the very end), so quitting cancels it rather than leaving a
-     * partial write behind — the confirmation exists to avoid silently losing the learner's in-flight
-     * import, not to prevent data corruption.
+     * Prevents application shutdown while a confirmed workbook import is queued or writing to the
+     * database (#160). The executor uses a non-daemon worker and graceful shutdown, so promising that
+     * "Quit" would deterministically cancel and roll back the import was inaccurate. The honest and
+     * safe behavior is to keep the window open until every reserved import has finished.
      */
     private static void confirmCloseWhileImportActive(WindowEvent event) {
-        if (!BackgroundImportExecutor.hasActiveImport()) {
+        if (!shouldBlockCloseForActiveImport(BackgroundImportExecutor.hasActiveImport())) {
             return;
         }
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Import in progress");
-        confirm.setHeaderText("A workbook import is still writing to the database.");
-        confirm.setContentText("Quitting now will cancel it before anything is saved. Quit anyway?");
-        if (confirm.showAndWait().filter(button -> button == ButtonType.OK).isEmpty()) {
-            event.consume();
-        }
+        event.consume();
+        Alert notice = new Alert(Alert.AlertType.INFORMATION);
+        notice.setTitle("Import in progress");
+        notice.setHeaderText("A workbook import is still running.");
+        notice.setContentText("Please wait for the import to finish before closing CodeFit. You can close the application safely once the import completes.");
+        notice.showAndWait();
+    }
+
+    /** Pure close-policy decision extracted so it can be tested without opening a JavaFX dialog. */
+    static boolean shouldBlockCloseForActiveImport(boolean activeImport) {
+        return activeImport;
     }
 
     public static void showDashboard() {

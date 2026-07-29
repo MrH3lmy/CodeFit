@@ -55,7 +55,8 @@ public class ProblemGuidanceService {
      * text field leaves that specific level blank, never an empty string standing in for "no content".
      */
     public ProblemGuidance saveGuidance(long problemId, GuidanceSource source, String clarifyText, String observationText,
-                                        String approachText, String explanationText, List<String> prerequisites,
+                                        String approachText, String explanationText, String pseudocodeText,
+                                        String complexityNotes, String commonMistakesText, List<String> prerequisites,
                                         List<String> referenceLinks) {
         String prerequisitesEncoded = encodeOrNull(prerequisites);
         String referenceLinksEncoded = encodeOrNull(referenceLinks);
@@ -67,13 +68,17 @@ public class ProblemGuidanceService {
             guidance.setObservationText(observationText);
             guidance.setApproachText(approachText);
             guidance.setExplanationText(explanationText);
+            guidance.setPseudocodeText(pseudocodeText);
+            guidance.setComplexityNotes(complexityNotes);
+            guidance.setCommonMistakesText(commonMistakesText);
             guidance.setPrerequisitesEncoded(prerequisitesEncoded);
             guidance.setReferenceLinksEncoded(referenceLinksEncoded);
             guidanceRepository.update(guidance);
             return guidanceRepository.findByProblemId(problemId).orElseThrow();
         }
         ProblemGuidance guidance = new ProblemGuidance(0, problemId, source, clarifyText, observationText,
-                approachText, explanationText, prerequisitesEncoded, referenceLinksEncoded, null, null);
+                approachText, explanationText, pseudocodeText, complexityNotes, commonMistakesText,
+                prerequisitesEncoded, referenceLinksEncoded, null, null);
         return guidanceRepository.save(guidance);
     }
 

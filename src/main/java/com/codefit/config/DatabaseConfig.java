@@ -418,6 +418,9 @@ public final class DatabaseConfig {
                         observation_text TEXT,
                         approach_text TEXT,
                         explanation_text TEXT,
+                        pseudocode_text TEXT,
+                        complexity_notes TEXT,
+                        common_mistakes_text TEXT,
                         prerequisites TEXT,
                         reference_links TEXT,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -426,6 +429,12 @@ public final class DatabaseConfig {
                     )
                     """);
         }
+        // #162: the full Explanation level must cover idea/reasoning (explanation_text), pseudocode,
+        // complexity, and common mistakes as distinct parts rather than one opaque blob — added as
+        // their own nullable columns so an existing database upgrades in place without losing content.
+        addColumnIfMissing(connection, "problem_guidance", "pseudocode_text", "TEXT");
+        addColumnIfMissing(connection, "problem_guidance", "complexity_notes", "TEXT");
+        addColumnIfMissing(connection, "problem_guidance", "common_mistakes_text", "TEXT");
     }
 
     /**

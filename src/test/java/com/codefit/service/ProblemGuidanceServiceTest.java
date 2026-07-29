@@ -45,7 +45,8 @@ class ProblemGuidanceServiceTest {
         sessionService.reset(problem.getId());
         guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT,
                 "Restate: find two indices summing to target.", "Sorted arrays let you use two pointers.",
-                "Two-pointer scan from both ends.", "O(n) time, O(1) space; common mistake is off-by-one.",
+                "Two-pointer scan from both ends.", "Idea: shrink the window from both ends.",
+                "lo = 0; hi = n - 1; while lo < hi: ...", "O(n) time, O(1) space.", "Off-by-one at the boundary.",
                 null, null);
 
         ProblemGuidanceService.HintReveal first = guidanceService.openNextHintLevel(problem.getId());
@@ -110,10 +111,10 @@ class ProblemGuidanceServiceTest {
     @Test
     void savingGuidanceTwiceEditsInPlaceRatherThanCreatingASecondRow() {
         Problem problem = fixtureProblem("TF-162-EDIT");
-        guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER, "first draft", null, null, null, null, null);
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER, "first draft", null, null, null, null, null, null, null, null);
 
         guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER, "improved draft", "now with an observation",
-                null, null, List.of("Two Pointers"), List.of("https://example.test/editorial"));
+                null, null, null, null, null, List.of("Two Pointers"), List.of("https://example.test/editorial"));
 
         ProblemGuidance guidance = guidanceService.getGuidance(problem.getId()).orElseThrow();
         assertEquals("improved draft", guidance.getClarifyText());
@@ -128,8 +129,8 @@ class ProblemGuidanceServiceTest {
         Problem codefitAuthored = fixtureProblem("TF-162-PROV-CODEFIT");
         Problem learnerAuthored = fixtureProblem("TF-162-PROV-LEARNER");
 
-        guidanceService.saveGuidance(codefitAuthored.getId(), GuidanceSource.CODEFIT, "clarify", null, null, null, null, null);
-        guidanceService.saveGuidance(learnerAuthored.getId(), GuidanceSource.LEARNER, "clarify", null, null, null, null, null);
+        guidanceService.saveGuidance(codefitAuthored.getId(), GuidanceSource.CODEFIT, "clarify", null, null, null, null, null, null, null, null);
+        guidanceService.saveGuidance(learnerAuthored.getId(), GuidanceSource.LEARNER, "clarify", null, null, null, null, null, null, null, null);
 
         assertEquals(GuidanceSource.CODEFIT, guidanceService.getGuidance(codefitAuthored.getId()).orElseThrow().getSource());
         assertEquals(GuidanceSource.LEARNER, guidanceService.getGuidance(learnerAuthored.getId()).orElseThrow().getSource());
@@ -153,10 +154,52 @@ class ProblemGuidanceServiceTest {
     }
 
     @Test
+    void theFullExplanationComposesIdeaPseudocodeComplexityAndCommonMistakes() {
+        Problem problem = fixtureProblem("TF-162-EXPLANATION-PARTS");
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, null, null, null,
+                "Shrink the window from both ends.", "lo = 0; hi = n - 1; while lo < hi: ...",
+                "O(n) time, O(1) space.", "Off-by-one at the boundary.", null, null);
+
+        ProblemGuidanceService.HintReveal reveal = guidanceService.revealLevel(problem.getId(), HintLevel.EXPLANATION);
+
+        assertTrue(reveal.hasContent());
+        assertTrue(reveal.text().contains("Shrink the window from both ends."));
+        assertTrue(reveal.text().contains("lo = 0; hi = n - 1; while lo < hi: ..."));
+        assertTrue(reveal.text().contains("O(n) time, O(1) space."));
+        assertTrue(reveal.text().contains("Off-by-one at the boundary."));
+    }
+
+    @Test
+    void anExplanationPartThatIsStillUnauthoredSaysSoRatherThanBeingSilentlyOmitted() {
+        Problem problem = fixtureProblem("TF-162-EXPLANATION-PARTIAL");
+        // Only the idea/reasoning prose has been authored so far — pseudocode/complexity/mistakes are
+        // still blank, which must read as "not written yet", not as "there are none".
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, null, null, null,
+                "Shrink the window from both ends.", null, null, null, null, null);
+
+        ProblemGuidance guidance = guidanceService.getGuidance(problem.getId()).orElseThrow();
+        ProblemGuidanceService.HintReveal reveal = guidanceService.revealLevel(problem.getId(), HintLevel.EXPLANATION);
+
+        assertFalse(guidance.hasCompleteExplanation(), "three of the four parts are still blank");
+        assertTrue(reveal.text().contains("(not yet authored)"));
+    }
+
+    @Test
+    void aFullyAuthoredExplanationReportsComplete() {
+        Problem problem = fixtureProblem("TF-162-EXPLANATION-COMPLETE");
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, null, null, null,
+                "idea", "pseudocode", "complexity", "mistakes", null, null);
+
+        ProblemGuidance guidance = guidanceService.getGuidance(problem.getId()).orElseThrow();
+
+        assertTrue(guidance.hasCompleteExplanation());
+    }
+
+    @Test
     void revealLevelShowsASpecificLevelWithoutChangingWhatsRecordedAsOpened() {
         Problem problem = fixtureProblem("TF-162-REVEAL-DIRECT");
         sessionService.reset(problem.getId());
-        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, "clarify text", null, null, null, null, null);
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, "clarify text", null, null, null, null, null, null, null, null);
 
         ProblemGuidanceService.HintReveal reveal = guidanceService.revealLevel(problem.getId(), HintLevel.CLARIFY);
         assertEquals("clarify text", reveal.text());

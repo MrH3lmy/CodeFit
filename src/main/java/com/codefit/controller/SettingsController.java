@@ -82,10 +82,10 @@ public class SettingsController extends BaseController {
     private final GuidedTrainingService guidedTrainingService = new GuidedTrainingService();
     private final TrainingSheetImportService trainingSheetImportService = new TrainingSheetImportService();
 
-    /** {@code true} from the moment a workbook is chosen until the analyze-review-import cycle it
-     *  started fully finishes (success, cancel, block, or failure) — a second click while this is set
-     *  is ignored rather than starting a second concurrent import (#160). */
-    private final AtomicBoolean importBusy = new AtomicBoolean(false);
+    /** Application-wide guard from workbook selection through the end of the analyze/review/import
+     * cycle. Settings navigation recreates controller instances, so this must be static: a newly loaded
+     * Settings screen must not bypass an import already owned by an earlier controller instance. */
+    private static final AtomicBoolean importBusy = new AtomicBoolean(false);
 
     @FXML
     public void initialize() {
@@ -109,7 +109,7 @@ public class SettingsController extends BaseController {
     @FXML
     public void importTrainingSheet() {
         if (importBusy.get()) {
-            return; // an analyze/import cycle is already running; ignore the extra click
+            return; // an application-wide analyze/import cycle is already running
         }
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Import Training Sheet");

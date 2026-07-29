@@ -25,7 +25,10 @@
                 <Label text="Today" styleClass="section-title" />
                 <Label fx:id="todayStageSetLabel" wrapText="true" />
                 <Label fx:id="todayMandatoryProgressLabel" wrapText="true" />
-                <Label fx:id="todayTargetLabel" wrapText="true" />
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label fx:id="todayTargetLabel" wrapText="true" />
+                    <Button text="Set Target" onAction="#editDailyTarget" styleClass="ghost-button" />
+                </HBox>
                 <Label fx:id="todayBottleneckLabel" wrapText="true" />
                 <Label fx:id="nextRecommendedLabel" wrapText="true" />
                 <HBox spacing="8">

@@ -379,26 +379,29 @@ public class SettingsController extends BaseController {
         return value == null ? "-" : value;
     }
 
-    /** Links directly to the Problem Library so a learner can see what just landed in it. */
+    /**
+     * Shows the import report, then always opens the Problem Library (#161's "a successful import
+     * leads directly to a usable curriculum dashboard") — there is nothing further to do on this
+     * screen once an import has completed, so unlike the old two-button "Go to Problem Library" vs.
+     * "Close" choice, dismissing this dialog by any means always navigates there.
+     */
     private void showImportCompleteDialog(String workbookFileName, TrainingSheetImportSummary summary) {
         String reportText = WorkbookPreviewReportFormatter.format(workbookFileName, summary);
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Training Sheet Import — Complete");
-        dialog.setHeaderText("Imported \"" + workbookFileName + "\".");
+        dialog.setHeaderText("Imported \"" + workbookFileName + "\". Opening the Problem Library next.");
 
         TextArea reportArea = new TextArea(reportText);
         reportArea.setEditable(false);
         reportArea.setPrefColumnCount(72);
         reportArea.setPrefRowCount(20);
 
-        ButtonType goToLibraryButton = new ButtonType("Go to Problem Library", ButtonBar.ButtonData.OK_DONE);
         DialogPane pane = dialog.getDialogPane();
         pane.setContent(reportArea);
-        pane.getButtonTypes().addAll(ButtonType.CLOSE, goToLibraryButton);
+        pane.getButtonTypes().add(ButtonType.OK);
 
-        if (dialog.showAndWait().filter(button -> button == goToLibraryButton).isPresent()) {
-            NavigationService.showProblems();
-        }
+        dialog.showAndWait();
+        NavigationService.showProblems();
     }
 
     private String blankToNull(String value) {

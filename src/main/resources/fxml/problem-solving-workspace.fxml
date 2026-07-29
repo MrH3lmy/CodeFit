@@ -138,6 +138,10 @@
                     <Button text="Abandon" onAction="#finishAsAbandoned" styleClass="ghost-button" />
                 </HBox>
                 <Button text="Mark Previously Solved (ACX)…" onAction="#markPreviouslySolved" styleClass="ghost-button" />
+                <HBox fx:id="nextProblemRow" spacing="8" alignment="CENTER_LEFT" visible="false" managed="false">
+                    <Label fx:id="nextRecommendedInfoLabel" wrapText="true" />
+                    <Button fx:id="nextProblemButton" text="Next Curriculum Problem →" onAction="#goToNextRecommended" styleClass="primary-button" />
+                </HBox>
             </VBox>
 
             <VBox spacing="10" styleClass="panel" maxWidth="Infinity">

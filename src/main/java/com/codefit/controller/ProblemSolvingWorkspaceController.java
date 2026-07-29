@@ -23,6 +23,8 @@ import com.codefit.service.CompileOutcome;
 import com.codefit.service.JavaSolutionWorkspaceService;
 import com.codefit.service.ProblemFlashcardService;
 import com.codefit.service.ProblemGuidanceService;
+import com.codefit.service.ProblemLibraryEntry;
+import com.codefit.service.ProblemLibraryService;
 import com.codefit.service.ProblemReflection;
 import com.codefit.service.ProblemSolvingWorkspaceService;
 import com.codefit.service.RunCancellationToken;
@@ -46,6 +48,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
@@ -141,11 +144,16 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     @FXML private Label javaRunStatusLabel;
     @FXML private TextArea javaOutputArea;
 
+    @FXML private HBox nextProblemRow;
+    @FXML private Label nextRecommendedInfoLabel;
+    @FXML private Button nextProblemButton;
+
     private final ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
     private final SolvingCheckpointPreferenceService checkpointPreferenceService = new SolvingCheckpointPreferenceService();
     private final ProblemFlashcardService problemFlashcardService = new ProblemFlashcardService();
     private final ProblemGuidanceService guidanceService = new ProblemGuidanceService();
     private final JavaSolutionWorkspaceService javaWorkspaceService = new JavaSolutionWorkspaceService();
+    private final ProblemLibraryService problemLibraryService = new ProblemLibraryService();
 
     private CompileOutcome currentCompileOutcome;
     private RunCancellationToken currentCancellationToken;
@@ -163,6 +171,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     private ComplexityClass selectedSpaceComplexity;
     private ReflectionCardSource selectedFlashcardSource = ReflectionCardSource.LESSON_LEARNED;
     private Long selectedFlashcardDeckId;
+    private Long nextRecommendedProblemId;
     private Timeline timer;
 
     @FXML
@@ -183,7 +192,37 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         renderSession();
         loadGuidance();
         loadJavaDraft();
+        updateNextRecommendedAvailability();
         startTimerLoop();
+    }
+
+    /**
+     * Surfaces "move to the next curriculum problem" as a direct one-click action from inside the
+     * workspace itself (#161), instead of only being reachable by navigating back to Problems and
+     * re-reading the Today card. Recomputed after every {@link #finish}, so it reflects whatever the
+     * attempt just changed — the exact same {@link ProblemLibraryService#getNextRecommendedProblem()}
+     * the Today card uses, so the two screens can never disagree on what's next.
+     */
+    private void updateNextRecommendedAvailability() {
+        Optional<ProblemLibraryEntry> next = problemLibraryService.getNextRecommendedProblem();
+        boolean hasDifferentNext = next.isPresent() && next.get().problem().getId() != problemId;
+        nextRecommendedProblemId = hasDifferentNext ? next.get().problem().getId() : null;
+        if (nextRecommendedProblemId == null) {
+            setVisible(nextProblemRow, false);
+            return;
+        }
+        Problem nextProblem = next.get().problem();
+        nextRecommendedInfoLabel.setText("Next: [" + nextProblem.getExternalCode() + "] " + nextProblem.getTitle());
+        setVisible(nextProblemRow, true);
+    }
+
+    @FXML
+    public void goToNextRecommended() {
+        if (nextRecommendedProblemId == null) {
+            return;
+        }
+        workspaceService.start(nextRecommendedProblemId);
+        NavigationService.showSolvingWorkspace(nextRecommendedProblemId);
     }
 
     // ---- Java Runner (#163) --------------------------------------------------------------------
@@ -775,6 +814,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         renderSession();
         loadProblemContext();
         loadGuidance();
+        updateNextRecommendedAvailability();
         if (outcome == SessionFinishOutcome.ACCEPTED) {
             showExplanationAfterAccepted();
         }

@@ -4,6 +4,7 @@ import com.codefit.config.DatabaseConfig;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemProgress;
+import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.ProblemState;
 import com.codefit.model.RoadmapEntry;
 import com.codefit.model.RoadmapStage;
@@ -31,6 +32,7 @@ class ProblemLibraryServiceTest {
     private final ProblemService problemService = new ProblemService();
     private final ProblemProgressService progressService = new ProblemProgressService();
     private final ProblemLibraryService libraryService = new ProblemLibraryService();
+    private final ProblemSolvingSessionService sessionService = new ProblemSolvingSessionService();
 
     private final Random random = new Random();
     private int nextOrder = 20_000_000 + random.nextInt(1_000_000);
@@ -246,6 +248,28 @@ class ProblemLibraryServiceTest {
         ProblemLibraryEntry solved = libraryEntry(1, RoadmapStage.A, 1, true, ProblemState.SOLVED);
 
         assertTrue(ProblemLibraryService.selectNextRecommended(List.of(solved)).isEmpty());
+    }
+
+    /**
+     * #161's "unless the learner explicitly overrides" escape hatch: mandatory-gating only decides
+     * the <em>default</em> recommendation ({@link ProblemLibraryService#selectNextRecommended}) — it
+     * must never stop a learner from starting a specific, gated-out problem directly. There is no
+     * separate "override" flag anywhere in the codebase; the override <em>is</em> the fact that
+     * {@link ProblemSolvingSessionService#startOrResume} performs no gating check of its own.
+     */
+    @Test
+    void aProblemThatMandatoryGatingSkipsCanStillBeStartedDirectlyAsAnExplicitOverride() {
+        ProblemLibraryEntry optionalButEarlier = libraryEntry(101, RoadmapStage.A, 1, false, ProblemState.NOT_STARTED);
+        ProblemLibraryEntry mandatoryButLater = libraryEntry(102, RoadmapStage.A, 2, true, ProblemState.NOT_STARTED);
+        Optional<ProblemLibraryEntry> recommended =
+                ProblemLibraryService.selectNextRecommended(List.of(optionalButEarlier, mandatoryButLater));
+        assertEquals(102, recommended.orElseThrow().problem().getId(), "the mandatory position is the guided recommendation");
+
+        // Problem 101 is the one gating skipped over — starting it directly must still succeed.
+        Problem gatedProblem = createProblem(uniquePlatform("override"), "OV1", "Explicit Override Target", "General", null);
+        ProblemSolvingSession overrideSession = sessionService.startOrResume(gatedProblem.getId());
+
+        assertEquals(gatedProblem.getId(), overrideSession.getProblemId());
     }
 
     private ProblemLibraryEntry libraryEntry(long problemId, RoadmapStage stage, int sequenceOrder, boolean mandatory, ProblemState state) {

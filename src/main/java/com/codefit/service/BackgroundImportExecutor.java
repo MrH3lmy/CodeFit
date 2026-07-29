@@ -3,7 +3,7 @@ package com.codefit.service;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The single, application-owned executor every workbook analyze/import background task runs on
@@ -13,11 +13,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * be running" — so this class, not the JavaFX {@code Application} lifecycle, owns the worker thread,
  * and {@link #shutdown} is the only sanctioned way to stop it.
  *
- * <p>{@link #markImportActive} tracks only the transactional (write) phase of an import — analysis is
- * read-only, bounded, and safe to simply abandon, so it never sets this. {@code CodeFitApplication#stop()}
- * calls {@link #shutdown} on normal application exit; {@code NavigationService} checks
- * {@link #hasActiveImport()} before letting the primary window's close request through, so a learner
- * gets a chance to confirm rather than silently losing an in-flight import.
+ * <p>{@link #markImportActive} tracks the number of reserved transactional import operations, including
+ * imports queued behind another import on the single worker. A counter is used instead of one boolean
+ * because Settings routes can be recreated while an earlier controller still owns an import. One
+ * controller finishing must never clear the application-wide active state while another confirmed
+ * import is queued or running. Analysis is read-only and never reserves an import slot.
  */
 public final class BackgroundImportExecutor {
 
@@ -27,7 +27,7 @@ public final class BackgroundImportExecutor {
         return thread;
     });
 
-    private static final AtomicBoolean IMPORT_ACTIVE = new AtomicBoolean(false);
+    private static final AtomicInteger IMPORT_RESERVATIONS = new AtomicInteger(0);
 
     private BackgroundImportExecutor() {
     }
@@ -37,14 +37,26 @@ public final class BackgroundImportExecutor {
         EXECUTOR.execute(task);
     }
 
-    /** Marks whether a real (write-to-the-database) import is currently running. Analysis never calls
-     *  this — only the transactional import phase does, in a {@code try}/{@code finally} around it. */
+    /**
+     * Reserves or releases one real database-import operation. Calls must be paired by the controller's
+     * success/failure/cancellation paths. Multiple reservations can exist when separate Settings
+     * controller instances confirm imports before the single worker reaches them; the application stays
+     * in the active-import state until the final reservation is released.
+     */
     public static void markImportActive(boolean active) {
-        IMPORT_ACTIVE.set(active);
+        if (active) {
+            IMPORT_RESERVATIONS.incrementAndGet();
+            return;
+        }
+        IMPORT_RESERVATIONS.updateAndGet(current -> Math.max(0, current - 1));
     }
 
     public static boolean hasActiveImport() {
-        return IMPORT_ACTIVE.get();
+        return IMPORT_RESERVATIONS.get() > 0;
+    }
+
+    static int activeImportReservations() {
+        return IMPORT_RESERVATIONS.get();
     }
 
     /**

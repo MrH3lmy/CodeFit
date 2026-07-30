@@ -36,8 +36,14 @@ public class ProblemGuidanceService {
         this.sessionRepository = sessionRepository;
     }
 
+    /** Returns the learner override when one exists, otherwise the original authored guidance. */
     public Optional<ProblemGuidance> getGuidance(long problemId) {
         return guidanceRepository.findByProblemId(problemId);
+    }
+
+    /** Loads one exact provenance record, without applying learner-override precedence. */
+    public Optional<ProblemGuidance> getGuidance(long problemId, GuidanceSource source) {
+        return guidanceRepository.findByProblemIdAndSource(problemId, source);
     }
 
     public List<String> getPrerequisites(long problemId) {
@@ -49,37 +55,89 @@ public class ProblemGuidanceService {
     }
 
     /**
-     * Creates or updates the problem's one guidance row in place — this is the "allow editing/
-     * improving local guidance" requirement: there is no versioning or append-only history, editing
-     * simply overwrites the previous text for whichever fields are provided. {@code null} for any
-     * text field leaves that specific level blank, never an empty string standing in for "no content".
+     * Creates or updates guidance for one source. Learner edits are stored as a separate override so
+     * editing CodeFit/imported/provider guidance never relabels or destroys the original row. When the
+     * workspace omits prerequisites/reference links ({@code null}), the active guidance's values are
+     * copied into the learner override; an explicit empty list still clears them.
      */
     public ProblemGuidance saveGuidance(long problemId, GuidanceSource source, String clarifyText, String observationText,
                                         String approachText, String explanationText, String pseudocodeText,
                                         String complexityNotes, String commonMistakesText, List<String> prerequisites,
                                         List<String> referenceLinks) {
-        String prerequisitesEncoded = encodeOrNull(prerequisites);
-        String referenceLinksEncoded = encodeOrNull(referenceLinks);
-        Optional<ProblemGuidance> existing = guidanceRepository.findByProblemId(problemId);
-        if (existing.isPresent()) {
-            ProblemGuidance guidance = existing.get();
-            guidance.setSource(source);
-            guidance.setClarifyText(clarifyText);
-            guidance.setObservationText(observationText);
-            guidance.setApproachText(approachText);
-            guidance.setExplanationText(explanationText);
-            guidance.setPseudocodeText(pseudocodeText);
-            guidance.setComplexityNotes(complexityNotes);
-            guidance.setCommonMistakesText(commonMistakesText);
+        if (source == GuidanceSource.LEARNER) {
+            return saveLearnerGuidance(problemId, clarifyText, observationText, approachText, explanationText,
+                    pseudocodeText, complexityNotes, commonMistakesText, prerequisites, referenceLinks);
+        }
+        return saveBaseGuidance(problemId, source, clarifyText, observationText, approachText, explanationText,
+                pseudocodeText, complexityNotes, commonMistakesText, prerequisites, referenceLinks);
+    }
+
+    private ProblemGuidance saveLearnerGuidance(long problemId, String clarifyText, String observationText,
+                                                 String approachText, String explanationText, String pseudocodeText,
+                                                 String complexityNotes, String commonMistakesText,
+                                                 List<String> prerequisites, List<String> referenceLinks) {
+        Optional<ProblemGuidance> existingLearner = guidanceRepository.findByProblemIdAndSource(
+                problemId, GuidanceSource.LEARNER);
+        Optional<ProblemGuidance> activeBeforeEdit = existingLearner.isPresent()
+                ? existingLearner
+                : guidanceRepository.findByProblemId(problemId);
+
+        String prerequisitesEncoded = prerequisites == null
+                ? activeBeforeEdit.map(ProblemGuidance::getPrerequisitesEncoded).orElse(null)
+                : encodeOrNull(prerequisites);
+        String referenceLinksEncoded = referenceLinks == null
+                ? activeBeforeEdit.map(ProblemGuidance::getReferenceLinksEncoded).orElse(null)
+                : encodeOrNull(referenceLinks);
+
+        if (existingLearner.isPresent()) {
+            ProblemGuidance guidance = existingLearner.get();
+            setTextFields(guidance, clarifyText, observationText, approachText, explanationText,
+                    pseudocodeText, complexityNotes, commonMistakesText);
             guidance.setPrerequisitesEncoded(prerequisitesEncoded);
             guidance.setReferenceLinksEncoded(referenceLinksEncoded);
             guidanceRepository.update(guidance);
-            return guidanceRepository.findByProblemId(problemId).orElseThrow();
+            return guidanceRepository.findByProblemIdAndSource(problemId, GuidanceSource.LEARNER).orElseThrow();
+        }
+
+        ProblemGuidance guidance = new ProblemGuidance(0, problemId, GuidanceSource.LEARNER,
+                clarifyText, observationText, approachText, explanationText, pseudocodeText,
+                complexityNotes, commonMistakesText, prerequisitesEncoded, referenceLinksEncoded, null, null);
+        return guidanceRepository.save(guidance);
+    }
+
+    private ProblemGuidance saveBaseGuidance(long problemId, GuidanceSource source, String clarifyText,
+                                              String observationText, String approachText, String explanationText,
+                                              String pseudocodeText, String complexityNotes, String commonMistakesText,
+                                              List<String> prerequisites, List<String> referenceLinks) {
+        String prerequisitesEncoded = encodeOrNull(prerequisites);
+        String referenceLinksEncoded = encodeOrNull(referenceLinks);
+        Optional<ProblemGuidance> existing = guidanceRepository.findBaseByProblemId(problemId);
+        if (existing.isPresent()) {
+            ProblemGuidance guidance = existing.get();
+            guidance.setSource(source);
+            setTextFields(guidance, clarifyText, observationText, approachText, explanationText,
+                    pseudocodeText, complexityNotes, commonMistakesText);
+            guidance.setPrerequisitesEncoded(prerequisitesEncoded);
+            guidance.setReferenceLinksEncoded(referenceLinksEncoded);
+            guidanceRepository.update(guidance);
+            return guidanceRepository.findByProblemIdAndSource(problemId, source).orElseThrow();
         }
         ProblemGuidance guidance = new ProblemGuidance(0, problemId, source, clarifyText, observationText,
                 approachText, explanationText, pseudocodeText, complexityNotes, commonMistakesText,
                 prerequisitesEncoded, referenceLinksEncoded, null, null);
         return guidanceRepository.save(guidance);
+    }
+
+    private void setTextFields(ProblemGuidance guidance, String clarifyText, String observationText,
+                               String approachText, String explanationText, String pseudocodeText,
+                               String complexityNotes, String commonMistakesText) {
+        guidance.setClarifyText(clarifyText);
+        guidance.setObservationText(observationText);
+        guidance.setApproachText(approachText);
+        guidance.setExplanationText(explanationText);
+        guidance.setPseudocodeText(pseudocodeText);
+        guidance.setComplexityNotes(complexityNotes);
+        guidance.setCommonMistakesText(commonMistakesText);
     }
 
     private String encodeOrNull(List<String> values) {

@@ -8,7 +8,9 @@ calculation.
 ## Domain model
 
 `ProblemGuidance` (one row per `Problem`, `UNIQUE(problem_id)`, entirely separate from problem identity
-and learner progress) holds the four levels' text, optional prerequisite topics, and reference links.
+and learner progress) holds the four levels' text (Explanation split across `explanation_text`,
+`pseudocode_text`, `complexity_notes`, and `common_mistakes_text` — see below), optional prerequisite
+topics, and reference links.
 `GuidanceSource` records provenance — `LEARNER`, `CODEFIT`, `IMPORTED`, or `PROVIDER` (reserved for a
 future integration, unused today) — so the product always knows whose words a given row's text is.
 CodeFit never scrapes or bundles copyrighted third-party editorial text into this table; imported
@@ -56,18 +58,43 @@ appending — this is the "allow editing/improving local guidance" requirement. 
 `IMPORTED`-sourced guidance can be authored the same way through the same method (see
 `ProblemGuidanceServiceTest`); the workspace UI itself only ever saves as `LEARNER`.
 
-## Assistance-level calculation
+## Assistance-level calculation, and how it reaches independence metrics
 
 `ProblemGuidanceService#computeAssistanceLevel(HintLevel maxOpened)` maps hint depth to a `SolvedWith`
 value: no hint opened → `SELF`; any of the first three levels (still teaching reasoning, not handing
 over the answer) → `HINT`; opening the full `EXPLANATION` → `EDITORIAL`, since that level's own
 content already *is* CodeFit's editorial-equivalent explanation. `SolvedWith.SOLUTION` is deliberately
 never returned by this computation — none of the four hint levels are "here is a ready-made solution
-to copy", so that distinction stays a manual, learner-chosen reflection value (`ProblemProgress`'s
-existing post-solve reflection form, #146) rather than something the ladder can infer. This is a pure,
-directly unit-tested function (`ProblemGuidanceServiceTest`); wiring it as an automatic prefill into
-the reflection form's `solvedWith` picker is left for a follow-up rather than silently overriding a
-value the learner may have already chosen themselves.
+to copy", so that distinction stays a manual, learner-chosen reflection value.
+
+`ProblemSolvingWorkspaceService#finish` now captures the just-finished attempt's
+`highestHintLevelOpened` before `ProblemSolvingSessionService#reset` deletes the session row, and — on
+every successful completion — writes the equivalent assistance level onto `ProblemProgress.solvedWith`
+via `applyAssistanceForSuccessfulCompletion`. This is what makes "opening a hint is persisted and
+reflected in independence metrics" literally true: the dashboard's independence numbers read
+`solvedWith`, and previously had no way to see hint depth at all. This wiring, and the matching
+"hint-dependent solves stay `SOLVED` but are still scheduled in the revisit queue" behavior in
+`ProblemLibraryService`, were completed alongside this change (see
+`GuidedCurriculumFlowRegressionTest`).
+
+## The full Explanation's four required parts
+
+The Explanation level must cover idea/reasoning, pseudocode, complexity, and common mistakes. These
+are four distinct `problem_guidance` columns (`explanation_text`, `pseudocode_text`,
+`complexity_notes`, `common_mistakes_text`) rather than one field a learner has to remember to pack
+everything into. `ProblemGuidance#textForLevel(EXPLANATION)` composes them into one labeled block for
+display; a part that hasn't been authored yet says so explicitly ("(not yet authored)") instead of
+being silently dropped, since dropping it would misleadingly read as "there are no common mistakes"
+rather than "nobody has written this part yet." `ProblemGuidance#hasCompleteExplanation()` reports
+whether all four are present, for anything that wants to distinguish a fully-authored Explanation from
+a partial one. The workspace's "Edit Guidance" panel has a text area for each of the four parts.
+
+## Provenance in the UI
+
+`GuidanceSource` was previously stored and tested but never actually shown to a learner reading the
+guidance. The Hints panel now displays "Source: <Learner|Codefit|Imported|Provider>" alongside
+prerequisites/references whenever a guidance row exists, sourced directly from
+`ProblemGuidance#getSource()` — the same value `ProblemGuidanceService#saveGuidance` already recorded.
 
 ## Prerequisites and flashcards
 
@@ -75,18 +102,21 @@ Prerequisites are shown as a plain comma-separated list above the hint ladder wh
 prerequisites for the current idea when available"). Creating flashcards from key observations and
 mistakes was already delivered by `ProblemFlashcardService` (#148) and needed no changes here — the
 Solving Workspace's existing "Create Flashcard" panel (sourced from post-solve reflection fields like
-`importantObservation`/`mistakeNotes`) already covers it.
+`importantObservation`/`mistakeNotes`) already covers it. This reuses the learner's own reflection
+notes rather than the hint ladder's authored `observationText`/explanation content directly; turning a
+hint's own text into a flashcard source is not covered here.
 
 ## Initial content scope
 
 This delivers the mechanism for every imported problem; authoring high-quality guidance for a pilot
-set at the start of Stage A (per the issue's stated initial scope) is a content task for a follow-up,
-not something this change fabricates data for.
+set at the start of Stage A (per the issue's stated initial scope) remains a content task for a
+follow-up — no guidance rows are seeded by this change.
 
 ## Known limitations
 
-- The computed assistance level isn't automatically written onto `ProblemProgress.solvedWith` — see
-  above.
-- Guidance editing in the workspace covers the four hint texts only; editing prerequisites/reference
-  links is available through `ProblemGuidanceService#saveGuidance` directly (and covered by its
-  tests) but has no dedicated workspace UI yet.
+- No pilot guidance content is seeded for any problem; every problem shows "no guidance authored yet"
+  until a human authors it through the workspace's Edit Guidance panel or `saveGuidance` directly.
+- Guidance editing in the workspace covers the seven text fields (four ladder levels plus the three
+  Explanation sub-parts) only; editing prerequisites/reference links is available through
+  `ProblemGuidanceService#saveGuidance` directly (and covered by its tests) but has no dedicated
+  workspace UI yet.

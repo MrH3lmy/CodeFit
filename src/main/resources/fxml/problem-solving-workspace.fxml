@@ -74,6 +74,7 @@
                 <Label text="Hints" styleClass="section-title" />
                 <Label fx:id="prerequisitesLabel" wrapText="true" styleClass="muted" visible="false" managed="false" />
                 <Label fx:id="referenceLinksLabel" wrapText="true" styleClass="muted" visible="false" managed="false" />
+                <Label fx:id="guidanceSourceLabel" wrapText="true" styleClass="muted" visible="false" managed="false" />
                 <VBox fx:id="revealedHintsBox" spacing="8" maxWidth="Infinity" />
                 <Label fx:id="hintsExhaustedLabel" text="No more hints — you're at the full explanation." styleClass="muted" wrapText="true" visible="false" managed="false" />
                 <HBox spacing="8">
@@ -87,8 +88,14 @@
                     <TextArea fx:id="observationEditArea" wrapText="true" prefRowCount="2" maxWidth="Infinity" />
                     <Label text="Approach" styleClass="problem-row-subtitle" />
                     <TextArea fx:id="approachEditArea" wrapText="true" prefRowCount="2" maxWidth="Infinity" />
-                    <Label text="Explanation" styleClass="problem-row-subtitle" />
+                    <Label text="Explanation — idea &amp; reasoning" styleClass="problem-row-subtitle" />
                     <TextArea fx:id="explanationEditArea" wrapText="true" prefRowCount="3" maxWidth="Infinity" />
+                    <Label text="Explanation — pseudocode" styleClass="problem-row-subtitle" />
+                    <TextArea fx:id="pseudocodeEditArea" wrapText="true" prefRowCount="3" maxWidth="Infinity" styleClass="code-editor" />
+                    <Label text="Explanation — complexity" styleClass="problem-row-subtitle" />
+                    <TextArea fx:id="complexityEditArea" wrapText="true" prefRowCount="2" maxWidth="Infinity" />
+                    <Label text="Explanation — common mistakes" styleClass="problem-row-subtitle" />
+                    <TextArea fx:id="commonMistakesEditArea" wrapText="true" prefRowCount="2" maxWidth="Infinity" />
                     <Button text="Save Guidance" onAction="#saveGuidanceEdits" styleClass="action-button" />
                 </VBox>
             </VBox>

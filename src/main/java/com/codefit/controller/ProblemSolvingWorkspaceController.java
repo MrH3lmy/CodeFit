@@ -123,6 +123,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
 
     @FXML private Label prerequisitesLabel;
     @FXML private Label referenceLinksLabel;
+    @FXML private Label guidanceSourceLabel;
     @FXML private VBox revealedHintsBox;
     @FXML private Label hintsExhaustedLabel;
     @FXML private Button revealHintButton;
@@ -131,6 +132,9 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     @FXML private TextArea observationEditArea;
     @FXML private TextArea approachEditArea;
     @FXML private TextArea explanationEditArea;
+    @FXML private TextArea pseudocodeEditArea;
+    @FXML private TextArea complexityEditArea;
+    @FXML private TextArea commonMistakesEditArea;
 
     @FXML private Label javaRunnerUnavailableLabel;
     @FXML private TextField javaClassNameField;
@@ -414,6 +418,13 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         List<String> referenceLinks = guidanceService.getReferenceLinks(problemId);
         setStatus(referenceLinksLabel, referenceLinks.isEmpty() ? "" : "References: " + String.join(", ", referenceLinks));
 
+        // #162: the architecture stores where guidance came from (learner/CodeFit/imported/provider);
+        // showing it here is what actually makes that provenance visible to the learner reading it,
+        // rather than only ever being readable from the database.
+        setStatus(guidanceSourceLabel, guidanceService.getGuidance(problemId)
+                .map(guidance -> "Source: " + capitalize(guidance.getSource().name()))
+                .orElse(""));
+
         revealedHintsBox.getChildren().clear();
         Optional<HintLevel> openedLevel = guidanceService.getOpenedLevel(problemId);
         openedLevel.ifPresent(level -> {
@@ -459,6 +470,9 @@ public class ProblemSolvingWorkspaceController extends BaseController {
             observationEditArea.setText(guidance == null || guidance.getObservationText() == null ? "" : guidance.getObservationText());
             approachEditArea.setText(guidance == null || guidance.getApproachText() == null ? "" : guidance.getApproachText());
             explanationEditArea.setText(guidance == null || guidance.getExplanationText() == null ? "" : guidance.getExplanationText());
+            pseudocodeEditArea.setText(guidance == null || guidance.getPseudocodeText() == null ? "" : guidance.getPseudocodeText());
+            complexityEditArea.setText(guidance == null || guidance.getComplexityNotes() == null ? "" : guidance.getComplexityNotes());
+            commonMistakesEditArea.setText(guidance == null || guidance.getCommonMistakesText() == null ? "" : guidance.getCommonMistakesText());
         }
         setVisible(guidanceEditorBox, showing);
     }
@@ -470,7 +484,8 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         }
         guidanceService.saveGuidance(problemId, GuidanceSource.LEARNER, blankToNull(clarifyEditArea.getText()),
                 blankToNull(observationEditArea.getText()), blankToNull(approachEditArea.getText()),
-                blankToNull(explanationEditArea.getText()), null, null);
+                blankToNull(explanationEditArea.getText()), blankToNull(pseudocodeEditArea.getText()),
+                blankToNull(complexityEditArea.getText()), blankToNull(commonMistakesEditArea.getText()), null, null);
         setStatus(messageLabel, "Guidance saved.");
         setVisible(guidanceEditorBox, false);
         loadGuidance();

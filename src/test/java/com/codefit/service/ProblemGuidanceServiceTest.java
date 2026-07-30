@@ -5,7 +5,6 @@ import com.codefit.model.GuidanceSource;
 import com.codefit.model.HintLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemGuidance;
-import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.SolvedWith;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -45,7 +44,8 @@ class ProblemGuidanceServiceTest {
         sessionService.reset(problem.getId());
         guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT,
                 "Restate: find two indices summing to target.", "Sorted arrays let you use two pointers.",
-                "Two-pointer scan from both ends.", "O(n) time, O(1) space; common mistake is off-by-one.",
+                "Two-pointer scan from both ends.", "Idea: shrink the window from both ends.",
+                "lo = 0; hi = n - 1; while lo < hi: ...", "O(n) time, O(1) space.", "Off-by-one at the boundary.",
                 null, null);
 
         ProblemGuidanceService.HintReveal first = guidanceService.openNextHintLevel(problem.getId());
@@ -62,7 +62,6 @@ class ProblemGuidanceServiceTest {
         ProblemGuidanceService.HintReveal fourth = guidanceService.openNextHintLevel(problem.getId());
         assertEquals(HintLevel.EXPLANATION, fourth.level());
 
-        // Already at the top: calling again must not throw or move past EXPLANATION.
         ProblemGuidanceService.HintReveal againAtTop = guidanceService.openNextHintLevel(problem.getId());
         assertEquals(HintLevel.EXPLANATION, againAtTop.level());
     }
@@ -88,7 +87,6 @@ class ProblemGuidanceServiceTest {
         guidanceService.openNextHintLevel(problem.getId());
         assertEquals(Optional.of(HintLevel.OBSERVATION), guidanceService.getOpenedLevel(problem.getId()));
 
-        // Finishing/resetting a session (e.g. a submission was finalized) starts the next attempt fresh.
         sessionService.reset(problem.getId());
 
         assertTrue(guidanceService.getOpenedLevel(problem.getId()).isEmpty(), "a fresh attempt has no hint opened yet");
@@ -98,7 +96,6 @@ class ProblemGuidanceServiceTest {
     void openingALevelWithNoAuthoredTextReportsMissingContentRatherThanFabricatingIt() {
         Problem problem = fixtureProblem("TF-162-MISSING");
         sessionService.reset(problem.getId());
-        // No guidance saved at all for this problem.
 
         ProblemGuidanceService.HintReveal reveal = guidanceService.openNextHintLevel(problem.getId());
 
@@ -110,10 +107,10 @@ class ProblemGuidanceServiceTest {
     @Test
     void savingGuidanceTwiceEditsInPlaceRatherThanCreatingASecondRow() {
         Problem problem = fixtureProblem("TF-162-EDIT");
-        guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER, "first draft", null, null, null, null, null);
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER, "first draft", null, null, null, null, null, null, null, null);
 
         guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER, "improved draft", "now with an observation",
-                null, null, List.of("Two Pointers"), List.of("https://example.test/editorial"));
+                null, null, null, null, null, List.of("Two Pointers"), List.of("https://example.test/editorial"));
 
         ProblemGuidance guidance = guidanceService.getGuidance(problem.getId()).orElseThrow();
         assertEquals("improved draft", guidance.getClarifyText());
@@ -124,12 +121,59 @@ class ProblemGuidanceServiceTest {
     }
 
     @Test
+    void learnerTextEditsPreserveExistingPrerequisitesAndReferenceLinks() {
+        Problem problem = fixtureProblem("TF-162-PRESERVE-METADATA");
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT,
+                "base clarify", "base observation", null, null, null, null, null,
+                List.of("Arrays", "Two Pointers"), List.of("https://example.test/reference"));
+
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER,
+                "learner clarify", "base observation", null, null, null, null, null,
+                null, null);
+
+        assertEquals(List.of("Arrays", "Two Pointers"), guidanceService.getPrerequisites(problem.getId()));
+        assertEquals(List.of("https://example.test/reference"), guidanceService.getReferenceLinks(problem.getId()));
+    }
+
+    @Test
+    void learnerOverrideKeepsOriginalCodefitGuidanceAndProvenance() {
+        Problem problem = fixtureProblem("TF-162-OVERRIDE-CODEFIT");
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT,
+                "CodeFit clarify", null, null, null, null, null, null, null, null);
+
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER,
+                "Learner clarify", null, null, null, null, null, null, null, null);
+
+        ProblemGuidance active = guidanceService.getGuidance(problem.getId()).orElseThrow();
+        ProblemGuidance original = guidanceService.getGuidance(problem.getId(), GuidanceSource.CODEFIT).orElseThrow();
+        assertEquals(GuidanceSource.LEARNER, active.getSource());
+        assertEquals("Learner clarify", active.getClarifyText());
+        assertEquals(GuidanceSource.CODEFIT, original.getSource());
+        assertEquals("CodeFit clarify", original.getClarifyText());
+    }
+
+    @Test
+    void learnerOverrideKeepsOriginalImportedGuidanceAndProvenance() {
+        Problem problem = fixtureProblem("TF-162-OVERRIDE-IMPORTED");
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.IMPORTED,
+                "Imported clarify", null, null, null, null, null, null, null, null);
+
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.LEARNER,
+                "Learner clarify", null, null, null, null, null, null, null, null);
+
+        ProblemGuidance original = guidanceService.getGuidance(problem.getId(), GuidanceSource.IMPORTED).orElseThrow();
+        assertEquals(GuidanceSource.IMPORTED, original.getSource());
+        assertEquals("Imported clarify", original.getClarifyText());
+        assertEquals("Learner clarify", guidanceService.getGuidance(problem.getId()).orElseThrow().getClarifyText());
+    }
+
+    @Test
     void guidanceProvenanceIsPreservedAndDistinguishable() {
         Problem codefitAuthored = fixtureProblem("TF-162-PROV-CODEFIT");
         Problem learnerAuthored = fixtureProblem("TF-162-PROV-LEARNER");
 
-        guidanceService.saveGuidance(codefitAuthored.getId(), GuidanceSource.CODEFIT, "clarify", null, null, null, null, null);
-        guidanceService.saveGuidance(learnerAuthored.getId(), GuidanceSource.LEARNER, "clarify", null, null, null, null, null);
+        guidanceService.saveGuidance(codefitAuthored.getId(), GuidanceSource.CODEFIT, "clarify", null, null, null, null, null, null, null, null);
+        guidanceService.saveGuidance(learnerAuthored.getId(), GuidanceSource.LEARNER, "clarify", null, null, null, null, null, null, null, null);
 
         assertEquals(GuidanceSource.CODEFIT, guidanceService.getGuidance(codefitAuthored.getId()).orElseThrow().getSource());
         assertEquals(GuidanceSource.LEARNER, guidanceService.getGuidance(learnerAuthored.getId()).orElseThrow().getSource());
@@ -153,10 +197,50 @@ class ProblemGuidanceServiceTest {
     }
 
     @Test
+    void theFullExplanationComposesIdeaPseudocodeComplexityAndCommonMistakes() {
+        Problem problem = fixtureProblem("TF-162-EXPLANATION-PARTS");
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, null, null, null,
+                "Shrink the window from both ends.", "lo = 0; hi = n - 1; while lo < hi: ...",
+                "O(n) time, O(1) space.", "Off-by-one at the boundary.", null, null);
+
+        ProblemGuidanceService.HintReveal reveal = guidanceService.revealLevel(problem.getId(), HintLevel.EXPLANATION);
+
+        assertTrue(reveal.hasContent());
+        assertTrue(reveal.text().contains("Shrink the window from both ends."));
+        assertTrue(reveal.text().contains("lo = 0; hi = n - 1; while lo < hi: ..."));
+        assertTrue(reveal.text().contains("O(n) time, O(1) space."));
+        assertTrue(reveal.text().contains("Off-by-one at the boundary."));
+    }
+
+    @Test
+    void anExplanationPartThatIsStillUnauthoredSaysSoRatherThanBeingSilentlyOmitted() {
+        Problem problem = fixtureProblem("TF-162-EXPLANATION-PARTIAL");
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, null, null, null,
+                "Shrink the window from both ends.", null, null, null, null, null);
+
+        ProblemGuidance guidance = guidanceService.getGuidance(problem.getId()).orElseThrow();
+        ProblemGuidanceService.HintReveal reveal = guidanceService.revealLevel(problem.getId(), HintLevel.EXPLANATION);
+
+        assertFalse(guidance.hasCompleteExplanation(), "three of the four parts are still blank");
+        assertTrue(reveal.text().contains("(not yet authored)"));
+    }
+
+    @Test
+    void aFullyAuthoredExplanationReportsComplete() {
+        Problem problem = fixtureProblem("TF-162-EXPLANATION-COMPLETE");
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, null, null, null,
+                "idea", "pseudocode", "complexity", "mistakes", null, null);
+
+        ProblemGuidance guidance = guidanceService.getGuidance(problem.getId()).orElseThrow();
+
+        assertTrue(guidance.hasCompleteExplanation());
+    }
+
+    @Test
     void revealLevelShowsASpecificLevelWithoutChangingWhatsRecordedAsOpened() {
         Problem problem = fixtureProblem("TF-162-REVEAL-DIRECT");
         sessionService.reset(problem.getId());
-        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, "clarify text", null, null, null, null, null);
+        guidanceService.saveGuidance(problem.getId(), GuidanceSource.CODEFIT, "clarify text", null, null, null, null, null, null, null, null);
 
         ProblemGuidanceService.HintReveal reveal = guidanceService.revealLevel(problem.getId(), HintLevel.CLARIFY);
         assertEquals("clarify text", reveal.text());

@@ -133,6 +133,13 @@ public class ProblemService {
         Optional<RoadmapEntry> existingForProblem = roadmapEntryRepository.findByProblemIdAndStage(connection, problemId, stage);
         if (existingForProblem.isPresent()) {
             RoadmapEntry entry = existingForProblem.get();
+            if (entry.getSequenceOrder() != sequenceOrder) {
+                // Repositioning to a different slot must be checked the same way a brand-new
+                // membership is below - otherwise this update can hit the UNIQUE(stage,
+                // sequence_order) constraint at the raw SQL level instead of reporting a clean
+                // per-row diagnostic, rolling back the entire import with a generic database error.
+                requireSlotFreeOrHeldBySameProblem(connection, stage, sequenceOrder, problemId);
+            }
             entry.setSequenceOrder(sequenceOrder);
             entry.setSetNumber(setNumber);
             entry.setMandatory(mandatory);
@@ -141,14 +148,18 @@ public class ProblemService {
             return new RoadmapMembershipResult(entry, false);
         }
 
+        requireSlotFreeOrHeldBySameProblem(connection, stage, sequenceOrder, problemId);
+
+        RoadmapEntry saved = roadmapEntryRepository.save(connection, new RoadmapEntry(problemId, stage, sequenceOrder, setNumber, mandatory, suggestedLevel));
+        return new RoadmapMembershipResult(saved, true);
+    }
+
+    private void requireSlotFreeOrHeldBySameProblem(Connection connection, RoadmapStage stage, int sequenceOrder, long problemId) throws SQLException {
         Optional<RoadmapEntry> occupant = roadmapEntryRepository.findByStageAndSequence(connection, stage, sequenceOrder);
         if (occupant.isPresent() && occupant.get().getProblemId() != problemId) {
             throw new IllegalStateException(
                     "Roadmap slot " + stage + "#" + sequenceOrder + " is already held by problem " + occupant.get().getProblemId());
         }
-
-        RoadmapEntry saved = roadmapEntryRepository.save(connection, new RoadmapEntry(problemId, stage, sequenceOrder, setNumber, mandatory, suggestedLevel));
-        return new RoadmapMembershipResult(saved, true);
     }
 
     public List<RoadmapEntry> getRoadmapInOrder() {

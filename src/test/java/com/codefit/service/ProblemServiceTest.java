@@ -110,6 +110,30 @@ class ProblemServiceTest {
     }
 
     @Test
+    void repositioningAnExistingMembershipIntoASlotAnotherProblemAlreadyHoldsIsAConflictNotASilentOverwrite() {
+        Problem first = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-142-7",
+                "Slot Owner", null, "General", null, List.of());
+        Problem second = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", "TF-142-8",
+                "Repositioning Challenger", null, "General", null, List.of());
+
+        int occupiedSlot = nextOrder++;
+        int secondsOwnSlot = nextOrder++;
+        problemService.addToRoadmap(first.getId(), RoadmapStage.C1, occupiedSlot, null, true, null);
+        problemService.addToRoadmap(second.getId(), RoadmapStage.C1, secondsOwnSlot, null, true, null);
+
+        // Re-registering an *existing* membership (not a brand-new one) into a slot a different
+        // problem already holds must be reported as a conflict - the same as if it were new - rather
+        // than either silently moving the first problem out, or hitting the raw UNIQUE(stage,
+        // sequence_order) SQL constraint and rolling back an entire import with a generic error.
+        assertThrows(IllegalStateException.class,
+                () -> problemService.addToRoadmap(second.getId(), RoadmapStage.C1, occupiedSlot, null, true, null));
+
+        RoadmapEntry firstsEntry = problemService.getRoadmapEntriesForProblem(first.getId()).stream()
+                .filter(entry -> entry.getStage() == RoadmapStage.C1).findFirst().orElseThrow();
+        assertEquals(occupiedSlot, firstsEntry.getSequenceOrder(), "the rejected reposition must never have moved the original occupant out");
+    }
+
+    @Test
     void roadmapStageOrdinalOrderMatchesTheBlindLearningOrder() {
         RoadmapStage[] stages = RoadmapStage.values();
         assertEquals(RoadmapStage.A, stages[0]);

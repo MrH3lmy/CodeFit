@@ -17,7 +17,17 @@ import com.codefit.service.SqlCardSpecCodec;
 import java.util.List;
 
 public final class DatabaseConfig {
-    private static final String DATABASE_URL = "jdbc:sqlite:codefit.db";
+    private static final String DEFAULT_DATABASE_URL = "jdbc:sqlite:codefit.db";
+
+    /**
+     * The JDBC URL every {@link #getConnection()} call opens against. Defaults to the shared local
+     * {@code codefit.db} every existing repository/service/test already assumes; {@link #useDatabaseFile}
+     * lets a fully-isolated test point every subsequent connection at a throwaway file instead (#164's
+     * critical-path test isolation requirement), without changing the production default or any
+     * existing caller. No repository or service caches this URL or a connection across calls, so
+     * switching it takes effect immediately for every class sharing this JVM.
+     */
+    private static volatile String databaseUrl = DEFAULT_DATABASE_URL;
 
     /**
      * Fixture for the seeded "5 newest user emails" SQL_QUERY starter card: an isolated
@@ -38,7 +48,24 @@ public final class DatabaseConfig {
     }
 
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(DATABASE_URL);
+        return DriverManager.getConnection(databaseUrl);
+    }
+
+    /**
+     * Redirects every future {@link #getConnection()} call at an isolated SQLite file (e.g. a JUnit
+     * {@code @TempDir} path) instead of the shared local {@code codefit.db} the rest of this test
+     * suite still uses. Callers MUST restore the default once done (see {@link #useDefaultDatabaseFile()})
+     * in an {@code @AfterAll}/{@code @AfterEach} — Maven Surefire runs every test class in one JVM by
+     * default (see this project's {@code pom.xml}), so leaving this pointed at a deleted temp file
+     * would break every later test class in the same run.
+     */
+    public static void useDatabaseFile(java.nio.file.Path path) {
+        databaseUrl = "jdbc:sqlite:" + path;
+    }
+
+    /** Restores the shared local {@code codefit.db} default after a test that called {@link #useDatabaseFile}. */
+    public static void useDefaultDatabaseFile() {
+        databaseUrl = DEFAULT_DATABASE_URL;
     }
 
     public static void initialize() {

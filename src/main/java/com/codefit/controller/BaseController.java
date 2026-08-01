@@ -1,5 +1,6 @@
 package com.codefit.controller;
 
+import com.codefit.service.CompileOutcomeRegistry;
 import com.codefit.service.DatabaseInternalsPackService;
 import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
@@ -20,8 +21,9 @@ public abstract class BaseController {
         return true;
     }
 
-    /** Called immediately before an allowed navigation so controllers can release screen-owned state. */
+    /** Releases any compiled Java workspace before switching to another FXML controller. */
     protected void beforeNavigateAway() {
+        CompileOutcomeRegistry.closeCurrent();
     }
 
     private void navigate(Runnable action) {

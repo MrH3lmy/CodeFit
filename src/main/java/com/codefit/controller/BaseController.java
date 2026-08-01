@@ -20,8 +20,13 @@ public abstract class BaseController {
         return true;
     }
 
+    /** Called immediately before an allowed navigation so controllers can release screen-owned state. */
+    protected void beforeNavigateAway() {
+    }
+
     private void navigate(Runnable action) {
         if (canNavigateAway()) {
+            beforeNavigateAway();
             action.run();
         }
     }
@@ -42,6 +47,7 @@ public abstract class BaseController {
         if (!canNavigateAway()) {
             return;
         }
+        beforeNavigateAway();
         try {
             DatabaseInternalsPackService.InstallSummary summary = new DatabaseInternalsPackService().install();
             Alert alert = new Alert(Alert.AlertType.INFORMATION);

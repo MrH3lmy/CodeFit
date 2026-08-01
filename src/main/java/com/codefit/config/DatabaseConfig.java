@@ -168,6 +168,7 @@ public final class DatabaseConfig {
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
             seedAssessmentBank(connection);
+            seedStageAPilotGuidance(connection);
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to initialize CodeFit database", exception);
         }
@@ -747,5 +748,72 @@ public final class DatabaseConfig {
                 }
             }
         }
+    }
+
+    /**
+     * Seeds original, CodeFit-authored progressive guidance (#171) for the documented Stage A pilot
+     * set (see {@link StageAPilotGuidanceSeed} for the selection and content). Creates each pilot
+     * problem's catalog row and Stage A roadmap membership using the exact same
+     * {@code (platform, external_code)} identity and sequence order a real import of the approved
+     * workbook (#159) would assign to that same row (see {@code RealJuniorTrainingSheetImportTest}),
+     * so importing that workbook later merges into these same rows rather than creating duplicates,
+     * and this guidance stays attached either way. Every write is {@code INSERT OR IGNORE} against a
+     * table with a matching {@code UNIQUE} constraint, so re-running this on every startup is a
+     * no-op past the first successful run: it never overwrites a problem/roadmap row the real
+     * importer (or a learner) has since touched, nor a learner's own guidance edits, which live
+     * entirely in the separate {@code problem_guidance_learner_overrides} table
+     * ({@code ProblemGuidanceRepository}), never this seed's target table.
+     */
+    private static void seedStageAPilotGuidance(Connection connection) throws SQLException {
+        try (PreparedStatement insertProblem = connection.prepareStatement(
+                "INSERT OR IGNORE INTO problems (external_code, platform, title, url, topic) VALUES (?, ?, ?, ?, ?)");
+             PreparedStatement selectProblemId = connection.prepareStatement(
+                     "SELECT id FROM problems WHERE platform = ? AND external_code = ?");
+             PreparedStatement insertRoadmapEntry = connection.prepareStatement(
+                     "INSERT OR IGNORE INTO roadmap_entries (problem_id, stage, sequence_order, mandatory) VALUES (?, 'A', ?, 1)");
+             PreparedStatement insertGuidance = connection.prepareStatement("""
+                     INSERT OR IGNORE INTO problem_guidance (
+                         problem_id, source, clarify_text, observation_text, approach_text, explanation_text,
+                         pseudocode_text, complexity_notes, common_mistakes_text, prerequisites, reference_links
+                     ) VALUES (?, 'CODEFIT', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     """)) {
+            for (StageAPilotGuidanceSeed.Entry entry : StageAPilotGuidanceSeed.PILOT_SET) {
+                insertProblem.setString(1, entry.externalCode());
+                insertProblem.setString(2, entry.platform());
+                insertProblem.setString(3, entry.title());
+                insertProblem.setString(4, entry.url());
+                insertProblem.setString(5, entry.topic());
+                insertProblem.executeUpdate();
+
+                long problemId = findPilotProblemId(selectProblemId, entry.platform(), entry.externalCode());
+
+                insertRoadmapEntry.setLong(1, problemId);
+                insertRoadmapEntry.setInt(2, entry.sequenceOrder());
+                insertRoadmapEntry.executeUpdate();
+
+                insertGuidance.setLong(1, problemId);
+                insertGuidance.setString(2, entry.clarifyText());
+                insertGuidance.setString(3, entry.observationText());
+                insertGuidance.setString(4, entry.approachText());
+                insertGuidance.setString(5, entry.explanationText());
+                insertGuidance.setString(6, entry.pseudocodeText());
+                insertGuidance.setString(7, entry.complexityNotes());
+                insertGuidance.setString(8, entry.commonMistakesText());
+                insertGuidance.setString(9, AcceptedAnswerCodec.encode(entry.prerequisites()));
+                insertGuidance.setString(10, AcceptedAnswerCodec.encode(entry.referenceLinks()));
+                insertGuidance.executeUpdate();
+            }
+        }
+    }
+
+    private static long findPilotProblemId(PreparedStatement selectProblemId, String platform, String externalCode) throws SQLException {
+        selectProblemId.setString(1, platform);
+        selectProblemId.setString(2, externalCode);
+        try (ResultSet resultSet = selectProblemId.executeQuery()) {
+            if (resultSet.next()) {
+                return resultSet.getLong("id");
+            }
+        }
+        throw new SQLException("Unable to find seeded Stage A pilot problem: " + platform + " " + externalCode);
     }
 }

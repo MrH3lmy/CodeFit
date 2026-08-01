@@ -107,6 +107,8 @@
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <Label text="Class name:" />
                     <TextField fx:id="javaClassNameField" text="Solution" />
+                    <Label text="Timeout:" />
+                    <ChoiceBox fx:id="javaTimeoutChoiceBox" />
                 </HBox>
                 <TextArea fx:id="javaSourceArea" promptText="Java source…" prefRowCount="14" wrapText="false" maxWidth="Infinity" styleClass="code-editor" />
                 <HBox spacing="12">
@@ -131,6 +133,14 @@
                     <Label text="Output" styleClass="problem-row-subtitle" />
                     <TextArea fx:id="javaOutputArea" editable="false" prefRowCount="8" wrapText="true" maxWidth="Infinity" />
                 </VBox>
+
+                <Label text="Test Cases" styleClass="section-title" />
+                <Label text="Named local test cases, run independently of the quick input/output above — compile first." styleClass="muted" wrapText="true" />
+                <VBox fx:id="javaTestCasesBox" spacing="10" maxWidth="Infinity" />
+                <HBox spacing="8">
+                    <Button text="Add Test Case" onAction="#addJavaTestCase" styleClass="ghost-button" />
+                    <Button text="Run All Test Cases" onAction="#runAllJavaTestCases" styleClass="action-button" />
+                </HBox>
             </VBox>
 
             <VBox spacing="10" styleClass="panel" maxWidth="Infinity">

@@ -7,6 +7,7 @@ import com.codefit.model.FinalCategory;
 import com.codefit.model.GuidanceSource;
 import com.codefit.model.HintLevel;
 import com.codefit.model.JavaSolutionDraft;
+import com.codefit.model.JavaTestCase;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
 import com.codefit.model.ProblemGuidance;
@@ -20,6 +21,7 @@ import com.codefit.model.SolvingPhase;
 import com.codefit.model.SubmissionResult;
 import com.codefit.service.CompileDiagnostic;
 import com.codefit.service.CompileOutcome;
+import com.codefit.service.CompileOutcomeRegistry;
 import com.codefit.service.JavaSolutionWorkspaceService;
 import com.codefit.service.ProblemFlashcardService;
 import com.codefit.service.ProblemGuidanceService;
@@ -36,11 +38,14 @@ import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
@@ -138,6 +143,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
 
     @FXML private Label javaRunnerUnavailableLabel;
     @FXML private TextField javaClassNameField;
+    @FXML private ChoiceBox<Integer> javaTimeoutChoiceBox;
     @FXML private TextArea javaSourceArea;
     @FXML private TextArea javaStdinArea;
     @FXML private TextArea javaExpectedOutputArea;
@@ -147,6 +153,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     @FXML private VBox javaDiagnosticsBox;
     @FXML private Label javaRunStatusLabel;
     @FXML private TextArea javaOutputArea;
+    @FXML private VBox javaTestCasesBox;
 
     @FXML private HBox nextProblemRow;
     @FXML private Label nextRecommendedInfoLabel;
@@ -220,11 +227,23 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         setVisible(nextProblemRow, true);
     }
 
+    /** Leaving the workspace for Problems — the only navigation-away action this screen exposes — is
+     *  exactly when a compiled outcome that's never getting recompiled needs its temp directory
+     *  cleaned up (#163); {@code CodeFitApplication#stop()} covers the "quit instead" path. */
+    @Override
+    public void goProblems() {
+        CompileOutcomeRegistry.closeCurrent();
+        currentCompileOutcome = null;
+        super.goProblems();
+    }
+
     @FXML
     public void goToNextRecommended() {
         if (nextRecommendedProblemId == null) {
             return;
         }
+        CompileOutcomeRegistry.closeCurrent();
+        currentCompileOutcome = null;
         workspaceService.start(nextRecommendedProblemId);
         NavigationService.showSolvingWorkspace(nextRecommendedProblemId);
     }
@@ -256,6 +275,35 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         setStatus(javaRunStatusLabel, "");
         javaOutputArea.clear();
         javaRunButton.setDisable(true);
+
+        configureTimeoutChoiceBox();
+        renderTestCases();
+    }
+
+    private static final List<Integer> TIMEOUT_OPTIONS_SECONDS = List.of(5, 10, 15, 30, 60);
+
+    /** "Infinite loops are terminated by a configurable timeout" (#163): the timeout mechanism itself
+     *  always existed, but nothing in the UI could ever change it from the fixed default — this is
+     *  the missing UI half, backed by {@link JavaSolutionWorkspaceService#getRunTimeoutSeconds()}. */
+    private void configureTimeoutChoiceBox() {
+        javaTimeoutChoiceBox.setItems(FXCollections.observableArrayList(TIMEOUT_OPTIONS_SECONDS));
+        javaTimeoutChoiceBox.getSelectionModel().select(Integer.valueOf(javaWorkspaceService.getRunTimeoutSeconds()));
+        javaTimeoutChoiceBox.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(Integer seconds) {
+                return seconds == null ? "" : seconds + "s";
+            }
+
+            @Override
+            public Integer fromString(String string) {
+                return null;
+            }
+        });
+        javaTimeoutChoiceBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null && !newValue.equals(oldValue)) {
+                javaWorkspaceService.setRunTimeoutSeconds(newValue);
+            }
+        });
     }
 
     private void scheduleJavaAutosave() {
@@ -296,9 +344,11 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     }
 
     private void onCompileFinished(CompileOutcome outcome) {
-        if (currentCompileOutcome != null) {
-            currentCompileOutcome.close();
-        }
+        // Registering here (rather than closing currentCompileOutcome directly) means the outcome's
+        // temp directory still gets cleaned up even if the learner never compiles again before
+        // leaving this problem — see CompileOutcomeRegistry and this controller's goProblems()/
+        // goToNextRecommended() overrides, and CodeFitApplication#stop() for the app-exit path.
+        CompileOutcomeRegistry.replace(outcome);
         currentCompileOutcome = outcome;
         javaCompileButton.setDisable(false);
         javaDiagnosticsBox.getChildren().clear();
@@ -327,17 +377,25 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     }
 
     /** "Compiler diagnostics link to the corresponding editor line" (#163): moves the source editor's
-     *  caret (and scrolls it into view) to the diagnostic's reported line/column. */
+     *  caret to the diagnostic's reported line/column and selects that whole line, so it's visually
+     *  highlighted (scrolled into view by virtue of the caret/selection landing there) rather than
+     *  just silently repositioning an invisible caret. */
     private void jumpSourceCaretToLine(int line, Integer column) {
         String text = javaSourceArea.getText();
         String[] lines = text.split("\\R", -1);
-        int offset = 0;
+        int lineStart = 0;
         for (int i = 0; i < line - 1 && i < lines.length; i++) {
-            offset += lines[i].length() + 1;
+            lineStart += lines[i].length() + 1;
         }
-        offset += column == null ? 0 : Math.max(0, column - 1);
+        int lineIndex = Math.min(Math.max(line - 1, 0), lines.length - 1);
+        int lineLength = lineIndex >= 0 && lineIndex < lines.length ? lines[lineIndex].length() : 0;
+        int lineEnd = Math.min(lineStart + lineLength, text.length());
+
+        // selectRange's second argument is the resulting caret position, so this both scrolls the
+        // caret to the diagnostic's line and leaves the whole line selected/highlighted — a plain
+        // positionCaret() call afterward would collapse the selection right back to an invisible caret.
         javaSourceArea.requestFocus();
-        javaSourceArea.positionCaret(Math.min(offset, text.length()));
+        javaSourceArea.selectRange(Math.min(lineStart, text.length()), lineEnd);
     }
 
     @FXML
@@ -356,8 +414,9 @@ public class ProblemSolvingWorkspaceController extends BaseController {
 
         CompileOutcome compiledForThisRun = currentCompileOutcome;
         RunCancellationToken tokenForThisRun = currentCancellationToken;
+        RunLimits limits = javaWorkspaceService.currentRunLimits();
         Thread thread = new Thread(() -> {
-            RunResult result = javaWorkspaceService.run(compiledForThisRun, stdin, RunLimits.defaults(), tokenForThisRun);
+            RunResult result = javaWorkspaceService.run(compiledForThisRun, stdin, limits, tokenForThisRun);
             Platform.runLater(() -> onRunFinished(result, expectedOutput));
         }, "java-runner-run");
         thread.setDaemon(true);
@@ -407,6 +466,158 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         content.putString(javaSourceArea.getText());
         Clipboard.getSystemClipboard().setContent(content);
         setStatus(javaRunStatusLabel, "Solution copied — paste it into the external judge to submit.");
+    }
+
+    // ---- Multiple local test cases (#163) --------------------------------------------------------
+
+    private void renderTestCases() {
+        javaTestCasesBox.getChildren().clear();
+        for (JavaTestCase testCase : javaWorkspaceService.listTestCases(problemId)) {
+            javaTestCasesBox.getChildren().add(testCaseRow(testCase));
+        }
+    }
+
+    private javafx.scene.Node testCaseRow(JavaTestCase testCase) {
+        TextArea stdinArea = new TextArea(testCase.getStdin() == null ? "" : testCase.getStdin());
+        stdinArea.setPromptText("Standard input");
+        stdinArea.setPrefRowCount(2);
+        stdinArea.setWrapText(true);
+        TextArea expectedArea = new TextArea(testCase.getExpectedOutput() == null ? "" : testCase.getExpectedOutput());
+        expectedArea.setPromptText("Expected output (optional)");
+        expectedArea.setPrefRowCount(2);
+        expectedArea.setWrapText(true);
+
+        Label resultLabel = new Label("Not run yet.");
+        resultLabel.setWrapText(true);
+
+        Runnable persistEdits = () -> javaWorkspaceService.updateTestCase(testCase.getId(), testCase.getProblemId(),
+                testCase.getPosition(), stdinArea.getText(), expectedArea.getText());
+        stdinArea.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
+            if (!isFocused) persistEdits.run();
+        });
+        expectedArea.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
+            if (!isFocused) persistEdits.run();
+        });
+
+        Button runButton = new Button("Run");
+        runButton.getStyleClass().add("action-button");
+        runButton.setOnAction(event -> {
+            persistEdits.run();
+            runSingleTestCase(stdinArea.getText(), expectedArea.getText(), resultLabel);
+        });
+
+        Button removeButton = new Button("Remove");
+        removeButton.getStyleClass().add("ghost-button");
+        removeButton.setOnAction(event -> {
+            javaWorkspaceService.removeTestCase(testCase.getId());
+            renderTestCases();
+        });
+
+        VBox stdinColumn = new VBox(2, new Label("Input"), stdinArea);
+        stdinColumn.setMaxWidth(Double.MAX_VALUE);
+        VBox expectedColumn = new VBox(2, new Label("Expected"), expectedArea);
+        expectedColumn.setMaxWidth(Double.MAX_VALUE);
+        HBox inputsRow = new HBox(8, stdinColumn, expectedColumn);
+        HBox.setHgrow(stdinColumn, javafx.scene.layout.Priority.ALWAYS);
+        HBox.setHgrow(expectedColumn, javafx.scene.layout.Priority.ALWAYS);
+
+        HBox actionsRow = new HBox(8, runButton, removeButton);
+        actionsRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox row = new VBox(6, inputsRow, actionsRow, resultLabel);
+        row.getStyleClass().add("panel");
+        return row;
+    }
+
+    @FXML
+    public void addJavaTestCase() {
+        if (problemId == null) {
+            return;
+        }
+        javaWorkspaceService.addTestCase(problemId);
+        renderTestCases();
+    }
+
+    /** Runs one test case against whatever's currently compiled — a separate background run from the
+     *  quick-run Compile/Run pair above, so a slow test case never disables those controls. */
+    private void runSingleTestCase(String stdin, String expectedOutput, Label resultLabel) {
+        if (currentCompileOutcome == null || !currentCompileOutcome.success()) {
+            resultLabel.setText("Compile the solution first.");
+            return;
+        }
+        resultLabel.setText("Running…");
+        CompileOutcome compiledForThisRun = currentCompileOutcome;
+        RunLimits limits = javaWorkspaceService.currentRunLimits();
+        Thread thread = new Thread(() -> {
+            RunResult result = javaWorkspaceService.run(compiledForThisRun, stdin, limits, new RunCancellationToken());
+            Platform.runLater(() -> resultLabel.setText(describeTestCaseResult(result, expectedOutput)));
+        }, "java-runner-test-case");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @FXML
+    public void runAllJavaTestCases() {
+        if (currentCompileOutcome == null || !currentCompileOutcome.success()) {
+            setStatus(javaRunStatusLabel, "Compile the solution before running test cases.");
+            return;
+        }
+        List<JavaTestCase> testCases = javaWorkspaceService.listTestCases(problemId);
+        if (testCases.isEmpty()) {
+            return;
+        }
+        List<javafx.scene.Node> rows = javaTestCasesBox.getChildren().stream().toList();
+        CompileOutcome compiledForThisRun = currentCompileOutcome;
+        RunLimits limits = javaWorkspaceService.currentRunLimits();
+        setStatus(javaRunStatusLabel, "Running " + testCases.size() + " test case(s)…");
+
+        Thread thread = new Thread(() -> {
+            for (int i = 0; i < testCases.size() && i < rows.size(); i++) {
+                JavaTestCase testCase = testCases.get(i);
+                Label resultLabel = testCaseResultLabel(rows.get(i));
+                if (resultLabel != null) {
+                    Platform.runLater(() -> resultLabel.setText("Running…"));
+                }
+                RunResult result = javaWorkspaceService.runTestCase(compiledForThisRun, testCase, limits, new RunCancellationToken());
+                String description = describeTestCaseResult(result, testCase.getExpectedOutput());
+                if (resultLabel != null) {
+                    Platform.runLater(() -> resultLabel.setText(description));
+                }
+            }
+            Platform.runLater(() -> setStatus(javaRunStatusLabel, "Finished running " + testCases.size() + " test case(s)."));
+        }, "java-runner-test-case-all");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /** The last child of a {@link #testCaseRow} {@code VBox} is always its result {@link Label}. */
+    private Label testCaseResultLabel(javafx.scene.Node row) {
+        if (!(row instanceof VBox box) || box.getChildren().isEmpty()) {
+            return null;
+        }
+        javafx.scene.Node last = box.getChildren().get(box.getChildren().size() - 1);
+        return last instanceof Label label ? label : null;
+    }
+
+    private String describeTestCaseResult(RunResult result, String expectedOutput) {
+        if (result.cancelled()) {
+            return "Cancelled. (" + result.elapsedMillis() + " ms)";
+        }
+        if (result.timedOut()) {
+            return "Timed out (possible infinite loop). (" + result.elapsedMillis() + " ms)";
+        }
+        StringBuilder description = new StringBuilder("Exit status ").append(result.exitCode());
+        Boolean matches = expectedOutput == null || expectedOutput.isBlank() ? null
+                : result.matchesExpectedOutput(expectedOutput);
+        if (matches != null) {
+            description.append(matches ? " — PASS" : " — FAIL");
+        }
+        description.append(" (").append(result.elapsedMillis()).append(" ms)");
+        if (result.outputTruncated()) {
+            description.append(" Output truncated.");
+        }
+        description.append("\n").append(result.stdout() == null ? "" : result.stdout());
+        return description.toString();
     }
 
     /** Prerequisites/reference links (static, from the authored guidance) plus every hint level

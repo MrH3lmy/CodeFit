@@ -3,6 +3,7 @@ package com.codefit;
 import com.codefit.config.DatabaseConfig;
 import com.codefit.service.BackgroundImportExecutor;
 import com.codefit.service.CompileOutcomeRegistry;
+import com.codefit.service.JavaExecutionCoordinator;
 import com.codefit.ui.NavigationService;
 import javafx.application.Application;
 import javafx.stage.Stage;
@@ -18,17 +19,13 @@ public class CodeFitApplication extends Application {
     }
 
     /**
-     * Gracefully stops {@link BackgroundImportExecutor}'s worker thread on normal application exit
-     * (#160) — its non-daemon thread would otherwise keep the JVM alive indefinitely if this were
-     * skipped. {@code NavigationService}'s close-request confirmation is the user-facing warning; this
-     * is the actual shutdown once the learner has decided to quit.
-     *
-     * <p>Also closes whatever {@link com.codefit.service.CompileOutcome} the Java runner last left
-     * registered (#163) — quitting with a compiled-but-not-recompiled solution open would otherwise
-     * leak its temporary work directory under the OS temp dir forever.
+     * Gracefully stops background work on normal application exit. Active Java executions are
+     * cancelled and given a bounded period to release the compiled work directory before that
+     * directory is closed; the import worker receives its existing graceful shutdown window.
      */
     @Override
     public void stop() {
+        JavaExecutionCoordinator.cancelActiveAndAwait(5, TimeUnit.SECONDS);
         BackgroundImportExecutor.shutdown(10, TimeUnit.SECONDS);
         CompileOutcomeRegistry.closeCurrent();
     }

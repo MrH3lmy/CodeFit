@@ -29,31 +29,53 @@ the same threat model, and the same documented caveat, `JavaSandboxRunner` alrea
 
 `compile()` returns a `CompileOutcome` (`AutoCloseable`) holding the temporary work directory the
 compiled `.class` files live in. A caller can `run()` against the same `CompileOutcome` as many times
-as it wants (different stdin each time) before closing it — this is what "run multiple local test
-cases" means architecturally, even though today's workspace UI only wires up one configured
-stdin/expected-output pair at a time (see Known limitations).
+as it wants (different stdin each time) before closing it.
+
+"Run multiple local test cases" now has a real UI on top of that architecture: `JavaTestCase` (a
+genuine one-to-many table, `java_test_cases`, ordered by `position` — unlike the single-row
+`java_solution_drafts`) holds any number of named stdin/expected-output pairs per problem, managed
+through `JavaSolutionWorkspaceService#listTestCases`/`addTestCase`/`updateTestCase`/`removeTestCase`.
+The workspace's "Test Cases" section lets a learner add/edit/remove them and run each independently
+(or all of them via "Run All Test Cases") against whatever's currently compiled, each showing its own
+PASS/FAIL/output — separate from the original single quick-run stdin/expected-output pair above it,
+which still exists for a fast one-off check.
 
 Closing a `CompileOutcome` deletes its work directory whether compilation succeeded, failed, or the
 caller never got around to running against it — `JavaCodeRunnerTest` verifies this for both the
-success and failure paths, and `ProblemSolvingWorkspaceController` always closes the previous
-`CompileOutcome` before replacing it with a new one from a re-compile.
+success and failure paths. `CompileOutcomeRegistry` (see below) is what actually triggers that close
+in the real app, rather than the controller managing it ad hoc.
 
 ## Compiler diagnostics linked to the editor
 
 `JavaCodeRunner.parseDiagnostics` turns javac's plain-text output into structured `CompileDiagnostic`s
 (file, line, column when derivable from the caret line javac prints under a diagnostic, severity,
-message). The workspace renders each as a clickable row; clicking moves the source `TextArea`'s caret
-to that exact line/column, which is the "link to the corresponding editor line" requirement — no
-separate line-number gutter or full IDE integration needed for that specific behavior.
+message). The workspace renders each as a clickable row; clicking selects the source `TextArea`'s
+entire reported line (landing the caret at its end), which both scrolls it into view and visually
+highlights it — not just an invisible caret move to the right line/column.
 
 ## Timeout, cancellation, and process-tree cleanup
 
-`RunLimits` carries the wall-clock timeout, heap cap, and output byte cap. `RunCancellationToken` is a
-one-shot handle: the UI thread holds one per in-flight run and calls `cancel()` from a "Cancel"
-button while the actual compile/run blocks on a background thread; both a timeout and an explicit
-cancellation call `RunCancellationToken.killTree`, which destroys the process's descendants (via
-`ProcessHandle`) before force-destroying the process itself — the "kill the complete child-process
-tree" requirement.
+`RunLimits` carries the wall-clock timeout, heap cap, and output byte cap. The timeout is a learner
+preference now (`user_progress.java_run_timeout_seconds`, a "Timeout:" dropdown next to the class-name
+field in the workspace, 5/10/15/30/60 seconds) rather than a fixed constant nothing in the UI could
+change — `JavaSolutionWorkspaceService#currentRunLimits()` builds a `RunLimits` from it, keeping the
+memory and output-byte caps at their defaults (the issue only calls out the timeout as needing to be
+configurable). `RunCancellationToken` is a one-shot handle: the UI thread holds one per in-flight run
+and calls `cancel()` from a "Cancel" button while the actual compile/run blocks on a background
+thread; both a timeout and an explicit cancellation call `RunCancellationToken.killTree`, which
+destroys the process's descendants (via `ProcessHandle`) before force-destroying the process itself —
+the "kill the complete child-process tree" requirement.
+
+## Compiled temp directories don't leak on navigate-away or quit
+
+`CompileOutcomeRegistry` is the single owner every fresh `CompileOutcome` gets registered with
+(`ProblemSolvingWorkspaceController#onCompileFinished`), closing whatever was previously registered —
+the same "one shared owner, always closable" shape `BackgroundImportExecutor` uses for the import
+worker thread. `goProblems()` and `goToNextRecommended()` (this workspace's only ways to leave for a
+different screen/problem) close the registry before navigating, and `CodeFitApplication#stop()` closes
+it on normal application exit. Previously, a `CompileOutcome` from the *last* compile of a session was
+only ever closed by a *subsequent* compile — never by leaving the screen or quitting — so its temp
+directory under the OS temp dir leaked permanently in both of those cases.
 
 ## Never blocks the JavaFX UI thread
 
@@ -91,13 +113,14 @@ UI was needed for that half of the requirement.
 
 ## Known limitations
 
-- The UI wires up exactly one configured stdin/expected-output pair per run, even though the
-  underlying `compile-once-run-many` architecture (and `JavaCodeRunnerTest`) already supports running
-  several test cases against one compilation. A multi-case list UI is a follow-up.
 - The editor is a plain monospace `TextArea` (`.code-editor` style), not a real syntax-highlighting
   code editor control — JavaFX has no built-in one, and pulling in a third-party rich-text/code editor
-  component was out of scope for this iteration.
-- `CompileOutcome`/temp-directory cleanup on an unclean shutdown, or on navigating away from the
-  workspace entirely without triggering another compile, relies on the same best-effort lifecycle the
-  rest of this controller already has (e.g. the phase timer's `Timeline` isn't explicitly torn down on
-  navigation either) — not a regression introduced here, but not newly solved either.
+  component remains out of scope; still the single largest gap against the issue's stated workspace
+  features.
+- "Incompatible JDK" isn't really a distinct detected condition: `JavaCodeRunner` always compiles with
+  whatever JVM CodeFit itself is running on (`java.home`), so it can report *missing* `java`/`javac`
+  with actionable guidance, but there's no minimum-version check or fallback to a separately installed
+  JDK if the running JVM happens to be a JRE.
+- `CompileOutcomeRegistry.closeCurrent()`'s `shutdownNow()`-adjacent best-effort semantics apply here
+  too: an abrupt JVM kill (not a normal quit) can still skip the close, the same caveat
+  `BackgroundImportExecutor` already documents for its own shutdown path.

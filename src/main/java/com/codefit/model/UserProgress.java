@@ -16,6 +16,8 @@ public class UserProgress {
     public static final String DEFAULT_SOLVING_CHECKPOINT_MINUTES = "20,60,120";
     /** Default daily target for the guided curriculum practice loop, in problems (#161). */
     public static final int DEFAULT_DAILY_TARGET_PROBLEMS = 3;
+    /** Default Java runner wall-clock timeout in seconds, matching {@code RunLimits.defaults()} (#163). */
+    public static final int DEFAULT_JAVA_RUN_TIMEOUT_SECONDS = 5;
 
     private long id;
     private int xp;
@@ -35,6 +37,7 @@ public class UserProgress {
     private boolean solvingCheckpointsEnabled;
     private String solvingCheckpointMinutesCsv;
     private int dailyTargetProblems;
+    private int javaRunTimeoutSeconds;
 
     public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews) {
         this(id, xp, level, streakDays, lastReviewDate, totalReviews, 0, 0, false, DailyWorkloadMode.NORMAL,
@@ -102,6 +105,22 @@ public class UserProgress {
                         DailyWorkloadMode dailyWorkloadMode, String activeTrainingPath, int focusModuleOrder,
                         int matureInterleavePercent, int dailyNewCardLimit, int guidedSessionMinutes,
                         boolean solvingCheckpointsEnabled, String solvingCheckpointMinutesCsv, int dailyTargetProblems) {
+        this(id, xp, level, streakDays, lastReviewDate, totalReviews, missedDayCount, streakFreezeCount,
+                recoveryQuestActive, dailyWorkloadMode, activeTrainingPath, focusModuleOrder, matureInterleavePercent,
+                dailyNewCardLimit, guidedSessionMinutes, solvingCheckpointsEnabled, solvingCheckpointMinutesCsv,
+                dailyTargetProblems, DEFAULT_JAVA_RUN_TIMEOUT_SECONDS);
+    }
+
+    /** @param javaRunTimeoutSeconds the learner's preferred Java runner wall-clock timeout, in
+     *                               seconds — "Infinite loops are terminated by a configurable
+     *                               timeout" (#163); passed as {@link com.codefit.service.RunLimits}'s
+     *                               {@code timeoutSeconds} instead of the fixed default. */
+    public UserProgress(long id, int xp, int level, int streakDays, LocalDate lastReviewDate, int totalReviews,
+                        int missedDayCount, int streakFreezeCount, boolean recoveryQuestActive,
+                        DailyWorkloadMode dailyWorkloadMode, String activeTrainingPath, int focusModuleOrder,
+                        int matureInterleavePercent, int dailyNewCardLimit, int guidedSessionMinutes,
+                        boolean solvingCheckpointsEnabled, String solvingCheckpointMinutesCsv, int dailyTargetProblems,
+                        int javaRunTimeoutSeconds) {
         this.id = id;
         this.xp = xp;
         this.level = level;
@@ -121,6 +140,7 @@ public class UserProgress {
         this.solvingCheckpointMinutesCsv = solvingCheckpointMinutesCsv == null || solvingCheckpointMinutesCsv.isBlank()
                 ? DEFAULT_SOLVING_CHECKPOINT_MINUTES : solvingCheckpointMinutesCsv;
         this.dailyTargetProblems = dailyTargetProblems > 0 ? dailyTargetProblems : DEFAULT_DAILY_TARGET_PROBLEMS;
+        this.javaRunTimeoutSeconds = javaRunTimeoutSeconds > 0 ? javaRunTimeoutSeconds : DEFAULT_JAVA_RUN_TIMEOUT_SECONDS;
     }
 
     public long getId() { return id; }
@@ -173,6 +193,11 @@ public class UserProgress {
     public int getDailyTargetProblems() { return dailyTargetProblems; }
     public void setDailyTargetProblems(int dailyTargetProblems) {
         this.dailyTargetProblems = dailyTargetProblems > 0 ? dailyTargetProblems : DEFAULT_DAILY_TARGET_PROBLEMS;
+    }
+
+    public int getJavaRunTimeoutSeconds() { return javaRunTimeoutSeconds; }
+    public void setJavaRunTimeoutSeconds(int javaRunTimeoutSeconds) {
+        this.javaRunTimeoutSeconds = javaRunTimeoutSeconds > 0 ? javaRunTimeoutSeconds : DEFAULT_JAVA_RUN_TIMEOUT_SECONDS;
     }
 
     /** Parses {@link #getSolvingCheckpointMinutesCsv()} into ascending minute thresholds, ignoring any malformed entries. */

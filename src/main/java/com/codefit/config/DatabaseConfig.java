@@ -164,6 +164,7 @@ public final class DatabaseConfig {
             ensureImportAttributionSchema(connection);
             ensureProblemGuidanceSchema(connection);
             ensureJavaSolutionDraftSchema(connection);
+            ensureJavaTestCaseSchema(connection);
             SchemaMigrator.migrate(connection);
             seedStarterContent(connection);
             seedAssessmentBank(connection);
@@ -225,6 +226,8 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "user_progress", "solving_checkpoint_minutes", "TEXT NOT NULL DEFAULT '20,60,120'");
         // The guided curriculum practice loop's (#161) daily target, in problems.
         addColumnIfMissing(connection, "user_progress", "daily_target_problems", "INTEGER NOT NULL DEFAULT 3");
+        // The Java runner's (#163) configurable wall-clock timeout, in seconds.
+        addColumnIfMissing(connection, "user_progress", "java_run_timeout_seconds", "INTEGER NOT NULL DEFAULT 5");
     }
 
     /**
@@ -456,6 +459,28 @@ public final class DatabaseConfig {
                         FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE
                     )
                     """);
+        }
+    }
+
+    /**
+     * Named, ordered local test cases for a problem's Java draft (#163's "run multiple local test
+     * cases" — the single stdin/expected pair on {@code java_solution_drafts} only ever supported
+     * one). Unlike the draft, this is a genuine one-to-many table: any number of rows per
+     * {@code problem_id}, ordered by {@code position}.
+     */
+    private static void ensureJavaTestCaseSchema(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS java_test_cases (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        problem_id INTEGER NOT NULL,
+                        position INTEGER NOT NULL,
+                        stdin TEXT,
+                        expected_output TEXT,
+                        FOREIGN KEY(problem_id) REFERENCES problems(id) ON DELETE CASCADE
+                    )
+                    """);
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_java_test_cases_problem_id ON java_test_cases(problem_id)");
         }
     }
 

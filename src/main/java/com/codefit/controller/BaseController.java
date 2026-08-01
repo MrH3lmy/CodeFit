@@ -1,5 +1,6 @@
 package com.codefit.controller;
 
+import com.codefit.service.CompileOutcomeRegistry;
 import com.codefit.service.DatabaseInternalsPackService;
 import com.codefit.ui.NavigationService;
 import javafx.fxml.FXML;
@@ -15,19 +16,40 @@ public abstract class BaseController {
         label.setManaged(hasStatus);
     }
 
-    public void goDashboard() { NavigationService.showDashboard(); }
-    public void goDecks() { NavigationService.showDecks(); }
-    public void goProblems() { NavigationService.showProblems(); }
-    public void goAddCard() { NavigationService.showAddCard(); }
-    public void goReview() { NavigationService.showReview(); }
-    public void goSyllabus() { NavigationService.showSyllabus(); }
-    public void goStats() { NavigationService.showStats(); }
-    public void goWeeklyAssessment() { NavigationService.showWeeklyAssessment(); }
-    public void goGuidedTraining() { NavigationService.beginGuidedTraining(); }
+    /** Controllers with in-flight work may veto navigation until their state is safe to discard. */
+    protected boolean canNavigateAway() {
+        return true;
+    }
+
+    /** Releases any compiled Java workspace before switching to another FXML controller. */
+    protected void beforeNavigateAway() {
+        CompileOutcomeRegistry.closeCurrent();
+    }
+
+    private void navigate(Runnable action) {
+        if (canNavigateAway()) {
+            beforeNavigateAway();
+            action.run();
+        }
+    }
+
+    public void goDashboard() { navigate(NavigationService::showDashboard); }
+    public void goDecks() { navigate(NavigationService::showDecks); }
+    public void goProblems() { navigate(NavigationService::showProblems); }
+    public void goAddCard() { navigate(NavigationService::showAddCard); }
+    public void goReview() { navigate(NavigationService::showReview); }
+    public void goSyllabus() { navigate(NavigationService::showSyllabus); }
+    public void goStats() { navigate(NavigationService::showStats); }
+    public void goWeeklyAssessment() { navigate(NavigationService::showWeeklyAssessment); }
+    public void goGuidedTraining() { navigate(NavigationService::beginGuidedTraining); }
 
     /** Shared Library action: install the bundled curriculum, then reload Library to show its decks. */
     @FXML
     public void installDatabaseInternalsPath() {
+        if (!canNavigateAway()) {
+            return;
+        }
+        beforeNavigateAway();
         try {
             DatabaseInternalsPackService.InstallSummary summary = new DatabaseInternalsPackService().install();
             Alert alert = new Alert(Alert.AlertType.INFORMATION);

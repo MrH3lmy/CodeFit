@@ -108,14 +108,25 @@ hint's own text into a flashcard source is not covered here.
 
 ## Initial content scope
 
-This delivers the mechanism for every imported problem; authoring high-quality guidance for a pilot
-set at the start of Stage A (per the issue's stated initial scope) remains a content task for a
-follow-up — no guidance rows are seeded by this change.
+This delivers the mechanism for every imported problem. Authoring high-quality guidance for a pilot
+set at the start of Stage A (per the issue's stated initial scope) was completed as a follow-up
+content task (#171): see `StageAPilotGuidanceSeed` for the documented ten-problem pilot set (the
+earliest real rows on the workbook's "A" sheet, identified by the same stable `(platform,
+externalCode)` pairs the real-workbook import tests already use) and its full four-level,
+CodeFit-authored guidance. `DatabaseConfig#seedStageAPilotGuidance` seeds each pilot problem's
+catalog row, Stage A roadmap slot, and `CODEFIT`-sourced guidance idempotently on every startup
+(`INSERT OR IGNORE` against each table's own `UNIQUE` constraint), using the exact identity and
+sequence order a real import of the approved workbook assigns to the same rows — so importing that
+workbook later merges into these same rows rather than duplicating them, and the guidance stays
+attached either way. Every problem beyond this pilot set still shows "no guidance authored yet" until
+a human authors it through the workspace's Edit Guidance panel or `saveGuidance` directly.
 
 ## Known limitations
 
-- No pilot guidance content is seeded for any problem; every problem shows "no guidance authored yet"
-  until a human authors it through the workspace's Edit Guidance panel or `saveGuidance` directly.
+- Only the ten-problem Stage A pilot set (#171) has seeded guidance; every other imported problem
+  still shows "no guidance authored yet" until a human authors it through the workspace's Edit
+  Guidance panel or `saveGuidance` directly. Scaling content coverage beyond the pilot remains future
+  work.
 - Guidance editing in the workspace covers the seven text fields (four ladder levels plus the three
   Explanation sub-parts) only; editing prerequisites/reference links is available through
   `ProblemGuidanceService#saveGuidance` directly (and covered by its tests) but has no dedicated

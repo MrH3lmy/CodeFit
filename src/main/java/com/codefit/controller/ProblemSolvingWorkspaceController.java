@@ -22,6 +22,7 @@ import com.codefit.model.SubmissionResult;
 import com.codefit.service.CompileDiagnostic;
 import com.codefit.service.CompileOutcome;
 import com.codefit.service.CompileOutcomeRegistry;
+import com.codefit.service.JavaExecutionCoordinator;
 import com.codefit.service.JavaSolutionWorkspaceService;
 import com.codefit.service.ProblemFlashcardService;
 import com.codefit.service.ProblemGuidanceService;
@@ -59,6 +60,7 @@ import javafx.util.Duration;
 
 import java.awt.Desktop;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -165,9 +167,11 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     private final ProblemGuidanceService guidanceService = new ProblemGuidanceService();
     private final JavaSolutionWorkspaceService javaWorkspaceService = new JavaSolutionWorkspaceService();
     private final ProblemLibraryService problemLibraryService = new ProblemLibraryService();
+    private final List<TestCaseRowState> renderedTestCases = new ArrayList<>();
 
     private CompileOutcome currentCompileOutcome;
     private RunCancellationToken currentCancellationToken;
+    private JavaExecutionCoordinator.Operation currentJavaOperation;
     private PauseTransition javaAutosaveDebounce;
     private boolean loadingJavaDraft;
 
@@ -227,11 +231,20 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         setVisible(nextProblemRow, true);
     }
 
-    /** Leaving the workspace for Problems — the only navigation-away action this screen exposes — is
-     *  exactly when a compiled outcome that's never getting recompiled needs its temp directory
-     *  cleaned up (#163); {@code CodeFitApplication#stop()} covers the "quit instead" path. */
+    @Override
+    protected boolean canNavigateAway() {
+        if (currentJavaOperation == null && !JavaExecutionCoordinator.hasActiveOperation()) {
+            return true;
+        }
+        setStatus(javaRunStatusLabel, "Wait for the current Java operation to finish, or cancel it, before leaving this workspace.");
+        return false;
+    }
+
     @Override
     public void goProblems() {
+        if (!canNavigateAway()) {
+            return;
+        }
         CompileOutcomeRegistry.closeCurrent();
         currentCompileOutcome = null;
         super.goProblems();
@@ -239,7 +252,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
 
     @FXML
     public void goToNextRecommended() {
-        if (nextRecommendedProblemId == null) {
+        if (nextRecommendedProblemId == null || !canNavigateAway()) {
             return;
         }
         CompileOutcomeRegistry.closeCurrent();
@@ -282,9 +295,6 @@ public class ProblemSolvingWorkspaceController extends BaseController {
 
     private static final List<Integer> TIMEOUT_OPTIONS_SECONDS = List.of(5, 10, 15, 30, 60);
 
-    /** "Infinite loops are terminated by a configurable timeout" (#163): the timeout mechanism itself
-     *  always existed, but nothing in the UI could ever change it from the fixed default — this is
-     *  the missing UI half, backed by {@link JavaSolutionWorkspaceService#getRunTimeoutSeconds()}. */
     private void configureTimeoutChoiceBox() {
         javaTimeoutChoiceBox.setItems(FXCollections.observableArrayList(TIMEOUT_OPTIONS_SECONDS));
         javaTimeoutChoiceBox.getSelectionModel().select(Integer.valueOf(javaWorkspaceService.getRunTimeoutSeconds()));
@@ -322,6 +332,39 @@ public class ProblemSolvingWorkspaceController extends BaseController {
                 javaStdinArea.getText(), javaExpectedOutputArea.getText());
     }
 
+    private JavaExecutionCoordinator.Operation beginJavaOperation(RunCancellationToken token, String status) {
+        JavaExecutionCoordinator.Operation operation = JavaExecutionCoordinator.tryStart(token);
+        if (operation == null) {
+            setStatus(javaRunStatusLabel, "Another Java compile or run is already in progress.");
+            return null;
+        }
+        currentJavaOperation = operation;
+        currentCancellationToken = token;
+        javaCompileButton.setDisable(true);
+        javaRunButton.setDisable(true);
+        javaTimeoutChoiceBox.setDisable(true);
+        javaTestCasesBox.setDisable(true);
+        setVisible(javaCancelButton, token != null);
+        setStatus(javaRunStatusLabel, status);
+        return operation;
+    }
+
+    private void finishJavaOperationUi() {
+        currentJavaOperation = null;
+        currentCancellationToken = null;
+        javaCompileButton.setDisable(!javaWorkspaceService.isRunnerAvailable());
+        javaRunButton.setDisable(currentCompileOutcome == null || !currentCompileOutcome.success()
+                || !javaWorkspaceService.isRunnerAvailable());
+        javaTimeoutChoiceBox.setDisable(false);
+        javaTestCasesBox.setDisable(false);
+        setVisible(javaCancelButton, false);
+    }
+
+    private void onJavaOperationFailed(String message) {
+        finishJavaOperationUi();
+        setStatus(javaRunStatusLabel, message);
+    }
+
     @FXML
     public void compileJavaSolution() {
         if (problemId == null || !javaWorkspaceService.isRunnerAvailable()) {
@@ -330,36 +373,37 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         autosaveJavaDraft();
         String source = javaSourceArea.getText();
         String className = blankToNull(javaClassNameField.getText()) == null ? "Solution" : javaClassNameField.getText().strip();
-        javaCompileButton.setDisable(true);
-        javaRunButton.setDisable(true);
-        setStatus(javaRunStatusLabel, "Compiling…");
+        JavaExecutionCoordinator.Operation operation = beginJavaOperation(null, "Compiling…");
+        if (operation == null) {
+            return;
+        }
         javaDiagnosticsBox.getChildren().clear();
 
         Thread thread = new Thread(() -> {
-            CompileOutcome outcome = javaWorkspaceService.compile(source, className);
-            Platform.runLater(() -> onCompileFinished(outcome));
+            try {
+                CompileOutcome outcome = javaWorkspaceService.compile(source, className);
+                CompileOutcomeRegistry.replace(outcome);
+                operation.close();
+                Platform.runLater(() -> onCompileFinished(outcome));
+            } catch (RuntimeException exception) {
+                operation.close();
+                Platform.runLater(() -> onJavaOperationFailed("Compilation failed: " + exceptionMessage(exception)));
+            }
         }, "java-runner-compile");
         thread.setDaemon(true);
         thread.start();
     }
 
     private void onCompileFinished(CompileOutcome outcome) {
-        // Registering here (rather than closing currentCompileOutcome directly) means the outcome's
-        // temp directory still gets cleaned up even if the learner never compiles again before
-        // leaving this problem — see CompileOutcomeRegistry and this controller's goProblems()/
-        // goToNextRecommended() overrides, and CodeFitApplication#stop() for the app-exit path.
-        CompileOutcomeRegistry.replace(outcome);
         currentCompileOutcome = outcome;
-        javaCompileButton.setDisable(false);
+        finishJavaOperationUi();
         javaDiagnosticsBox.getChildren().clear();
 
         if (outcome.success()) {
             setStatus(javaRunStatusLabel, "Compiled successfully.");
-            javaRunButton.setDisable(!javaWorkspaceService.isRunnerAvailable());
             return;
         }
         setStatus(javaRunStatusLabel, "Compilation failed — see diagnostics below.");
-        javaRunButton.setDisable(true);
         for (CompileDiagnostic diagnostic : outcome.diagnostics()) {
             javaDiagnosticsBox.getChildren().add(diagnosticRow(diagnostic));
         }
@@ -376,10 +420,6 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         return jumpButton;
     }
 
-    /** "Compiler diagnostics link to the corresponding editor line" (#163): moves the source editor's
-     *  caret to the diagnostic's reported line/column and selects that whole line, so it's visually
-     *  highlighted (scrolled into view by virtue of the caret/selection landing there) rather than
-     *  just silently repositioning an invisible caret. */
     private void jumpSourceCaretToLine(int line, Integer column) {
         String text = javaSourceArea.getText();
         String[] lines = text.split("\\R", -1);
@@ -390,10 +430,6 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         int lineIndex = Math.min(Math.max(line - 1, 0), lines.length - 1);
         int lineLength = lineIndex >= 0 && lineIndex < lines.length ? lines[lineIndex].length() : 0;
         int lineEnd = Math.min(lineStart + lineLength, text.length());
-
-        // selectRange's second argument is the resulting caret position, so this both scrolls the
-        // caret to the diagnostic's line and leaves the whole line selected/highlighted — a plain
-        // positionCaret() call afterward would collapse the selection right back to an invisible caret.
         javaSourceArea.requestFocus();
         javaSourceArea.selectRange(Math.min(lineStart, text.length()), lineEnd);
     }
@@ -405,28 +441,31 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         }
         String stdin = javaStdinArea.getText();
         String expectedOutput = blankToNull(javaExpectedOutputArea.getText());
-        currentCancellationToken = new RunCancellationToken();
-        javaRunButton.setDisable(true);
-        javaCompileButton.setDisable(true);
-        setVisible(javaCancelButton, true);
-        setStatus(javaRunStatusLabel, "Running…");
+        RunCancellationToken token = new RunCancellationToken();
+        JavaExecutionCoordinator.Operation operation = beginJavaOperation(token, "Running…");
+        if (operation == null) {
+            return;
+        }
         javaOutputArea.clear();
 
         CompileOutcome compiledForThisRun = currentCompileOutcome;
-        RunCancellationToken tokenForThisRun = currentCancellationToken;
         RunLimits limits = javaWorkspaceService.currentRunLimits();
         Thread thread = new Thread(() -> {
-            RunResult result = javaWorkspaceService.run(compiledForThisRun, stdin, limits, tokenForThisRun);
-            Platform.runLater(() -> onRunFinished(result, expectedOutput));
+            try {
+                RunResult result = javaWorkspaceService.run(compiledForThisRun, stdin, limits, token);
+                operation.close();
+                Platform.runLater(() -> onRunFinished(result, expectedOutput));
+            } catch (RuntimeException exception) {
+                operation.close();
+                Platform.runLater(() -> onJavaOperationFailed("Run failed: " + exceptionMessage(exception)));
+            }
         }, "java-runner-run");
         thread.setDaemon(true);
         thread.start();
     }
 
     private void onRunFinished(RunResult result, String expectedOutput) {
-        javaRunButton.setDisable(currentCompileOutcome == null || !currentCompileOutcome.success());
-        javaCompileButton.setDisable(false);
-        setVisible(javaCancelButton, false);
+        finishJavaOperationUi();
 
         StringBuilder output = new StringBuilder();
         output.append("stdout:\n").append(result.stdout()).append('\n');
@@ -457,6 +496,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     public void cancelJavaRun() {
         if (currentCancellationToken != null) {
             currentCancellationToken.cancel();
+            setStatus(javaRunStatusLabel, "Cancelling…");
         }
     }
 
@@ -471,13 +511,16 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     // ---- Multiple local test cases (#163) --------------------------------------------------------
 
     private void renderTestCases() {
+        renderedTestCases.clear();
         javaTestCasesBox.getChildren().clear();
         for (JavaTestCase testCase : javaWorkspaceService.listTestCases(problemId)) {
-            javaTestCasesBox.getChildren().add(testCaseRow(testCase));
+            TestCaseRowState state = testCaseRow(testCase);
+            renderedTestCases.add(state);
+            javaTestCasesBox.getChildren().add(state.row());
         }
     }
 
-    private javafx.scene.Node testCaseRow(JavaTestCase testCase) {
+    private TestCaseRowState testCaseRow(JavaTestCase testCase) {
         TextArea stdinArea = new TextArea(testCase.getStdin() == null ? "" : testCase.getStdin());
         stdinArea.setPromptText("Standard input");
         stdinArea.setPrefRowCount(2);
@@ -489,29 +532,10 @@ public class ProblemSolvingWorkspaceController extends BaseController {
 
         Label resultLabel = new Label("Not run yet.");
         resultLabel.setWrapText(true);
-
-        Runnable persistEdits = () -> javaWorkspaceService.updateTestCase(testCase.getId(), testCase.getProblemId(),
-                testCase.getPosition(), stdinArea.getText(), expectedArea.getText());
-        stdinArea.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
-            if (!isFocused) persistEdits.run();
-        });
-        expectedArea.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
-            if (!isFocused) persistEdits.run();
-        });
-
         Button runButton = new Button("Run");
         runButton.getStyleClass().add("action-button");
-        runButton.setOnAction(event -> {
-            persistEdits.run();
-            runSingleTestCase(stdinArea.getText(), expectedArea.getText(), resultLabel);
-        });
-
         Button removeButton = new Button("Remove");
         removeButton.getStyleClass().add("ghost-button");
-        removeButton.setOnAction(event -> {
-            javaWorkspaceService.removeTestCase(testCase.getId());
-            renderTestCases();
-        });
 
         VBox stdinColumn = new VBox(2, new Label("Input"), stdinArea);
         stdinColumn.setMaxWidth(Double.MAX_VALUE);
@@ -520,37 +544,66 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         HBox inputsRow = new HBox(8, stdinColumn, expectedColumn);
         HBox.setHgrow(stdinColumn, javafx.scene.layout.Priority.ALWAYS);
         HBox.setHgrow(expectedColumn, javafx.scene.layout.Priority.ALWAYS);
-
         HBox actionsRow = new HBox(8, runButton, removeButton);
         actionsRow.setAlignment(Pos.CENTER_LEFT);
-
         VBox row = new VBox(6, inputsRow, actionsRow, resultLabel);
         row.getStyleClass().add("panel");
-        return row;
+
+        TestCaseRowState state = new TestCaseRowState(testCase, stdinArea, expectedArea, resultLabel, row);
+        stdinArea.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
+            if (!isFocused) state.persist(javaWorkspaceService);
+        });
+        expectedArea.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
+            if (!isFocused) state.persist(javaWorkspaceService);
+        });
+        runButton.setOnAction(event -> runSingleTestCase(state));
+        removeButton.setOnAction(event -> {
+            javaWorkspaceService.removeTestCase(testCase.getId());
+            renderTestCases();
+        });
+        return state;
     }
 
     @FXML
     public void addJavaTestCase() {
-        if (problemId == null) {
+        if (problemId == null || currentJavaOperation != null) {
             return;
         }
         javaWorkspaceService.addTestCase(problemId);
         renderTestCases();
     }
 
-    /** Runs one test case against whatever's currently compiled — a separate background run from the
-     *  quick-run Compile/Run pair above, so a slow test case never disables those controls. */
-    private void runSingleTestCase(String stdin, String expectedOutput, Label resultLabel) {
+    private void runSingleTestCase(TestCaseRowState state) {
         if (currentCompileOutcome == null || !currentCompileOutcome.success()) {
-            resultLabel.setText("Compile the solution first.");
+            state.resultLabel().setText("Compile the solution first.");
             return;
         }
-        resultLabel.setText("Running…");
+        state.persist(javaWorkspaceService);
+        JavaTestCase snapshot = state.snapshot();
+        RunCancellationToken token = new RunCancellationToken();
+        JavaExecutionCoordinator.Operation operation = beginJavaOperation(token, "Running test case…");
+        if (operation == null) {
+            return;
+        }
+        state.resultLabel().setText("Running…");
         CompileOutcome compiledForThisRun = currentCompileOutcome;
         RunLimits limits = javaWorkspaceService.currentRunLimits();
         Thread thread = new Thread(() -> {
-            RunResult result = javaWorkspaceService.run(compiledForThisRun, stdin, limits, new RunCancellationToken());
-            Platform.runLater(() -> resultLabel.setText(describeTestCaseResult(result, expectedOutput)));
+            try {
+                RunResult result = javaWorkspaceService.runTestCase(compiledForThisRun, snapshot, limits, token);
+                operation.close();
+                Platform.runLater(() -> {
+                    state.resultLabel().setText(describeTestCaseResult(result, snapshot.getExpectedOutput()));
+                    finishJavaOperationUi();
+                    setStatus(javaRunStatusLabel, result.cancelled() ? "Test case cancelled." : "Test case finished.");
+                });
+            } catch (RuntimeException exception) {
+                operation.close();
+                Platform.runLater(() -> {
+                    state.resultLabel().setText("Run failed: " + exceptionMessage(exception));
+                    onJavaOperationFailed("Test case failed: " + exceptionMessage(exception));
+                });
+            }
         }, "java-runner-test-case");
         thread.setDaemon(true);
         thread.start();
@@ -562,41 +615,64 @@ public class ProblemSolvingWorkspaceController extends BaseController {
             setStatus(javaRunStatusLabel, "Compile the solution before running test cases.");
             return;
         }
-        List<JavaTestCase> testCases = javaWorkspaceService.listTestCases(problemId);
-        if (testCases.isEmpty()) {
+        if (renderedTestCases.isEmpty()) {
             return;
         }
-        List<javafx.scene.Node> rows = javaTestCasesBox.getChildren().stream().toList();
+
+        List<TestCaseExecution> executions = new ArrayList<>();
+        for (TestCaseRowState state : renderedTestCases) {
+            state.persist(javaWorkspaceService);
+            state.resultLabel().setText("Queued…");
+            executions.add(new TestCaseExecution(state.snapshot(), state.resultLabel()));
+        }
+
+        RunCancellationToken token = new RunCancellationToken();
+        JavaExecutionCoordinator.Operation operation = beginJavaOperation(token,
+                "Running " + executions.size() + " test case(s)…");
+        if (operation == null) {
+            return;
+        }
         CompileOutcome compiledForThisRun = currentCompileOutcome;
         RunLimits limits = javaWorkspaceService.currentRunLimits();
-        setStatus(javaRunStatusLabel, "Running " + testCases.size() + " test case(s)…");
 
         Thread thread = new Thread(() -> {
-            for (int i = 0; i < testCases.size() && i < rows.size(); i++) {
-                JavaTestCase testCase = testCases.get(i);
-                Label resultLabel = testCaseResultLabel(rows.get(i));
-                if (resultLabel != null) {
-                    Platform.runLater(() -> resultLabel.setText("Running…"));
+            int completed = 0;
+            String finalStatus;
+            try {
+                for (int i = 0; i < executions.size(); i++) {
+                    TestCaseExecution execution = executions.get(i);
+                    if (token.isCancelled()) {
+                        for (int remaining = i; remaining < executions.size(); remaining++) {
+                            Label label = executions.get(remaining).resultLabel();
+                            Platform.runLater(() -> label.setText("Cancelled before run."));
+                        }
+                        break;
+                    }
+                    Platform.runLater(() -> execution.resultLabel().setText("Running…"));
+                    RunResult result = javaWorkspaceService.runTestCase(
+                            compiledForThisRun, execution.testCase(), limits, token);
+                    String description = describeTestCaseResult(result, execution.testCase().getExpectedOutput());
+                    Platform.runLater(() -> execution.resultLabel().setText(description));
+                    completed++;
+                    if (result.cancelled()) {
+                        break;
+                    }
                 }
-                RunResult result = javaWorkspaceService.runTestCase(compiledForThisRun, testCase, limits, new RunCancellationToken());
-                String description = describeTestCaseResult(result, testCase.getExpectedOutput());
-                if (resultLabel != null) {
-                    Platform.runLater(() -> resultLabel.setText(description));
-                }
+                finalStatus = token.isCancelled()
+                        ? "Test-case run cancelled after " + completed + " completed case(s)."
+                        : "Finished running " + completed + " test case(s).";
+            } catch (RuntimeException exception) {
+                finalStatus = "Test-case run failed: " + exceptionMessage(exception);
             }
-            Platform.runLater(() -> setStatus(javaRunStatusLabel, "Finished running " + testCases.size() + " test case(s)."));
+            operation.close();
+            String status = finalStatus;
+            Platform.runLater(() -> {
+                finishJavaOperationUi();
+                setStatus(javaRunStatusLabel, status);
+            });
         }, "java-runner-test-case-all");
         thread.setDaemon(true);
         thread.start();
-    }
-
-    /** The last child of a {@link #testCaseRow} {@code VBox} is always its result {@link Label}. */
-    private Label testCaseResultLabel(javafx.scene.Node row) {
-        if (!(row instanceof VBox box) || box.getChildren().isEmpty()) {
-            return null;
-        }
-        javafx.scene.Node last = box.getChildren().get(box.getChildren().size() - 1);
-        return last instanceof Label label ? label : null;
     }
 
     private String describeTestCaseResult(RunResult result, String expectedOutput) {
@@ -620,6 +696,27 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         return description.toString();
     }
 
+    private String exceptionMessage(RuntimeException exception) {
+        return exception.getMessage() == null || exception.getMessage().isBlank()
+                ? exception.getClass().getSimpleName() : exception.getMessage();
+    }
+
+    private record TestCaseRowState(JavaTestCase testCase, TextArea stdinArea, TextArea expectedArea,
+                                    Label resultLabel, VBox row) {
+        void persist(JavaSolutionWorkspaceService service) {
+            service.updateTestCase(testCase.getId(), testCase.getProblemId(), testCase.getPosition(),
+                    stdinArea.getText(), expectedArea.getText());
+        }
+
+        JavaTestCase snapshot() {
+            return new JavaTestCase(testCase.getId(), testCase.getProblemId(), testCase.getPosition(),
+                    stdinArea.getText(), expectedArea.getText());
+        }
+    }
+
+    private record TestCaseExecution(JavaTestCase testCase, Label resultLabel) {
+    }
+
     /** Prerequisites/reference links (static, from the authored guidance) plus every hint level
      *  already opened this attempt (from the current session), rendered in ladder order (#162). */
     private void loadGuidance() {
@@ -629,9 +726,6 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         List<String> referenceLinks = guidanceService.getReferenceLinks(problemId);
         setStatus(referenceLinksLabel, referenceLinks.isEmpty() ? "" : "References: " + String.join(", ", referenceLinks));
 
-        // #162: the architecture stores where guidance came from (learner/CodeFit/imported/provider);
-        // showing it here is what actually makes that provenance visible to the learner reading it,
-        // rather than only ever being readable from the database.
         setStatus(guidanceSourceLabel, guidanceService.getGuidance(problemId)
                 .map(guidance -> "Source: " + capitalize(guidance.getSource().name()))
                 .orElse(""));
@@ -1046,9 +1140,6 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         }
     }
 
-    /** "Show the concept explanation after AC" (#162): the full explanation is shown directly here
-     *  regardless of how far up the ladder the learner got this attempt — once solved, there's no
-     *  remaining pedagogical reason to keep it behind further clicks. */
     private void showExplanationAfterAccepted() {
         ProblemGuidanceService.HintReveal explanation = guidanceService.revealLevel(problemId, HintLevel.EXPLANATION);
         if (!explanation.hasContent()) {

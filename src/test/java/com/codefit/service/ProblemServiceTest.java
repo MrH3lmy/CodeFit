@@ -1,42 +1,41 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.RoadmapEntry;
 import com.codefit.model.RoadmapStage;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Touches the local sqlite database the same way {@code AssessmentIsolationTest} does (idempotently,
- * using fixed TEST-FIXTURE identifiers safe to re-insert across repeated runs), verifying the
- * uniqueness and roadmap-membership invariants {@link ProblemService} is responsible for (#142).
+ * Verifies the uniqueness and roadmap-membership invariants {@link ProblemService} is responsible
+ * for (#142), using fixed TEST-FIXTURE identifiers safe to re-insert across repeated runs.
  *
- * <p>Roadmap slot numbers are randomly offset (like {@code TrainingSheetImportServiceTest}'s
- * {@code nextOrder}) rather than small fixed literals: {@code addToRoadmap}/
- * {@code upsertRoadmapMembership}'s reposition-not-duplicate and slot-conflict behavior doesn't care
- * what the actual numbers are, and a real curriculum import (#159) legitimately wants the low,
- * naturally-ordered stage-A/B/D2 slots this test used to hard-code, permanently, across every future
- * run of this shared local `codefit.db`.
+ * <p>Roadmap slot numbers come from a monotonic counter rather than small fixed literals:
+ * {@code addToRoadmap}/{@code upsertRoadmapMembership}'s reposition-not-duplicate and slot-conflict
+ * behavior doesn't care what the actual numbers are, and this guarantees every test method in this
+ * class gets its own disjoint block of slots within this class's isolated database (#175), regardless
+ * of execution order, without depending on randomness to avoid a collision.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemServiceTest {
 
-    private final ProblemService problemService = new ProblemService();
-    private final Random random = new Random();
-    private int nextOrder = 20_000_000 + random.nextInt(1_000_000);
+    private static final AtomicInteger ROADMAP_ORDER_SEQUENCE = new AtomicInteger(1);
 
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
+    private final ProblemService problemService = new ProblemService();
+    private int nextOrder = ROADMAP_ORDER_SEQUENCE.getAndAdd(1_000);
 
     @Test
     void findOrCreateProblemNeverDuplicatesTheSamePlatformAndExternalCode() {

@@ -1,8 +1,9 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,18 +14,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Covers the solving workspace's coaching-checkpoint preference (#145): default thresholds,
- * enabling/disabling, changing the thresholds, and detecting a newly-crossed checkpoint. Touches the
- * shared local database like every other preference-backed test in this suite, always restoring the
- * default checkpoint configuration afterward so it doesn't leak into unrelated tests.
+ * enabling/disabling, changing the thresholds, and detecting a newly-crossed checkpoint - always
+ * restoring the default checkpoint configuration afterward so it doesn't leak into unrelated tests.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class SolvingCheckpointPreferenceServiceTest {
 
     private final SolvingCheckpointPreferenceService checkpointService = new SolvingCheckpointPreferenceService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void defaultCheckpointsAreTwentySixtyAndOneHundredTwentyMinutesAndEnabled() {

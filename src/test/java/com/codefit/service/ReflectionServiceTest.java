@@ -1,15 +1,16 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.CardType;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.GeneratedCard;
 import com.codefit.model.ReflectionDraft;
 import com.codefit.model.ReflectionType;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,18 +24,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Covers the #102 acceptance criteria that don't need a UI: each reflection workflow splits into
  * atomic, independently-answerable cards; duplicate detection runs per generated card; and
  * reflection XP is awarded exactly once per reflection no matter how many cards it produced.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ReflectionServiceTest {
 
     private final DeckService deckService = new DeckService();
     private final FlashcardService flashcardService = new FlashcardService();
     private final ProgressService progressService = new ProgressService();
     private final ReflectionService reflectionService = new ReflectionService(flashcardService, progressService);
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @BeforeEach
     void resetDailyReflectionXpCap() {

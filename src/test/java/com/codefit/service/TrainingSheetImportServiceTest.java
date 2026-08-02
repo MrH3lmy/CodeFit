@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemProgress;
@@ -10,15 +9,17 @@ import com.codefit.model.RoadmapStage;
 import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.RoadmapEntryRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,10 +29,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Covers the #143 acceptance criteria against synthetic, programmatically-built {@code .xlsx}
  * fixtures (never the real Junior Training Sheet): each sheet, duplicate handling, malformed rows,
- * progress preservation, and repeat import. Touches the shared local database the same way
- * {@code AssessmentIsolationTest}/{@code ProblemServiceTest} do, using a fresh unique platform label
- * per test method so repeated test runs never collide with each other's fixture data.
+ * progress preservation, and repeat import. Uses a fresh unique platform label per test method so
+ * repeated test runs never collide with each other's fixture data.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class TrainingSheetImportServiceTest {
 
     private final TrainingSheetImportService importService = new TrainingSheetImportService();
@@ -40,17 +44,12 @@ class TrainingSheetImportServiceTest {
     private final ProblemProgressRepository progressRepository = new ProblemProgressRepository();
     private final ProblemProgressService progressService = new ProblemProgressService();
 
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
-
-    // The roadmap_entries table's (stage, sequence_order) slot is a single global position shared
-    // with every other test touching this database (e.g. ProblemServiceTest's fixed stage-A
-    // position 1). Every row this test writes gets an explicit, randomly-based "Order" value so it
-    // can never collide with another test's fixture data or with a previous run of this same test.
-    private final Random random = new Random();
-    private int nextOrder = 10_000_000 + random.nextInt(1_000_000);
+    // The roadmap_entries table's (stage, sequence_order) slot is a single position shared with
+    // every other test method in this class (all of which run against this class's own isolated
+    // database, #175). Every row this test writes gets an "Order" value from a monotonic counter so
+    // it can never collide with another test method's fixture data, regardless of execution order.
+    private static final AtomicInteger ROADMAP_ORDER_SEQUENCE = new AtomicInteger(1);
+    private int nextOrder = ROADMAP_ORDER_SEQUENCE.getAndAdd(1_000);
 
     private String uniquePlatform(String testName) {
         return "TEST-FIXTURE-IMPORT-" + testName + "-" + UUID.randomUUID();

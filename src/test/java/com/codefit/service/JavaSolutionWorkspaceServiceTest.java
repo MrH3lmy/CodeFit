@@ -1,12 +1,13 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.JavaSolutionDraft;
 import com.codefit.model.JavaTestCase;
 import com.codefit.model.Problem;
 import com.codefit.model.UserProgress;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,16 +21,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * for a real app restart the same way {@code ProblemSolvingSessionServiceTest} does), autosave
  * overwriting in place rather than accumulating rows, and the default template for a problem with no
  * saved draft yet.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class JavaSolutionWorkspaceServiceTest {
 
     private final ProblemService problemService = new ProblemService();
     private final JavaSolutionWorkspaceService workspaceService = new JavaSolutionWorkspaceService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     private Problem fixtureProblem(String code) {
         return problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", code, "Java Runner Fixture " + code,

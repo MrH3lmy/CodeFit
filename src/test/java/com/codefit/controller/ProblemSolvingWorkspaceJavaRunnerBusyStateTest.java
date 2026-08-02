@@ -1,6 +1,5 @@
 package com.codefit.controller;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.JavaTestCase;
 import com.codefit.model.Problem;
 import com.codefit.service.CompileOutcome;
@@ -8,6 +7,7 @@ import com.codefit.service.JavaExecutionCoordinator;
 import com.codefit.service.JavaSolutionWorkspaceService;
 import com.codefit.service.ProblemService;
 import com.codefit.service.RunCancellationToken;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import com.codefit.ui.FxToolkitSupport;
 import com.codefit.ui.NavigationService;
 import javafx.application.Platform;
@@ -22,6 +22,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -47,13 +49,16 @@ import static org.junit.jupiter.api.Assertions.fail;
  * controller state is exercised via reflection, the same way
  * {@code SettingsControllerImportBusyStateTest} covers the import busy-state guard, since native
  * background-thread-driven flows can't be scripted directly.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemSolvingWorkspaceJavaRunnerBusyStateTest {
 
     @BeforeAll
     static void requireFxToolkit() {
         Assumptions.assumeTrue(FxToolkitSupport.isAvailable(), "JavaFX toolkit unavailable (no display) - skipping controller UI-state checks");
-        DatabaseConfig.initialize();
     }
 
     /** {@link JavaExecutionCoordinator} is a single process-wide static — a test that begins an

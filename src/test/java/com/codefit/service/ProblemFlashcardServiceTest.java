@@ -9,8 +9,10 @@ import com.codefit.model.Flashcard;
 import com.codefit.model.Problem;
 import com.codefit.model.ReflectionCardSource;
 import com.codefit.model.SolvedWith;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -28,19 +30,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Verifies the reflection-to-flashcard bridge (#148): pre-filled drafts stay fully editable before
  * save, saving reuses ordinary {@link FlashcardService} validation/scheduling, duplicate creation
  * from the same (problem, reflection field) pair is caught, and deleting the source problem never
- * takes an already-created flashcard down with it. Touches the shared local database idempotently,
- * using a fresh unique platform/external-code per test like the rest of this suite.
+ * takes an already-created flashcard down with it, using a fresh unique platform/external-code per
+ * test like the rest of this suite.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemFlashcardServiceTest {
 
     private final ProblemService problemService = new ProblemService();
     private final ProblemProgressService progressService = new ProblemProgressService();
     private final ProblemFlashcardService problemFlashcardService = new ProblemFlashcardService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     private long fixtureProblemId(String testName) {
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-FLASHCARD", testName + "-" + UUID.randomUUID(),

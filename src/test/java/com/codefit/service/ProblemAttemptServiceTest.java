@@ -1,11 +1,12 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
 import com.codefit.model.SubmissionResult;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 
@@ -15,17 +16,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies a {@link com.codefit.model.Problem} can accumulate many {@link ProblemAttempt} rows with
- * a gapless, unique attempt-number sequence (#142), touching the shared local database idempotently.
+ * a gapless, unique attempt-number sequence (#142).
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemAttemptServiceTest {
 
     private final ProblemService problemService = new ProblemService();
     private final ProblemAttemptService attemptService = new ProblemAttemptService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void recordingSeveralAttemptsAssignsAGaplessIncreasingAttemptNumber() {

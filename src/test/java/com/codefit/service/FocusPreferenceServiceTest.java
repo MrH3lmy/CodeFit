@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.ReviewAttempt;
@@ -10,8 +9,10 @@ import com.codefit.model.UserProgress;
 import com.codefit.repository.DeckRepository;
 import com.codefit.repository.FlashcardRepository;
 import com.codefit.repository.ReviewHistoryRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 
@@ -22,8 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Verifies switching the active focus module (#110) is a pure preference change: it must never
  * touch a flashcard's schedule or its review history, only which module new/stretch cards favor.
- * Touches the local sqlite database the same way {@code SyllabusServiceTest} does (idempotently).
+ * Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class FocusPreferenceServiceTest {
 
     private final FocusPreferenceService focusPreferenceService = new FocusPreferenceService();
@@ -31,11 +34,6 @@ class FocusPreferenceServiceTest {
     private final FlashcardRepository flashcardRepository = new FlashcardRepository();
     private final ReviewHistoryRepository reviewHistoryRepository = new ReviewHistoryRepository();
     private final ReviewService reviewService = new ReviewService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void switchingFocusNeverChangesAnExistingCardsScheduleOrReviewHistory() {

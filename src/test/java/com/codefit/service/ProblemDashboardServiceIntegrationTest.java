@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemState;
@@ -8,35 +7,37 @@ import com.codefit.model.RoadmapEntry;
 import com.codefit.model.RoadmapStage;
 import com.codefit.model.SubmissionResult;
 import com.codefit.repository.RoadmapEntryRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Exercises {@link ProblemDashboardService#build()} end-to-end against the real database (#147),
- * complementing {@link ProblemDashboardServiceTest}'s isolated aggregation-logic unit tests. Touches
- * the shared local database idempotently, like the rest of this suite; roadmap fixtures use a large
- * random sequence number per test class to avoid colliding with other tests' fixture roadmap slots.
+ * Exercises {@link ProblemDashboardService#build()} end-to-end against a real database (#147),
+ * complementing {@link ProblemDashboardServiceTest}'s isolated aggregation-logic unit tests. Roadmap
+ * fixtures draw their sequence number from a monotonic counter so different test methods in this
+ * class can never collide on the same roadmap slot, regardless of execution order.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemDashboardServiceIntegrationTest {
+
+    private static final AtomicLong ROADMAP_SEQUENCE = new AtomicLong(10_000_000L);
 
     private final ProblemService problemService = new ProblemService();
     private final RoadmapEntryRepository roadmapEntryRepository = new RoadmapEntryRepository();
     private final ProblemProgressService progressService = new ProblemProgressService();
     private final ProblemAttemptService attemptService = new ProblemAttemptService();
     private final ProblemDashboardService dashboardService = new ProblemDashboardService();
-    private final Random random = new Random();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void buildingTheFullDashboardNeverThrowsAndStaysInternallyConsistent() {
@@ -68,7 +69,7 @@ class ProblemDashboardServiceIntegrationTest {
 
     @Test
     void aFreshMandatoryRoadmapProblemIsRecommendedAndCountsTowardCoreProgress() {
-        long sequence = 10_000_000L + random.nextInt(1_000_000);
+        long sequence = ROADMAP_SEQUENCE.getAndIncrement();
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-DASHBOARD", "TF-147-DASH-" + sequence,
                 "Dashboard Fixture", null, "Dashboard Topic", null, List.of());
         roadmapEntryRepository.save(new RoadmapEntry(problem.getId(), RoadmapStage.D3, (int) sequence, 1, true, DifficultyLevel.MEDIUM));
@@ -80,7 +81,7 @@ class ProblemDashboardServiceIntegrationTest {
 
     @Test
     void aSolvedProblemWithNoReflectionAppearsAsAReflectionGap() {
-        long sequence = 10_000_000L + random.nextInt(1_000_000);
+        long sequence = ROADMAP_SEQUENCE.getAndIncrement();
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-DASHBOARD", "TF-147-REFLECT-" + sequence,
                 "Reflection Gap Fixture", null, "General", null, List.of());
         roadmapEntryRepository.save(new RoadmapEntry(problem.getId(), RoadmapStage.D2, (int) sequence, null, true, DifficultyLevel.EASY));

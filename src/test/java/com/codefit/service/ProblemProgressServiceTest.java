@@ -1,14 +1,15 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.ComplexityClass;
 import com.codefit.model.FinalCategory;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemState;
 import com.codefit.model.SolvedWith;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,17 +24,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Verifies {@link ProblemProgressService} keeps exactly one {@link ProblemProgress} row per problem
  * (#142), and that workflow-state updates ({@link ProblemProgressService#updateProgress}) and
  * post-solve reflection updates ({@link ProblemProgressService#updateReflection}) stay independent of
- * each other (#146). Touches the shared local database idempotently like {@code AssessmentIsolationTest}.
+ * each other (#146).
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemProgressServiceTest {
 
     private final ProblemService problemService = new ProblemService();
     private final ProblemProgressService progressService = new ProblemProgressService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     private long fixtureProblemId(String externalCode) {
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", externalCode,

@@ -1,16 +1,16 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.RoadmapEntry;
 import com.codefit.repository.RoadmapEntryRepository;
-import org.junit.jupiter.api.AfterAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -31,8 +31,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * finishes in the tens of milliseconds, while the old N+1 approach took whole seconds even on fast
  * hardware — so a generous budget still fails loudly if a future change reintroduces a per-row query
  * inside these hot paths, without being flaky on slower CI hardware.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}, so
+ * unlike before this class no longer needs to delete the import batch it creates to protect other
+ * tests' fixture roadmap slots — the whole database is discarded once this class finishes.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemLibraryScalePerformanceTest {
 
     private static final Path WORKBOOK_PATH = Paths.get("data/import-fixtures/Ahmed-Junior-Training-Sheet-V7.0.xlsx");
@@ -40,20 +46,10 @@ class ProblemLibraryScalePerformanceTest {
     private final TrainingSheetImportService importService = new TrainingSheetImportService();
     private final RoadmapEntryRepository roadmapEntryRepository = new RoadmapEntryRepository();
     private final ProblemLibraryService libraryService = new ProblemLibraryService();
-    private final Set<Long> importBatchIdsToCleanUp = new LinkedHashSet<>();
 
     @BeforeAll
     void importTheApprovedWorkbook() throws Exception {
-        DatabaseConfig.initialize();
-        TrainingSheetImportSummary summary = importService.importWorkbook(WORKBOOK_PATH);
-        importBatchIdsToCleanUp.add(summary.importBatchId());
-    }
-
-    @AfterAll
-    void removeEveryRoadmapEntryThisClassImported() {
-        for (Long batchId : importBatchIdsToCleanUp) {
-            importService.deleteImportBatch(batchId);
-        }
+        importService.importWorkbook(WORKBOOK_PATH);
     }
 
     @Test

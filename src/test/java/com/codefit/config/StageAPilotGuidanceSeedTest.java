@@ -9,8 +9,10 @@ import com.codefit.model.RoadmapStage;
 import com.codefit.repository.ProblemGuidanceRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.RoadmapEntryRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,17 +27,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * externalCode)} identity, a Stage A roadmap slot, and complete {@code CODEFIT}-sourced guidance,
  * and re-running the seed (as every {@link DatabaseConfig#initialize()} call does) never duplicates
  * any of it.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class StageAPilotGuidanceSeedTest {
 
     private final ProblemRepository problemRepository = new ProblemRepository();
     private final RoadmapEntryRepository roadmapEntryRepository = new RoadmapEntryRepository();
     private final ProblemGuidanceRepository guidanceRepository = new ProblemGuidanceRepository();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void everyPilotProblemHasAStableIdentityAndAStageASlot() {

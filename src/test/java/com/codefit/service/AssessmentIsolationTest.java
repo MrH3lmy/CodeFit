@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.AssessmentAttempt;
 import com.codefit.model.AssessmentItem;
 import com.codefit.model.Deck;
@@ -13,8 +12,10 @@ import com.codefit.repository.AssessmentItemRepository;
 import com.codefit.repository.DeckRepository;
 import com.codefit.repository.FlashcardRepository;
 import com.codefit.repository.ReviewHistoryRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,9 +27,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The acceptance criterion behind #104 that matters most: recording a weekly transfer assessment
  * attempt must never silently change a {@link Flashcard}'s schedule or add/remove a
- * {@link ReviewHistory} row. Touches the local sqlite database the same way
- * {@code FocusPreferenceServiceTest}/{@code SyllabusServiceTest} do (idempotently).
+ * {@link ReviewHistory} row.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class AssessmentIsolationTest {
 
     private final FlashcardService flashcardService = new FlashcardService();
@@ -38,11 +42,6 @@ class AssessmentIsolationTest {
     private final AssessmentItemRepository assessmentItemRepository = new AssessmentItemRepository();
     private final AssessmentAttemptRepository assessmentAttemptRepository = new AssessmentAttemptRepository();
     private final AssessmentAttemptService assessmentAttemptService = new AssessmentAttemptService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void recordingAnAssessmentAttemptNeverChangesAnExistingCardsScheduleOrReviewHistory() {

@@ -24,6 +24,7 @@ import com.codefit.repository.ProblemGuidanceRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.ProblemSolvingSessionRepository;
 import com.codefit.repository.RoadmapEntryRepository;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -77,9 +79,16 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * a brand-new service/repository instance and reading back through it (rather than reusing the
  * instance a previous step already had a reference to) genuinely proves persistence rather than an
  * in-memory field surviving by accident.
+ *
+ * <p>This class predates, and its {@code @BeforeAll}/{@code @AfterAll} pair is the hand-written
+ * template for, {@link IsolatedDatabaseExtension} (#175) - every other integration test in this suite
+ * now uses that extension instead of repeating this same isolation boilerplate. The
+ * {@code @ResourceLock} below is the same cross-class safety net those migrated classes declare, so
+ * this class is still correctly serialized against them if parallel test execution is ever enabled.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ImportToPracticeCriticalPathTest {
 
     private static final Path WORKBOOK_PATH = Paths.get("data/import-fixtures/Ahmed-Junior-Training-Sheet-V7.0.xlsx");

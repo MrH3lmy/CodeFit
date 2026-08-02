@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemProgress;
@@ -8,13 +7,15 @@ import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.ProblemState;
 import com.codefit.model.RoadmapEntry;
 import com.codefit.model.RoadmapStage;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,11 +23,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies the two Problem Library views (#144) are built from, and stay consistent with, the same
- * underlying data, plus filtering and next-recommended-problem behavior. Touches the shared local
- * database idempotently, the same way {@code ProblemServiceTest} does; every roadmap position uses a
- * random large sequence number so it can never collide with another test's fixture data (see the
- * same issue in {@code TrainingSheetImportServiceTest}).
+ * underlying data, plus filtering and next-recommended-problem behavior. Every roadmap position uses
+ * a sequence number from a monotonic counter so it can never collide with another test method's
+ * fixture data within this class's isolated database (#175), regardless of execution order.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemLibraryServiceTest {
 
     private final ProblemService problemService = new ProblemService();
@@ -34,13 +38,8 @@ class ProblemLibraryServiceTest {
     private final ProblemLibraryService libraryService = new ProblemLibraryService();
     private final ProblemSolvingSessionService sessionService = new ProblemSolvingSessionService();
 
-    private final Random random = new Random();
-    private int nextOrder = 20_000_000 + random.nextInt(1_000_000);
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
+    private static final AtomicInteger ROADMAP_ORDER_SEQUENCE = new AtomicInteger(1);
+    private int nextOrder = ROADMAP_ORDER_SEQUENCE.getAndAdd(1_000);
 
     private String uniquePlatform(String testName) {
         return "TEST-FIXTURE-LIBRARY-" + testName + "-" + UUID.randomUUID();

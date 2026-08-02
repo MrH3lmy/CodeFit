@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
 import com.codefit.model.Problem;
@@ -12,8 +11,10 @@ import com.codefit.model.SubmissionResult;
 import com.codefit.repository.DeckRepository;
 import com.codefit.repository.FlashcardRepository;
 import com.codefit.repository.ReviewHistoryRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 
@@ -23,9 +24,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * The acceptance criterion behind #142 that matters most: problem-solving training must be a
  * workflow entirely separate from flashcard review. Recording problem-solving activity must never
  * change a {@link Flashcard}'s schedule or {@link ReviewHistory}, and normal flashcard review must
- * never change a problem's progress or attempts. Touches the shared local database idempotently, the
- * same way {@code AssessmentIsolationTest} does.
+ * never change a problem's progress or attempts.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemSolvingIsolationTest {
 
     private final FlashcardService flashcardService = new FlashcardService();
@@ -35,11 +39,6 @@ class ProblemSolvingIsolationTest {
     private final ProblemService problemService = new ProblemService();
     private final ProblemProgressService progressService = new ProblemProgressService();
     private final ProblemAttemptService attemptService = new ProblemAttemptService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void recordingProblemSolvingActivityNeverChangesAnExistingCardsScheduleOrReviewHistory() {

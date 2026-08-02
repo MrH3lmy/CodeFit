@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.CardState;
 import com.codefit.model.Deck;
 import com.codefit.model.Flashcard;
@@ -8,8 +7,10 @@ import com.codefit.model.ReviewAttempt;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.ReviewRating;
 import com.codefit.repository.DeckRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,15 +29,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * the completion summary's counts. Session composition itself (due/relearning-first, focus-biased
  * new cards, mature interleaving) is already covered by {@code ReviewServiceTest} and deliberately
  * not re-tested here, since {@link GuidedTrainingService} only delegates to it.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class GuidedTrainingServiceTest {
 
     private final GuidedTrainingService guidedTrainingService = new GuidedTrainingService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     private ReviewHistory review(long flashcardId, ReviewRating rating, String validationResult, String sessionId) {
         return new ReviewHistory(0, flashcardId, rating, 0, 1, LocalDateTime.now(), true, false,

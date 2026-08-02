@@ -1,13 +1,14 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.GuidanceSource;
 import com.codefit.model.HintLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemGuidance;
 import com.codefit.model.SolvedWith;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,17 +22,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Covers the progressive hint ladder (#162): revealing one level at a time in order, persisting the
  * highest level opened per attempt on the session (and it resetting for a new attempt), guidance
  * provenance/editing, missing-guidance handling, and the hint-to-assistance-level mapping.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemGuidanceServiceTest {
 
     private final ProblemService problemService = new ProblemService();
     private final ProblemGuidanceService guidanceService = new ProblemGuidanceService();
     private final ProblemSolvingSessionService sessionService = new ProblemSolvingSessionService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     private Problem fixtureProblem(String code) {
         return problemService.findOrCreateProblem("TEST-FIXTURE-PLATFORM", code, "Guidance Fixture " + code,

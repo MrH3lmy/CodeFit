@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemSolvingSession;
@@ -9,18 +8,26 @@ import com.codefit.model.RoadmapStage;
 import com.codefit.model.SessionFinishOutcome;
 import com.codefit.model.SolvedWith;
 import com.codefit.model.SubmissionResult;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Regression coverage for the remaining guided-curriculum gaps from #161. */
+/**
+ * Regression coverage for the remaining guided-curriculum gaps from #161.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
+ */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class GuidedCurriculumFlowRegressionTest {
 
     private final ProblemService problemService = new ProblemService();
@@ -29,13 +36,8 @@ class GuidedCurriculumFlowRegressionTest {
     private final ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
     private final ProblemGuidanceService guidanceService = new ProblemGuidanceService();
 
-    private final Random random = new Random();
-    private int nextOrder = 40_000_000 + random.nextInt(1_000_000);
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
+    private static final AtomicInteger ROADMAP_ORDER_SEQUENCE = new AtomicInteger(1);
+    private int nextOrder = ROADMAP_ORDER_SEQUENCE.getAndAdd(1_000);
 
     private String uniquePlatform(String testName) {
         return "TEST-FIXTURE-GUIDED-FLOW-" + testName + "-" + UUID.randomUUID();

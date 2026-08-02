@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
 import com.codefit.model.ProblemProgress;
@@ -10,8 +9,10 @@ import com.codefit.model.SessionFinishOutcome;
 import com.codefit.model.SolvedWith;
 import com.codefit.model.SolvingPhase;
 import com.codefit.model.SubmissionResult;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,19 +26,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Covers the structured solving workspace's finish logic (#145): mapping each of the four finish
  * outcomes onto a {@link ProblemAttempt}/{@link com.codefit.model.ProblemProgress} update (or, for
  * {@code ABANDONED}, onto neither), and that finishing never loses a problem's earlier attempts.
- * Touches the shared local database idempotently, using a fresh unique platform per test.
+ * Uses a fresh unique platform per test.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemSolvingWorkspaceServiceTest {
 
     private final ProblemService problemService = new ProblemService();
     private final ProblemAttemptService attemptService = new ProblemAttemptService();
     private final ProblemSolvingSessionService sessionService = new ProblemSolvingSessionService();
     private final ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     private long fixtureProblemId(String testName) {
         Problem problem = problemService.findOrCreateProblem("TEST-FIXTURE-WORKSPACE", testName + "-" + UUID.randomUUID(),

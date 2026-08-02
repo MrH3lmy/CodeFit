@@ -1,11 +1,12 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Deck;
 import com.codefit.model.SyllabusModule;
 import com.codefit.repository.DeckRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,15 +14,16 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Covers syllabus wiring for every registered training path. */
+/**
+ * Covers syllabus wiring for every registered training path.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
+ */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class SyllabusServiceTest {
 
     private final SyllabusService syllabusService = new SyllabusService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void javaBackendModulesStillReportsEightModulesInOrder() {

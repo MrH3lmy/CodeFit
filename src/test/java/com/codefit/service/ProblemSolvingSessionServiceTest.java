@@ -1,11 +1,12 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemSolvingSession;
 import com.codefit.model.SolvingPhase;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.List;
 
@@ -17,16 +18,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Verifies the persistent, resumable {@link ProblemSolvingSession} stays a single row per problem
  * and is kept separate from both {@link com.codefit.model.ProblemProgress} and
  * {@link com.codefit.model.ProblemAttempt} (#142).
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemSolvingSessionServiceTest {
 
     private final ProblemService problemService = new ProblemService();
     private final ProblemSolvingSessionService sessionService = new ProblemSolvingSessionService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void startingASessionTwiceResumesTheSameRowInsteadOfCreatingATwoRows() {

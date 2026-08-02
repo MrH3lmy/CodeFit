@@ -1,6 +1,6 @@
 package com.codefit.controller;
 
-import com.codefit.config.DatabaseConfig;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import com.codefit.ui.FxToolkitSupport;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -10,6 +10,8 @@ import javafx.scene.control.Label;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -29,13 +31,16 @@ import static org.junit.jupiter.api.Assertions.fail;
  * {@code importBusy} guard directly - the "extracted testable presentation logic" the review called
  * for - since the flow's entry point ({@code importTrainingSheet()}) opens a native, unscriptable
  * {@code FileChooser} that can't be driven headlessly in a test.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class SettingsControllerImportBusyStateTest {
 
     @BeforeAll
     static void requireFxToolkit() {
         Assumptions.assumeTrue(FxToolkitSupport.isAvailable(), "JavaFX toolkit unavailable (no display) - skipping controller UI-state checks");
-        DatabaseConfig.initialize();
     }
 
     private SettingsController loadController() throws Exception {

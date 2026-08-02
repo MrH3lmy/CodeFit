@@ -1,21 +1,22 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.ImportBatch;
 import com.codefit.model.Problem;
 import com.codefit.model.RoadmapStage;
 import com.codefit.repository.ImportBatchRepository;
 import com.codefit.repository.ProblemRepository;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,20 +27,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Covers the #160 gap analysis findings against the previous rollback-based preview: analysis must
  * be pure (no database access at all, not "write then roll back"), and a confirmed import must consume
  * the exact {@link AnalyzedTrainingWorkbook} the learner reviewed rather than re-reading the file.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class TrainingSheetAnalyzerTest {
 
     private final TrainingSheetImportService importService = new TrainingSheetImportService();
     private final ProblemRepository problemRepository = new ProblemRepository();
     private final ImportBatchRepository importBatchRepository = new ImportBatchRepository();
 
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
-
-    private final Random random = new Random();
-    private int nextOrder = 20_000_000 + random.nextInt(1_000_000);
+    private static final AtomicInteger ROADMAP_ORDER_SEQUENCE = new AtomicInteger(1);
+    private int nextOrder = ROADMAP_ORDER_SEQUENCE.getAndAdd(1_000);
 
     private String uniquePlatform(String testName) {
         return "TEST-FIXTURE-ANALYZE-" + testName + "-" + UUID.randomUUID();

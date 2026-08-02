@@ -1,14 +1,15 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,18 +20,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * must never be printed as if they were real results (#160): a preview hasn't evaluated the database
  * effect at all, so saying "0 problem(s) created" or "Attempt snapshots imported: 0" for a workbook
  * that plainly has importable content would be actively misleading.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class WorkbookPreviewReportFormatterTest {
 
     private final TrainingSheetImportService importService = new TrainingSheetImportService();
 
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
-
-    private final Random random = new Random();
-    private int nextOrder = 30_000_000 + random.nextInt(1_000_000);
+    private static final AtomicInteger ROADMAP_ORDER_SEQUENCE = new AtomicInteger(1);
+    private int nextOrder = ROADMAP_ORDER_SEQUENCE.getAndAdd(1_000);
 
     private String uniquePlatform(String testName) {
         return "TEST-FIXTURE-FORMATTER-" + testName + "-" + UUID.randomUUID();

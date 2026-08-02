@@ -1,10 +1,11 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.ProblemProgress;
 import com.codefit.model.ProblemState;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,15 +23,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * {@code RealJuniorTrainingSheetImportTest}'s end-to-end import; asserting an exact
  * {@code mandatoryTotal}/{@code currentStage} here would just be re-testing them against
  * ever-accumulating shared test data.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class GuidedPracticeServiceTest {
 
     private final GuidedPracticeService guidedPracticeService = new GuidedPracticeService();
-
-    @BeforeAll
-    static void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
 
     @Test
     void dailyTargetProblemsRoundTripsThroughThePreferenceStore() {

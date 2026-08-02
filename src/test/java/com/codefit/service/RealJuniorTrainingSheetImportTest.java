@@ -1,6 +1,5 @@
 package com.codefit.service;
 
-import com.codefit.config.DatabaseConfig;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
 import com.codefit.model.ProblemProgress;
@@ -13,14 +12,14 @@ import com.codefit.repository.ProblemAttemptRepository;
 import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.RoadmapEntryRepository;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,19 +37,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * (see {@code RoadmapEntryRepository#findByImportBatchId} and
  * {@code TrainingSheetImportService#importRoadmapSheet}'s unconditional {@code updateImportBatchId}
  * call), rather than the summary's created/reused deltas. Every row a run touches — whether it
- * created a new problem or reused one from an earlier run against the local `codefit.db` dev
- * database this suite shares with every other test — gets re-stamped with that run's batch id, so
- * these counts are exactly "what this run's workbook contains" regardless of whether this is the
- * first time this fixture has ever been imported in this environment.
+ * created a new problem or reused one from an earlier run against this class's own isolated database
+ * (#175) — gets re-stamped with that run's batch id, so these counts are exactly "what this run's
+ * workbook contains" regardless of whether this is the first import within this class's run.
  *
- * <p>{@code codefit.db} is shared, uncleared state across every test in this suite (e.g.
- * {@code ProblemServiceTest} hard-codes low roadmap slots like stage A position 1). This class
- * deletes every import batch it creates in {@link #removeEveryRoadmapEntryThisClassImported} so the
- * real workbook's ~926 roadmap memberships never permanently occupy those low-numbered slots for
- * other tests — the imported {@code Problem}/{@code ProblemProgress}/{@code ProblemAttempt} rows are
- * left in place (harmless leftover catalog/progress data with no positional uniqueness constraint).
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}, so
+ * unlike before this class no longer needs to delete the import batches it creates to protect other
+ * tests' fixture roadmap slots — the whole database is discarded once this class finishes.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class RealJuniorTrainingSheetImportTest {
 
     private static final Path WORKBOOK_PATH = Paths.get("data/import-fixtures/Ahmed-Junior-Training-Sheet-V7.0.xlsx");
@@ -60,24 +57,9 @@ class RealJuniorTrainingSheetImportTest {
     private final RoadmapEntryRepository roadmapEntryRepository = new RoadmapEntryRepository();
     private final ProblemProgressRepository progressRepository = new ProblemProgressRepository();
     private final ProblemAttemptRepository attemptRepository = new ProblemAttemptRepository();
-    private final Set<Long> importBatchIdsToCleanUp = new LinkedHashSet<>();
-
-    @BeforeAll
-    void initializeDatabase() {
-        DatabaseConfig.initialize();
-    }
-
-    @AfterAll
-    void removeEveryRoadmapEntryThisClassImported() {
-        for (Long batchId : importBatchIdsToCleanUp) {
-            importService.deleteImportBatch(batchId);
-        }
-    }
 
     private TrainingSheetImportSummary importAndTrack() throws Exception {
-        TrainingSheetImportSummary summary = importService.importWorkbook(WORKBOOK_PATH);
-        importBatchIdsToCleanUp.add(summary.importBatchId());
-        return summary;
+        return importService.importWorkbook(WORKBOOK_PATH);
     }
 
     @Test

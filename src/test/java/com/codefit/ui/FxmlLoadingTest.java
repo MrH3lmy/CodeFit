@@ -1,12 +1,14 @@
 package com.codefit.ui;
 
-import com.codefit.config.DatabaseConfig;
+import com.codefit.testsupport.IsolatedDatabaseExtension;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -23,13 +25,16 @@ import static org.junit.jupiter.api.Assertions.fail;
  * <p>Requires a JavaFX-capable display. Most CI runners today don't have one, so these tests skip
  * (not fail) via {@link Assumptions} when the toolkit can't start; they still run and protect
  * against regressions on any machine — including this project's own dev sandbox — that has one.
+ *
+ * <p>Runs against its own isolated database (#175), never the shared local {@code codefit.db}.
  */
+@ExtendWith(IsolatedDatabaseExtension.class)
+@ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class FxmlLoadingTest {
 
     @BeforeAll
     static void requireFxToolkit() {
         Assumptions.assumeTrue(FxToolkitSupport.isAvailable(), "JavaFX toolkit unavailable (no display) - skipping FXML regression checks");
-        DatabaseConfig.initialize();
     }
 
     @Test

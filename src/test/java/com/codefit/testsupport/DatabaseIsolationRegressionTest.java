@@ -1,25 +1,53 @@
 package com.codefit.testsupport;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Explicit, discoverable regression coverage for #175's core requirement: running this suite must
- * never create or touch the repository-root {@code codefit.db}. Passing this test at any point during
- * a run proves the suite hasn't touched it up to that point; the deeper, order-independent guarantee -
- * that no test class anywhere in the run ever leaves it behind - is enforced continuously by
- * {@link IsolatedDatabaseExtension#afterAll} re-asserting the same thing after every single migrated
- * test class's teardown (see that class's docs), not just once here.
+ * Focused regression coverage for #175's database-file guard. The extension must allow a developer's
+ * pre-existing {@code codefit.db} to remain in place unchanged, while detecting accidental creation
+ * or mutation of the default file by a test that escapes its isolated database.
  */
 class DatabaseIsolationRegressionTest {
 
     @Test
-    void theSharedDefaultDatabaseFileDoesNotExist() {
-        assertFalse(Files.exists(IsolatedDatabaseExtension.DEFAULT_DATABASE_PATH),
-                "the repository-root " + IsolatedDatabaseExtension.DEFAULT_DATABASE_PATH.toAbsolutePath()
-                        + " must never be created by the test suite (#175)");
+    void anUnchangedPreExistingDatabaseIsAllowed(@TempDir Path tempDir) throws Exception {
+        Path database = tempDir.resolve("codefit.db");
+        Files.writeString(database, "existing developer data");
+        IsolatedDatabaseExtension.DefaultDatabaseState baseline =
+                IsolatedDatabaseExtension.DefaultDatabaseState.capture(database);
+
+        assertDoesNotThrow(() -> baseline.assertUnchanged(database, getClass().getName()));
+    }
+
+    @Test
+    void creatingAPreviouslyAbsentDatabaseIsDetected(@TempDir Path tempDir) throws Exception {
+        Path database = tempDir.resolve("codefit.db");
+        IsolatedDatabaseExtension.DefaultDatabaseState baseline =
+                IsolatedDatabaseExtension.DefaultDatabaseState.capture(database);
+
+        Files.writeString(database, "unexpected test database");
+
+        assertThrows(AssertionError.class,
+                () -> baseline.assertUnchanged(database, getClass().getName()));
+    }
+
+    @Test
+    void mutatingAPreExistingDatabaseIsDetected(@TempDir Path tempDir) throws Exception {
+        Path database = tempDir.resolve("codefit.db");
+        Files.writeString(database, "original");
+        IsolatedDatabaseExtension.DefaultDatabaseState baseline =
+                IsolatedDatabaseExtension.DefaultDatabaseState.capture(database);
+
+        Files.writeString(database, "changed and longer");
+
+        assertThrows(AssertionError.class,
+                () -> baseline.assertUnchanged(database, getClass().getName()));
     }
 }

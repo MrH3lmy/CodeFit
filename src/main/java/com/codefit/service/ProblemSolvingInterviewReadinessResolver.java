@@ -2,45 +2,46 @@ package com.codefit.service;
 
 import com.codefit.model.InterviewMaterialType;
 import com.codefit.model.InterviewRequirement;
+import com.codefit.model.ProblemAttempt;
+import com.codefit.model.ProblemProgress;
+import com.codefit.model.ProblemState;
+import com.codefit.model.RoadmapEntry;
+import com.codefit.model.SolvedWith;
+import com.codefit.model.SubmissionResult;
+import com.codefit.repository.ProblemAttemptRepository;
+import com.codefit.repository.ProblemProgressRepository;
+import com.codefit.repository.RoadmapEntryRepository;
+
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * Resolves a {@code PROBLEM_SOLVING} requirement from actual problem-solving <em>quality</em> signal
- * - not from how much of the roadmap has been imported or completed.
- *
- * <h2>Why not roadmap completion</h2>
- * {@code ProblemDashboard.CoreProgress}'s mandatory-roadmap completion rate measures progress through
- * material, not current interview performance: {@code DatabaseConfig} seeds a small pilot roadmap
- * (#171) into every database, so a completion-based score would report a fresh user with zero real
- * attempts as a measurable (and failing) 0%, purely because problems exist to be solved. That is
- * exactly the fabricated-critical-gate-failure this resolver must not produce.
- *
- * <h2>What is measured instead</h2>
- * {@code ProblemDashboard.QualityMetrics} already tracks first-submission accuracy and independent
- * (non-editorial-assisted) solving, gated by {@code ProblemDashboard.MIN_SAMPLE_SIZE} so a single
- * attempt can never look like a trend - see {@link #fromQualityMetrics} for the exact formula this
- * resolver reuses rather than duplicates.
- *
- * <h2>Roadmap completion's remaining role</h2>
- * Mandatory-roadmap completion is still surfaced, but only as informational context in
- * {@link InterviewRequirementReadiness#note()} once the requirement is otherwise measurable - never as
- * part of the score, and never as the reason something becomes measurable.
+ * Resolves the interview-specific {@code PROBLEM_SOLVING} requirement from actual fresh-attempt and
+ * independence signal. This intentionally does not reuse the Problem Dashboard's headline
+ * first-submission metric because that metric includes ACX for its own dashboard semantics; an
+ * interview readiness score must not let ACX improve fresh live-coding readiness.
  */
 class ProblemSolvingInterviewReadinessResolver implements InterviewRequirementReadinessResolver {
-
-    /** The only problem-solving material key this resolver currently knows how to resolve. An
-     *  unrecognized key must not silently fall through to the standard dashboard (see
-     *  {@link RevolutJavaInterviewProfile}, which references this constant directly so the two never
-     *  drift apart). */
     static final String SUPPORTED_KEY = "problem-solving-training";
 
-    private final ProblemDashboardService problemDashboardService;
+    private final RoadmapEntryRepository roadmapEntryRepository;
+    private final ProblemAttemptRepository attemptRepository;
+    private final ProblemProgressRepository progressRepository;
 
     ProblemSolvingInterviewReadinessResolver() {
-        this(new ProblemDashboardService());
+        this(new RoadmapEntryRepository(), new ProblemAttemptRepository(), new ProblemProgressRepository());
     }
 
-    ProblemSolvingInterviewReadinessResolver(ProblemDashboardService problemDashboardService) {
-        this.problemDashboardService = problemDashboardService;
+    ProblemSolvingInterviewReadinessResolver(RoadmapEntryRepository roadmapEntryRepository,
+                                             ProblemAttemptRepository attemptRepository,
+                                             ProblemProgressRepository progressRepository) {
+        this.roadmapEntryRepository = roadmapEntryRepository;
+        this.attemptRepository = attemptRepository;
+        this.progressRepository = progressRepository;
     }
 
     @Override
@@ -56,64 +57,116 @@ class ProblemSolvingInterviewReadinessResolver implements InterviewRequirementRe
                     "Unsupported problem-solving material key '" + key + "'; only '" + SUPPORTED_KEY + "' is resolvable.");
         }
 
-        ProblemDashboard dashboard = problemDashboardService.build();
-        return fromQualityMetrics(requirement, dashboard.qualityMetrics(), dashboard.coreProgress());
+        InterviewProblemSolvingMetrics metrics = buildMetrics(
+                roadmapEntryRepository.findAllInRoadmapOrder(),
+                attemptRepository.findAll(),
+                progressRepository.findAll());
+        return fromMetrics(requirement, metrics);
     }
 
     /**
-     * Pure aggregation over already-loaded {@link ProblemDashboard.QualityMetrics}/
-     * {@link ProblemDashboard.CoreProgress}, independent of the database so every branch is directly
-     * unit testable.
-     *
-     * <p><b>Measurable</b> only once {@link ProblemDashboard.QualityMetrics#hasFirstSubmissionSignal()}
-     * holds, i.e. at least {@code ProblemDashboard.MIN_SAMPLE_SIZE} (3) real first-submission attempts
-     * exist - the same bar the dashboard itself uses before treating a rate as a trend rather than
-     * noise.
-     *
-     * <p><b>Score formula</b>: the average of
-     * {@link ProblemDashboard.QualityMetrics#firstSubmissionAccuracyPercent()} (how often the very
-     * first submission was already correct - the closest existing proxy for unaided interview
-     * performance) and {@link ProblemDashboard.QualityMetrics#independentSolveRatePercent()} (the
-     * share of solves credited as {@code SolvedWith.SELF} rather than {@code EDITORIAL}) - but only
-     * once {@link ProblemDashboard.QualityMetrics#hasIndependenceSignal()} also holds; below that,
-     * scoring is first-submission accuracy alone, following the same "average only the currently
-     * measurable signals, never treat a missing one as zero" rule this slice already applies when
-     * averaging a domain's requirements. This means a user who solves accurately but leans heavily on
-     * editorial solutions scores lower than an equally accurate, independent solver - assisted solving
-     * can never look equivalent to independent solving.
-     *
-     * <p>Mandatory-roadmap completion never contributes to the score; it is quoted in {@link InterviewRequirementReadiness#note()}
-     * purely as progress context.
+     * Interview-specific quality signal. A "fresh" first submission is a real first attempt whose
+     * result is not ACX. Only a clean AC counts as fresh-first-submission success. Independence is
+     * measured only for solved problems that also had such a fresh attempt and recorded a
+     * {@link SolvedWith} reflection, keeping memorized/imported/ambiguous cases out of the interview
+     * signal rather than guessing.
      */
-    static InterviewRequirementReadiness fromQualityMetrics(InterviewRequirement requirement,
-                                                             ProblemDashboard.QualityMetrics qualityMetrics,
-                                                             ProblemDashboard.CoreProgress coreProgress) {
-        String roadmapContext = "Roadmap progress (context only, not part of the score): "
-                + coreProgress.mandatoryCompleted() + "/" + coreProgress.mandatoryTotal() + " mandatory problems solved.";
+    record InterviewProblemSolvingMetrics(
+            int freshAttemptSampleCount,
+            double freshFirstSubmissionAccuracyPercent,
+            int independenceSampleCount,
+            double independentSolveRatePercent,
+            int mandatoryTotal,
+            int mandatoryCompleted
+    ) {
+    }
 
-        if (!qualityMetrics.hasFirstSubmissionSignal()) {
+    static InterviewProblemSolvingMetrics buildMetrics(List<RoadmapEntry> roadmapEntries,
+                                                        List<ProblemAttempt> attempts,
+                                                        List<ProblemProgress> progressRows) {
+        Set<Long> scopedProblemIds = roadmapEntries.stream()
+                .map(RoadmapEntry::getProblemId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, List<ProblemAttempt>> attemptsByProblemId = attempts.stream()
+                .collect(Collectors.groupingBy(ProblemAttempt::problemId));
+        Map<Long, ProblemProgress> progressByProblemId = progressRows.stream()
+                .collect(Collectors.toMap(ProblemProgress::getProblemId, Function.identity()));
+
+        int freshSample = 0;
+        int freshAccurate = 0;
+        int independenceSample = 0;
+        int independent = 0;
+
+        for (Long problemId : scopedProblemIds) {
+            ProblemAttempt firstAttempt = attemptsByProblemId.getOrDefault(problemId, List.of()).stream()
+                    .filter(attempt -> attempt.attemptNumber() == 1)
+                    .findFirst()
+                    .orElse(null);
+            if (firstAttempt == null || firstAttempt.submissionResult() == SubmissionResult.ACX) {
+                continue;
+            }
+
+            freshSample++;
+            if (firstAttempt.submissionResult() == SubmissionResult.AC) {
+                freshAccurate++;
+            }
+
+            ProblemProgress progress = progressByProblemId.get(problemId);
+            if (progress != null && progress.getState() == ProblemState.SOLVED && progress.getSolvedWith() != null) {
+                independenceSample++;
+                if (progress.getSolvedWith() == SolvedWith.SELF) {
+                    independent++;
+                }
+            }
+        }
+
+        int mandatoryTotal = 0;
+        int mandatoryCompleted = 0;
+        for (RoadmapEntry entry : roadmapEntries) {
+            if (!entry.isMandatory()) {
+                continue;
+            }
+            mandatoryTotal++;
+            ProblemProgress progress = progressByProblemId.get(entry.getProblemId());
+            if (progress != null && progress.getState() == ProblemState.SOLVED) {
+                mandatoryCompleted++;
+            }
+        }
+
+        return new InterviewProblemSolvingMetrics(
+                freshSample,
+                freshSample == 0 ? 0.0 : freshAccurate * 100.0 / freshSample,
+                independenceSample,
+                independenceSample == 0 ? 0.0 : independent * 100.0 / independenceSample,
+                mandatoryTotal,
+                mandatoryCompleted);
+    }
+
+    static InterviewRequirementReadiness fromMetrics(InterviewRequirement requirement,
+                                                      InterviewProblemSolvingMetrics metrics) {
+        String roadmapContext = "Roadmap progress (context only, not part of the score): "
+                + metrics.mandatoryCompleted() + "/" + metrics.mandatoryTotal() + " mandatory problems solved.";
+
+        if (metrics.freshAttemptSampleCount() < ProblemDashboard.MIN_SAMPLE_SIZE) {
             return InterviewRequirementReadiness.unmeasurable(requirement, InterviewMaterialType.PROBLEM_SOLVING,
-                    "Only " + qualityMetrics.firstSubmissionSampleCount() + " real first-submission attempt(s) so far; "
-                            + "need at least " + ProblemDashboard.MIN_SAMPLE_SIZE + " before problem-solving quality is measurable. "
+                    "Only " + metrics.freshAttemptSampleCount() + " fresh first-attempt sample(s); need at least "
+                            + ProblemDashboard.MIN_SAMPLE_SIZE + ". ACX does not count toward this interview signal. "
                             + roadmapContext);
         }
-
-        double score;
-        String basis;
-        if (qualityMetrics.hasIndependenceSignal()) {
-            score = (qualityMetrics.firstSubmissionAccuracyPercent() + qualityMetrics.independentSolveRatePercent()) / 2.0;
-            basis = "average of first-submission accuracy (" + Math.round(qualityMetrics.firstSubmissionAccuracyPercent())
-                    + "%, n=" + qualityMetrics.firstSubmissionSampleCount() + ") and independent-solve rate ("
-                    + Math.round(qualityMetrics.independentSolveRatePercent()) + "%, n=" + qualityMetrics.independenceSampleCount() + ")";
-        } else {
-            score = qualityMetrics.firstSubmissionAccuracyPercent();
-            basis = "first-submission accuracy only (" + Math.round(qualityMetrics.firstSubmissionAccuracyPercent())
-                    + "%, n=" + qualityMetrics.firstSubmissionSampleCount()
-                    + "); independent-solve rate not yet measurable (n=" + qualityMetrics.independenceSampleCount()
-                    + ", need " + ProblemDashboard.MIN_SAMPLE_SIZE + ")";
+        if (metrics.independenceSampleCount() < ProblemDashboard.MIN_SAMPLE_SIZE) {
+            return InterviewRequirementReadiness.unmeasurable(requirement, InterviewMaterialType.PROBLEM_SOLVING,
+                    "Fresh-attempt signal exists, but only " + metrics.independenceSampleCount()
+                            + " solved problem(s) have a usable SELF/EDITORIAL independence reflection; need at least "
+                            + ProblemDashboard.MIN_SAMPLE_SIZE + ". " + roadmapContext);
         }
 
+        double score = (metrics.freshFirstSubmissionAccuracyPercent() + metrics.independentSolveRatePercent()) / 2.0;
         return InterviewRequirementReadiness.measured(requirement, InterviewMaterialType.PROBLEM_SOLVING, score,
-                "Problem-solving quality signal: " + basis + ". " + roadmapContext);
+                "Problem-solving interview signal: average of fresh first-submission accuracy ("
+                        + Math.round(metrics.freshFirstSubmissionAccuracyPercent()) + "%, n="
+                        + metrics.freshAttemptSampleCount() + ") and independent-solve rate ("
+                        + Math.round(metrics.independentSolveRatePercent()) + "%, n="
+                        + metrics.independenceSampleCount() + "). ACX is excluded from the fresh-attempt signal. "
+                        + roadmapContext);
     }
 }

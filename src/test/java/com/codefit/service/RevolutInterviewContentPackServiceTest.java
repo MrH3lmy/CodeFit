@@ -56,7 +56,11 @@ class RevolutInterviewContentPackServiceTest {
     }
 
     @Test
-    void installIsIdempotentAndCreatesExactlyTheProfileBackedDecks() {
+    void explicitInstallIsIdempotentMatchesProfileAndCreatesRealSystemDesignEvidence() {
+        InterviewDomainReadiness before = domain(new InterviewReadinessService()
+                .calculate(RevolutJavaInterviewProfile.ID).orElseThrow(), "system-design");
+        assertFalse(before.isMeasured(), "the RJ pack must not be auto-installed into every fresh CodeFit database");
+
         RevolutInterviewContentPackService.InstallSummary first = packService.install();
         assertEquals(7, first.decksCreated());
         assertEquals(140, first.cardsImported());
@@ -78,26 +82,17 @@ class RevolutInterviewContentPackServiceTest {
                 .collect(Collectors.toSet());
         assertEquals(installedRjNames, profileRjDecks);
 
-        RevolutInterviewContentPackService.InstallSummary second = packService.install();
-        assertEquals(0, second.decksCreated());
-        assertEquals(0, second.cardsImported());
-        assertEquals(140, second.duplicatesSkipped());
-    }
-
-    @Test
-    void installingThePackTurnsSystemDesignIntoRealMeasuredCriticalEvidence() {
-        InterviewDomainReadiness before = domain(new InterviewReadinessService()
-                .calculate(RevolutJavaInterviewProfile.ID).orElseThrow(), "system-design");
-        assertFalse(before.isMeasured(), "the content pack is explicit and should not be auto-installed into a fresh database");
-
-        packService.install();
-
         InterviewDomainReadiness after = domain(new InterviewReadinessService()
                 .calculate(RevolutJavaInterviewProfile.ID).orElseThrow(), "system-design");
         assertTrue(after.isMeasured());
         assertEquals(0, after.scorePercent(), "newly installed, never-reviewed decks have real zero durable mastery");
         assertEquals(InterviewDomainReadinessStatus.FAIL, after.status());
-        assertEquals(2, after.measuredRequirementCount(), "both RJ04 and RJ05 are now real deck evidence");
+        assertEquals(2, after.measuredRequirementCount(), "both RJ04 and RJ05 now provide real deck evidence");
+
+        RevolutInterviewContentPackService.InstallSummary second = packService.install();
+        assertEquals(0, second.decksCreated());
+        assertEquals(0, second.cardsImported());
+        assertEquals(140, second.duplicatesSkipped());
     }
 
     private InterviewDomainReadiness domain(InterviewReadinessResult result, String domainId) {

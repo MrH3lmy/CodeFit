@@ -9,8 +9,8 @@ import java.util.List;
  * requirements - see {@link InterviewReadinessService}), how much of the domain that average
  * actually covers, and - for a critical gate - whether it passes its minimum threshold.
  *
- * @param scorePercent   whole-percentage-points average of measurable requirements (0-100), or
- *                        {@code null} when the domain has none
+ * @param scorePercent whole-percentage-points average of measurable requirements (0-100), or
+ *                     {@code null} when the domain has none
  * @param coveragePercent {@code measuredRequirementCount / totalRequirementCount} as a whole percentage
  */
 public record InterviewDomainReadiness(
@@ -30,6 +30,7 @@ public record InterviewDomainReadiness(
         requirements = List.copyOf(requirements);
         boolean statusImpliesScore = status == InterviewDomainReadinessStatus.PASS
                 || status == InterviewDomainReadinessStatus.FAIL
+                || status == InterviewDomainReadinessStatus.PARTIAL
                 || status == InterviewDomainReadinessStatus.MEASURED;
         if (statusImpliesScore && scorePercent == null) {
             throw new IllegalArgumentException("Domain readiness '" + domainId + "' with status " + status + " must have a score.");

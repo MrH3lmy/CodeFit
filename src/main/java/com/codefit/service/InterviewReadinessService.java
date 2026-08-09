@@ -5,6 +5,7 @@ import com.codefit.model.InterviewMaterialType;
 import com.codefit.model.InterviewPreparationProfile;
 import com.codefit.model.InterviewRequirement;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,22 +14,26 @@ import java.util.Optional;
  * by resolving each {@link InterviewRequirement} against existing CodeFit progress data (via
  * {@link InterviewRequirementReadinessResolver}) and aggregating it up through
  * {@link InterviewDomain} to an {@link InterviewReadinessResult} - entirely at read time, nothing is
- * persisted here.
+ * persisted here. When a mock-interview resolver is registered, each domain also receives one
+ * synthetic mock-performance evidence requirement; the profile itself remains a definition of
+ * learning requirements rather than being mutated every time an assessment source is added.
  *
  * <h2>Weighting</h2>
- * A domain's score is the average of only its measurable requirements. Overall weighting accounts
- * for partial domain coverage: a domain contributes {@code domainWeight * measuredRequirements /
- * totalRequirements} of effective measured weight, so one measured requirement can never make an
- * entire domain appear covered. The overall score is then the weighted average over that effective
- * measured weight. Planned/unmeasured requirements are never treated as zero.
+ * A domain's score is the average of only its measurable requirements/evidence sources. Overall
+ * weighting accounts for partial domain coverage: a domain contributes {@code domainWeight *
+ * measuredRequirements / totalRequirements} of effective measured weight, so one measured source
+ * can never make an entire domain appear covered. Planned/unmeasured sources are never treated as
+ * zero.
  *
  * <h2>Critical gates</h2>
  * A critical domain below its threshold is {@link InterviewDomainReadinessStatus#FAIL} even if only
- * part of the domain is currently measurable. A critical domain at/above threshold cannot become
- * {@link InterviewDomainReadinessStatus#PASS} until every requirement in that domain is measurable;
- * until then it is {@link InterviewDomainReadinessStatus#PARTIAL}. A PARTIAL or NOT_MEASURED critical
- * gate prevents an overall READY result and yields {@link InterviewReadinessStatus#INSUFFICIENT_DATA}
- * unless another critical gate is already measurably failing.
+ * part of the domain is currently measurable. Direct mock evidence below the same threshold also
+ * forces FAIL: strong flashcard mastery must not mask poor interview execution in a critical area.
+ * A critical domain at/above threshold cannot become {@link InterviewDomainReadinessStatus#PASS}
+ * until every requirement/evidence source in that domain is measurable; until then it is
+ * {@link InterviewDomainReadinessStatus#PARTIAL}. A PARTIAL or NOT_MEASURED critical gate prevents
+ * an overall READY result and yields {@link InterviewReadinessStatus#INSUFFICIENT_DATA} unless
+ * another critical gate is already measurably failing.
  *
  * <h2>Rounding policy</h2>
  * Every exposed score/coverage/threshold in this slice is a whole percentage point (0-100), rounded
@@ -63,7 +68,8 @@ public class InterviewReadinessService {
 
     public InterviewReadinessService() {
         this(new InterviewProfileService(),
-                List.of(new DeckInterviewReadinessResolver(), new ProblemSolvingInterviewReadinessResolver()),
+                List.of(new DeckInterviewReadinessResolver(), new ProblemSolvingInterviewReadinessResolver(),
+                        new MockInterviewReadinessResolver()),
                 DEFAULT_POLICY);
     }
 
@@ -91,15 +97,21 @@ public class InterviewReadinessService {
         }
 
         List<InterviewDomainReadiness> domainReadiness = profile.getDomains().stream()
-                .map(this::resolveDomain)
+                .map(domain -> resolveDomain(profile.getId(), domain))
                 .toList();
         return buildResult(profile, domainReadiness, policy);
     }
 
-    private InterviewDomainReadiness resolveDomain(InterviewDomain domain) {
-        List<InterviewRequirementReadiness> requirementReadiness = domain.getRequirements().stream()
+    private InterviewDomainReadiness resolveDomain(String profileId, InterviewDomain domain) {
+        List<InterviewRequirementReadiness> requirementReadiness = new ArrayList<>(domain.getRequirements().stream()
                 .map(this::resolveRequirement)
-                .toList();
+                .toList());
+
+        boolean mockEvidenceSupported = resolvers.stream()
+                .anyMatch(resolver -> resolver.supports(InterviewMaterialType.MOCK_INTERVIEW));
+        if (mockEvidenceSupported) {
+            requirementReadiness.add(resolveRequirement(MockInterviewReadinessResolver.requirementFor(profileId, domain)));
+        }
         return buildDomainReadiness(domain, requirementReadiness);
     }
 
@@ -140,7 +152,10 @@ public class InterviewReadinessService {
 
         InterviewDomainReadinessStatus status;
         if (domain.isCriticalGate()) {
-            if (scorePercent < domain.getMinimumReadinessThresholdPercent()) {
+            boolean directMockFailure = measured.stream()
+                    .filter(readiness -> readiness.sourceType() == InterviewMaterialType.MOCK_INTERVIEW)
+                    .anyMatch(readiness -> readiness.scorePercent() < domain.getMinimumReadinessThresholdPercent());
+            if (scorePercent < domain.getMinimumReadinessThresholdPercent() || directMockFailure) {
                 status = InterviewDomainReadinessStatus.FAIL;
             } else if (measuredRequirementCount < totalRequirementCount) {
                 status = InterviewDomainReadinessStatus.PARTIAL;

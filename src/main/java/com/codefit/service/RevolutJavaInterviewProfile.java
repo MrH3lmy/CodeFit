@@ -1,6 +1,7 @@
 package com.codefit.service;
 
 import com.codefit.model.InterviewDomain;
+import com.codefit.model.InterviewMaterialType;
 import com.codefit.model.InterviewPreparationProfile;
 import com.codefit.model.InterviewRequirement;
 
@@ -20,6 +21,9 @@ import java.util.List;
 final class RevolutJavaInterviewProfile {
     static final String ID = "revolut-java-senior-swe";
     private static final Integer CRITICAL_GATE_MINIMUM_PERCENT = 70;
+
+    /** Stable lookup key for the problem-solving subsystem reference - not a deck name. */
+    private static final String PROBLEM_SOLVING_SUBSYSTEM_KEY = "problem-solving-training";
 
     private RevolutJavaInterviewProfile() {
     }
@@ -54,16 +58,16 @@ final class RevolutJavaInterviewProfile {
                 List.of(
                         InterviewRequirement.available("jcip-01", "JCIP 01 - Fundamentals",
                                 "Thread safety, atomicity, visibility, publication, confinement, and immutability.",
-                                "JCIP 01 - Fundamentals"),
+                                InterviewMaterialType.DECK, "JCIP 01 - Fundamentals"),
                         InterviewRequirement.available("jcip-02", "JCIP 02 - Task Execution & Cancellation",
                                 "Executors, futures, parallel task design, cancellation, interruption, and shutdown.",
-                                "JCIP 02 - Task Execution & Cancellation"),
+                                InterviewMaterialType.DECK, "JCIP 02 - Task Execution & Cancellation"),
                         InterviewRequirement.available("jcip-03", "JCIP 03 - Liveness, Performance & Testing",
                                 "Deadlock, lock ordering, starvation, livelock, scalability, and concurrent testing.",
-                                "JCIP 03 - Liveness, Performance & Testing"),
+                                InterviewMaterialType.DECK, "JCIP 03 - Liveness, Performance & Testing"),
                         InterviewRequirement.available("jcip-04", "JCIP 04 - Locks, Atomics & Memory Model",
                                 "Explicit locks, conditions, AQS, CAS, nonblocking algorithms, and happens-before.",
-                                "JCIP 04 - Locks, Atomics & Memory Model")
+                                InterviewMaterialType.DECK, "JCIP 04 - Locks, Atomics & Memory Model")
                 )
         );
     }
@@ -78,10 +82,10 @@ final class RevolutJavaInterviewProfile {
                 List.of(
                         InterviewRequirement.available("java-be-06-testing", "Java BE 06 - Testing with JUnit/Mockito",
                                 "Unit tests, mocks, integration tests, and repeatable test slices.",
-                                "Java BE 06 - Testing with JUnit/Mockito"),
+                                InterviewMaterialType.DECK, "Java BE 06 - Testing with JUnit/Mockito"),
                         InterviewRequirement.available("problem-solving-system", "Problem-Solving Training",
                                 "Timed problem attempts, roadmap-driven DSA practice, and solving-workspace phase tracking.",
-                                "Problem-Solving Training workspace & assessment system"),
+                                InterviewMaterialType.PROBLEM_SOLVING, PROBLEM_SOLVING_SUBSYSTEM_KEY),
                         InterviewRequirement.planned("rj-01", "RJ 01 - Modern Java 17/21 & Core Interview",
                                 "Records, sealed classes, pattern matching, virtual threads, collections/API traps, "
                                         + "and SOLID/testing prompts.")
@@ -99,10 +103,10 @@ final class RevolutJavaInterviewProfile {
                 List.of(
                         InterviewRequirement.available("abe-02", "ABE 02 - Database Transactions, Locking & Isolation",
                                 "Isolation levels, locking, deadlocks, and MVCC.",
-                                "ABE 02 - Database Transactions, Locking & Isolation"),
+                                InterviewMaterialType.DECK, "ABE 02 - Database Transactions, Locking & Isolation"),
                         InterviewRequirement.available("abe-03", "ABE 03 - Idempotency & Race-Condition Prevention",
                                 "Idempotency keys, deduplication, compare-and-set, and fencing tokens.",
-                                "ABE 03 - Idempotency & Race-Condition Prevention"),
+                                InterviewMaterialType.DECK, "ABE 03 - Idempotency & Race-Condition Prevention"),
                         InterviewRequirement.planned("rj-02", "RJ 02 - PostgreSQL Performance & jOOQ",
                                 "EXPLAIN/ANALYZE, index selection, joins, MVCC/Postgres details, and SQL-first/jOOQ patterns.")
                 )
@@ -119,16 +123,16 @@ final class RevolutJavaInterviewProfile {
                 List.of(
                         InterviewRequirement.available("abe-04", "ABE 04 - Kafka Delivery Semantics, Outbox & DLQs",
                                 "At-least-once/at-most-once/exactly-once tradeoffs, transactional outbox, and dead-letter handling.",
-                                "ABE 04 - Kafka Delivery Semantics, Outbox & DLQs"),
+                                InterviewMaterialType.DECK, "ABE 04 - Kafka Delivery Semantics, Outbox & DLQs"),
                         InterviewRequirement.available("abe-05", "ABE 05 - Distributed Transactions & Sagas",
                                 "Two-phase commit, sagas, compensating actions, and TCC.",
-                                "ABE 05 - Distributed Transactions & Sagas"),
+                                InterviewMaterialType.DECK, "ABE 05 - Distributed Transactions & Sagas"),
                         InterviewRequirement.available("di-04", "DI 04 - Distributed Foundations & Consistency",
                                 "Partial failure, clocks, failure detection, CAP, consistency models, and quorums.",
-                                "DI 04 - Distributed Foundations & Consistency"),
+                                InterviewMaterialType.DECK, "DI 04 - Distributed Foundations & Consistency"),
                         InterviewRequirement.available("di-05", "DI 05 - Anti-Entropy, Transactions & Consensus",
                                 "Replica repair, gossip, distributed commit, Paxos, Raft, and ZAB.",
-                                "DI 05 - Anti-Entropy, Transactions & Consensus")
+                                InterviewMaterialType.DECK, "DI 05 - Anti-Entropy, Transactions & Consensus")
                 )
         );
     }
@@ -175,16 +179,16 @@ final class RevolutJavaInterviewProfile {
                 List.of(
                         InterviewRequirement.available("abe-07", "ABE 07 - Caching, Consistency & Invalidation",
                                 "Caching strategies, stampedes, and invalidation races.",
-                                "ABE 07 - Caching, Consistency & Invalidation"),
+                                InterviewMaterialType.DECK, "ABE 07 - Caching, Consistency & Invalidation"),
                         InterviewRequirement.available("abe-08", "ABE 08 - Observability & Production Debugging",
                                 "Logs, metrics, traces, and thread/heap dumps.",
-                                "ABE 08 - Observability & Production Debugging"),
+                                InterviewMaterialType.DECK, "ABE 08 - Observability & Production Debugging"),
                         InterviewRequirement.available("abe-09", "ABE 09 - JVM Memory, Garbage Collection & Performance",
                                 "Heap generations, GC tuning, leaks, and JIT warm-up.",
-                                "ABE 09 - JVM Memory, Garbage Collection & Performance"),
+                                InterviewMaterialType.DECK, "ABE 09 - JVM Memory, Garbage Collection & Performance"),
                         InterviewRequirement.available("abe-10", "ABE 10 - API & Database Failure Scenarios",
                                 "Timeouts, retries, circuit breakers, and cascading failures.",
-                                "ABE 10 - API & Database Failure Scenarios"),
+                                InterviewMaterialType.DECK, "ABE 10 - API & Database Failure Scenarios"),
                         InterviewRequirement.planned("rj-06", "RJ 06 - Revolut Stack Awareness",
                                 "Redis, GCP, Kubernetes, Grafana/Prometheus/New Relic, Flyway, Spock, and jOOQ at a "
                                         + "concept/trade-off level.")

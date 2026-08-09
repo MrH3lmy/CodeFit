@@ -1,11 +1,14 @@
 package com.codefit.service;
 
 import com.codefit.model.InterviewDomain;
+import com.codefit.model.InterviewMaterialReference;
+import com.codefit.model.InterviewMaterialType;
 import com.codefit.model.InterviewPreparationProfile;
 import com.codefit.model.InterviewRequirement;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,6 +41,16 @@ class InterviewProfileServiceTest {
         Set<String> distinctIds = domains.stream().map(InterviewDomain::getId).collect(Collectors.toSet());
 
         assertEquals(domains.size(), distinctIds.size());
+    }
+
+    @Test
+    void revolutJavaProfileRequirementIdsAreUniqueAcrossAllDomains() {
+        List<String> requirementIds = interviewProfileService.getRevolutJavaProfile().getDomains().stream()
+                .flatMap(domain -> domain.getRequirements().stream())
+                .map(InterviewRequirement::getId)
+                .toList();
+
+        assertEquals(requirementIds.size(), Set.copyOf(requirementIds).size());
     }
 
     @Test
@@ -106,18 +119,39 @@ class InterviewProfileServiceTest {
     }
 
     @Test
-    void concurrencyDomainReferencesAllFourExistingJcipDecksByName() {
+    void concurrencyDomainReferencesAllFourExistingJcipDecksByTypeAndName() {
         InterviewDomain concurrency = interviewProfileService.getRevolutJavaProfile()
                 .findDomainById("java-concurrency-jmm").orElseThrow();
 
-        List<String> availableReferences = concurrency.getRequirements().stream()
+        List<InterviewMaterialReference> availableReferences = concurrency.getRequirements().stream()
                 .filter(InterviewRequirement::isAvailable)
                 .map(InterviewRequirement::getReference)
                 .toList();
 
+        assertTrue(availableReferences.stream().allMatch(reference -> reference.type() == InterviewMaterialType.DECK));
         assertEquals(List.of("JCIP 01 - Fundamentals", "JCIP 02 - Task Execution & Cancellation",
                 "JCIP 03 - Liveness, Performance & Testing", "JCIP 04 - Locks, Atomics & Memory Model"),
-                availableReferences);
+                availableReferences.stream().map(InterviewMaterialReference::key).toList());
+    }
+
+    @Test
+    void liveCodingDomainDistinguishesDeckReferencesFromTheProblemSolvingSubsystem() {
+        InterviewDomain liveCoding = interviewProfileService.getRevolutJavaProfile()
+                .findDomainById("live-java-coding-dsa-testing").orElseThrow();
+
+        InterviewRequirement testingDeck = requirement(liveCoding, "java-be-06-testing");
+        assertEquals(InterviewMaterialType.DECK, testingDeck.getReference().type());
+        assertEquals("Java BE 06 - Testing with JUnit/Mockito", testingDeck.getReference().key());
+
+        InterviewRequirement problemSolving = requirement(liveCoding, "problem-solving-system");
+        assertEquals(InterviewMaterialType.PROBLEM_SOLVING, problemSolving.getReference().type());
+    }
+
+    private InterviewRequirement requirement(InterviewDomain domain, String requirementId) {
+        return domain.getRequirements().stream()
+                .filter(requirement -> requirement.getId().equals(requirementId))
+                .findFirst()
+                .orElseThrow();
     }
 
     @Test
@@ -125,10 +159,7 @@ class InterviewProfileServiceTest {
         InterviewDomain databases = interviewProfileService.getRevolutJavaProfile()
                 .findDomainById("databases-postgresql-jooq").orElseThrow();
 
-        Set<String> availableReferences = databases.getRequirements().stream()
-                .filter(InterviewRequirement::isAvailable)
-                .map(InterviewRequirement::getReference)
-                .collect(Collectors.toSet());
+        Set<String> availableReferences = deckReferenceKeys(databases);
 
         assertEquals(Set.of("ABE 02 - Database Transactions, Locking & Isolation",
                 "ABE 03 - Idempotency & Race-Condition Prevention"), availableReferences);
@@ -139,10 +170,7 @@ class InterviewProfileServiceTest {
         InterviewDomain distributed = interviewProfileService.getRevolutJavaProfile()
                 .findDomainById("distributed-systems-architecture").orElseThrow();
 
-        Set<String> availableReferences = distributed.getRequirements().stream()
-                .filter(InterviewRequirement::isAvailable)
-                .map(InterviewRequirement::getReference)
-                .collect(Collectors.toSet());
+        Set<String> availableReferences = deckReferenceKeys(distributed);
 
         assertEquals(Set.of("ABE 04 - Kafka Delivery Semantics, Outbox & DLQs",
                 "ABE 05 - Distributed Transactions & Sagas",
@@ -155,15 +183,21 @@ class InterviewProfileServiceTest {
         InterviewDomain reliability = interviewProfileService.getRevolutJavaProfile()
                 .findDomainById("reliability-observability-jvm-role-stack").orElseThrow();
 
-        Set<String> availableReferences = reliability.getRequirements().stream()
-                .filter(InterviewRequirement::isAvailable)
-                .map(InterviewRequirement::getReference)
-                .collect(Collectors.toSet());
+        Set<String> availableReferences = deckReferenceKeys(reliability);
 
         assertEquals(Set.of("ABE 07 - Caching, Consistency & Invalidation",
                 "ABE 08 - Observability & Production Debugging",
                 "ABE 09 - JVM Memory, Garbage Collection & Performance",
                 "ABE 10 - API & Database Failure Scenarios"), availableReferences);
+    }
+
+    private Set<String> deckReferenceKeys(InterviewDomain domain) {
+        return domain.getRequirements().stream()
+                .filter(InterviewRequirement::isAvailable)
+                .map(InterviewRequirement::getReference)
+                .filter(reference -> reference.type() == InterviewMaterialType.DECK)
+                .map(InterviewMaterialReference::key)
+                .collect(Collectors.toSet());
     }
 
     @Test
@@ -205,5 +239,33 @@ class InterviewProfileServiceTest {
     @Test
     void findProfileByUnknownIdReturnsEmptyRatherThanThrowing() {
         assertEquals(Optional.empty(), interviewProfileService.findProfile("does-not-exist"));
+    }
+
+    /**
+     * Structural guard against a silently stale reference: every DECK-typed requirement in the
+     * Revolut profile must name a deck that a current {@link TrainingPathService} training path
+     * actually defines, so a future rename of e.g. a JCIP/ABE/DI module cannot leave the interview
+     * profile pointing at a deck name that no longer exists anywhere.
+     */
+    @Test
+    void allDeckReferencesInRevolutProfileMatchAKnownTrainingPathDeckName() {
+        Set<String> knownDeckNames = new TrainingPathService().getTrainingPaths().stream()
+                .flatMap(path -> path.getModules().stream())
+                .flatMap(module -> module.getDeckNames().stream())
+                .map(name -> name.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+
+        List<InterviewMaterialReference> deckReferences = interviewProfileService.getRevolutJavaProfile().getDomains().stream()
+                .flatMap(domain -> domain.getRequirements().stream())
+                .filter(InterviewRequirement::isAvailable)
+                .map(InterviewRequirement::getReference)
+                .filter(reference -> reference.type() == InterviewMaterialType.DECK)
+                .toList();
+
+        assertFalse(deckReferences.isEmpty(), "expected at least one DECK reference to check");
+        for (InterviewMaterialReference reference : deckReferences) {
+            assertTrue(knownDeckNames.contains(reference.key().toLowerCase(Locale.ROOT)),
+                    () -> "DECK reference '" + reference.key() + "' does not match any current TrainingPathService deck name");
+        }
     }
 }

@@ -56,6 +56,19 @@ class InterviewPreparationProfileTest {
     }
 
     @Test
+    void duplicateRequirementIdsAreReportedEvenAcrossDifferentDomains() {
+        InterviewDomain domainA = new InterviewDomain("a", "Title a", "description", 50, false, null,
+                List.of(InterviewRequirement.planned("shared-req", "Req", "description")));
+        InterviewDomain domainB = new InterviewDomain("b", "Title b", "description", 50, false, null,
+                List.of(InterviewRequirement.planned("shared-req", "Req", "description")));
+        InterviewPreparationProfile profile = new InterviewPreparationProfile("p", "Profile", "description",
+                List.of(domainA, domainB));
+
+        assertFalse(profile.isValid());
+        assertTrue(profile.validate().stream().anyMatch(violation -> violation.contains("Duplicate requirement id: shared-req")));
+    }
+
+    @Test
     void nonCriticalDomainsDoNotRequireAThreshold() {
         InterviewDomain nonCritical = domain("a", 100, false, null);
 
@@ -82,11 +95,11 @@ class InterviewPreparationProfileTest {
     }
 
     @Test
-    void availableRequirementMustReferenceExistingMaterial() {
+    void availableRequirementCannotBeConstructedWithoutAResolvableReference() {
         assertThrows(IllegalArgumentException.class,
-                () -> InterviewRequirement.available("id", "title", "description", null));
+                () -> InterviewRequirement.available("id", "title", "description", InterviewMaterialType.DECK, null));
         assertThrows(IllegalArgumentException.class,
-                () -> InterviewRequirement.available("id", "title", "description", "  "));
+                () -> InterviewRequirement.available("id", "title", "description", InterviewMaterialType.DECK, "  "));
     }
 
     @Test
@@ -96,5 +109,22 @@ class InterviewPreparationProfileTest {
         assertFalse(planned.isAvailable());
         assertEquals(null, planned.getReference());
         assertEquals(InterviewRequirementStatus.PLANNED, planned.getStatus());
+    }
+
+    @Test
+    void availableRequirementReferenceIsTypedAndResolvable() {
+        InterviewRequirement deckBacked = InterviewRequirement.available("id", "title", "description",
+                InterviewMaterialType.DECK, "Some Deck");
+
+        assertTrue(deckBacked.isAvailable());
+        assertEquals(InterviewMaterialType.DECK, deckBacked.getReference().type());
+        assertEquals("Some Deck", deckBacked.getReference().key());
+    }
+
+    @Test
+    void materialReferenceRequiresBothATypeAndANonBlankKey() {
+        assertThrows(NullPointerException.class, () -> new InterviewMaterialReference(null, "key"));
+        assertThrows(IllegalArgumentException.class, () -> new InterviewMaterialReference(InterviewMaterialType.DECK, null));
+        assertThrows(IllegalArgumentException.class, () -> new InterviewMaterialReference(InterviewMaterialType.DECK, " "));
     }
 }

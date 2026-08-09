@@ -50,11 +50,13 @@ public class InterviewPreparationProfile {
     }
 
     /**
-     * Structural validation across domains: unique domain ids and weights summing to exactly 100%.
-     * (Each {@link InterviewDomain} already enforces its own critical-gate-requires-a-threshold
-     * invariant at construction time, so that check cannot fail here.) Weights are whole percentage
-     * points specifically so this sum is exact integer arithmetic, never floating-point rounding -
-     * an invalid profile is reported here, never silently normalized.
+     * Structural validation across domains: unique domain ids, unique requirement ids (profile-wide,
+     * not just within a domain, since these are the stable identifiers later readiness/progress logic
+     * will address requirements by), and weights summing to exactly 100%. (Each {@link InterviewDomain}
+     * already enforces its own critical-gate-requires-a-threshold invariant at construction time, so
+     * that check cannot fail here.) Weights are whole percentage points specifically so this sum is
+     * exact integer arithmetic, never floating-point rounding - an invalid profile is reported here,
+     * never silently normalized.
      *
      * @return the violations found, or an empty list when the profile is structurally valid
      */
@@ -65,10 +67,16 @@ public class InterviewPreparationProfile {
             return List.copyOf(violations);
         }
 
-        Set<String> seenIds = new LinkedHashSet<>();
+        Set<String> seenDomainIds = new LinkedHashSet<>();
+        Set<String> seenRequirementIds = new LinkedHashSet<>();
         for (InterviewDomain domain : domains) {
-            if (!seenIds.add(domain.getId())) {
+            if (!seenDomainIds.add(domain.getId())) {
                 violations.add("Duplicate domain id: " + domain.getId());
+            }
+            for (InterviewRequirement requirement : domain.getRequirements()) {
+                if (!seenRequirementIds.add(requirement.getId())) {
+                    violations.add("Duplicate requirement id: " + requirement.getId());
+                }
             }
         }
 

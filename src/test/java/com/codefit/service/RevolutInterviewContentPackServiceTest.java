@@ -25,15 +25,15 @@ class RevolutInterviewContentPackServiceTest {
     private final RevolutInterviewContentPackService packService = new RevolutInterviewContentPackService();
 
     @Test
-    void bundledPackShipsSevenDistinctDecksWithTwentyUniqueInterviewCardsEach() {
+    void bundledPackShipsSevenDistinctDecksWithFiftyUniqueInterviewCardsEach() {
         assertEquals(7, RevolutInterviewContentPackService.PACK_DECKS.length);
         assertEquals(7, new HashSet<>(packService.deckNames()).size());
 
         Set<String> promptsAcrossPack = new HashSet<>();
         int totalCards = 0;
         for (RevolutInterviewContentPackService.PackDeck deck : RevolutInterviewContentPackService.PACK_DECKS) {
-            List<DatabaseInternalsPackService.BundledCard> cards = packService.loadCards(deck.resourcePath());
-            assertEquals(20, cards.size(), () -> deck.name() + " should contain exactly 20 focused interview cards");
+            List<DatabaseInternalsPackService.BundledCard> cards = packService.loadCards(deck);
+            assertEquals(50, cards.size(), () -> deck.name() + " should contain exactly 50 focused interview cards");
             for (DatabaseInternalsPackService.BundledCard card : cards) {
                 assertFalse(card.front().isBlank());
                 assertFalse(card.back().isBlank());
@@ -51,8 +51,8 @@ class RevolutInterviewContentPackServiceTest {
                 totalCards++;
             }
         }
-        assertEquals(140, totalCards);
-        assertEquals(140, promptsAcrossPack.size());
+        assertEquals(350, totalCards);
+        assertEquals(350, promptsAcrossPack.size());
     }
 
     @Test
@@ -63,7 +63,7 @@ class RevolutInterviewContentPackServiceTest {
 
         RevolutInterviewContentPackService.InstallSummary first = packService.install();
         assertEquals(7, first.decksCreated());
-        assertEquals(140, first.cardsImported());
+        assertEquals(350, first.cardsImported());
         assertEquals(0, first.duplicatesSkipped());
 
         Set<String> installedRjNames = new DeckService().getDecks().stream()
@@ -92,7 +92,7 @@ class RevolutInterviewContentPackServiceTest {
         RevolutInterviewContentPackService.InstallSummary second = packService.install();
         assertEquals(0, second.decksCreated());
         assertEquals(0, second.cardsImported());
-        assertEquals(140, second.duplicatesSkipped());
+        assertEquals(350, second.duplicatesSkipped());
     }
 
     private InterviewDomainReadiness domain(InterviewReadinessResult result, String domainId) {

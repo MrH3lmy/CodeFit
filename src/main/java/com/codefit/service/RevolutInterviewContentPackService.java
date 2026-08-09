@@ -2,6 +2,7 @@ package com.codefit.service;
 
 import com.codefit.model.Deck;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -12,10 +13,10 @@ import java.util.Map;
  * This is deliberately a content pack, not a fourth sequential {@link com.codefit.model.TrainingPath}:
  * the interview profile composes these decks with existing JCIP/ABE/DI material across domains.
  *
- * <p>Installation is idempotent. Existing decks are reused and an individual card is skipped when
- * the same prompt already exists in that deck, matching the bundled Database Internals pack's
- * behavior. Nothing is auto-seeded into every CodeFit database; a future UI can expose this pack as
- * an explicit interview-preparation install action.</p>
+ * <p>Each deck is split into a focused 20-card core resource plus a 30-card advanced supplement.
+ * Keeping those resources separate lets existing installations safely sync the additional material
+ * without replacing or duplicating the original prompts. Installation remains idempotent: existing
+ * decks are reused and a card is skipped when the same prompt already exists in that deck.</p>
  */
 public class RevolutInterviewContentPackService {
     public static final String RJ01_DECK = "RJ 01 - Modern Java 17/21 & Core Interview";
@@ -29,25 +30,32 @@ public class RevolutInterviewContentPackService {
     static final PackDeck[] PACK_DECKS = {
             new PackDeck(RJ01_DECK,
                     "Modern Java 17/21 interview judgment: records, sealed hierarchies, pattern matching, generics, streams, CompletableFuture, and virtual-thread trade-offs.",
-                    "/templates/revolut-java-interview/01-modern-java-core-interview.tsv"),
+                    "/templates/revolut-java-interview/01-modern-java-core-interview.tsv",
+                    "/templates/revolut-java-interview/01-modern-java-core-interview-advanced.tsv"),
             new PackDeck(RJ02_DECK,
                     "PostgreSQL execution plans, indexes, MVCC/operations, and SQL-first jOOQ transaction and schema practices.",
-                    "/templates/revolut-java-interview/02-postgresql-performance-jooq.tsv"),
+                    "/templates/revolut-java-interview/02-postgresql-performance-jooq.tsv",
+                    "/templates/revolut-java-interview/02-postgresql-performance-jooq-advanced.tsv"),
             new PackDeck(RJ03_DECK,
                     "DDD boundaries and invariants, integration events, CQRS, event sourcing, replay, ordering, and idempotency trade-offs.",
-                    "/templates/revolut-java-interview/03-ddd-cqrs-event-driven.tsv"),
+                    "/templates/revolut-java-interview/03-ddd-cqrs-event-driven.tsv",
+                    "/templates/revolut-java-interview/03-ddd-cqrs-event-driven-advanced.tsv"),
             new PackDeck(RJ04_DECK,
                     "System-design building blocks practiced as explicit requirements, scaling, storage, consistency, resilience, and operability decisions.",
-                    "/templates/revolut-java-interview/04-system-design-building-blocks.tsv"),
+                    "/templates/revolut-java-interview/04-system-design-building-blocks.tsv",
+                    "/templates/revolut-java-interview/04-system-design-building-blocks-advanced.tsv"),
             new PackDeck(RJ05_DECK,
                     "Fintech system design around ledgers, payment state machines, idempotency, reconciliation, settlement, risk, and auditability.",
-                    "/templates/revolut-java-interview/05-fintech-system-design.tsv"),
+                    "/templates/revolut-java-interview/05-fintech-system-design.tsv",
+                    "/templates/revolut-java-interview/05-fintech-system-design-advanced.tsv"),
             new PackDeck(RJ06_DECK,
                     "Concept and trade-off awareness for the current role stack: Kubernetes, Redis, GCP, Prometheus/Grafana/New Relic, Flyway, jOOQ, Spock, and containers.",
-                    "/templates/revolut-java-interview/06-revolut-stack-awareness.tsv"),
+                    "/templates/revolut-java-interview/06-revolut-stack-awareness.tsv",
+                    "/templates/revolut-java-interview/06-revolut-stack-awareness-advanced.tsv"),
             new PackDeck(RJ07_DECK,
                     "Behavioral interview drills for STAR, ownership, conflict, ambiguity, communication, product impact, mentoring, feedback, and motivation.",
-                    "/templates/revolut-java-interview/07-team-fit-star.tsv")
+                    "/templates/revolut-java-interview/07-team-fit-star.tsv",
+                    "/templates/revolut-java-interview/07-team-fit-star-advanced.tsv")
     };
 
     private final DeckService deckService;
@@ -86,7 +94,7 @@ public class RevolutInterviewContentPackService {
                 decksCreated++;
             }
 
-            for (DatabaseInternalsPackService.BundledCard card : loadCards(definition.resourcePath())) {
+            for (DatabaseInternalsPackService.BundledCard card : loadCards(definition)) {
                 if (flashcardService.cardExistsInDeck(deck.getId(), card.front())) {
                     duplicatesSkipped++;
                     continue;
@@ -108,6 +116,13 @@ public class RevolutInterviewContentPackService {
         return new InstallSummary(decksCreated, cardsImported, duplicatesSkipped);
     }
 
+    /** Core + advanced supplement for one interview deck. */
+    List<DatabaseInternalsPackService.BundledCard> loadCards(PackDeck definition) {
+        List<DatabaseInternalsPackService.BundledCard> cards = new ArrayList<>(loadCards(definition.resourcePath()));
+        cards.addAll(loadCards(definition.supplementalResourcePath()));
+        return List.copyOf(cards);
+    }
+
     List<DatabaseInternalsPackService.BundledCard> loadCards(String resourcePath) {
         var input = RevolutInterviewContentPackService.class.getResourceAsStream(resourcePath);
         if (input == null) {
@@ -120,7 +135,7 @@ public class RevolutInterviewContentPackService {
         return value == null ? "" : value.strip().toLowerCase(Locale.ROOT);
     }
 
-    record PackDeck(String name, String description, String resourcePath) {
+    record PackDeck(String name, String description, String resourcePath, String supplementalResourcePath) {
     }
 
     public record InstallSummary(int decksCreated, int cardsImported, int duplicatesSkipped) {

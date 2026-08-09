@@ -22,42 +22,32 @@ class InterviewReadinessMockEvidenceIntegrationTest {
     private final InterviewReadinessService readinessService = new InterviewReadinessService();
 
     @Test
-    void oneMockSampleIsNotEnoughToBecomeReadinessEvidence() {
-        saveDomainMock("one-system-design", "system-design", 95, LocalDateTime.of(2026, 8, 9, 10, 0));
-
-        InterviewDomainReadiness systemDesign = domain(readinessService.calculate(RevolutJavaInterviewProfile.ID).orElseThrow(),
-                "system-design");
-        InterviewRequirementReadiness mock = requirement(systemDesign, "mock-evidence-system-design");
-
-        assertFalse(mock.measurable());
-        assertEquals(InterviewMaterialType.MOCK_INTERVIEW, mock.sourceType());
-        assertEquals(InterviewDomainReadinessStatus.NOT_MEASURED, systemDesign.status());
-    }
-
-    @Test
-    void twoStrongMocksCreateDirectButStillPartialEvidenceForAnUnbuiltCriticalDomain() {
+    void mockEvidenceRequiresRepeatedSamplesAndFeedsCriticalReadiness() {
         saveDomainMock("system-design-1", "system-design", 90, LocalDateTime.of(2026, 8, 9, 10, 0));
+
+        InterviewDomainReadiness systemDesignAfterOne = domain(
+                readinessService.calculate(RevolutJavaInterviewProfile.ID).orElseThrow(), "system-design");
+        InterviewRequirementReadiness mockAfterOne = requirement(systemDesignAfterOne, "mock-evidence-system-design");
+        assertFalse(mockAfterOne.measurable(), "one lucky mock must not become readiness evidence");
+        assertEquals(InterviewMaterialType.MOCK_INTERVIEW, mockAfterOne.sourceType());
+        assertEquals(InterviewDomainReadinessStatus.NOT_MEASURED, systemDesignAfterOne.status());
+
         saveDomainMock("system-design-2", "system-design", 80, LocalDateTime.of(2026, 8, 9, 11, 0));
 
-        InterviewDomainReadiness systemDesign = domain(readinessService.calculate(RevolutJavaInterviewProfile.ID).orElseThrow(),
-                "system-design");
-        InterviewRequirementReadiness mock = requirement(systemDesign, "mock-evidence-system-design");
-
-        assertTrue(mock.measurable());
-        assertEquals(85, mock.scorePercent());
-        assertEquals(85, systemDesign.scorePercent());
-        assertEquals(InterviewDomainReadinessStatus.PARTIAL, systemDesign.status(),
+        InterviewDomainReadiness systemDesignAfterTwo = domain(
+                readinessService.calculate(RevolutJavaInterviewProfile.ID).orElseThrow(), "system-design");
+        InterviewRequirementReadiness mockAfterTwo = requirement(systemDesignAfterTwo, "mock-evidence-system-design");
+        assertTrue(mockAfterTwo.measurable());
+        assertEquals(85, mockAfterTwo.scorePercent());
+        assertEquals(85, systemDesignAfterTwo.scorePercent());
+        assertEquals(InterviewDomainReadinessStatus.PARTIAL, systemDesignAfterTwo.status(),
                 "strong mock execution is real signal but cannot replace the still-planned RJ system-design content");
-    }
 
-    @Test
-    void twoFailingMocksDirectlyFailACriticalGate() {
-        saveDomainMock("concurrency-1", "java-concurrency-jmm", 40, LocalDateTime.of(2026, 8, 9, 10, 0));
-        saveDomainMock("concurrency-2", "java-concurrency-jmm", 50, LocalDateTime.of(2026, 8, 9, 11, 0));
+        saveDomainMock("concurrency-1", "java-concurrency-jmm", 40, LocalDateTime.of(2026, 8, 9, 12, 0));
+        saveDomainMock("concurrency-2", "java-concurrency-jmm", 50, LocalDateTime.of(2026, 8, 9, 13, 0));
 
         InterviewReadinessResult readiness = readinessService.calculate(RevolutJavaInterviewProfile.ID).orElseThrow();
         InterviewDomainReadiness concurrency = domain(readiness, "java-concurrency-jmm");
-
         assertEquals(45, requirement(concurrency, "mock-evidence-java-concurrency-jmm").scorePercent());
         assertEquals(InterviewDomainReadinessStatus.FAIL, concurrency.status());
         assertEquals(InterviewReadinessStatus.NOT_READY, readiness.status());

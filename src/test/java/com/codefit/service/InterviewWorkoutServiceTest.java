@@ -83,7 +83,8 @@ class InterviewWorkoutServiceTest {
         assertEquals(InterviewWorkout.PromptType.SYSTEM_DESIGN, second.type());
         assertNotEquals(first.requirementId(), second.requirementId(),
                 "the two Revolut system-design requirements should alternate across design days");
-        assertFalse(first.backingMaterialAvailable(), "RJ system-design content is still planned in Slice 3");
+        assertTrue(first.backingMaterialAvailable(), "RJ system-design content is bundled and installable in Slice 5");
+        assertTrue(first.sourceReferenceKey().startsWith("RJ 0"));
     }
 
     @Test

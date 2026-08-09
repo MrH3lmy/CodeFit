@@ -8,23 +8,14 @@ import com.codefit.model.InterviewRequirement;
 import java.util.List;
 
 /**
- * Static definition of the Revolut Java Senior Software Engineer interview-preparation profile
- * (see {@code docs/revolut-java-interview-plan.md}). Composes existing Java Concurrency in
- * Practice / Advanced Backend Engineering / Database Internals material and declares the
- * not-yet-built Revolut-specific (RJ) modules a later slice will add. It creates no new decks,
- * cards, or training paths itself - only references to material that exists (or will exist) under
- * {@link TrainingPathService}.
- *
- * <p>A second company's profile is added by writing one more class like this one and registering
- * it in {@link InterviewProfileService} - nothing here needs to change for that to work.
+ * Static definition of the Revolut Java Senior Software Engineer interview-preparation profile.
+ * It composes existing Java Concurrency in Practice / Advanced Backend Engineering / Database
+ * Internals material with the seven bundled RJ interview decks. It remains a cross-cutting profile,
+ * not another sequential TrainingPath.
  */
 final class RevolutJavaInterviewProfile {
     static final String ID = "revolut-java-senior-swe";
     private static final Integer CRITICAL_GATE_MINIMUM_PERCENT = 70;
-
-    /** Stable lookup key for the problem-solving subsystem reference - not a deck name. Reuses
-     *  {@link ProblemSolvingInterviewReadinessResolver#SUPPORTED_KEY} directly so the profile's
-     *  reference and the resolver's supported key can never silently drift apart. */
     private static final String PROBLEM_SOLVING_SUBSYSTEM_KEY = ProblemSolvingInterviewReadinessResolver.SUPPORTED_KEY;
 
     private RevolutJavaInterviewProfile() {
@@ -34,9 +25,9 @@ final class RevolutJavaInterviewProfile {
         return new InterviewPreparationProfile(
                 ID,
                 "Revolut - Java Senior Software Engineer",
-                "Interview-preparation profile for the Revolut Java Senior Software Engineer role. Composes "
-                        + "existing CodeFit training-path material and declares the Revolut-specific gaps a later "
-                        + "slice will fill; see docs/revolut-java-interview-plan.md.",
+                "Interview-preparation profile for the Revolut Java Senior Software Engineer role. It composes "
+                        + "existing CodeFit training material, dedicated RJ interview decks, problem-solving evidence, "
+                        + "and mock-interview evidence across the published interview domains.",
                 List.of(
                         concurrencyAndJmm(),
                         liveCodingDsaTesting(),
@@ -46,16 +37,14 @@ final class RevolutJavaInterviewProfile {
                         dddCqrsEventDriven(),
                         reliabilityObservabilityJvmRoleStack(),
                         teamFitCommunicationStar()
-                )
-        );
+                ));
     }
 
     private static InterviewDomain concurrencyAndJmm() {
         return new InterviewDomain(
                 "java-concurrency-jmm",
                 "Java Concurrency & Java Memory Model",
-                "Thread safety, task execution/cancellation, liveness and performance, and locks/atomics/"
-                        + "happens-before reasoning under production load.",
+                "Thread safety, task execution/cancellation, liveness and performance, and locks/atomics/happens-before reasoning under production load.",
                 18, true, CRITICAL_GATE_MINIMUM_PERCENT,
                 List.of(
                         InterviewRequirement.available("jcip-01", "JCIP 01 - Fundamentals",
@@ -70,16 +59,14 @@ final class RevolutJavaInterviewProfile {
                         InterviewRequirement.available("jcip-04", "JCIP 04 - Locks, Atomics & Memory Model",
                                 "Explicit locks, conditions, AQS, CAS, nonblocking algorithms, and happens-before.",
                                 InterviewMaterialType.DECK, "JCIP 04 - Locks, Atomics & Memory Model")
-                )
-        );
+                ));
     }
 
     private static InterviewDomain liveCodingDsaTesting() {
         return new InterviewDomain(
                 "live-java-coding-dsa-testing",
                 "Live Java Coding, DSA & Testing",
-                "Timed problem solving, data structures and algorithms, SOLID/refactoring, and writing tests "
-                        + "while coding under time pressure.",
+                "Timed problem solving, data structures and algorithms, modern Java, SOLID/refactoring, and writing tests while coding under time pressure.",
                 17, true, CRITICAL_GATE_MINIMUM_PERCENT,
                 List.of(
                         InterviewRequirement.available("java-be-06-testing", "Java BE 06 - Testing with JUnit/Mockito",
@@ -88,19 +75,16 @@ final class RevolutJavaInterviewProfile {
                         InterviewRequirement.available("problem-solving-system", "Problem-Solving Training",
                                 "Timed problem attempts, roadmap-driven DSA practice, and solving-workspace phase tracking.",
                                 InterviewMaterialType.PROBLEM_SOLVING, PROBLEM_SOLVING_SUBSYSTEM_KEY),
-                        InterviewRequirement.planned("rj-01", "RJ 01 - Modern Java 17/21 & Core Interview",
-                                "Records, sealed classes, pattern matching, virtual threads, collections/API traps, "
-                                        + "and SOLID/testing prompts.")
-                )
-        );
+                        rj("rj-01", RevolutInterviewContentPackService.RJ01_DECK,
+                                "Records, sealed classes, pattern matching, generics, streams, CompletableFuture, virtual threads, and core interview traps.")
+                ));
     }
 
     private static InterviewDomain databasesPostgresJooq() {
         return new InterviewDomain(
                 "databases-postgresql-jooq",
                 "Databases, PostgreSQL & jOOQ",
-                "Isolation levels, locking, idempotency, and PostgreSQL/jOOQ-specific query and transaction "
-                        + "correctness.",
+                "Isolation levels, locking, idempotency, PostgreSQL performance and operations, and jOOQ-specific query and transaction correctness.",
                 15, true, CRITICAL_GATE_MINIMUM_PERCENT,
                 List.of(
                         InterviewRequirement.available("abe-02", "ABE 02 - Database Transactions, Locking & Isolation",
@@ -109,18 +93,16 @@ final class RevolutJavaInterviewProfile {
                         InterviewRequirement.available("abe-03", "ABE 03 - Idempotency & Race-Condition Prevention",
                                 "Idempotency keys, deduplication, compare-and-set, and fencing tokens.",
                                 InterviewMaterialType.DECK, "ABE 03 - Idempotency & Race-Condition Prevention"),
-                        InterviewRequirement.planned("rj-02", "RJ 02 - PostgreSQL Performance & jOOQ",
-                                "EXPLAIN/ANALYZE, index selection, joins, MVCC/Postgres details, and SQL-first/jOOQ patterns.")
-                )
-        );
+                        rj("rj-02", RevolutInterviewContentPackService.RJ02_DECK,
+                                "EXPLAIN/ANALYZE, index selection, MVCC and vacuum behavior, query observability, and SQL-first jOOQ patterns.")
+                ));
     }
 
     private static InterviewDomain distributedSystemsArchitecture() {
         return new InterviewDomain(
                 "distributed-systems-architecture",
                 "Distributed Systems & Architecture",
-                "Delivery semantics, transactional outbox and sagas, and distributed-storage foundations behind "
-                        + "microservice architecture decisions.",
+                "Delivery semantics, transactional outbox and sagas, and distributed-storage foundations behind microservice architecture decisions.",
                 15, false, null,
                 List.of(
                         InterviewRequirement.available("abe-04", "ABE 04 - Kafka Delivery Semantics, Outbox & DLQs",
@@ -135,48 +117,38 @@ final class RevolutJavaInterviewProfile {
                         InterviewRequirement.available("di-05", "DI 05 - Anti-Entropy, Transactions & Consensus",
                                 "Replica repair, gossip, distributed commit, Paxos, Raft, and ZAB.",
                                 InterviewMaterialType.DECK, "DI 05 - Anti-Entropy, Transactions & Consensus")
-                )
-        );
+                ));
     }
 
     private static InterviewDomain systemDesign() {
         return new InterviewDomain(
                 "system-design",
                 "System Design",
-                "Scalable distributed system design end to end: requirements, scale, API/data model, "
-                        + "components, consistency, failure handling, and trade-offs - including fintech scenarios.",
+                "Scalable distributed system design end to end: requirements, scale, API/data model, components, consistency, failure handling, and trade-offs, including fintech scenarios.",
                 15, true, CRITICAL_GATE_MINIMUM_PERCENT,
                 List.of(
-                        InterviewRequirement.planned("rj-04", "RJ 04 - System Design Building Blocks",
-                                "Estimation, load balancing, partitioning, replication, queues, caches, rate limiting, "
-                                        + "resilience, and observability."),
-                        InterviewRequirement.planned("rj-05", "RJ 05 - Fintech System Design",
-                                "Payments, wallet/ledger, card authorization, fraud/risk, reconciliation, and "
-                                        + "transaction history.")
-                )
-        );
+                        rj("rj-04", RevolutInterviewContentPackService.RJ04_DECK,
+                                "Estimation, load balancing, partitioning, replication, queues, caches, rate limiting, resilience, and observability."),
+                        rj("rj-05", RevolutInterviewContentPackService.RJ05_DECK,
+                                "Payments, wallet and ledger correctness, authorization, fraud and risk, reconciliation, and transaction history.")
+                ));
     }
 
     private static InterviewDomain dddCqrsEventDriven() {
         return new InterviewDomain(
                 "ddd-cqrs-event-driven",
                 "DDD, CQRS & Event-Driven Architecture",
-                "Bounded contexts, aggregates and invariants, domain events, and CQRS/event-sourcing trade-offs.",
+                "Bounded contexts, aggregates and invariants, domain and integration events, and CQRS/event-sourcing trade-offs.",
                 8, false, null,
-                List.of(
-                        InterviewRequirement.planned("rj-03", "RJ 03 - DDD, CQRS & Event-Driven Design",
-                                "Bounded contexts, aggregates, invariants, domain events, CQRS trade-offs, and "
-                                        + "event-sourcing trade-offs.")
-                )
-        );
+                List.of(rj("rj-03", RevolutInterviewContentPackService.RJ03_DECK,
+                        "Bounded contexts, aggregates, invariants, event contracts, CQRS, replay, and event-sourcing trade-offs.")));
     }
 
     private static InterviewDomain reliabilityObservabilityJvmRoleStack() {
         return new InterviewDomain(
                 "reliability-observability-jvm-role-stack",
                 "Reliability, Observability, JVM & Role Stack",
-                "Caching/invalidation, production debugging, JVM memory and GC tuning, failure-scenario "
-                        + "diagnosis, and awareness of Revolut's own stack.",
+                "Caching/invalidation, production debugging, JVM memory and GC tuning, failure-scenario diagnosis, and awareness of the role's infrastructure/tooling stack.",
                 6, false, null,
                 List.of(
                         InterviewRequirement.available("abe-07", "ABE 07 - Caching, Consistency & Invalidation",
@@ -191,24 +163,22 @@ final class RevolutJavaInterviewProfile {
                         InterviewRequirement.available("abe-10", "ABE 10 - API & Database Failure Scenarios",
                                 "Timeouts, retries, circuit breakers, and cascading failures.",
                                 InterviewMaterialType.DECK, "ABE 10 - API & Database Failure Scenarios"),
-                        InterviewRequirement.planned("rj-06", "RJ 06 - Revolut Stack Awareness",
-                                "Redis, GCP, Kubernetes, Grafana/Prometheus/New Relic, Flyway, Spock, and jOOQ at a "
-                                        + "concept/trade-off level.")
-                )
-        );
+                        rj("rj-06", RevolutInterviewContentPackService.RJ06_DECK,
+                                "Redis, GCP, Kubernetes, Prometheus/Grafana/New Relic, Flyway, Spock, jOOQ, and container trade-offs.")
+                ));
     }
 
     private static InterviewDomain teamFitCommunicationStar() {
         return new InterviewDomain(
                 "team-fit-communication-star",
                 "Team Fit, Communication & STAR",
-                "Collaboration, handling uncertainty and conflict, and concise, quantified STAR-format "
-                        + "experience stories.",
+                "Collaboration, handling uncertainty and conflict, ownership, product impact, and concise quantified STAR-format experience stories.",
                 6, false, null,
-                List.of(
-                        InterviewRequirement.planned("rj-07", "RJ 07 - Team Fit & STAR",
-                                "Story prompts, result metrics, and conflict/ambiguity/ownership/product-impact drills.")
-                )
-        );
+                List.of(rj("rj-07", RevolutInterviewContentPackService.RJ07_DECK,
+                        "Story structure, result metrics, conflict, ambiguity, ownership, feedback, influence, prioritization, and motivation drills.")));
+    }
+
+    private static InterviewRequirement rj(String id, String deckName, String description) {
+        return InterviewRequirement.available(id, deckName, description, InterviewMaterialType.DECK, deckName);
     }
 }

@@ -22,8 +22,10 @@ final class RevolutJavaInterviewProfile {
     static final String ID = "revolut-java-senior-swe";
     private static final Integer CRITICAL_GATE_MINIMUM_PERCENT = 70;
 
-    /** Stable lookup key for the problem-solving subsystem reference - not a deck name. */
-    private static final String PROBLEM_SOLVING_SUBSYSTEM_KEY = "problem-solving-training";
+    /** Stable lookup key for the problem-solving subsystem reference - not a deck name. Reuses
+     *  {@link ProblemSolvingInterviewReadinessResolver#SUPPORTED_KEY} directly so the profile's
+     *  reference and the resolver's supported key can never silently drift apart. */
+    private static final String PROBLEM_SOLVING_SUBSYSTEM_KEY = ProblemSolvingInterviewReadinessResolver.SUPPORTED_KEY;
 
     private RevolutJavaInterviewProfile() {
     }

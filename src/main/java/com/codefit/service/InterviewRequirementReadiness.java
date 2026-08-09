@@ -31,6 +31,11 @@ public record InterviewRequirementReadiness(
         if (!measurable && scorePercent != null) {
             throw new IllegalArgumentException("Non-measurable requirement readiness '" + requirementId + "' must not have a score.");
         }
+        if (scorePercent != null && (scorePercent < 0 || scorePercent > 100)) {
+            throw new IllegalArgumentException("Requirement readiness '" + requirementId
+                    + "' score must be between 0 and 100, got " + scorePercent
+                    + " - a resolver must never produce an out-of-range score, and this is never silently clamped.");
+        }
     }
 
     /** A {@code PLANNED} requirement: no backing material exists yet, so there is nothing to measure. */

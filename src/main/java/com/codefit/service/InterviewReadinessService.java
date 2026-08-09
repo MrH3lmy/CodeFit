@@ -36,6 +36,11 @@ import java.util.Optional;
  * Every exposed score/coverage/threshold in this slice is a whole percentage point (0-100), rounded
  * with {@link Math#round(double)} once per aggregation step (requirement -&gt; domain -&gt; overall) -
  * consistently, so nothing here mixes a decimal-percent policy with an integer one.
+ *
+ * <h2>Validation</h2>
+ * {@link #calculate(InterviewPreparationProfile)} rejects a structurally invalid profile (see
+ * {@link InterviewPreparationProfile#validate()}) before resolving or scoring anything - an invalid
+ * profile can never produce a readiness result, silently-normalized or otherwise.
  */
 public class InterviewReadinessService {
 
@@ -77,7 +82,19 @@ public class InterviewReadinessService {
         return interviewProfileService.findProfile(profileId).map(this::calculate);
     }
 
+    /**
+     * @throws IllegalArgumentException if {@link InterviewPreparationProfile#validate()} reports any
+     *                                  violation (duplicate ids, weights not summing to exactly 100%,
+     *                                  etc.) - resolution and scoring never run against a structurally
+     *                                  invalid profile, and weights are never silently normalized.
+     */
     public InterviewReadinessResult calculate(InterviewPreparationProfile profile) {
+        List<String> violations = profile.validate();
+        if (!violations.isEmpty()) {
+            throw new IllegalArgumentException("Cannot calculate readiness for invalid profile '" + profile.getId()
+                    + "': " + String.join("; ", violations));
+        }
+
         List<InterviewDomainReadiness> domainReadiness = profile.getDomains().stream()
                 .map(this::resolveDomain)
                 .toList();

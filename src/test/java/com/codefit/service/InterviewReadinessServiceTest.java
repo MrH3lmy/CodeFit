@@ -355,4 +355,98 @@ class InterviewReadinessServiceTest {
 
         assertEquals(Optional.empty(), result);
     }
+
+    // ==================================================================================
+    // Profile validation: calculate() must reject a structurally invalid profile before
+    // resolving or scoring anything (Slice 2 review finding #2).
+    // ==================================================================================
+
+    private InterviewReadinessService serviceWithNoResolvers() {
+        return new InterviewReadinessService(new InterviewProfileService(), List.of(), POLICY_75);
+    }
+
+    @Test
+    void profileWithWeightsNotSummingToOneHundredCannotProduceAResult() {
+        InterviewPreparationProfile invalidProfile = profileWrapping(domain("a", 60, false, null, List.of(plannedRequirement("a-req"))));
+        assertFalse(invalidProfile.isValid(), "test fixture must actually be invalid (60%, not 100%)");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> serviceWithNoResolvers().calculate(invalidProfile));
+        assertTrue(exception.getMessage().contains("100%"));
+    }
+
+    @Test
+    void profileWithDuplicateDomainIdsCannotProduceAResult() {
+        InterviewPreparationProfile invalidProfile = profileWrapping(
+                domain("dup", 50, false, null, List.of(plannedRequirement("req-1"))),
+                domain("dup", 50, false, null, List.of(plannedRequirement("req-2"))));
+        assertFalse(invalidProfile.isValid());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> serviceWithNoResolvers().calculate(invalidProfile));
+        assertTrue(exception.getMessage().contains("Duplicate domain id"));
+    }
+
+    @Test
+    void profileWithDuplicateRequirementIdsCannotProduceAResult() {
+        InterviewDomain domainA = domain("a", 50, false, null, List.of(plannedRequirement("shared-req")));
+        InterviewDomain domainB = domain("b", 50, false, null, List.of(plannedRequirement("shared-req")));
+        InterviewPreparationProfile invalidProfile = profileWrapping(domainA, domainB);
+        assertFalse(invalidProfile.isValid());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> serviceWithNoResolvers().calculate(invalidProfile));
+        assertTrue(exception.getMessage().contains("Duplicate requirement id"));
+    }
+
+    @Test
+    void invalidProfileNeverReachesResolutionOrScoring() {
+        InterviewPreparationProfile invalidProfile = profileWrapping(domain("a", 50, false, null, List.of(plannedRequirement("a-req"))));
+
+        assertThrows(IllegalArgumentException.class, () -> serviceWithNoResolvers().calculate(invalidProfile));
+        // No result of any status (READY, NOT_READY, or INSUFFICIENT_DATA) is ever produced for it -
+        // the exception itself is the only outcome, not a fallback INSUFFICIENT_DATA result.
+    }
+
+    @Test
+    void validProfileCalculatesNormallyAfterTheValidationCheck() {
+        InterviewPreparationProfile validProfile = profileWrapping(domain("a", 100, false, null, List.of(plannedRequirement("a-req"))));
+
+        InterviewReadinessResult result = serviceWithNoResolvers().calculate(validProfile);
+
+        assertEquals(InterviewReadinessStatus.INSUFFICIENT_DATA, result.status());
+    }
+
+    // ==================================================================================
+    // Score invariant hardening: a measured requirement score must always be within 0..100
+    // (Slice 2 review recommendation).
+    // ==================================================================================
+
+    @Test
+    void measuredRequirementAcceptsZeroPercent() {
+        InterviewRequirementReadiness readiness = InterviewRequirementReadiness.measured(
+                deckRequirement("a"), InterviewMaterialType.DECK, 0.0, "note");
+
+        assertEquals(0, readiness.scorePercent());
+    }
+
+    @Test
+    void measuredRequirementAcceptsOneHundredPercent() {
+        InterviewRequirementReadiness readiness = InterviewRequirementReadiness.measured(
+                deckRequirement("a"), InterviewMaterialType.DECK, 100.0, "note");
+
+        assertEquals(100, readiness.scorePercent());
+    }
+
+    @Test
+    void measuredRequirementRejectsANegativeScoreRatherThanClampingItToZero() {
+        assertThrows(IllegalArgumentException.class,
+                () -> InterviewRequirementReadiness.measured(deckRequirement("a"), InterviewMaterialType.DECK, -1.0, "note"));
+    }
+
+    @Test
+    void measuredRequirementRejectsAScoreAboveOneHundredRatherThanClampingIt() {
+        assertThrows(IllegalArgumentException.class,
+                () -> InterviewRequirementReadiness.measured(deckRequirement("a"), InterviewMaterialType.DECK, 101.0, "note"));
+    }
 }

@@ -16,26 +16,24 @@ import java.util.Optional;
  * persisted here.
  *
  * <h2>Weighting</h2>
- * A domain's score is the average of only its <em>measurable</em> requirements (unmeasured/planned
- * requirements contribute neither a 0 nor a bias, they are simply excluded). The overall score is
- * likewise a weighted average over only the <em>measured</em> domains:
- * {@code sum(domainScore * domainWeight) / sum(measuredDomainWeights)}. This is deliberately not
- * divided by the full 100% weight, so domains with no content yet (the still-unbuilt RJ modules)
- * cannot silently drag the score toward 0 - {@link InterviewReadinessResult#coveragePercent()}
- * exposes how much of the profile that average actually represents.
+ * A domain's score is the average of only its measurable requirements. Overall weighting accounts
+ * for partial domain coverage: a domain contributes {@code domainWeight * measuredRequirements /
+ * totalRequirements} of effective measured weight, so one measured requirement can never make an
+ * entire domain appear covered. The overall score is then the weighted average over that effective
+ * measured weight. Planned/unmeasured requirements are never treated as zero.
  *
  * <h2>Critical gates</h2>
- * A critical domain that is measurable and below its {@link InterviewDomain#getMinimumReadinessThresholdPercent()}
- * always forces {@link InterviewReadinessStatus#NOT_READY}, regardless of how high the overall score
- * is. A critical domain that cannot currently be measured forces
- * {@link InterviewReadinessStatus#INSUFFICIENT_DATA} rather than ever claiming
- * {@link InterviewReadinessStatus#READY}. Only when every critical gate passes and the overall score
- * clears {@link InterviewReadinessPolicy#overallReadinessThresholdPercent()} is the result READY.
+ * A critical domain below its threshold is {@link InterviewDomainReadinessStatus#FAIL} even if only
+ * part of the domain is currently measurable. A critical domain at/above threshold cannot become
+ * {@link InterviewDomainReadinessStatus#PASS} until every requirement in that domain is measurable;
+ * until then it is {@link InterviewDomainReadinessStatus#PARTIAL}. A PARTIAL or NOT_MEASURED critical
+ * gate prevents an overall READY result and yields {@link InterviewReadinessStatus#INSUFFICIENT_DATA}
+ * unless another critical gate is already measurably failing.
  *
  * <h2>Rounding policy</h2>
  * Every exposed score/coverage/threshold in this slice is a whole percentage point (0-100), rounded
- * with {@link Math#round(double)} once per aggregation step (requirement -&gt; domain -&gt; overall) -
- * consistently, so nothing here mixes a decimal-percent policy with an integer one.
+ * with {@link Math#round(double)} at the aggregation boundary. Effective measured weights remain
+ * doubles internally so domain coverage is not distorted by an intermediate rounded percentage.
  *
  * <h2>Validation</h2>
  * {@link #calculate(InterviewPreparationProfile)} rejects a structurally invalid profile (see
@@ -46,9 +44,7 @@ public class InterviewReadinessService {
 
     /**
      * The overall pass bar (0-100), kept out of {@link InterviewPreparationProfile} itself since it is
-     * a property of how the readiness engine grades a profile, not of the profile's content - a
-     * second profile, or a future re-tuning of this bar, should never require touching the domain
-     * model. Mirrors {@link MasteryService.MasteryThresholds}/{@code DEFAULT_THRESHOLDS}.
+     * a property of how the readiness engine grades a profile, not of the profile's content.
      */
     public record InterviewReadinessPolicy(int overallReadinessThresholdPercent) {
         public InterviewReadinessPolicy {
@@ -85,8 +81,7 @@ public class InterviewReadinessService {
     /**
      * @throws IllegalArgumentException if {@link InterviewPreparationProfile#validate()} reports any
      *                                  violation (duplicate ids, weights not summing to exactly 100%,
-     *                                  etc.) - resolution and scoring never run against a structurally
-     *                                  invalid profile, and weights are never silently normalized.
+     *                                  etc.)
      */
     public InterviewReadinessResult calculate(InterviewPreparationProfile profile) {
         List<String> violations = profile.validate();
@@ -121,8 +116,7 @@ public class InterviewReadinessService {
                         "No readiness resolver is registered for material type " + type + " yet."));
     }
 
-    // ---- Pure aggregation, independent of the database so it is directly unit testable
-    // (mirrors TrainingPathService.recommend and MasteryService.evaluate). ----
+    // ---- Pure aggregation, independent of the database so it is directly unit testable. ----
 
     static InterviewDomainReadiness buildDomainReadiness(InterviewDomain domain,
                                                           List<InterviewRequirementReadiness> requirementReadiness) {
@@ -146,9 +140,13 @@ public class InterviewReadinessService {
 
         InterviewDomainReadinessStatus status;
         if (domain.isCriticalGate()) {
-            status = scorePercent >= domain.getMinimumReadinessThresholdPercent()
-                    ? InterviewDomainReadinessStatus.PASS
-                    : InterviewDomainReadinessStatus.FAIL;
+            if (scorePercent < domain.getMinimumReadinessThresholdPercent()) {
+                status = InterviewDomainReadinessStatus.FAIL;
+            } else if (measuredRequirementCount < totalRequirementCount) {
+                status = InterviewDomainReadinessStatus.PARTIAL;
+            } else {
+                status = InterviewDomainReadinessStatus.PASS;
+            }
         } else {
             status = InterviewDomainReadinessStatus.MEASURED;
         }
@@ -159,21 +157,20 @@ public class InterviewReadinessService {
     }
 
     static InterviewReadinessResult buildResult(InterviewPreparationProfile profile,
-                                                List<InterviewDomainReadiness> domainReadiness,
-                                                InterviewReadinessPolicy policy) {
+                                                 List<InterviewDomainReadiness> domainReadiness,
+                                                 InterviewReadinessPolicy policy) {
         int totalWeightPercent = domainReadiness.stream().mapToInt(InterviewDomainReadiness::weightPercent).sum();
-        int measuredWeightPercent = domainReadiness.stream()
-                .filter(InterviewDomainReadiness::isMeasured)
-                .mapToInt(InterviewDomainReadiness::weightPercent)
+        double measuredWeightPercent = domainReadiness.stream()
+                .mapToDouble(InterviewReadinessService::effectiveMeasuredWeightPercent)
                 .sum();
         int coveragePercent = totalWeightPercent == 0 ? 0
                 : roundToPercent(measuredWeightPercent * 100.0 / totalWeightPercent);
 
         Integer overallReadinessPercent = null;
-        if (measuredWeightPercent > 0) {
+        if (measuredWeightPercent > 0.0) {
             double weightedSum = domainReadiness.stream()
                     .filter(InterviewDomainReadiness::isMeasured)
-                    .mapToDouble(readiness -> readiness.scorePercent() * (double) readiness.weightPercent())
+                    .mapToDouble(readiness -> readiness.scorePercent() * effectiveMeasuredWeightPercent(readiness))
                     .sum();
             overallReadinessPercent = roundToPercent(weightedSum / measuredWeightPercent);
         }
@@ -187,13 +184,14 @@ public class InterviewReadinessService {
                 .toList();
         boolean anyCriticalFailed = criticalDomains.stream()
                 .anyMatch(readiness -> readiness.status() == InterviewDomainReadinessStatus.FAIL);
-        boolean anyCriticalUnmeasured = criticalDomains.stream()
-                .anyMatch(readiness -> readiness.status() == InterviewDomainReadinessStatus.NOT_MEASURED);
+        boolean anyCriticalIncomplete = criticalDomains.stream()
+                .anyMatch(readiness -> readiness.status() == InterviewDomainReadinessStatus.NOT_MEASURED
+                        || readiness.status() == InterviewDomainReadinessStatus.PARTIAL);
 
         InterviewReadinessStatus status;
         if (anyCriticalFailed) {
             status = InterviewReadinessStatus.NOT_READY;
-        } else if (anyCriticalUnmeasured || overallReadinessPercent == null) {
+        } else if (anyCriticalIncomplete || overallReadinessPercent == null) {
             status = InterviewReadinessStatus.INSUFFICIENT_DATA;
         } else if (overallReadinessPercent >= policy.overallReadinessThresholdPercent()) {
             status = InterviewReadinessStatus.READY;
@@ -203,6 +201,14 @@ public class InterviewReadinessService {
 
         return new InterviewReadinessResult(profile.getId(), profile.getTitle(), domainReadiness,
                 overallReadinessPercent, coveragePercent, status, blockingCriticalDomainIds);
+    }
+
+    private static double effectiveMeasuredWeightPercent(InterviewDomainReadiness readiness) {
+        if (!readiness.isMeasured() || readiness.totalRequirementCount() <= 0) {
+            return 0.0;
+        }
+        return readiness.weightPercent()
+                * (readiness.measuredRequirementCount() / (double) readiness.totalRequirementCount());
     }
 
     private static int roundToPercent(double value) {

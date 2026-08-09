@@ -19,6 +19,11 @@ class StylesheetResourcesTest {
     }
 
     @Test
+    void interviewScreenStylesheetExists() {
+        assertNotNull(getClass().getResource("/css/interview.css"));
+    }
+
+    @Test
     void tokensCssLoadsFirst() {
         assertEquals("/css/tokens.css", NavigationService.STYLESHEETS[0]);
     }

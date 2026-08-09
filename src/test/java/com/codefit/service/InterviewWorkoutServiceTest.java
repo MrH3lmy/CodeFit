@@ -46,14 +46,15 @@ class InterviewWorkoutServiceTest {
     }
 
     @Test
-    void technicalDeepDivePrioritizesARealFailingCriticalDomain() {
+    void technicalDeepDivePrioritizesTheCoverageHoleInsideARealFailingCriticalDomain() {
         InterviewWorkout.Prompt prompt = InterviewWorkoutService.selectTechnicalPrompt(
                 profile, readinessWithFailingLiveCoding(), 10);
 
         assertEquals("live-java-coding-dsa-testing", prompt.domainId());
-        assertEquals("java-be-06-testing", prompt.requirementId());
+        assertEquals("rj-01", prompt.requirementId(),
+                "once RJ01 is real content, the unmeasured coverage hole is deliberately targeted before an already-measured weak deck");
         assertTrue(prompt.backingMaterialAvailable());
-        assertEquals("Java BE 06 - Testing with JUnit/Mockito", prompt.sourceReferenceKey());
+        assertEquals(RevolutInterviewContentPackService.RJ01_DECK, prompt.sourceReferenceKey());
     }
 
     @Test

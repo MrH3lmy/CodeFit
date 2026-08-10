@@ -309,12 +309,15 @@ public class InterviewPrepController extends BaseController {
     private void applyStatusStyle(Label label, String status) {
         label.getStyleClass().removeAll("interview-status-pass", "interview-status-fail",
                 "interview-status-warning", "interview-status-neutral");
-        String style = switch (status) {
-            case "READY", "PASS", "MEASURED" -> "interview-status-pass";
+        label.getStyleClass().add(statusStyle(status));
+    }
+
+    static String statusStyle(String status) {
+        return switch (status) {
+            case "READY", "PASS" -> "interview-status-pass";
             case "NOT_READY", "FAIL" -> "interview-status-fail";
             case "INSUFFICIENT_DATA", "PARTIAL" -> "interview-status-warning";
             default -> "interview-status-neutral";
         };
-        label.getStyleClass().add(style);
     }
 }

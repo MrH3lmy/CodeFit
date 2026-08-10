@@ -55,18 +55,20 @@ public class InterviewMockService {
 
     InterviewMockPlan build(InterviewPreparationProfile profile, InterviewMockMode mode) {
         InterviewReadinessResult readiness = readinessService.calculate(profile);
-        TodayPlan todayPlan = guidedPracticeService.buildTodayPlan();
 
         List<InterviewMockPlan.Stage> stages = switch (mode) {
-            case LIVE_CODING -> List.of(liveCodingStage(todayPlan, 100));
+            case LIVE_CODING -> List.of(liveCodingStage(guidedPracticeService.buildTodayPlan(), 100));
             case TECHNICAL_DEEP_DIVE -> List.of(technicalStage(profile, readiness, 100));
             case SYSTEM_DESIGN -> List.of(systemDesignStage(profile, 100));
             case TEAM_FIT -> List.of(teamFitStage(profile, 100));
-            case FULL_INTERVIEW_LOOP -> List.of(
-                    liveCodingStage(todayPlan, 25),
-                    technicalStage(profile, readiness, 25),
-                    systemDesignStage(profile, 25),
-                    teamFitStage(profile, 25));
+            case FULL_INTERVIEW_LOOP -> {
+                TodayPlan todayPlan = guidedPracticeService.buildTodayPlan();
+                yield List.of(
+                        liveCodingStage(todayPlan, 25),
+                        technicalStage(profile, readiness, 25),
+                        systemDesignStage(profile, 25),
+                        teamFitStage(profile, 25));
+            }
         };
         return new InterviewMockPlan(profile.getId(), profile.getTitle(), mode, stages);
     }

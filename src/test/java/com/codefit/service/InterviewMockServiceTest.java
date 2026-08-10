@@ -1,5 +1,7 @@
 package com.codefit.service;
 
+import com.codefit.model.InterviewPreparationProfile;
+import com.codefit.repository.InterviewMockRepository;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -34,6 +36,21 @@ class InterviewMockServiceTest {
         assertEquals(80, domainScore(result, "live-domain"));
         assertEquals(80, domainScore(result, "system-domain"));
         assertEquals(60, domainScore(result, "db-domain"));
+    }
+
+    @Test
+    void systemDesignAndTeamFitDoNotLoadUnrelatedReadinessOrProblemPlanning() {
+        InterviewMockService service = new InterviewMockService(
+                new InterviewProfileService(),
+                new ExplodingReadinessService(),
+                new ExplodingGuidedPracticeService(),
+                new InterviewMockRepository());
+        InterviewPreparationProfile profile = RevolutJavaInterviewProfile.build();
+
+        assertEquals(InterviewMockPlan.StageType.SYSTEM_DESIGN,
+                service.build(profile, InterviewMockMode.SYSTEM_DESIGN).stages().getFirst().type());
+        assertEquals(InterviewMockPlan.StageType.TEAM_FIT,
+                service.build(profile, InterviewMockMode.TEAM_FIT).stages().getFirst().type());
     }
 
     @Test
@@ -88,5 +105,19 @@ class InterviewMockServiceTest {
     private int domainScore(InterviewMockEvaluation evaluation, String domainId) {
         return evaluation.domainScores().stream().filter(domain -> domain.domainId().equals(domainId))
                 .findFirst().orElseThrow().scorePercent();
+    }
+
+    private static final class ExplodingReadinessService extends InterviewReadinessService {
+        @Override
+        public InterviewReadinessResult calculate(InterviewPreparationProfile profile) {
+            throw new AssertionError("This mock mode must not load readiness.");
+        }
+    }
+
+    private static final class ExplodingGuidedPracticeService extends GuidedPracticeService {
+        @Override
+        public TodayPlan buildTodayPlan() {
+            throw new AssertionError("This mock mode must not load coding-plan state.");
+        }
     }
 }

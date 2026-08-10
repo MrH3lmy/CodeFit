@@ -10,6 +10,8 @@ public enum Route {
     LIBRARY("decks.fxml", "Library", "CodeFit - Library", NavItem.LIBRARY),
     SYLLABUS("syllabus.fxml", "Java Backend Syllabus", "CodeFit - Java Backend Syllabus", NavItem.LIBRARY),
     PROBLEMS("problems.fxml", "Problems", "CodeFit - Problems", NavItem.PROBLEMS),
+    INTERVIEW("interview-prep.fxml", "Interview", "CodeFit - Interview Prep", NavItem.INTERVIEW),
+    INTERVIEW_MOCK("interview-mock.fxml", "Mock Interview", "CodeFit - Mock Interview", NavItem.INTERVIEW),
     PROGRESS("stats.fxml", "Progress", "CodeFit - Progress", NavItem.PROGRESS),
     ADD_CARD("add-card.fxml", "New Card", "CodeFit - New Card", null),
     SOLVING_WORKSPACE("problem-solving-workspace.fxml", "Solving Workspace", "CodeFit - Solving Workspace", null),
@@ -53,12 +55,13 @@ public enum Route {
         return navItem;
     }
 
-    /** The five persistent primary navigation destinations shown in the sidebar. */
+    /** Persistent primary navigation destinations shown in the sidebar. */
     public enum NavItem {
         TODAY,
         REVIEW,
         LIBRARY,
         PROBLEMS,
+        INTERVIEW,
         PROGRESS
     }
 }

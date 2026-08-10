@@ -1,0 +1,124 @@
+/* Interview preparation dashboard and mock-interview scorer. Uses only the shared semantic theme tokens. */
+
+.interview-readiness-hero {
+    -fx-padding: 24;
+}
+
+.interview-primary-cta {
+    -fx-font-size: 15px;
+    -fx-padding: 13 20;
+}
+
+.interview-metric-card {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 14 16;
+    -fx-min-width: 0;
+}
+
+.interview-metric-value {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 30px;
+    -fx-font-weight: 800;
+}
+
+.interview-metric-value-small {
+    -fx-font-size: 22px;
+}
+
+.interview-domain-row,
+.interview-workout-row,
+.interview-mock-row,
+.interview-rubric-row {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 12 14;
+}
+
+.interview-domain-title,
+.interview-stage-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+.interview-stage-title {
+    -fx-font-size: 16px;
+}
+
+.interview-domain-score {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+}
+
+.interview-domain-detail,
+.interview-prompt-text {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+    -fx-line-spacing: 2;
+}
+
+.interview-prompt-text {
+    -fx-font-size: 13px;
+    -fx-line-spacing: 3;
+}
+
+.interview-progress {
+    -fx-pref-height: 8;
+}
+
+.interview-status-badge {
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+    -fx-padding: 5 10;
+    -fx-border-width: 1;
+}
+
+.interview-status-pass {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-success;
+    -fx-text-fill: -color-success;
+}
+
+.interview-status-fail {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-danger;
+    -fx-text-fill: -color-danger;
+}
+
+.interview-status-warning {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-warning;
+    -fx-text-fill: -color-warning;
+}
+
+.interview-status-neutral {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-secondary;
+}
+
+.interview-stage-card {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 20;
+}
+
+.interview-score-field {
+    -fx-alignment: center;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}

@@ -61,7 +61,13 @@ class RouteTest {
         assertEquals(Route.NavItem.REVIEW, Route.REVIEW.navItem());
         assertEquals(Route.NavItem.LIBRARY, Route.LIBRARY.navItem());
         assertEquals(Route.NavItem.PROBLEMS, Route.PROBLEMS.navItem());
+        assertEquals(Route.NavItem.INTERVIEW, Route.INTERVIEW.navItem());
         assertEquals(Route.NavItem.PROGRESS, Route.PROGRESS.navItem());
+    }
+
+    @Test
+    void interviewMockStaysGroupedUnderInterviewNavigation() {
+        assertEquals(Route.NavItem.INTERVIEW, Route.INTERVIEW_MOCK.navItem());
     }
 
     @Test

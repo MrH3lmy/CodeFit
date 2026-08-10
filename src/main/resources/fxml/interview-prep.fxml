@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" stylesheets="@../css/interview.css"
+            xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.codefit.controller.InterviewPrepController">
+    <content>
+        <VBox alignment="TOP_CENTER" maxWidth="Infinity" spacing="16" styleClass="content" VBox.vgrow="ALWAYS">
+            <HBox alignment="CENTER_LEFT" spacing="16" maxWidth="Infinity">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Interview Prep" styleClass="page-title" wrapText="true" />
+                    <Label fx:id="profileTitleLabel" text="Revolut - Java Senior Software Engineer" styleClass="page-subtitle" wrapText="true" />
+                </VBox>
+                <Button text="Start Today's Workout" onAction="#startTodayWorkout" styleClass="primary-button interview-primary-cta" />
+            </HBox>
+
+            <Label fx:id="actionStatusLabel" styleClass="status-banner" wrapText="true" visible="false" managed="false" />
+
+            <VBox maxWidth="Infinity" spacing="16" styleClass="dashboard-card interview-readiness-hero">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="READINESS" styleClass="section-title" HBox.hgrow="ALWAYS" />
+                    <Label fx:id="overallStatusLabel" text="Insufficient Data" styleClass="interview-status-badge interview-status-warning" />
+                </HBox>
+                <HBox spacing="12" maxWidth="Infinity">
+                    <VBox spacing="4" styleClass="interview-metric-card" HBox.hgrow="ALWAYS">
+                        <Label fx:id="readinessScoreLabel" text="—" styleClass="interview-metric-value" />
+                        <Label text="Weighted readiness" styleClass="dashboard-card-helper" />
+                    </VBox>
+                    <VBox spacing="4" styleClass="interview-metric-card" HBox.hgrow="ALWAYS">
+                        <Label fx:id="coverageLabel" text="0%" styleClass="interview-metric-value" />
+                        <Label text="Profile coverage" styleClass="dashboard-card-helper" />
+                    </VBox>
+                    <VBox spacing="4" styleClass="interview-metric-card" HBox.hgrow="ALWAYS">
+                        <Label fx:id="criticalSummaryLabel" text="0/4 passing" styleClass="interview-metric-value interview-metric-value-small" />
+                        <Label text="Critical gates" styleClass="dashboard-card-helper" />
+                    </VBox>
+                </HBox>
+                <Label fx:id="blockersLabel" text="Critical gates still need evidence." styleClass="dashboard-card-helper" wrapText="true" />
+            </VBox>
+
+            <VBox maxWidth="Infinity" spacing="10" styleClass="dashboard-card">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <VBox spacing="3" HBox.hgrow="ALWAYS">
+                        <Label text="REVOLUT INTERVIEW CONTENT" styleClass="dashboard-card-title" />
+                        <Label fx:id="contentStatusLabel" styleClass="dashboard-card-helper" wrapText="true" />
+                    </VBox>
+                    <Button text="Open Library" onAction="#openLibrary" styleClass="ghost-button" />
+                    <Button fx:id="installContentButton" text="Install RJ Content" onAction="#installInterviewContent" styleClass="primary-button" />
+                </HBox>
+            </VBox>
+
+            <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card">
+                <Label text="CRITICAL GATES" styleClass="dashboard-card-title" />
+                <VBox fx:id="criticalGatesList" maxWidth="Infinity" spacing="8" />
+            </VBox>
+
+            <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <VBox spacing="3" HBox.hgrow="ALWAYS">
+                        <Label text="TODAY'S INTERVIEW WORKOUT" styleClass="dashboard-card-title" />
+                        <Label text="Generated from your current readiness gaps, review queue, and problem-solving recommendation." styleClass="dashboard-card-helper" wrapText="true" />
+                    </VBox>
+                    <Label fx:id="workoutTotalLabel" text="~100 min" styleClass="pill" />
+                </HBox>
+
+                <VBox spacing="8" maxWidth="Infinity">
+                    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="interview-workout-row">
+                        <VBox spacing="3" HBox.hgrow="ALWAYS">
+                            <Label fx:id="reviewBlockTitleLabel" text="Spaced repetition" styleClass="interview-domain-title" />
+                            <Label fx:id="reviewBlockDetailLabel" styleClass="interview-domain-detail" wrapText="true" />
+                        </VBox>
+                        <Button fx:id="reviewBlockButton" text="Start Review" onAction="#startReviewBlock" styleClass="ghost-button" />
+                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="interview-workout-row">
+                        <VBox spacing="3" HBox.hgrow="ALWAYS">
+                            <Label fx:id="codingBlockTitleLabel" text="Live coding" styleClass="interview-domain-title" wrapText="true" />
+                            <Label fx:id="codingBlockDetailLabel" styleClass="interview-domain-detail" wrapText="true" />
+                        </VBox>
+                        <Button fx:id="codingBlockButton" text="Open Problem" onAction="#startCodingBlock" styleClass="ghost-button" />
+                    </HBox>
+                    <VBox spacing="3" styleClass="interview-workout-row">
+                        <Label fx:id="technicalBlockTitleLabel" text="Technical deep dive" styleClass="interview-domain-title" wrapText="true" />
+                        <Label fx:id="technicalBlockDetailLabel" styleClass="interview-domain-detail" wrapText="true" />
+                    </VBox>
+                    <VBox spacing="3" styleClass="interview-workout-row">
+                        <Label fx:id="scenarioBlockTitleLabel" text="System design" styleClass="interview-domain-title" wrapText="true" />
+                        <Label fx:id="scenarioBlockDetailLabel" styleClass="interview-domain-detail" wrapText="true" />
+                    </VBox>
+                    <VBox spacing="3" styleClass="interview-workout-row">
+                        <Label text="Reflection · 5 min" styleClass="interview-domain-title" />
+                        <Label fx:id="reflectionBlockDetailLabel" styleClass="interview-domain-detail" wrapText="true" />
+                    </VBox>
+                </VBox>
+            </VBox>
+
+            <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card">
+                <Label text="ALL INTERVIEW DOMAINS" styleClass="dashboard-card-title" />
+                <VBox fx:id="domainList" maxWidth="Infinity" spacing="8" />
+            </VBox>
+
+            <VBox maxWidth="Infinity" spacing="12" styleClass="dashboard-card">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <VBox spacing="3" HBox.hgrow="ALWAYS">
+                        <Label text="MOCK INTERVIEWS" styleClass="dashboard-card-title" />
+                        <Label text="Scored mocks become direct interview-performance evidence after repeated samples." styleClass="dashboard-card-helper" wrapText="true" />
+                    </VBox>
+                    <Button text="Start Mock Interview" onAction="#openMockInterview" styleClass="primary-button" />
+                </HBox>
+                <VBox fx:id="recentMocksList" maxWidth="Infinity" spacing="8" />
+            </VBox>
+        </VBox>
+    </content>
+</ScrollPane>

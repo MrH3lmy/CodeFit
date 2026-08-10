@@ -21,6 +21,7 @@ public class Sidebar extends VBox {
     @FXML private Button reviewButton;
     @FXML private Button libraryButton;
     @FXML private Button problemsButton;
+    @FXML private Button interviewButton;
     @FXML private Button progressButton;
     @FXML private Button settingsButton;
     @FXML private Label subtitleLabel;
@@ -72,6 +73,11 @@ public class Sidebar extends VBox {
     @FXML
     private void goProblems() {
         NavigationService.showProblems();
+    }
+
+    @FXML
+    private void goInterview() {
+        NavigationService.navigate(Route.INTERVIEW);
     }
 
     @FXML
@@ -134,6 +140,7 @@ public class Sidebar extends VBox {
         setNavigationStyle(reviewButton, Route.NavItem.REVIEW);
         setNavigationStyle(libraryButton, Route.NavItem.LIBRARY);
         setNavigationStyle(problemsButton, Route.NavItem.PROBLEMS);
+        setNavigationStyle(interviewButton, Route.NavItem.INTERVIEW);
         setNavigationStyle(progressButton, Route.NavItem.PROGRESS);
     }
 

@@ -156,6 +156,20 @@ a duplicated counter. See
 [`docs/problem-solving-dashboards.md`](docs/problem-solving-dashboards.md) for what each metric means
 and how the stage/date-range filters scope it.
 
+## Decentralized peer profiles and competition (in progress, epic #179)
+
+CodeFit is gaining opt-in profiles, peer comparisons, and private challenges with **no centrally
+operated service at all**: no accounts, no servers, no relays, no telemetry. Participant devices
+exchange signed aggregate summaries directly; single-user study never needs a network. The first
+slice (#180) is design and contracts only and enables **no networking**:
+
+- [`docs/p2p/adr-0001-decentralized-peer-architecture.md`](docs/p2p/adr-0001-decentralized-peer-architecture.md)
+  — identity, invitations, transport selection (JDK TLS 1.3), connectivity limits, what peers can learn.
+- [`docs/p2p/protocol-v1.md`](docs/p2p/protocol-v1.md) — the versioned wire contract, implemented by
+  `com.codefit.peer.protocol` and pinned by golden fixtures in `src/test/resources/peer-protocol/v1/`.
+- [`docs/p2p/threat-model.md`](docs/p2p/threat-model.md) and
+  [`docs/p2p/runtime-dependency-inventory.md`](docs/p2p/runtime-dependency-inventory.md).
+
 ## Anki-compatible card import/export
 
 Decks can import and export tab-separated text files (`.tsv` or `.txt`) from the Decks screen with the **Import Cards** and **Export Cards** buttons. Choose a deck first, then select a file.

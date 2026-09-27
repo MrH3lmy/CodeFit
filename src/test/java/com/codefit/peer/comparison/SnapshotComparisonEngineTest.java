@@ -78,6 +78,11 @@ class SnapshotComparisonEngineTest {
                 rate.delta().orElseThrow().kind());
         assertEquals(20, rate.left().orElseThrow().sampleSize());
         assertEquals(TimestampBasis.LEGACY_SQLITE_UTC, rate.left().orElseThrow().timestampBasis());
+
+        var repeated = SnapshotComparisonEngine.comparePeerProgress(
+                observed(left, EVALUATION.minus(Duration.ofMinutes(10))),
+                observed(right, EVALUATION.minus(Duration.ofMinutes(5))), LIVE);
+        assertEquals(result, repeated);
     }
 
     @Test
@@ -154,6 +159,17 @@ class SnapshotComparisonEngineTest {
 
         ComparisonWindow monday = ComparisonWindow.week(LocalDate.of(2026, 9, 23),
                 ZoneId.of("Europe/Berlin"), DayOfWeek.MONDAY);
+        var matchedWeekContext = new SnapshotComparisonEngine.EvaluationContext(
+                EVALUATION, Duration.ofDays(2), Map.of(), Map.of(),
+                Map.of("review.attempts", SnapshotComparisonEngine.CohortEvidence.MATCHED));
+        var sameWeek = SnapshotComparisonEngine.comparePeerProgress(
+                observed(summary(monday, monday.end(), attempts(7)), EVALUATION),
+                observed(summary(monday, monday.end(), attempts(5)), EVALUATION),
+                matchedWeekContext);
+        assertEquals(COMPARABLE, sameWeek.state());
+        assertTrue(sameWeek.equalElapsed());
+        assertEquals(COMPARABLE, sameWeek.metrics().get(0).state());
+
         ComparisonWindow sunday = ComparisonWindow.week(LocalDate.of(2026, 9, 23),
                 ZoneId.of("Europe/Berlin"), DayOfWeek.SUNDAY);
         var weekPolicy = SnapshotComparisonEngine.compareHistoricalSelfProgress(

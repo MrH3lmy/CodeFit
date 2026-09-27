@@ -13,7 +13,11 @@ SnapshotComparisonEngine accepts explicit SnapshotObservation values.
 
 An available observation contains:
 - the supplied snapshot;
-- observedAt from the accepted envelope or local capture context.
+- capturedAt from the accepted envelope or equivalent local capture context.
+
+Capture metadata may not predate the snapshot's own cutoff/capturedAt. Freshness is computed from the
+snapshot data time itself (ProgressSummary.cutoff or PreparationSnapshot.capturedAt), not from when a
+receiver happened to receive or re-publish it. A freshly received old snapshot therefore stays old.
 
 Unavailable inputs are explicit:
 - MISSING means no snapshot/evidence was supplied;
@@ -22,9 +26,10 @@ Unavailable inputs are explicit:
 
 Plain omission is never interpreted as a privacy decision.
 
-EvaluationContext contains the evaluation instant and the caller-selected maximum observation age.
-The result reports observation ages and distinguishes stale and future observations. Historical
-screens can deliberately use a longer freshness horizon than live peer screens.
+EvaluationContext contains the evaluation instant, caller-selected maximum snapshot age, explicit
+per-side metric omission context, and optional task/difficulty cohort evidence. The result reports
+snapshot ages and distinguishes stale and future snapshots/capture metadata. Historical screens can
+deliberately use a longer freshness horizon than live peer screens.
 
 The application boundary must verify/decode envelopes and enforce current permissions before calling
 this engine.
@@ -73,10 +78,15 @@ Each MetricComparison retains the original MetricValue on both sides, preserving
 Rules:
 - unknown metric id/version -> UNKNOWN_METRIC;
 - same id with incompatible versions -> VERSION_MISMATCH;
-- omitted on one side -> LEFT_METRIC_MISSING or RIGHT_METRIC_MISSING;
+- omitted on one side -> LEFT_METRIC_MISSING or RIGHT_METRIC_MISSING unless the caller supplies an
+  explicit NOT_SHARED/UNAVAILABLE MetricOmission for that side;
+- explicit per-metric NOT_SHARED -> LEFT_METRIC_NOT_SHARED or RIGHT_METRIC_NOT_SHARED;
 - UNAVAILABLE stays unavailable and is not zero;
 - INSUFFICIENT_DATA stays low-sample and is not a measured zero;
 - different provenance is DESCRIPTIVE_ONLY with PROVENANCE_MISMATCH;
+- progress metrics default to DESCRIPTIVE_ONLY with COHORT_EVIDENCE_MISSING unless the caller
+  explicitly supplies MATCHED task/difficulty-cohort evidence for that metric;
+- explicitly unmatched cohorts remain DESCRIPTIVE_ONLY with COHORT_MISMATCH;
 - timestamp-basis uncertainty is preserved, including legacy and mixed timestamp bases.
 
 Deltas use BigDecimal so supported long count/time values cannot overflow.
@@ -89,7 +99,8 @@ Relative percentage change is also returned when the right/baseline value is non
 baseline returns ZERO_BASELINE with no relative percentage, never NaN or infinity.
 
 The engine produces no universal winner, XP score, normalization across unmatched practice sets, or
-inference that more practice time means greater skill.
+inference that more practice time means greater skill. Missing cohort evidence never silently becomes
+"matched"; numeric deltas may still be shown descriptively.
 
 ## Preparation comparisons
 
@@ -131,8 +142,10 @@ The snapshot-production layer must supply:
 4. Correct metric id/version/unit, provenance, and timestamp basis.
 5. Dated PreparationSnapshot values captured from the real readiness engine.
 6. Historical snapshots/checkpoints only when they truly exist.
-7. Envelope/local observation metadata that #185 can pass as observedAt.
-8. Explicit not-shared or producer-unavailable reason only when the application really knows it.
+7. Envelope/local capture metadata that #185 can pass as capturedAt.
+8. Explicit whole-snapshot and per-metric not-shared/producer-unavailable context only when the
+   application really knows it.
+9. Matched/unmatched task or difficulty cohort evidence when available; absence stays UNKNOWN.
 
 If an aligned earlier cutoff is missing, #183 must report missing evidence; it must not prorate a
 later total.
@@ -142,14 +155,17 @@ later total.
 The integration layer owns:
 1. Envelope verification/decoding and current sharing authorization.
 2. Selecting the intended peer/current/previous snapshot from real stored data.
-3. Choosing the evaluation instant and freshness horizon.
-4. Using NOT_SHARED only from explicit permission state; omission alone is MISSING.
-5. Requesting a genuinely aligned partial snapshot when a cached cutoff is too late.
-6. Surfacing cross-zone, week-policy, cutoff, stale, low-sample, provenance, version, timestamp-basis,
-   profile-definition, scoring-version, threshold, coverage, and critical-gate warnings.
-7. Keeping preparation/readiness comparisons separate from DAY/WEEK activity.
-8. Never turning DESCRIPTIVE_ONLY results into a leaderboard rank or winner.
-9. Adding separately reviewed start/checkpoint evidence before stage/elapsed-preparation UX is enabled.
+3. Choosing the evaluation instant and snapshot-freshness horizon.
+4. Using NOT_SHARED only from explicit permission state; omission alone is MISSING, including at the
+   individual metric level.
+5. Supplying matched-cohort evidence only when #183/#185 can actually establish it; otherwise keeping
+   the metric descriptive.
+6. Requesting a genuinely aligned partial snapshot when a cached cutoff is too late.
+7. Surfacing cross-zone, week-policy, cutoff, stale, low-sample, provenance, cohort, version,
+   timestamp-basis, profile-definition, scoring-version, threshold, coverage, and critical-gate warnings.
+8. Keeping preparation/readiness comparisons separate from DAY/WEEK activity.
+9. Never turning DESCRIPTIVE_ONLY results into a leaderboard rank or winner.
+10. Adding separately reviewed start/checkpoint evidence before stage/elapsed-preparation UX is enabled.
 
 ## Determinism and side effects
 

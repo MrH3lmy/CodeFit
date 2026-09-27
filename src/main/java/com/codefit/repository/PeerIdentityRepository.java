@@ -30,29 +30,38 @@ public class PeerIdentityRepository {
         }
     }
 
+    private static final String REPLACE_SQL = """
+            INSERT INTO peer_identity (
+                id, identity_public_key, private_key_ciphertext, private_key_salt, private_key_iterations,
+                private_key_nonce, key_format_version, highest_known_epoch, current_writer_epoch,
+                sharing_paused, created_at, last_restored_at
+            ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                identity_public_key = excluded.identity_public_key,
+                private_key_ciphertext = excluded.private_key_ciphertext,
+                private_key_salt = excluded.private_key_salt,
+                private_key_iterations = excluded.private_key_iterations,
+                private_key_nonce = excluded.private_key_nonce,
+                key_format_version = excluded.key_format_version,
+                highest_known_epoch = excluded.highest_known_epoch,
+                current_writer_epoch = excluded.current_writer_epoch,
+                sharing_paused = excluded.sharing_paused,
+                created_at = excluded.created_at,
+                last_restored_at = excluded.last_restored_at
+            """;
+
     /** Creates or wholesale replaces the singleton identity row: identity creation, rotation, and restore. */
     public void replace(PeerIdentityRow row) {
-        String sql = """
-                INSERT INTO peer_identity (
-                    id, identity_public_key, private_key_ciphertext, private_key_salt, private_key_iterations,
-                    private_key_nonce, key_format_version, highest_known_epoch, current_writer_epoch,
-                    sharing_paused, created_at, last_restored_at
-                ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    identity_public_key = excluded.identity_public_key,
-                    private_key_ciphertext = excluded.private_key_ciphertext,
-                    private_key_salt = excluded.private_key_salt,
-                    private_key_iterations = excluded.private_key_iterations,
-                    private_key_nonce = excluded.private_key_nonce,
-                    key_format_version = excluded.key_format_version,
-                    highest_known_epoch = excluded.highest_known_epoch,
-                    current_writer_epoch = excluded.current_writer_epoch,
-                    sharing_paused = excluded.sharing_paused,
-                    created_at = excluded.created_at,
-                    last_restored_at = excluded.last_restored_at
-                """;
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            replace(connection, row);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to save the local peer identity", exception);
+        }
+    }
+
+    /** Same effect as {@link #replace(PeerIdentityRow)}, on a caller-managed transaction. */
+    public void replace(Connection connection, PeerIdentityRow row) {
+        try (PreparedStatement statement = connection.prepareStatement(REPLACE_SQL)) {
             statement.setBytes(1, row.identityPublicKey());
             statement.setBytes(2, row.privateKeyCiphertext());
             statement.setBytes(3, row.privateKeySalt());

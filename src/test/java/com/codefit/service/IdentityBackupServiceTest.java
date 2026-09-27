@@ -1,11 +1,20 @@
 package com.codefit.service;
 
 import com.codefit.peer.identity.ClockBehindPreviousEpochException;
+import com.codefit.peer.identity.Contact;
 import com.codefit.peer.identity.LocalIdentitySummary;
+import com.codefit.peer.identity.PermissionGrant;
+import com.codefit.peer.identity.TrustState;
 import com.codefit.peer.identity.UnsupportedBackupVersionException;
 import com.codefit.peer.identity.VaultAuthenticationException;
 import com.codefit.peer.identity.VaultCorruptException;
+import com.codefit.peer.identity.crypto.EncryptedSecret;
 import com.codefit.peer.identity.crypto.IdentityBackupCodec;
+import com.codefit.peer.identity.crypto.IdentityBackupPayload;
+import com.codefit.peer.identity.crypto.KeyPairs;
+import com.codefit.peer.identity.crypto.PassphraseCipher;
+import com.codefit.peer.protocol.IdentityKey;
+import com.codefit.peer.protocol.SharingScope;
 import com.codefit.testsupport.IsolatedDatabaseExtension;
 import com.codefit.testsupport.PeerIdentityTestTables;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,9 +22,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import java.security.KeyPair;
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -134,5 +146,89 @@ class IdentityBackupServiceTest {
         LocalIdentitySummary stillOriginal = identityService.currentIdentity().orElseThrow();
         assertEquals(original.publicKey(), stillOriginal.publicKey());
         assertEquals(original.publicKey(), identityService.unlock("vault-pass".toCharArray()).publicKey());
+    }
+
+    @Test
+    void aBackupWhosePrivateKeyDoesNotMatchItsDeclaredPublicKeyIsRejectedNonDestructively() {
+        IdentityService identityService = new IdentityService();
+        IdentityBackupService backupService = new IdentityBackupService();
+        LocalIdentitySummary original = identityService.createIdentity("vault-pass".toCharArray(), at(0));
+
+        byte[] genuineBackup = backupService.exportBackup("vault-pass".toCharArray(), "backup-pass".toCharArray(), at(5));
+        IdentityBackupPayload genuine = IdentityBackupCodec.decode(genuineBackup);
+        // Reseal an UNRELATED private key under the genuine backup's own declared public key and header
+        // (correct AAD, correct passphrase) - the header/AAD binding the review's finding pointed at
+        // authenticates only that the header wasn't tampered with, not that the sealed key is its pair.
+        KeyPair impostor = KeyPairs.generate();
+        EncryptedSecret mismatched = PassphraseCipher.seal("backup-pass".toCharArray(),
+                KeyPairs.pkcs8PrivateKey(impostor.getPrivate()), genuine.headerAssociatedData());
+        byte[] tamperedBackup = IdentityBackupCodec.encode(new IdentityBackupPayload(genuine.formatVersion(),
+                genuine.createdAtEpochMillis(), genuine.lastKnownEpoch(), genuine.identityPublicKey(), mismatched));
+
+        assertThrows(VaultCorruptException.class,
+                () -> backupService.importBackup(tamperedBackup, "backup-pass".toCharArray(), "new-pass".toCharArray(), at(20)));
+
+        assertEquals(original.publicKey(), identityService.currentIdentity().orElseThrow().publicKey());
+        assertEquals(original.publicKey(), identityService.unlock("vault-pass".toCharArray()).publicKey());
+    }
+
+    @Test
+    void importingABackupForADifferentIdentityDowngradesPairedContacts() {
+        IdentityService identityService = new IdentityService();
+        IdentityBackupService backupService = new IdentityBackupService();
+        ContactService contactService = new ContactService();
+        identityService.createIdentity("vault-pass".toCharArray(), at(0));
+        identityService.resumeSharingAfterReview();
+        Contact contact = contactService.registerPendingContact(sampleContactKey((byte) 42), "Sam", at(1));
+        contactService.acceptInvitation(contact.id(), at(2));
+        contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(3));
+        assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(3)));
+
+        byte[] backupForAnotherIdentity = backupForABrandNewIdentity("other-backup-pass".toCharArray(), at(4));
+        backupService.importBackup(backupForAnotherIdentity, "other-backup-pass".toCharArray(), "new-vault-pass".toCharArray(), at(10));
+
+        // Nothing here can prove continuity with whatever this contact currently trusts under the OLD
+        // identity, so the pairing cannot simply carry over to the restored (different) identity.
+        assertEquals(TrustState.PENDING, contactService.requireContact(contact.id()).trustState());
+        assertFalse(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(10)));
+    }
+
+    @Test
+    void importingABackupForTheSameIdentityLeavesPairedContactsUntouched() {
+        IdentityService identityService = new IdentityService();
+        IdentityBackupService backupService = new IdentityBackupService();
+        ContactService contactService = new ContactService();
+        identityService.createIdentity("vault-pass".toCharArray(), at(0));
+        identityService.resumeSharingAfterReview();
+        Contact contact = contactService.registerPendingContact(sampleContactKey((byte) 43), "Tia", at(1));
+        contactService.acceptInvitation(contact.id(), at(2));
+        contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(3));
+
+        byte[] backup = backupService.exportBackup("vault-pass".toCharArray(), "backup-pass".toCharArray(), at(4));
+        backupService.importBackup(backup, "backup-pass".toCharArray(), "new-vault-pass".toCharArray(), at(10));
+
+        assertEquals(TrustState.PAIRED, contactService.requireContact(contact.id()).trustState());
+        identityService.resumeSharingAfterReview();
+        assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(10)));
+    }
+
+    private static IdentityKey sampleContactKey(byte fill) {
+        byte[] bytes = new byte[32];
+        java.util.Arrays.fill(bytes, fill);
+        return new IdentityKey(bytes);
+    }
+
+    /** Builds a valid, self-contained backup for a brand-new identity never stored in this database. */
+    private static byte[] backupForABrandNewIdentity(char[] backupPassphrase, Instant createdAt) {
+        KeyPair keyPair = KeyPairs.generate();
+        byte[] publicKey = KeyPairs.rawPublicKey(keyPair.getPublic());
+        byte[] pkcs8 = KeyPairs.pkcs8PrivateKey(keyPair.getPrivate());
+        byte[] header = IdentityBackupPayload.headerAssociatedData(
+                IdentityBackupCodec.CURRENT_FORMAT_VERSION, createdAt.toEpochMilli(), 0L, publicKey);
+        EncryptedSecret sealed = PassphraseCipher.seal(backupPassphrase, pkcs8, header);
+        return IdentityBackupCodec.encode(new IdentityBackupPayload(
+                IdentityBackupCodec.CURRENT_FORMAT_VERSION, createdAt.toEpochMilli(), 0L, publicKey, sealed));
     }
 }

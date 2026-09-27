@@ -24,7 +24,7 @@ public record PermissionGrant(List<SharingScope> scopes, Integer historicalWindo
                                boolean allowForwarding) {
 
     public PermissionGrant {
-        scopes = List.copyOf(scopes);
+        scopes = SharingScopes.canonicalize(scopes);
         if (historicalWindowDays != null && historicalWindowDays < 0) {
             throw new IllegalArgumentException("historicalWindowDays cannot be negative.");
         }

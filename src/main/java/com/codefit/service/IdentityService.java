@@ -6,6 +6,7 @@ import com.codefit.peer.identity.IdentityNotFoundException;
 import com.codefit.peer.identity.KeyContinuityRecord;
 import com.codefit.peer.identity.LocalIdentitySummary;
 import com.codefit.peer.identity.UnlockedIdentity;
+import com.codefit.peer.identity.VaultCorruptException;
 import com.codefit.peer.identity.crypto.EncryptedSecret;
 import com.codefit.peer.identity.crypto.KeyPairs;
 import com.codefit.peer.identity.crypto.PassphraseCipher;
@@ -66,14 +67,17 @@ public class IdentityService {
      * @throws IdentityNotFoundException     no local identity exists
      * @throws com.codefit.peer.identity.VaultAuthenticationException wrong passphrase, or the stored
      *                                        ciphertext/public key pairing was tampered with
-     * @throws com.codefit.peer.identity.VaultCorruptException stored key material is structurally invalid
+     * @throws VaultCorruptException stored key material is structurally invalid, or (once decrypted)
+     *                                        does not actually pair with the stored public key
      */
     public UnlockedIdentity unlock(char[] vaultPassphrase) {
         PeerIdentityRow row = requireRow();
         byte[] pkcs8 = PassphraseCipher.open(vaultPassphrase, encryptedSecretOf(row), row.identityPublicKey());
         try {
             PrivateKey privateKey = KeyPairs.privateKeyFromPkcs8(pkcs8);
-            return new UnlockedIdentity(new IdentityKey(row.identityPublicKey()), privateKey);
+            IdentityKey publicKey = new IdentityKey(row.identityPublicKey());
+            requireMatchingKeyPair(privateKey, publicKey);
+            return new UnlockedIdentity(publicKey, privateKey);
         } finally {
             Arrays.fill(pkcs8, (byte) 0);
         }
@@ -121,8 +125,13 @@ public class IdentityService {
         // own epoch history starts fresh regardless of the retiring key's highestKnownEpoch.
         long epoch = nextEpoch(0, now);
         PeerIdentityRow newRow = sealRow(newKeyPair, newVaultPassphrase, epoch, epoch, true, now, row.lastRestoredAt());
-        identityRepository.replace(newRow);
-        rotationRepository.save(new KeyContinuityRecord(current.publicKey(), newPublicKey, now, signature));
+        KeyContinuityRecord continuity = new KeyContinuityRecord(current.publicKey(), newPublicKey, now, signature);
+        // One transaction: a crash between these two writes must never leave the new key active
+        // without the continuity proof it exists to provide.
+        Transactions.run(connection -> {
+            identityRepository.replace(connection, newRow);
+            rotationRepository.save(connection, continuity);
+        });
         return summaryOf(newRow);
     }
 
@@ -158,6 +167,23 @@ public class IdentityService {
 
     static EncryptedSecret encryptedSecretOf(PeerIdentityRow row) {
         return new EncryptedSecret(row.privateKeySalt(), row.privateKeyIterations(), row.privateKeyNonce(), row.privateKeyCiphertext());
+    }
+
+    /**
+     * A decrypted private key and a declared public key travel separately (the public key in the
+     * clear, the private key inside AEAD ciphertext keyed by a passphrase), so AEAD authentication
+     * alone never proves the two are actually a pair — only that the ciphertext matches whatever
+     * public key was bound as associated data when it was sealed. A crafted, correctly-encrypted vault
+     * row or backup could still pair private key B with declared public key A. Used by both
+     * {@link #unlock} and {@link IdentityBackupService#importBackup}, always before returning or
+     * persisting anything derived from the pairing.
+     *
+     * @throws VaultCorruptException the private key does not verify against the declared public key
+     */
+    static void requireMatchingKeyPair(PrivateKey privateKey, IdentityKey declaredPublicKey) {
+        if (!KeyPairs.matches(privateKey, KeyPairs.publicKeyFromRaw(declaredPublicKey.bytes()))) {
+            throw new VaultCorruptException("Decrypted private key does not match the declared public key.");
+        }
     }
 
     private static PeerIdentityRow sealRow(KeyPair keyPair, char[] passphrase, long highestKnownEpoch,

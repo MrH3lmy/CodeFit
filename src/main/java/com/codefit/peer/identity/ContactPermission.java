@@ -20,7 +20,7 @@ public record ContactPermission(long contactId, List<SharingScope> scopes, Integ
                                  Instant expiresAt, boolean allowForwarding, long revision, Instant updatedAt) {
 
     public ContactPermission {
-        scopes = List.copyOf(scopes);
+        scopes = SharingScopes.canonicalize(scopes);
     }
 
     /** Default for a newly paired contact: nothing granted. Discovery/pairing alone discloses nothing. */

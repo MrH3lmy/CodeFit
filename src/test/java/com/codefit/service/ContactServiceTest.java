@@ -8,6 +8,7 @@ import com.codefit.peer.identity.PermissionGrant;
 import com.codefit.peer.identity.TrustState;
 import com.codefit.peer.protocol.IdentityKey;
 import com.codefit.peer.protocol.SharingScope;
+import com.codefit.repository.ConsentChangeEventRepository;
 import com.codefit.testsupport.IsolatedDatabaseExtension;
 import com.codefit.testsupport.PeerIdentityTestTables;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,7 @@ class ContactServiceTest {
     private static final Instant BASE = Instant.ofEpochMilli(1_735_000_000_000L);
 
     private final ContactService contactService = new ContactService();
+    private final IdentityService identityService = new IdentityService();
 
     private static Instant at(long secondsFromBase) {
         return BASE.plusSeconds(secondsFromBase);
@@ -49,8 +51,14 @@ class ContactServiceTest {
     }
 
     @BeforeEach
-    void resetPeerIdentityTables() {
+    void resetPeerIdentityTablesAndCreateAnUnpausedIdentity() {
         PeerIdentityTestTables.resetAll();
+        // isAuthorizedToPublish denies everything while the identity is paused or missing (see
+        // PeerIdentityPrivacyGuardTest and IdentityServiceTest for the identity lifecycle itself); most
+        // of this class's assertions are about contact/permission state, so give every test a ready
+        // identity up front rather than repeating this in each one.
+        identityService.createIdentity("vault-pass".toCharArray(), at(-1));
+        identityService.resumeSharingAfterReview();
     }
 
     @Test
@@ -86,9 +94,31 @@ class ContactServiceTest {
     void rejectingAPendingInvitationRemovesTheCandidateEntirely() {
         Contact contact = contactService.registerPendingContact(key(4), "Drew", at(0));
 
-        contactService.rejectInvitation(contact.id());
+        contactService.rejectInvitation(contact.id(), at(1));
 
         assertThrows(ContactNotFoundException.class, () -> contactService.requireContact(contact.id()));
+    }
+
+    @Test
+    void rejectingAContactDowngradedByAnIdentityResetPreservesItsConsentHistoryInstead() {
+        Contact contact = contactService.registerPendingContact(key(17), "Omar", at(0));
+        contactService.acceptInvitation(contact.id(), at(1));
+        contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(2));
+
+        // Simulates what IdentityService.resetIdentityWithoutContinuity does to every paired contact:
+        // it leaves this now-PENDING contact with consent-change history #184 still needs.
+        contactService.downgradeAllPairedContactsForIdentityReset(at(3));
+        assertEquals(TrustState.PENDING, contactService.requireContact(contact.id()).trustState());
+        ConsentChangeEventRepository outbox = new ConsentChangeEventRepository();
+        assertFalse(outbox.findByContactId(contact.id()).isEmpty());
+
+        contactService.rejectInvitation(contact.id(), at(4));
+
+        // The row (and therefore its history) must survive: a hard delete would cascade-delete the
+        // required IDENTITY_RESET event before #184 ever synchronizes it.
+        assertEquals(TrustState.REMOVED, contactService.requireContact(contact.id()).trustState());
+        assertFalse(outbox.findByContactId(contact.id()).isEmpty());
     }
 
     @Test
@@ -213,9 +243,71 @@ class ContactServiceTest {
     }
 
     @Test
+    void aPausedIdentityDeniesPublicationEvenForAValidlyGrantedScope() {
+        Contact contact = contactService.registerPendingContact(key(18), "Priya", at(0));
+        contactService.acceptInvitation(contact.id(), at(1));
+        contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(2));
+        assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(2)));
+
+        // Rotating (or restoring/resetting) the identity pauses sharing pending an explicit review;
+        // that pause must deny every contact's already-granted scope, not just contacts the rotation
+        // itself touched.
+        identityService.rotateKeyWithContinuity("vault-pass".toCharArray(), "vault-pass-2".toCharArray(), at(3));
+
+        assertTrue(identityService.isSharingPaused());
+        assertFalse(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(3)));
+
+        identityService.resumeSharingAfterReview();
+        assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(3)));
+    }
+
+    @Test
     void everyContactGetsAFullFingerprintDerivedFromItsPinnedIdentity() {
         Contact contact = contactService.registerPendingContact(key(16), "Nia", at(0));
 
         assertEquals(com.codefit.peer.identity.IdentityFingerprint.format(key(16).id()), contact.fingerprint());
+    }
+
+    @Test
+    void updatePermissionsRollsBackThePermissionWriteWhenTheOutboxWriteFails() throws java.sql.SQLException {
+        Contact contact = contactService.registerPendingContact(key(19), "Quinn", at(0));
+        contactService.acceptInvitation(contact.id(), at(1));
+        forceOutboxInsertToFailFor(contact.id());
+
+        assertThrows(IllegalStateException.class, () -> contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(2)));
+
+        // The permission write inside the same transaction must have rolled back too: still whatever
+        // acceptInvitation left (no scopes), never the scope updatePermissions almost committed.
+        assertTrue(contactService.permissionsFor(contact.id()).orElseThrow().scopes().isEmpty());
+    }
+
+    @Test
+    void blockRollsBackBothThePermissionRevokeAndTheTrustStateChangeWhenTheOutboxWriteFails() throws java.sql.SQLException {
+        Contact contact = contactService.registerPendingContact(key(20), "Rae", at(0));
+        contactService.acceptInvitation(contact.id(), at(1));
+        contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(2));
+        forceOutboxInsertToFailFor(contact.id());
+
+        assertThrows(IllegalStateException.class, () -> contactService.block(contact.id(), true, at(3)));
+
+        // Neither of the other two writes in the same transaction may apply without the outbox record
+        // #184 needs: the contact must still be PAIRED, and its grant must still be in effect.
+        assertEquals(TrustState.PAIRED, contactService.requireContact(contact.id()).trustState());
+        assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(3)));
+    }
+
+    /** Makes the next INSERT into {@code consent_change_events} for exactly this contact fail. */
+    private static void forceOutboxInsertToFailFor(long contactId) throws java.sql.SQLException {
+        try (java.sql.Connection connection = com.codefit.config.DatabaseConfig.getConnection();
+             java.sql.Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TRIGGER force_outbox_failure_%d BEFORE INSERT ON consent_change_events
+                    WHEN NEW.contact_id = %d
+                    BEGIN SELECT RAISE(ABORT, 'forced failure for atomicity test'); END
+                    """.formatted(contactId, contactId));
+        }
     }
 }

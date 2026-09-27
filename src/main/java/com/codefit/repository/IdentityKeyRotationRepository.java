@@ -33,11 +33,20 @@ public class IdentityKeyRotationRepository {
         }
     }
 
+    private static final String SAVE_SQL = "INSERT INTO identity_key_rotations "
+            + "(old_public_key, new_public_key, rotated_at, continuity_signature) VALUES (?, ?, ?, ?)";
+
     public void save(KeyContinuityRecord record) {
-        String sql = "INSERT INTO identity_key_rotations (old_public_key, new_public_key, rotated_at, continuity_signature) "
-                + "VALUES (?, ?, ?, ?)";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            save(connection, record);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to save the key continuity record", exception);
+        }
+    }
+
+    /** Same effect as {@link #save(KeyContinuityRecord)}, on a caller-managed transaction. */
+    public void save(Connection connection, KeyContinuityRecord record) {
+        try (PreparedStatement statement = connection.prepareStatement(SAVE_SQL)) {
             statement.setBytes(1, record.oldKey().bytes());
             statement.setBytes(2, record.newKey().bytes());
             statement.setString(3, record.rotatedAt().toString());

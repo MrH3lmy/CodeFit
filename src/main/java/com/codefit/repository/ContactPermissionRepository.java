@@ -30,21 +30,30 @@ public class ContactPermissionRepository {
         }
     }
 
+    private static final String SAVE_SQL = """
+            INSERT INTO contact_permissions (
+                contact_id, allowed_scopes, historical_window_days, expires_at, allow_forwarding, revision, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(contact_id) DO UPDATE SET
+                allowed_scopes = excluded.allowed_scopes,
+                historical_window_days = excluded.historical_window_days,
+                expires_at = excluded.expires_at,
+                allow_forwarding = excluded.allow_forwarding,
+                revision = excluded.revision,
+                updated_at = excluded.updated_at
+            """;
+
     public void save(ContactPermission permission) {
-        String sql = """
-                INSERT INTO contact_permissions (
-                    contact_id, allowed_scopes, historical_window_days, expires_at, allow_forwarding, revision, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(contact_id) DO UPDATE SET
-                    allowed_scopes = excluded.allowed_scopes,
-                    historical_window_days = excluded.historical_window_days,
-                    expires_at = excluded.expires_at,
-                    allow_forwarding = excluded.allow_forwarding,
-                    revision = excluded.revision,
-                    updated_at = excluded.updated_at
-                """;
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            save(connection, permission);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to save sharing permission", exception);
+        }
+    }
+
+    /** Same effect as {@link #save(ContactPermission)}, on a caller-managed transaction. */
+    public void save(Connection connection, ContactPermission permission) {
+        try (PreparedStatement statement = connection.prepareStatement(SAVE_SQL)) {
             statement.setLong(1, permission.contactId());
             statement.setString(2, encodeScopes(permission.scopes()));
             if (permission.historicalWindowDays() == null) {

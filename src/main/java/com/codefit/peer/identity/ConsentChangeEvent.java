@@ -17,6 +17,6 @@ public record ConsentChangeEvent(long id, long contactId, List<SharingScope> sco
                                   ConsentChangeReason reason, Instant createdAt, boolean synchronized_) {
 
     public ConsentChangeEvent {
-        scopes = List.copyOf(scopes);
+        scopes = SharingScopes.canonicalize(scopes);
     }
 }

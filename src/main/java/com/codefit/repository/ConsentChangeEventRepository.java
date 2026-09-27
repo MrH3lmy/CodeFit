@@ -17,12 +17,22 @@ import java.util.List;
 /** The outbox of per-contact consent changes #184's sync layer will eventually drain and publish. */
 public class ConsentChangeEventRepository {
 
+    private static final String RECORD_SQL = "INSERT INTO consent_change_events (contact_id, allowed_scopes, "
+            + "request_cache_deletion, reason, created_at, synchronized) VALUES (?, ?, ?, ?, ?, 0)";
+
     public long record(long contactId, List<SharingScope> scopes, boolean requestCacheDeletion,
                         ConsentChangeReason reason, Instant now) {
-        String sql = "INSERT INTO consent_change_events (contact_id, allowed_scopes, request_cache_deletion, reason, "
-                + "created_at, synchronized) VALUES (?, ?, ?, ?, ?, 0)";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return record(connection, contactId, scopes, requestCacheDeletion, reason, now);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to record consent change event", exception);
+        }
+    }
+
+    /** Same effect as {@link #record(long, List, boolean, ConsentChangeReason, Instant)}, on a caller-managed transaction. */
+    public long record(Connection connection, long contactId, List<SharingScope> scopes, boolean requestCacheDeletion,
+                        ConsentChangeReason reason, Instant now) {
+        try (PreparedStatement statement = connection.prepareStatement(RECORD_SQL, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, contactId);
             statement.setString(2, encodeScopes(scopes));
             statement.setInt(3, requestCacheDeletion ? 1 : 0);

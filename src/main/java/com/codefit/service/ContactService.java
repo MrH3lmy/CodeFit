@@ -13,7 +13,9 @@ import com.codefit.peer.protocol.SharingScope;
 import com.codefit.repository.ConsentChangeEventRepository;
 import com.codefit.repository.ContactPermissionRepository;
 import com.codefit.repository.ContactRepository;
+import com.codefit.repository.PeerIdentityRepository;
 
+import java.sql.Connection;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -28,16 +30,19 @@ public class ContactService {
     private final ContactRepository contactRepository;
     private final ContactPermissionRepository permissionRepository;
     private final ConsentChangeEventRepository outboxRepository;
+    private final PeerIdentityRepository identityRepository;
 
     public ContactService() {
-        this(new ContactRepository(), new ContactPermissionRepository(), new ConsentChangeEventRepository());
+        this(new ContactRepository(), new ContactPermissionRepository(), new ConsentChangeEventRepository(),
+                new PeerIdentityRepository());
     }
 
     ContactService(ContactRepository contactRepository, ContactPermissionRepository permissionRepository,
-                    ConsentChangeEventRepository outboxRepository) {
+                    ConsentChangeEventRepository outboxRepository, PeerIdentityRepository identityRepository) {
         this.contactRepository = contactRepository;
         this.permissionRepository = permissionRepository;
         this.outboxRepository = outboxRepository;
+        this.identityRepository = identityRepository;
     }
 
     public List<Contact> listContacts() {
@@ -74,15 +79,23 @@ public class ContactService {
     }
 
     /**
-     * Rejects a never-paired candidate: since nothing was ever granted or shared, the row is deleted
-     * outright rather than soft-deleted (there is nothing for an outbox event to revoke).
+     * Rejects a candidate that is currently {@link TrustState#PENDING}. A candidate that was never
+     * paired has nothing to preserve and is deleted outright. A contact that reached {@code PENDING}
+     * by being downgraded (e.g. {@link #downgradeAllPairedContactsForIdentityReset}) already carries
+     * consent-change history #184 still needs to synchronize; deleting that row would cascade-delete
+     * it (the schema's {@code ON DELETE CASCADE}), so this case is instead treated as {@link #remove}
+     * without recording a redundant event — the downgrade already recorded one.
      *
      * @throws IllegalContactStateException the contact is not {@link TrustState#PENDING}
      */
-    public void rejectInvitation(long contactId) {
+    public void rejectInvitation(long contactId, Instant now) {
         Contact contact = requireContact(contactId);
         requireState(contact, TrustState.PENDING);
-        contactRepository.delete(contactId);
+        if (outboxRepository.findByContactId(contactId).isEmpty()) {
+            contactRepository.delete(contactId);
+        } else {
+            contactRepository.updateTrustState(contactId, TrustState.REMOVED, now);
+        }
     }
 
     /**
@@ -109,16 +122,20 @@ public class ContactService {
      */
     public Contact block(long contactId, boolean requestCacheDeletion, Instant now) {
         requireContact(contactId);
-        revokeAndRecord(contactId, ConsentChangeReason.BLOCKED, requestCacheDeletion, now);
-        contactRepository.updateTrustState(contactId, TrustState.BLOCKED, now);
+        Transactions.run(connection -> {
+            revokeAndRecord(connection, contactId, ConsentChangeReason.BLOCKED, requestCacheDeletion, now);
+            contactRepository.updateTrustState(connection, contactId, TrustState.BLOCKED, now);
+        });
         return requireContact(contactId);
     }
 
     /** Same immediate effect as {@link #block}, and requires an explicit {@link #rePair} to resume. */
     public Contact remove(long contactId, boolean requestCacheDeletion, Instant now) {
         requireContact(contactId);
-        revokeAndRecord(contactId, ConsentChangeReason.REMOVED, requestCacheDeletion, now);
-        contactRepository.updateTrustState(contactId, TrustState.REMOVED, now);
+        Transactions.run(connection -> {
+            revokeAndRecord(connection, contactId, ConsentChangeReason.REMOVED, requestCacheDeletion, now);
+            contactRepository.updateTrustState(connection, contactId, TrustState.REMOVED, now);
+        });
         return requireContact(contactId);
     }
 
@@ -155,18 +172,27 @@ public class ContactService {
         long nextRevision = permissionRepository.find(contactId).map(p -> p.revision() + 1).orElse(1L);
         ContactPermission updated = new ContactPermission(contactId, grant.scopes(), grant.historicalWindowDays(),
                 grant.expiresAt(), grant.allowForwarding(), nextRevision, now);
-        permissionRepository.save(updated);
-        outboxRepository.record(contactId, updated.scopes(), false,
-                updated.scopes().isEmpty() ? ConsentChangeReason.REVOKED : ConsentChangeReason.GRANTED, now);
+        ConsentChangeReason reason = updated.scopes().isEmpty() ? ConsentChangeReason.REVOKED : ConsentChangeReason.GRANTED;
+        Transactions.run(connection -> {
+            permissionRepository.save(connection, updated);
+            outboxRepository.record(connection, contactId, updated.scopes(), false, reason, now);
+        });
         return updated;
     }
 
     /**
-     * Whether this contact currently holds a valid, unexpired grant for {@code scope}. The single
-     * enforcement point every future publisher (#183/#184) and every UI control must call before
-     * treating a contact as authorized — never inferred from the UI alone.
+     * Whether this contact currently holds a valid, unexpired grant for {@code scope}, AND the local
+     * identity is not paused. The single enforcement point every future publisher (#183/#184) and
+     * every UI control must call before treating a contact as authorized — never inferred from the UI
+     * alone. Sharing paused after a restore, rotation, or reset (pending the user's explicit review)
+     * denies every contact here, not only ones changed by that event: a previously granted scope must
+     * not keep flowing merely because {@code isAuthorizedToPublish} never re-checked identity state.
      */
     public boolean isAuthorizedToPublish(long contactId, SharingScope scope, Instant now) {
+        boolean identityReadyToShare = identityRepository.find().map(row -> !row.sharingPaused()).orElse(false);
+        if (!identityReadyToShare) {
+            return false;
+        }
         Optional<Contact> contact = contactRepository.findById(contactId);
         if (contact.isEmpty() || contact.get().trustState() != TrustState.PAIRED) {
             return false;
@@ -198,18 +224,25 @@ public class ContactService {
      * the new key (ADR-0001 §1).
      */
     void downgradeAllPairedContactsForIdentityReset(Instant now) {
-        for (Contact contact : contactRepository.findAll()) {
-            if (contact.trustState() == TrustState.PAIRED) {
-                revokeAndRecord(contact.id(), ConsentChangeReason.IDENTITY_RESET, false, now);
-                contactRepository.updateTrustState(contact.id(), TrustState.PENDING, now);
-            }
+        List<Contact> paired = contactRepository.findAll().stream()
+                .filter(contact -> contact.trustState() == TrustState.PAIRED)
+                .toList();
+        if (paired.isEmpty()) {
+            return;
         }
+        Transactions.run(connection -> {
+            for (Contact contact : paired) {
+                revokeAndRecord(connection, contact.id(), ConsentChangeReason.IDENTITY_RESET, false, now);
+                contactRepository.updateTrustState(connection, contact.id(), TrustState.PENDING, now);
+            }
+        });
     }
 
-    private void revokeAndRecord(long contactId, ConsentChangeReason reason, boolean requestCacheDeletion, Instant now) {
+    private void revokeAndRecord(Connection connection, long contactId, ConsentChangeReason reason,
+                                  boolean requestCacheDeletion, Instant now) {
         long nextRevision = permissionRepository.find(contactId).map(p -> p.revision() + 1).orElse(1L);
-        permissionRepository.save(new ContactPermission(contactId, List.of(), null, null, false, nextRevision, now));
-        outboxRepository.record(contactId, List.of(), requestCacheDeletion, reason, now);
+        permissionRepository.save(connection, new ContactPermission(contactId, List.of(), null, null, false, nextRevision, now));
+        outboxRepository.record(connection, contactId, List.of(), requestCacheDeletion, reason, now);
     }
 
     private static void requireState(Contact contact, TrustState expected) {

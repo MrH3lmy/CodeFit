@@ -5,13 +5,16 @@ import com.codefit.peer.identity.LocalIdentitySummary;
 import com.codefit.peer.identity.crypto.EncryptedSecret;
 import com.codefit.peer.identity.crypto.IdentityBackupCodec;
 import com.codefit.peer.identity.crypto.IdentityBackupPayload;
+import com.codefit.peer.identity.crypto.KeyPairs;
 import com.codefit.peer.identity.crypto.PassphraseCipher;
+import com.codefit.peer.protocol.IdentityKey;
 import com.codefit.repository.PeerIdentityRepository;
 import com.codefit.repository.PeerIdentityRow;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.PrivateKey;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Optional;
@@ -27,13 +30,15 @@ import java.util.Optional;
  */
 public class IdentityBackupService {
     private final PeerIdentityRepository identityRepository;
+    private final ContactService contactService;
 
     public IdentityBackupService() {
-        this(new PeerIdentityRepository());
+        this(new PeerIdentityRepository(), new ContactService());
     }
 
-    IdentityBackupService(PeerIdentityRepository identityRepository) {
+    IdentityBackupService(PeerIdentityRepository identityRepository, ContactService contactService) {
         this.identityRepository = identityRepository;
+        this.contactService = contactService;
     }
 
     /**
@@ -68,7 +73,16 @@ public class IdentityBackupService {
      * publishing after the backup was made — can never reuse an epoch (protocol §10.1). Sharing is
      * left paused: the restored consent state may predate a revocation.
      *
-     * @throws com.codefit.peer.identity.VaultCorruptException the file is not a recognizable backup
+     * <p>When this device currently has a <em>different</em> identity active, restoring this backup
+     * abandons that identity exactly as an unrecoverable-key reset would: nothing here can prove
+     * continuity with whatever a paired contact currently trusts, so every paired contact is
+     * downgraded and must explicitly re-pair (ADR-0001 §1), the same as
+     * {@link IdentityService#resetIdentityWithoutContinuity}. Restoring the <em>same</em> identity
+     * (the ordinary case) leaves contacts and grants untouched.
+     *
+     * @throws com.codefit.peer.identity.VaultCorruptException the file is not a recognizable backup, or
+     *                                                          its decrypted private key does not match
+     *                                                          its declared public key
      * @throws com.codefit.peer.identity.UnsupportedBackupVersionException the file's format version
      *                                                                     is newer than this build supports
      * @throws com.codefit.peer.identity.VaultAuthenticationException {@code backupPassphrase} is wrong,
@@ -80,6 +94,10 @@ public class IdentityBackupService {
         IdentityBackupPayload payload = IdentityBackupCodec.decode(backupBytes);
         byte[] pkcs8 = PassphraseCipher.open(backupPassphrase, payload.encryptedPkcs8PrivateKey(), payload.headerAssociatedData());
         try {
+            PrivateKey candidatePrivateKey = KeyPairs.privateKeyFromPkcs8(pkcs8);
+            IdentityKey candidatePublicKey = new IdentityKey(payload.identityPublicKey());
+            IdentityService.requireMatchingKeyPair(candidatePrivateKey, candidatePublicKey);
+
             Optional<PeerIdentityRow> existing = identityRepository.find();
             long previousEpoch = Math.max(existing.map(PeerIdentityRow::highestKnownEpoch).orElse(0L), payload.lastKnownEpoch());
             long newEpoch = IdentityService.nextEpoch(previousEpoch, now);
@@ -87,6 +105,12 @@ public class IdentityBackupService {
             EncryptedSecret resealed = PassphraseCipher.seal(newVaultPassphrase, pkcs8, payload.identityPublicKey());
             PeerIdentityRow restoredRow = new PeerIdentityRow(payload.identityPublicKey(), resealed.ciphertext(),
                     resealed.salt(), resealed.iterations(), resealed.nonce(), 1, newEpoch, newEpoch, true, createdAt, now);
+
+            boolean restoringADifferentIdentity = existing.isPresent()
+                    && !Arrays.equals(existing.get().identityPublicKey(), payload.identityPublicKey());
+            if (restoringADifferentIdentity) {
+                contactService.downgradeAllPairedContactsForIdentityReset(now);
+            }
             identityRepository.replace(restoredRow);
             return IdentityService.summaryOf(restoredRow);
         } finally {

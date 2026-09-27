@@ -98,6 +98,15 @@ public class ContactRepository {
         });
     }
 
+    /** Same effect as {@link #updateTrustState(long, TrustState, Instant)}, on a caller-managed transaction. */
+    public void updateTrustState(Connection connection, long id, TrustState trustState, Instant now) {
+        updateOn(connection, "UPDATE contacts SET trust_state = ?, updated_at = ? WHERE id = ?", statement -> {
+            statement.setString(1, trustState.name());
+            statement.setString(2, now.toString());
+            statement.setLong(3, id);
+        });
+    }
+
     public void updateCachedDisplayName(long id, String displayName, Instant now) {
         update("UPDATE contacts SET display_name = ?, updated_at = ? WHERE id = ?", statement -> {
             statement.setString(1, displayName);
@@ -123,8 +132,15 @@ public class ContactRepository {
     }
 
     private void update(String sql, Binder binder) {
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            updateOn(connection, sql, binder);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to update contact", exception);
+        }
+    }
+
+    private void updateOn(Connection connection, String sql, Binder binder) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             binder.bind(statement);
             statement.executeUpdate();
         } catch (SQLException exception) {

@@ -190,6 +190,9 @@ class IdentityServiceTest {
         assertTrue(identityService.isSharingPaused());
         Contact afterRotation = contactService.requireContact(contact.id());
         assertEquals(TrustState.PAIRED, afterRotation.trustState());
+        // The grant itself survived the rotation, but the pause denies publication until reviewed.
+        assertFalse(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(10)));
+        identityService.resumeSharingAfterReview();
         assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(10)));
         // The old passphrase no longer opens anything: the vault now holds the new key.
         assertThrows(VaultAuthenticationException.class, () -> identityService.unlock("vault-pass".toCharArray()));
@@ -224,6 +227,51 @@ class IdentityServiceTest {
         // No signed continuity proof exists for a reset without the old key - that is the whole reason
         // contacts had to be downgraded above instead of carried over.
         assertTrue(new com.codefit.repository.IdentityKeyRotationRepository().findLatest().isEmpty());
+    }
+
+    @Test
+    void unlockRejectsAStoredPrivateKeyThatDoesNotMatchTheStoredPublicKey() {
+        IdentityService identityService = new IdentityService();
+        identityService.createIdentity("vault-pass".toCharArray(), at(0));
+        PeerIdentityRepository repository = new PeerIdentityRepository();
+        PeerIdentityRow row = repository.find().orElseThrow();
+
+        // Craft a row whose ciphertext decrypts to an UNRELATED private key, sealed under this row's
+        // own declared public key as associated data. AEAD authentication alone passes (the AAD the
+        // reviewer's finding pointed at matches exactly what open() will supply), but the decrypted
+        // key and the declared public key are not actually a pair - the exact gap #192's review found.
+        var impostorKeyPair = com.codefit.peer.identity.crypto.KeyPairs.generate();
+        var mismatchedSecret = com.codefit.peer.identity.crypto.PassphraseCipher.seal("vault-pass".toCharArray(),
+                com.codefit.peer.identity.crypto.KeyPairs.pkcs8PrivateKey(impostorKeyPair.getPrivate()), row.identityPublicKey());
+        repository.replace(new PeerIdentityRow(row.identityPublicKey(), mismatchedSecret.ciphertext(),
+                mismatchedSecret.salt(), mismatchedSecret.iterations(), mismatchedSecret.nonce(), row.keyFormatVersion(),
+                row.highestKnownEpoch(), row.currentWriterEpoch(), row.sharingPaused(), row.createdAt(), row.lastRestoredAt()));
+
+        assertThrows(VaultCorruptException.class, () -> identityService.unlock("vault-pass".toCharArray()));
+    }
+
+    @Test
+    void rotateKeyWithContinuityRollsBackTheNewIdentityRowWhenTheContinuityWriteFails() throws java.sql.SQLException {
+        IdentityService identityService = new IdentityService();
+        LocalIdentitySummary original = identityService.createIdentity("vault-pass".toCharArray(), at(0));
+        Instant rotationInstant = at(9_999);
+
+        try (java.sql.Connection connection = com.codefit.config.DatabaseConfig.getConnection();
+             java.sql.Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TRIGGER force_rotation_failure BEFORE INSERT ON identity_key_rotations
+                    WHEN NEW.rotated_at = '%s'
+                    BEGIN SELECT RAISE(ABORT, 'forced failure for atomicity test'); END
+                    """.formatted(rotationInstant));
+        }
+
+        assertThrows(IllegalStateException.class, () -> identityService.rotateKeyWithContinuity(
+                "vault-pass".toCharArray(), "new-pass".toCharArray(), rotationInstant));
+
+        // A crash between the two writes must never leave the new key active without its continuity
+        // proof: the OLD identity must still be the one in effect, still unlockable with its own passphrase.
+        assertEquals(original.publicKey(), identityService.currentIdentity().orElseThrow().publicKey());
+        assertEquals(original.publicKey(), identityService.unlock("vault-pass".toCharArray()).publicKey());
     }
 
     @Test

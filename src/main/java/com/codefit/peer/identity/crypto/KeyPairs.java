@@ -7,6 +7,7 @@ import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.nio.charset.StandardCharsets;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.HexFormat;
@@ -25,6 +26,14 @@ public final class KeyPairs {
 
     /** DER SEQUENCE {@code {SEQUENCE {OID 1.3.101.112}, BIT STRING (33)}} preceding a raw Ed25519 key. */
     private static final byte[] SPKI_PREFIX = HexFormat.of().parseHex("302a300506032b6570032100");
+
+    /**
+     * A fixed, non-secret message signed and verified purely to prove that a decrypted private key and
+     * its declared public key are actually a pair (RFC 8032 gives no other cheap way to derive one from
+     * the other through the JDK's public API). Never transmitted or treated as an envelope signature.
+     */
+    private static final byte[] KEY_PAIR_CONSISTENCY_CHALLENGE =
+            "CodeFit-Ed25519-KeyPair-Consistency-Check-v1".getBytes(StandardCharsets.US_ASCII);
 
     private KeyPairs() {
     }
@@ -84,6 +93,17 @@ public final class KeyPairs {
         } catch (GeneralSecurityException e) {
             throw new IllegalArgumentException("Could not sign with the supplied Ed25519 key.", e);
         }
+    }
+
+    /**
+     * Whether {@code privateKey} and {@code publicKey} are actually a matching Ed25519 pair, proven by
+     * signing a fixed challenge with one and verifying it with the other. A decrypted private key is
+     * never trusted to belong to a stored/declared public key without this check: the two travel
+     * separately (the public key in the clear, the private key inside AEAD ciphertext keyed by a
+     * passphrase), and only AEAD authentication, not key-pair consistency, guards the private key.
+     */
+    public static boolean matches(PrivateKey privateKey, PublicKey publicKey) {
+        return verify(publicKey, KEY_PAIR_CONSISTENCY_CHALLENGE, sign(privateKey, KEY_PAIR_CONSISTENCY_CHALLENGE));
     }
 
     public static boolean verify(PublicKey publicKey, byte[] message, byte[] signature) {

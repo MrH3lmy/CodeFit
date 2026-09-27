@@ -41,7 +41,13 @@ final class SchemaMigrator {
                     SchemaMigrator::backfillCardLifecycleState),
             new VersionedMigration(3,
                     "Convert the seeded newest-user-emails SQL_QUERY card to fixture-based grading config",
-                    SchemaMigrator::migrateSeededSqlQueryCard)
+                    SchemaMigrator::migrateSeededSqlQueryCard),
+            new VersionedMigration(4,
+                    "Add local peer identity, social profile, and key rotation history tables (#181)",
+                    SchemaMigrator::createPeerIdentityTables),
+            new VersionedMigration(5,
+                    "Add peer contacts, sharing permissions, and consent-change outbox tables (#181)",
+                    SchemaMigrator::createPeerContactTables)
     );
 
     static void migrate(Connection connection) throws SQLException {
@@ -217,6 +223,111 @@ final class SchemaMigrator {
                         introduced_at = COALESCE(introduced_at, created_at)
                     WHERE review_count > 0 AND card_state = 'NEW'
                     """);
+        }
+    }
+
+    /**
+     * #181's local identity, its editable social profile (deliberately separate from
+     * {@code com.codefit.model.InterviewPreparationProfile}), and its key-rotation continuity
+     * history. {@code peer_identity} and {@code social_profile} are singleton tables
+     * ({@code CHECK (id = 1)}, matching {@code user_progress}'s existing single-row convention)
+     * because #181 supports exactly one local identity per install. The private key never appears
+     * unencrypted: {@code private_key_ciphertext} is AES/GCM output, and only the passphrase used to
+     * seal it (never itself persisted) can open it — see {@code com.codefit.peer.identity.crypto}.
+     */
+    private static void createPeerIdentityTables(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_identity (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        identity_public_key BLOB NOT NULL,
+                        private_key_ciphertext BLOB NOT NULL,
+                        private_key_salt BLOB NOT NULL,
+                        private_key_iterations INTEGER NOT NULL,
+                        private_key_nonce BLOB NOT NULL,
+                        key_format_version INTEGER NOT NULL DEFAULT 1,
+                        highest_known_epoch INTEGER NOT NULL DEFAULT 0,
+                        current_writer_epoch INTEGER NOT NULL DEFAULT 0,
+                        sharing_paused INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        last_restored_at TEXT
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS social_profile (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        display_name TEXT NOT NULL,
+                        bio TEXT,
+                        comparison_zone_id TEXT NOT NULL DEFAULT 'UTC',
+                        week_start INTEGER NOT NULL DEFAULT 1,
+                        avatar_bytes BLOB,
+                        avatar_mime_type TEXT,
+                        profile_revision INTEGER NOT NULL DEFAULT 0,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+            // Populated only by IdentityService.rotateKeyWithContinuity: a signature by the OLD
+            // identity key vouching for the new one, so an existing contact can adopt the new key
+            // without re-pairing from scratch once a later issue transmits it (ADR-0001 §1).
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS identity_key_rotations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        old_public_key BLOB NOT NULL,
+                        new_public_key BLOB NOT NULL,
+                        rotated_at TEXT NOT NULL,
+                        continuity_signature BLOB NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+        }
+    }
+
+    /**
+     * #181's contacts (pinned by {@code identity_id}, the SHA-256 of the contact's public key, so a
+     * pin can never silently move to a different key under the same row), their per-contact sharing
+     * grant, and an outbox of grant/revocation changes for #184's sync layer to eventually publish as
+     * {@code ConsentRevision} messages while the contact may be offline. {@code contact_permissions}
+     * defaults every column to "nothing granted" so a newly paired contact discloses nothing until
+     * the learner explicitly grants a scope (#181 acceptance criterion).
+     */
+    private static void createPeerContactTables(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS contacts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        identity_id BLOB NOT NULL UNIQUE,
+                        identity_public_key BLOB NOT NULL,
+                        fingerprint TEXT NOT NULL,
+                        display_name TEXT NOT NULL DEFAULT '',
+                        alias TEXT,
+                        trust_state TEXT NOT NULL DEFAULT 'PENDING',
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS contact_permissions (
+                        contact_id INTEGER PRIMARY KEY REFERENCES contacts(id) ON DELETE CASCADE,
+                        allowed_scopes TEXT NOT NULL DEFAULT '',
+                        historical_window_days INTEGER,
+                        expires_at TEXT,
+                        allow_forwarding INTEGER NOT NULL DEFAULT 0,
+                        revision INTEGER NOT NULL DEFAULT 0,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS consent_change_events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+                        allowed_scopes TEXT NOT NULL DEFAULT '',
+                        request_cache_deletion INTEGER NOT NULL DEFAULT 0,
+                        reason TEXT NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        synchronized INTEGER NOT NULL DEFAULT 0
+                    )
+                    """);
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_consent_change_events_contact_id ON consent_change_events(contact_id)");
         }
     }
 

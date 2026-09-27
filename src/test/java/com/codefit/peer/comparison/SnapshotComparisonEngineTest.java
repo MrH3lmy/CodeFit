@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 
 import static com.codefit.peer.comparison.SnapshotComparisonEngine.ComparisonState.COMPARABLE;
 import static com.codefit.peer.comparison.SnapshotComparisonEngine.ComparisonState.DESCRIPTIVE_ONLY;
@@ -32,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SnapshotComparisonEngineTest {
 
-    private static final Instant EVALUATION = Instant.parse("2026-09-27T12:00:00Z");
+    private static final Instant EVALUATION = Instant.parse("2026-09-28T12:00:00Z");
     private static final SnapshotComparisonEngine.EvaluationContext LIVE =
             new SnapshotComparisonEngine.EvaluationContext(EVALUATION, Duration.ofDays(2));
     private static final SnapshotComparisonEngine.EvaluationContext HISTORY =
@@ -60,8 +61,8 @@ class SnapshotComparisonEngineTest {
         assertEquals(COMPARABLE, result.state());
         assertTrue(result.equalElapsed());
         assertFalse(result.crossZoneOrPeriod());
-        assertEquals(Duration.ofMinutes(10), result.leftObservationAge().orElseThrow());
-        assertEquals(Duration.ofMinutes(5), result.rightObservationAge().orElseThrow());
+        assertEquals(Duration.between(cutoff, EVALUATION), result.leftSnapshotAge().orElseThrow());
+        assertEquals(Duration.between(cutoff, EVALUATION), result.rightSnapshotAge().orElseThrow());
         assertEquals(List.of("problem.accepted", "review.verified_correct_rate"),
                 result.metrics().stream().map(SnapshotComparisonEngine.MetricComparison::metricId).toList());
 
@@ -178,10 +179,13 @@ class SnapshotComparisonEngineTest {
                 SnapshotComparisonEngine.SnapshotObservation.notShared("Peer explicitly withheld this period"), LIVE);
         assertEquals(SnapshotComparisonEngine.Reason.RIGHT_NOT_SHARED, notShared.reason());
 
+        ComparisonWindow oldDay = ComparisonWindow.day(LocalDate.of(2026, 9, 24), ZoneId.of("Europe/Berlin"));
+        ProgressSummary oldSummary = summary(oldDay, oldDay.end(), attempts(2));
         var stale = SnapshotComparisonEngine.comparePeerProgress(
                 observed(measured, EVALUATION),
-                observed(measured, EVALUATION.minus(Duration.ofDays(3))), LIVE);
+                observed(oldSummary, EVALUATION), LIVE);
         assertEquals(SnapshotComparisonEngine.Reason.RIGHT_STALE, stale.reason());
+        assertTrue(stale.rightSnapshotAge().orElseThrow().compareTo(Duration.ofDays(2)) > 0);
 
         ProgressSummary insufficient = summary(day, day.end(),
                 new MetricValue("review.verified_correct_rate", 1, MetricUnit.BASIS_POINTS,
@@ -220,6 +224,56 @@ class SnapshotComparisonEngineTest {
         assertEquals(DESCRIPTIVE_ONLY, provenance.metrics().get(0).state());
         assertEquals(SnapshotComparisonEngine.Reason.PROVENANCE_MISMATCH,
                 provenance.metrics().get(0).reason());
+    }
+
+    @Test
+    void metricOmissionAndCohortEvidenceAreExplicit() {
+        ComparisonWindow day = ComparisonWindow.day(LocalDate.of(2026, 9, 27), ZoneId.of("Europe/Berlin"));
+        MetricValue accepted = metric("problem.accepted", 1, MetricUnit.COUNT, 3, 3,
+                MetricProvenance.LEARNER_REPORTED_OUTCOME, TimestampBasis.EXACT_UTC);
+        ProgressSummary left = summary(day, day.end(), accepted, attempts(5));
+        ProgressSummary rightWithoutAccepted = summary(day, day.end(), attempts(4));
+
+        var omissionContext = new SnapshotComparisonEngine.EvaluationContext(
+                EVALUATION, Duration.ofDays(2),
+                Map.of(),
+                Map.of("problem.accepted",
+                        SnapshotComparisonEngine.MetricOmission.notShared("Peer did not grant this metric")),
+                Map.of("review.attempts", SnapshotComparisonEngine.CohortEvidence.MATCHED));
+        var omitted = SnapshotComparisonEngine.comparePeerProgress(
+                observed(left, EVALUATION), observed(rightWithoutAccepted, EVALUATION), omissionContext);
+        var acceptedOmission = omitted.metrics().stream()
+                .filter(metric -> metric.metricId().equals("problem.accepted"))
+                .findFirst().orElseThrow();
+        assertEquals(UNAVAILABLE, acceptedOmission.state());
+        assertEquals(SnapshotComparisonEngine.Reason.RIGHT_METRIC_NOT_SHARED, acceptedOmission.reason());
+
+        ProgressSummary acceptedLeft = summary(day, day.end(), accepted);
+        ProgressSummary acceptedRight = summary(day, day.end(),
+                metric("problem.accepted", 1, MetricUnit.COUNT, 2, 2,
+                        MetricProvenance.LEARNER_REPORTED_OUTCOME, TimestampBasis.EXACT_UTC));
+
+        var unknownCohort = SnapshotComparisonEngine.comparePeerProgress(
+                observed(acceptedLeft, EVALUATION), observed(acceptedRight, EVALUATION), LIVE);
+        assertEquals(DESCRIPTIVE_ONLY, unknownCohort.metrics().get(0).state());
+        assertEquals(SnapshotComparisonEngine.Reason.COHORT_EVIDENCE_MISSING,
+                unknownCohort.metrics().get(0).reason());
+
+        var matchedContext = new SnapshotComparisonEngine.EvaluationContext(
+                EVALUATION, Duration.ofDays(2), Map.of(), Map.of(),
+                Map.of("problem.accepted", SnapshotComparisonEngine.CohortEvidence.MATCHED));
+        var matched = SnapshotComparisonEngine.comparePeerProgress(
+                observed(acceptedLeft, EVALUATION), observed(acceptedRight, EVALUATION), matchedContext);
+        assertEquals(COMPARABLE, matched.metrics().get(0).state());
+        assertEquals(SnapshotComparisonEngine.Reason.NONE, matched.metrics().get(0).reason());
+
+        var unmatchedContext = new SnapshotComparisonEngine.EvaluationContext(
+                EVALUATION, Duration.ofDays(2), Map.of(), Map.of(),
+                Map.of("problem.accepted", SnapshotComparisonEngine.CohortEvidence.UNMATCHED));
+        var unmatched = SnapshotComparisonEngine.comparePeerProgress(
+                observed(acceptedLeft, EVALUATION), observed(acceptedRight, EVALUATION), unmatchedContext);
+        assertEquals(DESCRIPTIVE_ONLY, unmatched.metrics().get(0).state());
+        assertEquals(SnapshotComparisonEngine.Reason.COHORT_MISMATCH, unmatched.metrics().get(0).reason());
     }
 
     @Test
@@ -292,13 +346,13 @@ class SnapshotComparisonEngineTest {
     }
 
     private static SnapshotComparisonEngine.SnapshotObservation<ProgressSummary> observed(
-            ProgressSummary summary, Instant observedAt) {
-        return SnapshotComparisonEngine.SnapshotObservation.available(summary, observedAt);
+            ProgressSummary summary, Instant capturedAt) {
+        return SnapshotComparisonEngine.SnapshotObservation.available(summary, capturedAt);
     }
 
     private static SnapshotComparisonEngine.SnapshotObservation<PreparationSnapshot> observed(
-            PreparationSnapshot snapshot, Instant observedAt) {
-        return SnapshotComparisonEngine.SnapshotObservation.available(snapshot, observedAt);
+            PreparationSnapshot snapshot, Instant capturedAt) {
+        return SnapshotComparisonEngine.SnapshotObservation.available(snapshot, capturedAt);
     }
 
     private static ProgressSummary summary(ComparisonWindow window, Instant cutoff, MetricValue... values) {

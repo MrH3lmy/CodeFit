@@ -37,8 +37,17 @@ public class ContactService {
      * threads can finish their read before either one blocks. This is in-process coordination only —
      * the documented single-active-writer-per-identity limitation (protocol §10.1) is unchanged, and
      * nothing here claims to coordinate across processes or devices.
+     *
+     * <p>Package-private so {@code IdentityService}/{@code IdentityBackupService} can hold it for the
+     * <em>entire</em> identity-recovery transaction, not just around the
+     * {@link #downgradeAllPairedContactsForIdentityReset} call: releasing it as soon as that method
+     * returns — before the transaction that calls it actually commits — left a window where
+     * {@link #updatePermissions} could read the pre-downgrade PAIRED/revision state from a separate
+     * connection (uncommitted writes on another connection aren't visible) and commit a fresh grant
+     * after recovery finished, reactivating access for a contact recovery had just downgraded. #192's
+     * review reproduced this against real SQLite.
      */
-    private static final Object PERMISSION_LOCK = new Object();
+    static final Object PERMISSION_LOCK = new Object();
 
     private final ContactRepository contactRepository;
     private final ContactPermissionRepository permissionRepository;
@@ -88,7 +97,7 @@ public class ContactService {
             Contact contact = requireContact(contactId);
             requireState(contact, TrustState.PENDING);
             contactRepository.updateTrustState(contactId, TrustState.PAIRED, now);
-            ensureEmptyGrantWithoutResettingAnExistingRevision(contactId, now);
+            clearGrantOnPairingWithoutResettingAnExistingRevision(contactId, now);
             return requireContact(contactId);
         }
     }
@@ -137,23 +146,25 @@ public class ContactService {
                 throw new IllegalContactStateException("Only a blocked or removed contact can be re-paired.");
             }
             contactRepository.updateTrustState(contactId, TrustState.PAIRED, now);
-            ensureEmptyGrantWithoutResettingAnExistingRevision(contactId, now);
+            clearGrantOnPairingWithoutResettingAnExistingRevision(contactId, now);
             return requireContact(contactId);
         }
     }
 
     /**
-     * Establishes the initial "nothing granted" permission row only when this contact has never had
-     * one. A contact reaching {@link TrustState#PAIRED} for the very first time (via
-     * {@link #acceptInvitation}) has no row yet and gets the {@code revision = 0} starting point. A
-     * contact that already has one — because it was previously blocked/removed/downgraded — keeps
-     * exactly the scopes (always empty by the time either caller here runs) and revision that left it,
-     * so the revision counter never moves backwards relative to what a peer may already hold.
+     * Forces the permission row to empty scopes on every transition into {@link TrustState#PAIRED},
+     * without ever moving its revision counter backwards. A contact reaching {@code PAIRED} for the
+     * very first time (via {@link #acceptInvitation}) has no row yet and gets the {@code revision = 0}
+     * starting point; one that already has a row — because it was previously blocked, removed, or
+     * downgraded — keeps exactly that revision, forced to empty scopes explicitly rather than merely
+     * assumed to already be empty. That assumption briefly went false during the window #192's review
+     * found (a stale {@link #updatePermissions} could commit a non-empty grant onto a just-downgraded
+     * contact after the downgrade's own write, before {@link #acceptInvitation}/{@link #rePair} next
+     * ran) — this method no longer depends on it holding.
      */
-    private void ensureEmptyGrantWithoutResettingAnExistingRevision(long contactId, Instant now) {
-        if (permissionRepository.find(contactId).isEmpty()) {
-            permissionRepository.save(ContactPermission.none(contactId, now));
-        }
+    private void clearGrantOnPairingWithoutResettingAnExistingRevision(long contactId, Instant now) {
+        long revision = permissionRepository.find(contactId).map(ContactPermission::revision).orElse(0L);
+        permissionRepository.save(new ContactPermission(contactId, List.of(), null, null, false, revision, now));
     }
 
     /**

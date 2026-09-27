@@ -113,12 +113,20 @@ public class IdentityBackupService {
                 boolean restoringADifferentIdentity = existing.isPresent()
                         && !Arrays.equals(existing.get().identityPublicKey(), payload.identityPublicKey());
                 if (restoringADifferentIdentity) {
-                    // One transaction: a failed identity write must never leave contacts permanently
-                    // downgraded for an identity change that never actually took effect.
-                    Transactions.run(connection -> {
-                        contactService.downgradeAllPairedContactsForIdentityReset(connection, now);
-                        identityRepository.replace(connection, restoredRow);
-                    });
+                    // ContactService.PERMISSION_LOCK held through commit, not just around the downgrade
+                    // call: releasing it any earlier let a concurrent updatePermissions read the
+                    // pre-downgrade PAIRED/revision state (uncommitted writes on this transaction's
+                    // connection aren't visible to a separate one) and commit a fresh grant after this
+                    // transaction finished, reactivating access for a contact this import had just
+                    // downgraded. #192's review reproduced this against real SQLite.
+                    synchronized (ContactService.PERMISSION_LOCK) {
+                        // One transaction: a failed identity write must never leave contacts
+                        // permanently downgraded for an identity change that never actually took effect.
+                        Transactions.run(connection -> {
+                            contactService.downgradeAllPairedContactsForIdentityReset(connection, now);
+                            identityRepository.replace(connection, restoredRow);
+                        });
+                    }
                 } else {
                     identityRepository.replace(restoredRow);
                 }

@@ -166,12 +166,19 @@ public class IdentityService {
             KeyPair newKeyPair = KeyPairs.generate();
             long epoch = nextEpoch(0, now);
             PeerIdentityRow newRow = sealRow(newKeyPair, newVaultPassphrase, epoch, epoch, true, now, null);
-            // One transaction: a failed identity write must never leave contacts permanently downgraded
-            // for an identity change that never actually took effect.
-            Transactions.run(connection -> {
-                contactService.downgradeAllPairedContactsForIdentityReset(connection, now);
-                identityRepository.replace(connection, newRow);
-            });
+            // PERMISSION_LOCK held through commit, not just around the downgrade call: releasing it
+            // any earlier let a concurrent updatePermissions read the pre-downgrade PAIRED/revision
+            // state (uncommitted writes on this transaction's connection aren't visible to a separate
+            // one) and commit a fresh grant after this transaction finished, reactivating access for a
+            // contact this reset had just downgraded. #192's review reproduced this against real SQLite.
+            synchronized (ContactService.PERMISSION_LOCK) {
+                // One transaction: a failed identity write must never leave contacts permanently
+                // downgraded for an identity change that never actually took effect.
+                Transactions.run(connection -> {
+                    contactService.downgradeAllPairedContactsForIdentityReset(connection, now);
+                    identityRepository.replace(connection, newRow);
+                });
+            }
             return summaryOf(newRow);
         }
     }

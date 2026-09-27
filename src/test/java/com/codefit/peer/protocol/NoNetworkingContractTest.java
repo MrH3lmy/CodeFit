@@ -14,17 +14,30 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Executable evidence for the #180 boundary: the protocol foundation opens no listener, performs no
- * egress, touches no files or database, generates no identity, adds no runtime dependency, and is not
- * wired into the running application.
+ * Executable evidence for the #180/#181 boundary. #180's wire-format package
+ * ({@code com.codefit.peer.protocol}) still opens no listener, performs no egress, and touches no
+ * file, database, or key-generation API of its own — it is a pure codec. #181 adds local identity
+ * generation, encrypted key storage, and encrypted backup files under the sibling
+ * {@code com.codefit.peer.identity} package, exactly as ADR-0001 §1 says it would ("Local identity
+ * creation and encrypted key storage belong to #181"); those APIs are therefore expected there and are
+ * checked separately for the one thing that must not appear in either package: an actual networking
+ * API. Both packages remain free of any networking capability until #182 adds a transport.
  */
 class NoNetworkingContractTest {
-    private static final Path PEER_SOURCES = Path.of("src/main/java/com/codefit/peer");
-    private static final Path MAIN_SOURCES = Path.of("src/main/java");
+    private static final Path PEER_PROTOCOL_SOURCES = Path.of("src/main/java/com/codefit/peer/protocol");
+    private static final Path PEER_IDENTITY_SOURCES = Path.of("src/main/java/com/codefit/peer/identity");
 
-    private static final Pattern FORBIDDEN = Pattern.compile(String.join("|",
+    /** Networking APIs: forbidden in both {@code com.codefit.peer.protocol} and {@code com.codefit.peer.identity}. */
+    private static final Pattern NETWORKING = Pattern.compile(String.join("|",
             "java\\.net\\.", "javax\\.net\\.", "java\\.nio\\.channels", "java\\.net\\.http",
-            "\\bSocket\\b", "ServerSocket", "DatagramSocket", "MulticastSocket", "HttpClient", "URLConnection",
+            "\\bSocket\\b", "ServerSocket", "DatagramSocket", "MulticastSocket", "HttpClient", "URLConnection"));
+
+    /**
+     * Additionally forbidden inside {@code com.codefit.peer.protocol} specifically: it is a pure
+     * value-type/codec package with no file, database, or key-generation capability of its own (#181
+     * owns all of that, one package over).
+     */
+    private static final Pattern FORBIDDEN_IN_PROTOCOL_CODEC = Pattern.compile(NETWORKING.pattern() + "|" + String.join("|",
             "java\\.io\\.File\\b", "java\\.nio\\.file", "FileInputStream", "FileOutputStream",
             "java\\.sql", "DatabaseConfig", "KeyPairGenerator", "SecureRandom", "ProcessBuilder", "Runtime\\.getRuntime",
             "ObjectInputStream", "readObject", "Class\\.forName", "ScriptEngine"));
@@ -36,23 +49,24 @@ class NoNetworkingContractTest {
     }
 
     @Test
-    void peerProtocolSourcesUseNoNetworkingFileDatabaseOrKeyGenerationApis() throws IOException {
-        List<Path> files = javaFiles(PEER_SOURCES);
-        assertTrue(files.size() > 10, "expected the protocol sources to be scanned");
+    void peerProtocolCodecSourcesUseNoNetworkingFileDatabaseOrKeyGenerationApis() throws IOException {
+        List<Path> files = javaFiles(PEER_PROTOCOL_SOURCES);
+        assertTrue(files.size() > 10, "expected the protocol codec sources to be scanned");
         for (Path file : files) {
             String source = Files.readString(file);
-            var matcher = FORBIDDEN.matcher(source);
+            var matcher = FORBIDDEN_IN_PROTOCOL_CODEC.matcher(source);
             assertFalse(matcher.find(), () -> file + " uses forbidden API: " + matcher.group());
         }
     }
 
     @Test
-    void peerProtocolIsNotWiredIntoTheRunningApplication() throws IOException {
-        for (Path file : javaFiles(MAIN_SOURCES)) {
-            if (file.startsWith(PEER_SOURCES)) {
-                continue;
-            }
-            assertFalse(Files.readString(file).contains("com.codefit.peer"), file + " references the peer protocol");
+    void peerIdentitySourcesOpenNoNetworkingApis() throws IOException {
+        List<Path> files = javaFiles(PEER_IDENTITY_SOURCES);
+        assertTrue(files.size() > 5, "expected the identity sources to be scanned");
+        for (Path file : files) {
+            String source = Files.readString(file);
+            var matcher = NETWORKING.matcher(source);
+            assertFalse(matcher.find(), () -> file + " uses forbidden networking API: " + matcher.group());
         }
     }
 

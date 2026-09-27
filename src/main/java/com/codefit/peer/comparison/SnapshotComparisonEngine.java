@@ -62,8 +62,10 @@ public final class SnapshotComparisonEngine {
         RIGHT_UNAVAILABLE,
         LEFT_STALE,
         RIGHT_STALE,
-        LEFT_OBSERVED_IN_FUTURE,
-        RIGHT_OBSERVED_IN_FUTURE,
+        LEFT_CAPTURED_IN_FUTURE,
+        RIGHT_CAPTURED_IN_FUTURE,
+        LEFT_SNAPSHOT_IN_FUTURE,
+        RIGHT_SNAPSHOT_IN_FUTURE,
         WINDOW_KIND_MISMATCH,
         CROSS_ZONE_OR_PERIOD,
         UTC_INTERVAL_MISMATCH,
@@ -72,10 +74,14 @@ public final class SnapshotComparisonEngine {
         COMPLETE_PARTIAL_MISMATCH,
         LEFT_METRIC_MISSING,
         RIGHT_METRIC_MISSING,
+        LEFT_METRIC_NOT_SHARED,
+        RIGHT_METRIC_NOT_SHARED,
         UNKNOWN_METRIC,
         VERSION_MISMATCH,
         UNIT_MISMATCH,
         PROVENANCE_MISMATCH,
+        COHORT_EVIDENCE_MISSING,
+        COHORT_MISMATCH,
         LEFT_METRIC_UNAVAILABLE,
         RIGHT_METRIC_UNAVAILABLE,
         LEFT_INSUFFICIENT_SAMPLE,
@@ -95,17 +101,62 @@ public final class SnapshotComparisonEngine {
         PERCENTAGE_POINTS
     }
 
+    /** Whether the caller has evidence that both sides used a matched task/difficulty cohort. */
+    public enum CohortEvidence {
+        MATCHED,
+        UNMATCHED,
+        UNKNOWN
+    }
+
+    /** Explicit context for a metric that is absent from one supplied summary. */
+    public record MetricOmission(InputState state, String detail) {
+        public MetricOmission {
+            Objects.requireNonNull(state, "state");
+            if (state == InputState.AVAILABLE) {
+                throw new IllegalArgumentException("A metric omission cannot be AVAILABLE.");
+            }
+            detail = detail == null ? "" : detail;
+        }
+
+        public static MetricOmission missing(String detail) {
+            return new MetricOmission(InputState.MISSING, detail);
+        }
+
+        public static MetricOmission notShared(String detail) {
+            return new MetricOmission(InputState.NOT_SHARED, detail);
+        }
+
+        public static MetricOmission unavailable(String detail) {
+            return new MetricOmission(InputState.UNAVAILABLE, detail);
+        }
+    }
+
     /**
      * Explicit evaluation context. The caller chooses a freshness horizon appropriate to the use case;
      * historical self-comparisons can deliberately use a longer horizon than live peer comparisons.
+     *
+     * <p>Metric omission maps are only consulted when that metric id is actually absent on the given
+     * side. Cohort evidence defaults to UNKNOWN, which permits a descriptive delta but not a claim of
+     * matched performance.
      */
-    public record EvaluationContext(Instant evaluationInstant, Duration maxObservationAge) {
+    public record EvaluationContext(Instant evaluationInstant, Duration maxSnapshotAge,
+                                    Map<String, MetricOmission> leftMetricOmissions,
+                                    Map<String, MetricOmission> rightMetricOmissions,
+                                    Map<String, CohortEvidence> cohortEvidenceByMetric) {
         public EvaluationContext {
             Objects.requireNonNull(evaluationInstant, "evaluationInstant");
-            Objects.requireNonNull(maxObservationAge, "maxObservationAge");
-            if (maxObservationAge.isNegative()) {
-                throw new IllegalArgumentException("maxObservationAge must not be negative.");
+            Objects.requireNonNull(maxSnapshotAge, "maxSnapshotAge");
+            if (maxSnapshotAge.isNegative()) {
+                throw new IllegalArgumentException("maxSnapshotAge must not be negative.");
             }
+            leftMetricOmissions = Map.copyOf(Objects.requireNonNull(leftMetricOmissions, "leftMetricOmissions"));
+            rightMetricOmissions = Map.copyOf(Objects.requireNonNull(rightMetricOmissions, "rightMetricOmissions"));
+            cohortEvidenceByMetric = Map.copyOf(
+                    Objects.requireNonNull(cohortEvidenceByMetric, "cohortEvidenceByMetric"));
+        }
+
+        public EvaluationContext(Instant evaluationInstant, Duration maxSnapshotAge) {
+            this(evaluationInstant, maxSnapshotAge, Map.of(), Map.of(), Map.of());
         }
     }
 
@@ -113,20 +164,25 @@ public final class SnapshotComparisonEngine {
      * One supplied snapshot plus observation/capture metadata. An omitted value is never silently
      * interpreted as private: {@link InputState#NOT_SHARED} must be explicitly supplied by the caller.
      */
-    public record SnapshotObservation<T>(T snapshot, Instant observedAt, InputState state, String detail) {
+    public record SnapshotObservation<T>(T snapshot, Instant capturedAt, InputState state, String detail) {
         public SnapshotObservation {
             Objects.requireNonNull(state, "state");
             detail = detail == null ? "" : detail;
             if (state == InputState.AVAILABLE) {
                 Objects.requireNonNull(snapshot, "snapshot");
-                Objects.requireNonNull(observedAt, "observedAt");
-            } else if (snapshot != null || observedAt != null) {
-                throw new IllegalArgumentException("Unavailable observations cannot carry a snapshot or observedAt.");
+                Objects.requireNonNull(capturedAt, "capturedAt");
+                Instant snapshotInstant = snapshotInstant(snapshot, capturedAt);
+                if (capturedAt.isBefore(snapshotInstant)) {
+                    throw new IllegalArgumentException(
+                            "Capture metadata cannot predate the snapshot cutoff/capturedAt.");
+                }
+            } else if (snapshot != null || capturedAt != null) {
+                throw new IllegalArgumentException("Unavailable observations cannot carry a snapshot or capturedAt.");
             }
         }
 
-        public static <T> SnapshotObservation<T> available(T snapshot, Instant observedAt) {
-            return new SnapshotObservation<>(snapshot, observedAt, InputState.AVAILABLE, "");
+        public static <T> SnapshotObservation<T> available(T snapshot, Instant capturedAt) {
+            return new SnapshotObservation<>(snapshot, capturedAt, InputState.AVAILABLE, "");
         }
 
         public static <T> SnapshotObservation<T> missing(String detail) {
@@ -145,8 +201,8 @@ public final class SnapshotComparisonEngine {
             return Optional.ofNullable(snapshot);
         }
 
-        public Optional<Instant> observedAtOptional() {
-            return Optional.ofNullable(observedAt);
+        public Optional<Instant> capturedAtOptional() {
+            return Optional.ofNullable(capturedAt);
         }
     }
 
@@ -191,8 +247,8 @@ public final class SnapshotComparisonEngine {
     public record ProgressComparison(ComparisonState state, Reason reason,
                                      SnapshotObservation<ProgressSummary> left,
                                      SnapshotObservation<ProgressSummary> right,
-                                     Optional<Duration> leftObservationAge,
-                                     Optional<Duration> rightObservationAge,
+                                     Optional<Duration> leftSnapshotAge,
+                                     Optional<Duration> rightSnapshotAge,
                                      boolean crossZoneOrPeriod, boolean equalElapsed,
                                      List<MetricComparison> metrics) {
         public ProgressComparison {
@@ -200,8 +256,8 @@ public final class SnapshotComparisonEngine {
             Objects.requireNonNull(reason, "reason");
             Objects.requireNonNull(left, "left");
             Objects.requireNonNull(right, "right");
-            leftObservationAge = leftObservationAge == null ? Optional.empty() : leftObservationAge;
-            rightObservationAge = rightObservationAge == null ? Optional.empty() : rightObservationAge;
+            leftSnapshotAge = leftSnapshotAge == null ? Optional.empty() : leftSnapshotAge;
+            rightSnapshotAge = rightSnapshotAge == null ? Optional.empty() : rightSnapshotAge;
             metrics = List.copyOf(metrics);
         }
     }
@@ -230,8 +286,8 @@ public final class SnapshotComparisonEngine {
     public record PreparationComparison(ComparisonState state, Reason reason,
                                         SnapshotObservation<PreparationSnapshot> left,
                                         SnapshotObservation<PreparationSnapshot> right,
-                                        Optional<Duration> leftObservationAge,
-                                        Optional<Duration> rightObservationAge,
+                                        Optional<Duration> leftSnapshotAge,
+                                        Optional<Duration> rightSnapshotAge,
                                         boolean scoresComparable, boolean readinessComparable,
                                         Optional<BigDecimal> overallPercentagePointChange,
                                         Optional<BigDecimal> coveragePercentagePointChange,
@@ -243,8 +299,8 @@ public final class SnapshotComparisonEngine {
             Objects.requireNonNull(reason, "reason");
             Objects.requireNonNull(left, "left");
             Objects.requireNonNull(right, "right");
-            leftObservationAge = leftObservationAge == null ? Optional.empty() : leftObservationAge;
-            rightObservationAge = rightObservationAge == null ? Optional.empty() : rightObservationAge;
+            leftSnapshotAge = leftSnapshotAge == null ? Optional.empty() : leftSnapshotAge;
+            rightSnapshotAge = rightSnapshotAge == null ? Optional.empty() : rightSnapshotAge;
             overallPercentagePointChange = overallPercentagePointChange == null
                     ? Optional.empty() : overallPercentagePointChange;
             coveragePercentagePointChange = coveragePercentagePointChange == null
@@ -280,12 +336,12 @@ public final class SnapshotComparisonEngine {
         Gate leftGate = gate(left, context, true);
         if (!leftGate.allowed()) {
             return new ProgressComparison(ComparisonState.UNAVAILABLE, leftGate.reason(), left, right,
-                    observationAge(left, context), observationAge(right, context), false, false, List.of());
+                    snapshotAge(left, context), snapshotAge(right, context), false, false, List.of());
         }
         Gate rightGate = gate(right, context, false);
         if (!rightGate.allowed()) {
             return new ProgressComparison(ComparisonState.UNAVAILABLE, rightGate.reason(), left, right,
-                    observationAge(left, context), observationAge(right, context), false, false, List.of());
+                    snapshotAge(left, context), snapshotAge(right, context), false, false, List.of());
         }
 
         ProgressSummary a = left.snapshot();
@@ -295,7 +351,7 @@ public final class SnapshotComparisonEngine {
 
         if (wa.kind() != wb.kind()) {
             return new ProgressComparison(ComparisonState.INCOMPATIBLE, Reason.WINDOW_KIND_MISMATCH,
-                    left, right, observationAge(left, context), observationAge(right, context),
+                    left, right, snapshotAge(left, context), snapshotAge(right, context),
                     true, false, List.of());
         }
 
@@ -319,7 +375,7 @@ public final class SnapshotComparisonEngine {
             boolean sameUtcInterval = wa.start().equals(wb.start()) && wa.end().equals(wb.end());
             if (sameLabel && !sameUtcInterval) {
                 return new ProgressComparison(ComparisonState.INCOMPATIBLE, Reason.UTC_INTERVAL_MISMATCH,
-                        left, right, observationAge(left, context), observationAge(right, context),
+                        left, right, snapshotAge(left, context), snapshotAge(right, context),
                         false, false, List.of());
             }
             crossZoneOrPeriod = !sameLabel;
@@ -332,13 +388,13 @@ public final class SnapshotComparisonEngine {
         Alignment alignment = alignment(a, b);
         if (!alignment.aligned()) {
             return new ProgressComparison(ComparisonState.UNAVAILABLE, alignment.reason(),
-                    left, right, observationAge(left, context), observationAge(right, context),
+                    left, right, snapshotAge(left, context), snapshotAge(right, context),
                     crossZoneOrPeriod, false, List.of());
         }
 
-        List<MetricComparison> metrics = compareMetrics(a.metrics(), b.metrics(), topState);
+        List<MetricComparison> metrics = compareMetrics(a.metrics(), b.metrics(), topState, context);
         return new ProgressComparison(topState, topReason, left, right,
-                observationAge(left, context), observationAge(right, context),
+                snapshotAge(left, context), snapshotAge(right, context),
                 crossZoneOrPeriod, true, metrics);
     }
 
@@ -373,7 +429,7 @@ public final class SnapshotComparisonEngine {
                 reason = Reason.PREPARATION_SCORING_MISMATCH;
             }
             return new PreparationComparison(ComparisonState.DESCRIPTIVE_ONLY, reason, left, right,
-                    observationAge(left, context), observationAge(right, context),
+                    snapshotAge(left, context), snapshotAge(right, context),
                     false, false, Optional.empty(), Optional.empty(),
                     a.blockingCriticalDomainIds(), b.blockingCriticalDomainIds(),
                     compareDomains(a.domains(), b.domains(), false));
@@ -387,7 +443,7 @@ public final class SnapshotComparisonEngine {
 
         Reason reason = readinessComparable ? Reason.NONE : Reason.READINESS_THRESHOLD_MISMATCH;
         return new PreparationComparison(ComparisonState.COMPARABLE, reason, left, right,
-                observationAge(left, context), observationAge(right, context),
+                snapshotAge(left, context), snapshotAge(right, context),
                 true, readinessComparable, overallDelta, coverageDelta,
                 a.blockingCriticalDomainIds(), b.blockingCriticalDomainIds(),
                 compareDomains(a.domains(), b.domains(), true));
@@ -414,16 +470,18 @@ public final class SnapshotComparisonEngine {
             SnapshotObservation<PreparationSnapshot> right,
             EvaluationContext context) {
         return new PreparationComparison(ComparisonState.UNAVAILABLE, reason, left, right,
-                observationAge(left, context), observationAge(right, context),
+                snapshotAge(left, context), snapshotAge(right, context),
                 false, false, Optional.empty(), Optional.empty(), List.of(), List.of(), List.of());
     }
 
-    private static <T> Optional<Duration> observationAge(SnapshotObservation<T> observation,
-                                                          EvaluationContext context) {
+    private static <T> Optional<Duration> snapshotAge(SnapshotObservation<T> observation,
+                                                       EvaluationContext context) {
         if (observation.state() != InputState.AVAILABLE) {
             return Optional.empty();
         }
-        return Optional.of(Duration.between(observation.observedAt(), context.evaluationInstant()));
+        return Optional.of(Duration.between(
+                snapshotInstant(observation.snapshot(), observation.capturedAt()),
+                context.evaluationInstant()));
     }
 
     private static <T> Gate gate(SnapshotObservation<T> observation,
@@ -439,14 +497,28 @@ public final class SnapshotComparisonEngine {
             return new Gate(false, reason);
         }
 
-        if (observation.observedAt().isAfter(context.evaluationInstant())) {
-            return new Gate(false, left ? Reason.LEFT_OBSERVED_IN_FUTURE : Reason.RIGHT_OBSERVED_IN_FUTURE);
+        if (observation.capturedAt().isAfter(context.evaluationInstant())) {
+            return new Gate(false, left ? Reason.LEFT_CAPTURED_IN_FUTURE : Reason.RIGHT_CAPTURED_IN_FUTURE);
         }
-        Duration age = Duration.between(observation.observedAt(), context.evaluationInstant());
-        if (age.compareTo(context.maxObservationAge()) > 0) {
+        Instant snapshotInstant = snapshotInstant(observation.snapshot(), observation.capturedAt());
+        if (snapshotInstant.isAfter(context.evaluationInstant())) {
+            return new Gate(false, left ? Reason.LEFT_SNAPSHOT_IN_FUTURE : Reason.RIGHT_SNAPSHOT_IN_FUTURE);
+        }
+        Duration age = Duration.between(snapshotInstant, context.evaluationInstant());
+        if (age.compareTo(context.maxSnapshotAge()) > 0) {
             return new Gate(false, left ? Reason.LEFT_STALE : Reason.RIGHT_STALE);
         }
         return new Gate(true, Reason.NONE);
+    }
+
+    private static Instant snapshotInstant(Object snapshot, Instant fallbackCapturedAt) {
+        if (snapshot instanceof ProgressSummary summary) {
+            return summary.cutoff();
+        }
+        if (snapshot instanceof PreparationSnapshot preparation) {
+            return preparation.capturedAt();
+        }
+        return fallbackCapturedAt;
     }
 
     private static Alignment alignment(ProgressSummary left, ProgressSummary right) {
@@ -468,7 +540,8 @@ public final class SnapshotComparisonEngine {
 
     private static List<MetricComparison> compareMetrics(List<MetricValue> leftValues,
                                                          List<MetricValue> rightValues,
-                                                         ComparisonState topState) {
+                                                         ComparisonState topState,
+                                                         EvaluationContext context) {
         Map<String, List<MetricValue>> leftById = groupMetrics(leftValues);
         Map<String, List<MetricValue>> rightById = groupMetrics(rightValues);
         TreeSet<String> ids = new TreeSet<>();
@@ -479,7 +552,7 @@ public final class SnapshotComparisonEngine {
         for (String id : ids) {
             List<MetricValue> left = leftById.getOrDefault(id, List.of());
             List<MetricValue> right = rightById.getOrDefault(id, List.of());
-            appendMetricComparisons(id, left, right, topState, result);
+            appendMetricComparisons(id, left, right, topState, context, result);
         }
         return List.copyOf(result);
     }
@@ -498,6 +571,7 @@ public final class SnapshotComparisonEngine {
                                                 List<MetricValue> left,
                                                 List<MetricValue> right,
                                                 ComparisonState topState,
+                                                EvaluationContext context,
                                                 List<MetricComparison> output) {
         Map<Integer, MetricValue> leftByVersion = new LinkedHashMap<>();
         Map<Integer, MetricValue> rightByVersion = new LinkedHashMap<>();
@@ -507,9 +581,12 @@ public final class SnapshotComparisonEngine {
         TreeSet<Integer> commonVersions = new TreeSet<>(leftByVersion.keySet());
         commonVersions.retainAll(rightByVersion.keySet());
         for (Integer version : commonVersions) {
-            output.add(compareMetricPair(id, leftByVersion.remove(version), rightByVersion.remove(version), topState));
+            output.add(compareMetricPair(id, leftByVersion.remove(version), rightByVersion.remove(version),
+                    topState, context));
         }
 
+        boolean leftMissingCompletely = left.isEmpty();
+        boolean rightMissingCompletely = right.isEmpty();
         List<MetricValue> leftOnly = new ArrayList<>(leftByVersion.values());
         List<MetricValue> rightOnly = new ArrayList<>(rightByVersion.values());
         int paired = Math.min(leftOnly.size(), rightOnly.size());
@@ -518,11 +595,15 @@ public final class SnapshotComparisonEngine {
                     Optional.of(leftOnly.get(i)), Optional.of(rightOnly.get(i)), Optional.empty()));
         }
         for (int i = paired; i < leftOnly.size(); i++) {
-            output.add(new MetricComparison(id, ComparisonState.UNAVAILABLE, Reason.RIGHT_METRIC_MISSING,
+            Reason reason = rightMissingCompletely
+                    ? missingMetricReason(false, id, context) : Reason.RIGHT_METRIC_MISSING;
+            output.add(new MetricComparison(id, ComparisonState.UNAVAILABLE, reason,
                     Optional.of(leftOnly.get(i)), Optional.empty(), Optional.empty()));
         }
         for (int i = paired; i < rightOnly.size(); i++) {
-            output.add(new MetricComparison(id, ComparisonState.UNAVAILABLE, Reason.LEFT_METRIC_MISSING,
+            Reason reason = leftMissingCompletely
+                    ? missingMetricReason(true, id, context) : Reason.LEFT_METRIC_MISSING;
+            output.add(new MetricComparison(id, ComparisonState.UNAVAILABLE, reason,
                     Optional.empty(), Optional.of(rightOnly.get(i)), Optional.empty()));
         }
     }
@@ -530,7 +611,8 @@ public final class SnapshotComparisonEngine {
     private static MetricComparison compareMetricPair(String id,
                                                       MetricValue left,
                                                       MetricValue right,
-                                                      ComparisonState topState) {
+                                                      ComparisonState topState,
+                                                      EvaluationContext context) {
         Optional<MetricDefinition> definition = MetricRegistry.find(id, left.metricVersion());
         if (definition.isEmpty()) {
             return metric(id, ComparisonState.INCOMPATIBLE, Reason.UNKNOWN_METRIC, left, right);
@@ -557,8 +639,30 @@ public final class SnapshotComparisonEngine {
         MetricDelta delta = delta(left.unit(), left.value(), right.value());
         ComparisonState state = topState == ComparisonState.DESCRIPTIVE_ONLY
                 ? ComparisonState.DESCRIPTIVE_ONLY : ComparisonState.COMPARABLE;
-        return new MetricComparison(id, state, Reason.NONE, Optional.of(left), Optional.of(right),
+        Reason reason = Reason.NONE;
+        CohortEvidence cohortEvidence = context.cohortEvidenceByMetric()
+                .getOrDefault(id, CohortEvidence.UNKNOWN);
+        if (cohortEvidence == CohortEvidence.UNKNOWN) {
+            state = ComparisonState.DESCRIPTIVE_ONLY;
+            reason = Reason.COHORT_EVIDENCE_MISSING;
+        } else if (cohortEvidence == CohortEvidence.UNMATCHED) {
+            state = ComparisonState.DESCRIPTIVE_ONLY;
+            reason = Reason.COHORT_MISMATCH;
+        }
+        return new MetricComparison(id, state, reason, Optional.of(left), Optional.of(right),
                 Optional.of(delta));
+    }
+
+    private static Reason missingMetricReason(boolean left, String metricId, EvaluationContext context) {
+        MetricOmission omission = (left ? context.leftMetricOmissions() : context.rightMetricOmissions())
+                .get(metricId);
+        if (omission == null || omission.state() == InputState.MISSING) {
+            return left ? Reason.LEFT_METRIC_MISSING : Reason.RIGHT_METRIC_MISSING;
+        }
+        if (omission.state() == InputState.NOT_SHARED) {
+            return left ? Reason.LEFT_METRIC_NOT_SHARED : Reason.RIGHT_METRIC_NOT_SHARED;
+        }
+        return left ? Reason.LEFT_METRIC_UNAVAILABLE : Reason.RIGHT_METRIC_UNAVAILABLE;
     }
 
     private static MetricComparison metric(String id, ComparisonState state, Reason reason,

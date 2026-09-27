@@ -27,6 +27,19 @@ import java.util.Optional;
  * always two separate, explicit steps, so nothing is ever disclosed to a merely-discovered peer.
  */
 public class ContactService {
+    /**
+     * Serializes every method that reads a contact's current permission revision (or trust state) and
+     * then writes it back, so two threads in this process can never both read the same "current"
+     * revision and each commit a distinct write believing it holds the next one — the exact lost-update
+     * race #192's review reproduced with a {@code CyclicBarrier} forcing two concurrent
+     * {@code updatePermissions} calls to read before either wrote. A DB transaction alone does not
+     * prevent this: SQLite's write lock is acquired lazily, on the first write statement, so both
+     * threads can finish their read before either one blocks. This is in-process coordination only —
+     * the documented single-active-writer-per-identity limitation (protocol §10.1) is unchanged, and
+     * nothing here claims to coordinate across processes or devices.
+     */
+    private static final Object PERMISSION_LOCK = new Object();
+
     private final ContactRepository contactRepository;
     private final ContactPermissionRepository permissionRepository;
     private final ConsentChangeEventRepository outboxRepository;
@@ -71,11 +84,13 @@ public class ContactService {
 
     /** @throws IllegalContactStateException the contact is not {@link TrustState#PENDING} */
     public Contact acceptInvitation(long contactId, Instant now) {
-        Contact contact = requireContact(contactId);
-        requireState(contact, TrustState.PENDING);
-        contactRepository.updateTrustState(contactId, TrustState.PAIRED, now);
-        permissionRepository.save(ContactPermission.none(contactId, now));
-        return requireContact(contactId);
+        synchronized (PERMISSION_LOCK) {
+            Contact contact = requireContact(contactId);
+            requireState(contact, TrustState.PENDING);
+            contactRepository.updateTrustState(contactId, TrustState.PAIRED, now);
+            ensureEmptyGrantWithoutResettingAnExistingRevision(contactId, now);
+            return requireContact(contactId);
+        }
     }
 
     /**
@@ -89,12 +104,14 @@ public class ContactService {
      * @throws IllegalContactStateException the contact is not {@link TrustState#PENDING}
      */
     public void rejectInvitation(long contactId, Instant now) {
-        Contact contact = requireContact(contactId);
-        requireState(contact, TrustState.PENDING);
-        if (outboxRepository.findByContactId(contactId).isEmpty()) {
-            contactRepository.delete(contactId);
-        } else {
-            contactRepository.updateTrustState(contactId, TrustState.REMOVED, now);
+        synchronized (PERMISSION_LOCK) {
+            Contact contact = requireContact(contactId);
+            requireState(contact, TrustState.PENDING);
+            if (outboxRepository.findByContactId(contactId).isEmpty()) {
+                contactRepository.delete(contactId);
+            } else {
+                contactRepository.updateTrustState(contactId, TrustState.REMOVED, now);
+            }
         }
     }
 
@@ -103,16 +120,40 @@ public class ContactService {
      * pinned key. Never restores the previous grant: {@link #acceptInvitation} also starts from
      * nothing, and a re-pair is exactly as deliberate an act as a first pairing.
      *
+     * <p>Deliberately leaves an existing {@code contact_permissions} row's revision counter exactly
+     * where {@link #block}/{@link #remove} left it, rather than resetting it via
+     * {@link ContactPermission#none}: the wire consent object for this (author, recipient) pair is the
+     * same one across a block/remove/re-pair cycle (its id is derived only from the two identities, see
+     * {@code com.codefit.peer.protocol.ConsentRevision}), so a peer that already holds that object's
+     * last revision would reject a reset-to-zero regrant as {@code STALE_REVISION}. #192's review
+     * reproduced exactly that rejection against the real {@code EnvelopeAcceptancePolicy}.
+     *
      * @throws IllegalContactStateException the contact is not {@link TrustState#BLOCKED} or {@link TrustState#REMOVED}
      */
     public Contact rePair(long contactId, Instant now) {
-        Contact contact = requireContact(contactId);
-        if (contact.trustState() != TrustState.BLOCKED && contact.trustState() != TrustState.REMOVED) {
-            throw new IllegalContactStateException("Only a blocked or removed contact can be re-paired.");
+        synchronized (PERMISSION_LOCK) {
+            Contact contact = requireContact(contactId);
+            if (contact.trustState() != TrustState.BLOCKED && contact.trustState() != TrustState.REMOVED) {
+                throw new IllegalContactStateException("Only a blocked or removed contact can be re-paired.");
+            }
+            contactRepository.updateTrustState(contactId, TrustState.PAIRED, now);
+            ensureEmptyGrantWithoutResettingAnExistingRevision(contactId, now);
+            return requireContact(contactId);
         }
-        contactRepository.updateTrustState(contactId, TrustState.PAIRED, now);
-        permissionRepository.save(ContactPermission.none(contactId, now));
-        return requireContact(contactId);
+    }
+
+    /**
+     * Establishes the initial "nothing granted" permission row only when this contact has never had
+     * one. A contact reaching {@link TrustState#PAIRED} for the very first time (via
+     * {@link #acceptInvitation}) has no row yet and gets the {@code revision = 0} starting point. A
+     * contact that already has one — because it was previously blocked/removed/downgraded — keeps
+     * exactly the scopes (always empty by the time either caller here runs) and revision that left it,
+     * so the revision counter never moves backwards relative to what a peer may already hold.
+     */
+    private void ensureEmptyGrantWithoutResettingAnExistingRevision(long contactId, Instant now) {
+        if (permissionRepository.find(contactId).isEmpty()) {
+            permissionRepository.save(ContactPermission.none(contactId, now));
+        }
     }
 
     /**
@@ -121,22 +162,26 @@ public class ContactService {
      * onward, regardless of whether or when a peer ever receives the revocation.
      */
     public Contact block(long contactId, boolean requestCacheDeletion, Instant now) {
-        requireContact(contactId);
-        Transactions.run(connection -> {
-            revokeAndRecord(connection, contactId, ConsentChangeReason.BLOCKED, requestCacheDeletion, now);
-            contactRepository.updateTrustState(connection, contactId, TrustState.BLOCKED, now);
-        });
-        return requireContact(contactId);
+        synchronized (PERMISSION_LOCK) {
+            requireContact(contactId);
+            Transactions.run(connection -> {
+                revokeAndRecord(connection, contactId, ConsentChangeReason.BLOCKED, requestCacheDeletion, now);
+                contactRepository.updateTrustState(connection, contactId, TrustState.BLOCKED, now);
+            });
+            return requireContact(contactId);
+        }
     }
 
     /** Same immediate effect as {@link #block}, and requires an explicit {@link #rePair} to resume. */
     public Contact remove(long contactId, boolean requestCacheDeletion, Instant now) {
-        requireContact(contactId);
-        Transactions.run(connection -> {
-            revokeAndRecord(connection, contactId, ConsentChangeReason.REMOVED, requestCacheDeletion, now);
-            contactRepository.updateTrustState(connection, contactId, TrustState.REMOVED, now);
-        });
-        return requireContact(contactId);
+        synchronized (PERMISSION_LOCK) {
+            requireContact(contactId);
+            Transactions.run(connection -> {
+                revokeAndRecord(connection, contactId, ConsentChangeReason.REMOVED, requestCacheDeletion, now);
+                contactRepository.updateTrustState(connection, contactId, TrustState.REMOVED, now);
+            });
+            return requireContact(contactId);
+        }
     }
 
     /**
@@ -167,17 +212,19 @@ public class ContactService {
      * @throws IllegalContactStateException the contact is not {@link TrustState#PAIRED}
      */
     public ContactPermission updatePermissions(long contactId, PermissionGrant grant, Instant now) {
-        Contact contact = requireContact(contactId);
-        requireState(contact, TrustState.PAIRED);
-        long nextRevision = permissionRepository.find(contactId).map(p -> p.revision() + 1).orElse(1L);
-        ContactPermission updated = new ContactPermission(contactId, grant.scopes(), grant.historicalWindowDays(),
-                grant.expiresAt(), grant.allowForwarding(), nextRevision, now);
-        ConsentChangeReason reason = updated.scopes().isEmpty() ? ConsentChangeReason.REVOKED : ConsentChangeReason.GRANTED;
-        Transactions.run(connection -> {
-            permissionRepository.save(connection, updated);
-            outboxRepository.record(connection, contactId, updated.scopes(), false, reason, now);
-        });
-        return updated;
+        synchronized (PERMISSION_LOCK) {
+            Contact contact = requireContact(contactId);
+            requireState(contact, TrustState.PAIRED);
+            long nextRevision = permissionRepository.find(contactId).map(p -> p.revision() + 1).orElse(1L);
+            ContactPermission updated = new ContactPermission(contactId, grant.scopes(), grant.historicalWindowDays(),
+                    grant.expiresAt(), grant.allowForwarding(), nextRevision, now);
+            ConsentChangeReason reason = updated.scopes().isEmpty() ? ConsentChangeReason.REVOKED : ConsentChangeReason.GRANTED;
+            Transactions.run(connection -> {
+                permissionRepository.save(connection, updated);
+                outboxRepository.record(connection, contactId, updated.scopes(), false, reason, now);
+            });
+            return updated;
+        }
     }
 
     /**
@@ -219,23 +266,25 @@ public class ContactService {
     }
 
     /**
-     * Called only by {@code IdentityService.resetIdentityWithoutContinuity}: without a signed
+     * Called only by {@code IdentityService.resetIdentityWithoutContinuity} and
+     * {@code IdentityBackupService.importBackup} (the different-identity case): without a signed
      * continuity proof, every paired contact must explicitly re-pair before any sharing resumes under
-     * the new key (ADR-0001 §1).
+     * the new key (ADR-0001 §1). Takes the caller's own transaction connection rather than opening one
+     * of its own, so the contact downgrades and the identity-row replacement that makes them necessary
+     * commit or roll back together — #192's review found that committing the downgrades first left
+     * contacts permanently stuck PENDING with no identity change to show for it when the later,
+     * separate identity write failed.
      */
-    void downgradeAllPairedContactsForIdentityReset(Instant now) {
-        List<Contact> paired = contactRepository.findAll().stream()
-                .filter(contact -> contact.trustState() == TrustState.PAIRED)
-                .toList();
-        if (paired.isEmpty()) {
-            return;
-        }
-        Transactions.run(connection -> {
+    void downgradeAllPairedContactsForIdentityReset(Connection connection, Instant now) {
+        synchronized (PERMISSION_LOCK) {
+            List<Contact> paired = contactRepository.findAll().stream()
+                    .filter(contact -> contact.trustState() == TrustState.PAIRED)
+                    .toList();
             for (Contact contact : paired) {
                 revokeAndRecord(connection, contact.id(), ConsentChangeReason.IDENTITY_RESET, false, now);
                 contactRepository.updateTrustState(connection, contact.id(), TrustState.PENDING, now);
             }
-        });
+        }
     }
 
     private void revokeAndRecord(Connection connection, long contactId, ConsentChangeReason reason,

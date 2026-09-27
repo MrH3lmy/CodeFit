@@ -31,6 +31,17 @@ import java.util.Optional;
  * {@link #nextEpoch} so both share the exact same clock-rollback handling.
  */
 public class IdentityService {
+    /**
+     * Serializes every method that reads the singleton {@code peer_identity} row's epoch (or replaces
+     * the row entirely) and then writes it back, so two threads in this process can never both read
+     * the same "current" epoch and each mint a session believing it holds the next one — the exact race
+     * #192's review reproduced with two threads calling {@link #beginWriterSession} at once. Shared
+     * with {@link IdentityBackupService}, which touches the same row under the same read-then-write
+     * shape during restore. In-process coordination only, consistent with the documented
+     * single-active-writer-per-identity MVP limitation (protocol §10.1) — not a distributed lock.
+     */
+    static final Object IDENTITY_LOCK = new Object();
+
     private final PeerIdentityRepository identityRepository;
     private final IdentityKeyRotationRepository rotationRepository;
     private final ContactService contactService;
@@ -52,15 +63,17 @@ public class IdentityService {
 
     /** @throws IdentityAlreadyExistsException a local identity already exists; use rotate/reset instead */
     public LocalIdentitySummary createIdentity(char[] vaultPassphrase, Instant now) {
-        if (identityRepository.find().isPresent()) {
-            throw new IdentityAlreadyExistsException(
-                    "A local identity already exists; use rotateKeyWithContinuity or resetIdentityWithoutContinuity to replace it.");
+        synchronized (IDENTITY_LOCK) {
+            if (identityRepository.find().isPresent()) {
+                throw new IdentityAlreadyExistsException(
+                        "A local identity already exists; use rotateKeyWithContinuity or resetIdentityWithoutContinuity to replace it.");
+            }
+            KeyPair keyPair = KeyPairs.generate();
+            long epoch = nextEpoch(0, now);
+            PeerIdentityRow row = sealRow(keyPair, vaultPassphrase, epoch, epoch, false, now, null);
+            identityRepository.replace(row);
+            return summaryOf(row);
         }
-        KeyPair keyPair = KeyPairs.generate();
-        long epoch = nextEpoch(0, now);
-        PeerIdentityRow row = sealRow(keyPair, vaultPassphrase, epoch, epoch, false, now, null);
-        identityRepository.replace(row);
-        return summaryOf(row);
     }
 
     /**
@@ -92,10 +105,12 @@ public class IdentityService {
      *                                            epoch; nothing is persisted
      */
     public long beginWriterSession(Instant now) {
-        PeerIdentityRow row = requireRow();
-        long epoch = nextEpoch(row.highestKnownEpoch(), now);
-        identityRepository.updateEpochState(epoch, epoch);
-        return epoch;
+        synchronized (IDENTITY_LOCK) {
+            PeerIdentityRow row = requireRow();
+            long epoch = nextEpoch(row.highestKnownEpoch(), now);
+            identityRepository.updateEpochState(epoch, epoch);
+            return epoch;
+        }
     }
 
     /** The explicit "I have reviewed who I'm sharing with" action required after a restore, rotation, or reset. */
@@ -116,23 +131,25 @@ public class IdentityService {
      * @throws com.codefit.peer.identity.VaultAuthenticationException {@code currentVaultPassphrase} is wrong
      */
     public LocalIdentitySummary rotateKeyWithContinuity(char[] currentVaultPassphrase, char[] newVaultPassphrase, Instant now) {
-        PeerIdentityRow row = requireRow();
-        UnlockedIdentity current = unlock(currentVaultPassphrase);
-        KeyPair newKeyPair = KeyPairs.generate();
-        IdentityKey newPublicKey = new IdentityKey(KeyPairs.rawPublicKey(newKeyPair.getPublic()));
-        byte[] signature = current.sign(KeyContinuityRecord.signingBytes(current.publicKey(), newPublicKey, now));
-        // A rotated key is a new IdentityId; peers key their replay state by author, so this new key's
-        // own epoch history starts fresh regardless of the retiring key's highestKnownEpoch.
-        long epoch = nextEpoch(0, now);
-        PeerIdentityRow newRow = sealRow(newKeyPair, newVaultPassphrase, epoch, epoch, true, now, row.lastRestoredAt());
-        KeyContinuityRecord continuity = new KeyContinuityRecord(current.publicKey(), newPublicKey, now, signature);
-        // One transaction: a crash between these two writes must never leave the new key active
-        // without the continuity proof it exists to provide.
-        Transactions.run(connection -> {
-            identityRepository.replace(connection, newRow);
-            rotationRepository.save(connection, continuity);
-        });
-        return summaryOf(newRow);
+        synchronized (IDENTITY_LOCK) {
+            PeerIdentityRow row = requireRow();
+            UnlockedIdentity current = unlock(currentVaultPassphrase);
+            KeyPair newKeyPair = KeyPairs.generate();
+            IdentityKey newPublicKey = new IdentityKey(KeyPairs.rawPublicKey(newKeyPair.getPublic()));
+            byte[] signature = current.sign(KeyContinuityRecord.signingBytes(current.publicKey(), newPublicKey, now));
+            // A rotated key is a new IdentityId; peers key their replay state by author, so this new
+            // key's own epoch history starts fresh regardless of the retiring key's highestKnownEpoch.
+            long epoch = nextEpoch(0, now);
+            PeerIdentityRow newRow = sealRow(newKeyPair, newVaultPassphrase, epoch, epoch, true, now, row.lastRestoredAt());
+            KeyContinuityRecord continuity = new KeyContinuityRecord(current.publicKey(), newPublicKey, now, signature);
+            // One transaction: a crash between these two writes must never leave the new key active
+            // without the continuity proof it exists to provide.
+            Transactions.run(connection -> {
+                identityRepository.replace(connection, newRow);
+                rotationRepository.save(connection, continuity);
+            });
+            return summaryOf(newRow);
+        }
     }
 
     /**
@@ -144,13 +161,19 @@ public class IdentityService {
      * @throws IdentityNotFoundException no local identity exists to reset; use {@link #createIdentity} instead
      */
     public LocalIdentitySummary resetIdentityWithoutContinuity(char[] newVaultPassphrase, Instant now) {
-        requireRow();
-        contactService.downgradeAllPairedContactsForIdentityReset(now);
-        KeyPair newKeyPair = KeyPairs.generate();
-        long epoch = nextEpoch(0, now);
-        PeerIdentityRow newRow = sealRow(newKeyPair, newVaultPassphrase, epoch, epoch, true, now, null);
-        identityRepository.replace(newRow);
-        return summaryOf(newRow);
+        synchronized (IDENTITY_LOCK) {
+            requireRow();
+            KeyPair newKeyPair = KeyPairs.generate();
+            long epoch = nextEpoch(0, now);
+            PeerIdentityRow newRow = sealRow(newKeyPair, newVaultPassphrase, epoch, epoch, true, now, null);
+            // One transaction: a failed identity write must never leave contacts permanently downgraded
+            // for an identity change that never actually took effect.
+            Transactions.run(connection -> {
+                contactService.downgradeAllPairedContactsForIdentityReset(connection, now);
+                identityRepository.replace(connection, newRow);
+            });
+            return summaryOf(newRow);
+        }
     }
 
     PeerIdentityRow requireRow() {

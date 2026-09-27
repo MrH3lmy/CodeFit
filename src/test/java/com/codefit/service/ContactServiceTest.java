@@ -6,8 +6,17 @@ import com.codefit.peer.identity.ContactPermission;
 import com.codefit.peer.identity.IllegalContactStateException;
 import com.codefit.peer.identity.PermissionGrant;
 import com.codefit.peer.identity.TrustState;
+import com.codefit.peer.identity.UnlockedIdentity;
+import com.codefit.peer.protocol.AcceptanceVerdict;
+import com.codefit.peer.protocol.Audience;
+import com.codefit.peer.protocol.AuthorReplayState;
+import com.codefit.peer.protocol.ConsentRevision;
+import com.codefit.peer.protocol.Envelope;
+import com.codefit.peer.protocol.EnvelopeAcceptancePolicy;
+import com.codefit.peer.protocol.EnvelopeHeader;
 import com.codefit.peer.protocol.IdentityKey;
 import com.codefit.peer.protocol.SharingScope;
+import com.codefit.peer.protocol.SignedEnvelope;
 import com.codefit.repository.ConsentChangeEventRepository;
 import com.codefit.testsupport.IsolatedDatabaseExtension;
 import com.codefit.testsupport.PeerIdentityTestTables;
@@ -20,9 +29,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -108,7 +122,7 @@ class ContactServiceTest {
 
         // Simulates what IdentityService.resetIdentityWithoutContinuity does to every paired contact:
         // it leaves this now-PENDING contact with consent-change history #184 still needs.
-        contactService.downgradeAllPairedContactsForIdentityReset(at(3));
+        Transactions.run(connection -> contactService.downgradeAllPairedContactsForIdentityReset(connection, at(3)));
         assertEquals(TrustState.PENDING, contactService.requireContact(contact.id()).trustState());
         ConsentChangeEventRepository outbox = new ConsentChangeEventRepository();
         assertFalse(outbox.findByContactId(contact.id()).isEmpty());
@@ -169,6 +183,48 @@ class ContactServiceTest {
         assertEquals(TrustState.REMOVED, contactService.requireContact(contact.id()).trustState());
         assertThrows(IllegalContactStateException.class, () -> contactService.updatePermissions(contact.id(),
                 new PermissionGrant(List.of(SharingScope.WEEKLY_SUMMARY), null, null, false), at(4)));
+    }
+
+    @Test
+    void regrantAfterRePairIsAcceptedByAPeersReplayPolicyNotRejectedAsStale() {
+        Contact contact = contactService.registerPendingContact(key(21), "Uma", at(0));
+        contactService.acceptInvitation(contact.id(), at(1));
+        contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(2));
+        long grantRevision = contactService.permissionsFor(contact.id()).orElseThrow().revision();
+
+        contactService.remove(contact.id(), false, at(3));
+        long revokeRevision = contactService.permissionsFor(contact.id()).orElseThrow().revision();
+        assertTrue(revokeRevision > grantRevision);
+
+        UnlockedIdentity author = identityService.unlock("vault-pass".toCharArray());
+        long epoch = identityService.currentIdentity().orElseThrow().currentWriterEpoch();
+        AuthorReplayState receiverState = new AuthorReplayState(author.publicKey());
+        EnvelopeAcceptancePolicy receiverPolicy = new EnvelopeAcceptancePolicy(contact.identityId());
+        // The receiver already holds the revoke at revokeRevision, exactly as remove() would publish it.
+        assertTrue(receiverPolicy.evaluate(
+                consentEnvelope(author, contact, epoch, 1, revokeRevision, List.of(), at(3)), receiverState, at(3)).accepted());
+
+        contactService.rePair(contact.id(), at(4));
+        long afterRePairRevision = contactService.permissionsFor(contact.id()).orElseThrow().revision();
+        assertEquals(revokeRevision, afterRePairRevision, "rePair must not move the revision counter on its own");
+
+        ContactPermission regrant = contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(5));
+        assertTrue(regrant.revision() > revokeRevision);
+
+        AcceptanceVerdict verdict = receiverPolicy.evaluate(
+                consentEnvelope(author, contact, epoch, 2, regrant.revision(), regrant.scopes(), at(5)), receiverState, at(5));
+        assertTrue(verdict.accepted(), "regrant after re-pair was rejected: " + verdict);
+    }
+
+    private static SignedEnvelope consentEnvelope(UnlockedIdentity author, Contact recipient, long epoch,
+                                                    long sequence, long revision, List<SharingScope> scopes, Instant now) {
+        EnvelopeHeader header = new EnvelopeHeader(0, author.publicKey(),
+                ConsentRevision.objectIdFor(author.publicKey().id(), recipient.identityId()), epoch, sequence, revision,
+                now, now.plusSeconds(3600), Audience.direct(List.of(recipient.identityId())));
+        Envelope envelope = new Envelope(header, new ConsentRevision(scopes));
+        return new SignedEnvelope(envelope, author.sign(envelope.signingBytes()));
     }
 
     @Test
@@ -308,6 +364,32 @@ class ContactServiceTest {
                     WHEN NEW.contact_id = %d
                     BEGIN SELECT RAISE(ABORT, 'forced failure for atomicity test'); END
                     """.formatted(contactId, contactId));
+        }
+    }
+
+    @Test
+    void concurrentUpdatePermissionsCallsNeverCommitTheSameRevisionTwice() throws Exception {
+        // PERMISSION_LOCK (see ContactService) serializes the read-then-write of the current revision,
+        // so two threads calling updatePermissions on the same contact at once can no longer both read
+        // the same "current" revision before either writes - the exact lost-update window #192's review
+        // reproduced (SQLite's write lock is acquired lazily, on the first write statement, so an
+        // unserialized read-then-write pair can otherwise both succeed with the same revision number).
+        Contact contact = contactService.registerPendingContact(key(22), "Vik", at(0));
+        contactService.acceptInvitation(contact.id(), at(1));
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<ContactPermission> first = executor.submit(() -> contactService.updatePermissions(contact.id(),
+                    new PermissionGrant(List.of(SharingScope.DAILY_SUMMARY), null, null, false), at(2)));
+            Future<ContactPermission> second = executor.submit(() -> contactService.updatePermissions(contact.id(),
+                    new PermissionGrant(List.of(SharingScope.WEEKLY_SUMMARY), null, null, false), at(3)));
+            ContactPermission firstResult = first.get(10, TimeUnit.SECONDS);
+            ContactPermission secondResult = second.get(10, TimeUnit.SECONDS);
+
+            assertNotEquals(firstResult.revision(), secondResult.revision(),
+                    "two concurrent grants committed with the same revision number");
+        } finally {
+            executor.shutdown();
         }
     }
 }

@@ -98,21 +98,32 @@ public class IdentityBackupService {
             IdentityKey candidatePublicKey = new IdentityKey(payload.identityPublicKey());
             IdentityService.requireMatchingKeyPair(candidatePrivateKey, candidatePublicKey);
 
-            Optional<PeerIdentityRow> existing = identityRepository.find();
-            long previousEpoch = Math.max(existing.map(PeerIdentityRow::highestKnownEpoch).orElse(0L), payload.lastKnownEpoch());
-            long newEpoch = IdentityService.nextEpoch(previousEpoch, now);
-            Instant createdAt = existing.map(PeerIdentityRow::createdAt).orElse(Instant.ofEpochMilli(payload.createdAtEpochMillis()));
-            EncryptedSecret resealed = PassphraseCipher.seal(newVaultPassphrase, pkcs8, payload.identityPublicKey());
-            PeerIdentityRow restoredRow = new PeerIdentityRow(payload.identityPublicKey(), resealed.ciphertext(),
-                    resealed.salt(), resealed.iterations(), resealed.nonce(), 1, newEpoch, newEpoch, true, createdAt, now);
+            // Shared with IdentityService: this reads-then-writes the same singleton row under the same
+            // shape (current epoch -> next epoch) that IdentityService.beginWriterSession does, so the
+            // two must serialize against each other, not just against other imports.
+            synchronized (IdentityService.IDENTITY_LOCK) {
+                Optional<PeerIdentityRow> existing = identityRepository.find();
+                long previousEpoch = Math.max(existing.map(PeerIdentityRow::highestKnownEpoch).orElse(0L), payload.lastKnownEpoch());
+                long newEpoch = IdentityService.nextEpoch(previousEpoch, now);
+                Instant createdAt = existing.map(PeerIdentityRow::createdAt).orElse(Instant.ofEpochMilli(payload.createdAtEpochMillis()));
+                EncryptedSecret resealed = PassphraseCipher.seal(newVaultPassphrase, pkcs8, payload.identityPublicKey());
+                PeerIdentityRow restoredRow = new PeerIdentityRow(payload.identityPublicKey(), resealed.ciphertext(),
+                        resealed.salt(), resealed.iterations(), resealed.nonce(), 1, newEpoch, newEpoch, true, createdAt, now);
 
-            boolean restoringADifferentIdentity = existing.isPresent()
-                    && !Arrays.equals(existing.get().identityPublicKey(), payload.identityPublicKey());
-            if (restoringADifferentIdentity) {
-                contactService.downgradeAllPairedContactsForIdentityReset(now);
+                boolean restoringADifferentIdentity = existing.isPresent()
+                        && !Arrays.equals(existing.get().identityPublicKey(), payload.identityPublicKey());
+                if (restoringADifferentIdentity) {
+                    // One transaction: a failed identity write must never leave contacts permanently
+                    // downgraded for an identity change that never actually took effect.
+                    Transactions.run(connection -> {
+                        contactService.downgradeAllPairedContactsForIdentityReset(connection, now);
+                        identityRepository.replace(connection, restoredRow);
+                    });
+                } else {
+                    identityRepository.replace(restoredRow);
+                }
+                return IdentityService.summaryOf(restoredRow);
             }
-            identityRepository.replace(restoredRow);
-            return IdentityService.summaryOf(restoredRow);
         } finally {
             Arrays.fill(pkcs8, (byte) 0);
         }

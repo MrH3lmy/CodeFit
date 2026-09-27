@@ -214,6 +214,46 @@ class IdentityBackupServiceTest {
         assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(10)));
     }
 
+    @Test
+    void importingADifferentIdentityRollsBackContactDowngradesWhenTheIdentityWriteFails() throws java.sql.SQLException {
+        IdentityService identityService = new IdentityService();
+        IdentityBackupService backupService = new IdentityBackupService();
+        ContactService contactService = new ContactService();
+        identityService.createIdentity("vault-pass".toCharArray(), at(0));
+        identityService.resumeSharingAfterReview();
+        Contact contact = contactService.registerPendingContact(sampleContactKey((byte) 88), "Xin", at(1));
+        contactService.acceptInvitation(contact.id(), at(2));
+        contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(3));
+        byte[] backupForAnotherIdentity = backupForABrandNewIdentity("other-backup-pass".toCharArray(), at(4));
+
+        // peer_identity is a singleton row shared by every test in this class (IsolatedDatabaseExtension
+        // isolates per class, not per test), so this trigger MUST be dropped again before it can break
+        // every later exportBackup/importBackup/createIdentity call in this class.
+        try (java.sql.Connection connection = com.codefit.config.DatabaseConfig.getConnection();
+             java.sql.Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TRIGGER force_import_identity_failure BEFORE INSERT ON peer_identity
+                    BEGIN SELECT RAISE(ABORT, 'forced failure for atomicity test'); END
+                    """);
+        }
+        try {
+            assertThrows(IllegalStateException.class, () -> backupService.importBackup(
+                    backupForAnotherIdentity, "other-backup-pass".toCharArray(), "new-vault-pass".toCharArray(), at(10)));
+
+            // Neither write in the same transaction may apply: the ORIGINAL identity is still active,
+            // and the contact must still be PAIRED with its grant intact - not permanently stuck
+            // PENDING for an identity change that never took effect.
+            assertEquals(TrustState.PAIRED, contactService.requireContact(contact.id()).trustState());
+            assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(10)));
+        } finally {
+            try (java.sql.Connection connection = com.codefit.config.DatabaseConfig.getConnection();
+                 java.sql.Statement statement = connection.createStatement()) {
+                statement.execute("DROP TRIGGER force_import_identity_failure");
+            }
+        }
+    }
+
     private static IdentityKey sampleContactKey(byte fill) {
         byte[] bytes = new byte[32];
         java.util.Arrays.fill(bytes, fill);

@@ -23,6 +23,10 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -275,11 +279,81 @@ class IdentityServiceTest {
     }
 
     @Test
+    void resetIdentityWithoutContinuityRollsBackContactDowngradesWhenTheIdentityWriteFails() throws java.sql.SQLException {
+        IdentityService identityService = new IdentityService();
+        ContactService contactService = new ContactService();
+        identityService.createIdentity("vault-pass".toCharArray(), at(0));
+        identityService.resumeSharingAfterReview();
+        Contact contact = contactService.registerPendingContact(sampleContactKey((byte) 77), "Wren", at(1));
+        contactService.acceptInvitation(contact.id(), at(2));
+        contactService.updatePermissions(contact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), at(3));
+
+        // peer_identity is a singleton row shared by every test in this class (IsolatedDatabaseExtension
+        // isolates per class, not per test), so this trigger - unlike the per-contact ones elsewhere in
+        // this file - MUST be dropped again before it can break every later createIdentity in this class.
+        try (java.sql.Connection connection = com.codefit.config.DatabaseConfig.getConnection();
+             java.sql.Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TRIGGER force_reset_identity_failure BEFORE INSERT ON peer_identity
+                    BEGIN SELECT RAISE(ABORT, 'forced failure for atomicity test'); END
+                    """);
+        }
+        try {
+            assertThrows(IllegalStateException.class,
+                    () -> identityService.resetIdentityWithoutContinuity("new-pass".toCharArray(), at(10)));
+
+            // Neither write in the same transaction may apply: the contact must still be PAIRED with
+            // its grant intact, not permanently stuck PENDING for an identity change that never took effect.
+            assertEquals(TrustState.PAIRED, contactService.requireContact(contact.id()).trustState());
+            assertTrue(contactService.isAuthorizedToPublish(contact.id(), SharingScope.SOCIAL_PROFILE, at(10)));
+        } finally {
+            try (java.sql.Connection connection = com.codefit.config.DatabaseConfig.getConnection();
+                 java.sql.Statement statement = connection.createStatement()) {
+                statement.execute("DROP TRIGGER force_reset_identity_failure");
+            }
+        }
+    }
+
+    @Test
     void resettingWithNoIdentityYetThrowsIdentityNotFound() {
         IdentityService identityService = new IdentityService();
 
         assertThrows(IdentityNotFoundException.class,
                 () -> identityService.resetIdentityWithoutContinuity("pass".toCharArray(), at(0)));
+    }
+
+    @Test
+    void concurrentBeginWriterSessionCallsAtTheSameInstantNeverBothSucceed() throws Exception {
+        // IDENTITY_LOCK (see IdentityService) serializes the read-then-write of the current epoch, so
+        // two threads calling this at literally the same instant can no longer both read the epoch
+        // before either writes it - the exact lost-update window #192's review reproduced. Once
+        // serialized, the second call correctly sees the epoch its sibling just claimed and is refused,
+        // never silently starting a second session at the same instant.
+        IdentityService identityService = new IdentityService();
+        identityService.createIdentity("vault-pass".toCharArray(), at(0));
+        Instant sameInstant = at(10);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Long> first = executor.submit(() -> attemptSession(identityService, sameInstant));
+            Future<Long> second = executor.submit(() -> attemptSession(identityService, sameInstant));
+            long epochA = first.get(10, TimeUnit.SECONDS);
+            long epochB = second.get(10, TimeUnit.SECONDS);
+
+            assertTrue(epochA == -1 || epochB == -1,
+                    "both concurrent sessions at the same instant started, with epochs " + epochA + " and " + epochB);
+        } finally {
+            executor.shutdown();
+        }
+    }
+
+    private static long attemptSession(IdentityService service, Instant now) {
+        try {
+            return service.beginWriterSession(now);
+        } catch (ClockBehindPreviousEpochException expected) {
+            return -1;
+        }
     }
 
     private static IdentityKey sampleContactKey(byte fill) {

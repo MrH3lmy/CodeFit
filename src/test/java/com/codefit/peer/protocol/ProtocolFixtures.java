@@ -100,7 +100,7 @@ final class ProtocolFixtures {
 
     static PreparationSnapshot snapshot() {
         return new PreparationSnapshot("synthetic-backend", PreparationProfileFingerprint.of(syntheticProfile(70)),
-                PreparationSnapshots.SCORING_VERSION, 75, Instant.parse("2026-09-21T18:00:00Z"), 78, 80,
+                PreparationSnapshots.SCORING_VERSION, 75, Instant.parse("2026-09-21T18:00:00Z"), 79, 80,
                 PreparationStatus.READY, List.of(
                 new DomainSnapshot("concurrency", 60, true, 70, 80, 100, 2, 2, DomainStatus.PASS),
                 new DomainSnapshot("sql", 40, false, null, 75, 50, 1, 2, DomainStatus.MEASURED)));

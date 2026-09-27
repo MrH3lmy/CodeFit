@@ -13,9 +13,15 @@ import java.util.Objects;
  *   <li>message id not already accepted, else {@link RejectionReason#DUPLICATE} (idempotent);</li>
  *   <li>epoch not below the author's highest accepted epoch, else {@link RejectionReason#STALE_EPOCH};</li>
  *   <li>{@code (epoch, sequence)} slot unused by a different message, else {@link RejectionReason#FORKED};</li>
- *   <li>object not tombstoned, else {@link RejectionReason#TOMBSTONED};</li>
- *   <li>revision newer than the held revision, else {@link RejectionReason#STALE_REVISION}.</li>
+ *   <li>{@code (epoch, revision)} newer than the held version of the object, else
+ *       {@link RejectionReason#TOMBSTONED} if the held version is a tombstone, otherwise
+ *       {@link RejectionReason#STALE_REVISION}.</li>
  * </ol>
+ * Objects are ordered by {@code (epoch, revision)}. A later writer epoch (for example after a restore
+ * that rolled revisions back) therefore supersedes every revision from an older epoch. A tombstone is
+ * a <em>cutoff</em>, not permanent retirement: every version at or below it is refused, which covers
+ * replays of pre-revocation copies. A strictly newer version that the author publishes later (such as
+ * a profile card after consent is granted again) starts a new incarnation of the object.
  * Sequence gaps are normal (each recipient sees only what was shared with it). Whether the author's
  * current {@link ConsentRevision} grants the body's {@link MessageBody#requiredScope()} is checked by
  * the sync layer (#184), which owns persisted consent state.
@@ -59,12 +65,9 @@ public final class EnvelopeAcceptancePolicy {
         if (occupant != null && !occupant.equals(id)) {
             return AcceptanceVerdict.reject(RejectionReason.FORKED, id);
         }
-        if (state.isTombstoned(header.objectId())) {
-            return AcceptanceVerdict.reject(RejectionReason.TOMBSTONED, id);
-        }
-        Long heldRevision = state.revisionOf(header.objectId());
-        if (heldRevision != null && header.revision() <= heldRevision) {
-            return AcceptanceVerdict.reject(RejectionReason.STALE_REVISION, id);
+        AuthorReplayState.ObjectVersion held = state.versionOf(header.objectId());
+        if (held != null && held.isNewerThanOrEqualTo(header.epoch(), header.revision())) {
+            return AcceptanceVerdict.reject(held.tombstone() ? RejectionReason.TOMBSTONED : RejectionReason.STALE_REVISION, id);
         }
         state.record(envelope, id);
         return AcceptanceVerdict.accept(id);

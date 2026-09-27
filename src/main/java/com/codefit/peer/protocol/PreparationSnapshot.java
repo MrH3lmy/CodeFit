@@ -16,8 +16,15 @@ import java.util.Objects;
  * cannot be sent as READY. {@code coveragePercent} is always shown beside the score, because READY
  * does not by itself imply 100% coverage of non-critical domains.
  *
- * <p>Two snapshots are comparable only if {@code profileId}, {@code profileFingerprint}, and
- * {@code scoringVersion} all match.
+ * <p>The declared {@code overallPercent} and {@code coveragePercent} must equal what the readiness
+ * engine computes from the domains ({@link #expectedAggregates}). The engine's binary64 arithmetic is
+ * reproduced step for step, in the domains' profile order, so that genuine engine output is never
+ * rejected over a rounding tie.
+ *
+ * <p>There are two compatibility levels. {@link #readinessComparableWith} additionally requires the
+ * same overall threshold, because a READY/NOT_READY verdict is only comparable under the same
+ * grading. {@link #scoresComparableWith} compares raw percentages only, and a UI must label it that
+ * way.
  */
 public record PreparationSnapshot(String profileId, byte[] profileFingerprint, int scoringVersion,
                                   int overallThresholdPercent, Instant capturedAt, Integer overallPercent,
@@ -44,19 +51,50 @@ public record PreparationSnapshot(String profileId, byte[] profileFingerprint, i
             throw new IllegalArgumentException("A snapshot carries 1.." + MAX_DOMAINS + " domains.");
         }
         int weights = 0;
-        for (int i = 0; i < domains.size(); i++) {
-            weights += domains.get(i).weightPercent();
-            if (i > 0 && domains.get(i - 1).domainId().compareTo(domains.get(i).domainId()) >= 0) {
-                throw new ProtocolException(RejectionReason.NON_CANONICAL, "Domains must be strictly ascending by id.");
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (DomainSnapshot domain : domains) {
+            weights += domain.weightPercent();
+            if (!ids.add(domain.domainId())) {
+                throw new IllegalArgumentException("Duplicate domain id: " + domain.domainId());
             }
         }
         if (weights != 100) {
             throw new IllegalArgumentException("Domain weights must sum to exactly 100, found " + weights);
         }
+        Aggregates expected = expectedAggregates(domains);
+        if (coveragePercent != expected.coveragePercent() || !Objects.equals(overallPercent, expected.overallPercent())) {
+            throw new IllegalArgumentException("Declared overall " + overallPercent + "% / coverage " + coveragePercent
+                    + "% contradict the domains (engine computes " + expected.overallPercent() + "% / "
+                    + expected.coveragePercent() + "%).");
+        }
         PreparationStatus derived = deriveStatus(domains, overallPercent, overallThresholdPercent);
         if (derived != status) {
             throw new IllegalArgumentException("Declared status " + status + " contradicts the domains (derived " + derived + ").");
         }
+    }
+
+    /** Overall score and coverage as {@code InterviewReadinessService#buildResult} computes them. */
+    record Aggregates(Integer overallPercent, int coveragePercent) {
+    }
+
+    /**
+     * Mirrors {@code InterviewReadinessService#buildResult} exactly: {@code DoubleStream.sum()}
+     * (compensated summation) over the domains in list order, then {@code Math.round}. Weights sum to
+     * exactly 100, which the constructor has already checked.
+     */
+    static Aggregates expectedAggregates(List<DomainSnapshot> domains) {
+        int totalWeightPercent = domains.stream().mapToInt(DomainSnapshot::weightPercent).sum();
+        double measuredWeightPercent = domains.stream().mapToDouble(DomainSnapshot::effectiveMeasuredWeightPercent).sum();
+        int coverage = totalWeightPercent == 0 ? 0 : (int) Math.round(measuredWeightPercent * 100.0 / totalWeightPercent);
+        Integer overall = null;
+        if (measuredWeightPercent > 0.0) {
+            double weightedSum = domains.stream()
+                    .filter(d -> d.scorePercent() != null)
+                    .mapToDouble(d -> d.scorePercent() * d.effectiveMeasuredWeightPercent())
+                    .sum();
+            overall = (int) Math.round(weightedSum / measuredWeightPercent);
+        }
+        return new Aggregates(overall, coverage);
     }
 
     /** Mirrors the overall-status rule in {@code InterviewReadinessService#calculate}. */
@@ -90,9 +128,15 @@ public record PreparationSnapshot(String profileId, byte[] profileFingerprint, i
                 .toList();
     }
 
-    public boolean comparableWith(PreparationSnapshot other) {
+    /** Same definition and scoring rules: raw overall, domain scores, and coverage may be compared as numbers. */
+    public boolean scoresComparableWith(PreparationSnapshot other) {
         return profileId.equals(other.profileId) && scoringVersion == other.scoringVersion
                 && Arrays.equals(profileFingerprint, other.profileFingerprint);
+    }
+
+    /** Also graded against the same overall threshold, so READY/NOT_READY verdicts mean the same thing. */
+    public boolean readinessComparableWith(PreparationSnapshot other) {
+        return scoresComparableWith(other) && overallThresholdPercent == other.overallThresholdPercent;
     }
 
     @Override

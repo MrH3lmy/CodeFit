@@ -72,9 +72,9 @@ u8           messageType         (section 6)
 u16          schemaVersion       (1 for every v1.0 type)
 bytes[32]    authorKey           Ed25519 public key, RFC 8032 encoding
 bytes[16]    objectId            logical object; stable across revisions
-u32          epoch               1..2^32-1
+u32          epoch               writer-session epoch, 1..epochAt(createdAt) (section 10.1)
 i64          sequence            1..2^63-1 (top bit set ⇒ MALFORMED)
-u32          revision            1..2^32-1
+u32          revision            1..2^32-1; objects order by (epoch, revision)
 instant      createdAt
 instant      expiresAt
 audience                         (section 5)
@@ -82,8 +82,9 @@ u32 + bytes  body                length ≤ 61 440 bytes (else OVERSIZED)
 bytes[64]    signature           Ed25519 over the signing bytes
 ```
 
-Header rules: `expiresAt > createdAt`, and `expiresAt − createdAt ≤ 400 days`
-(`INVALID_TIMESTAMP`). Instants have millisecond precision.
+Header rules: `expiresAt > createdAt`, `expiresAt − createdAt ≤ 400 days`, and
+`epoch ≤ epochAt(createdAt)`, where `epochAt(t) = 1 + ⌊(t − 2024-01-01T00:00Z) / 1 s⌋`, capped at
+2³²−1 (all `INVALID_TIMESTAMP`). Instants have millisecond precision.
 
 **Signing bytes** = ASCII `"CodeFit-P2P-Envelope-v1"`, then `0x00`, then the major version byte
 `0x01`, then every envelope byte before `signature`. The context string separates envelope
@@ -198,7 +199,8 @@ instant      capturedAt               ≤ envelope createdAt
 optional<u8> overallPercent           0..100; absent when nothing is measurable
 u8           coveragePercent          0..100
 u8           status                   1 READY, 2 NOT_READY, 3 INSUFFICIENT_DATA
-list<domain>(64) domains              1..64, strictly ascending by domainId; weights sum to exactly 100
+list<domain>(64) domains              1..64 in profile order (the engine's order), unique ids;
+                                      weights sum to exactly 100
 
 domain:
   string(64)   domainId
@@ -214,7 +216,9 @@ domain:
 
 The domain rules mirror `InterviewReadinessService` exactly:
 
-* `NOT_MEASURED` holds exactly when there is no score.
+* `NOT_MEASURED` holds exactly when there is no score, and a score exists exactly when
+  `measured ≥ 1`. A domain with nothing measured, including 0 of 0, can never carry a score or
+  `PASS`.
 * `PASS`, `FAIL` and `PARTIAL` apply only to critical gates. A scored critical gate is never
   `MEASURED`.
 * `PASS` requires `measured == total` and `score ≥ threshold`.
@@ -223,7 +227,24 @@ The domain rules mirror `InterviewReadinessService` exactly:
 * `FAIL` MAY carry `score ≥ threshold`, because direct mock evidence below the threshold forces
   `FAIL`.
 
-The receiver **re-derives** the overall status and rejects any disagreement (`INCONSISTENT_BODY`):
+The receiver **re-derives the aggregates** and rejects any disagreement (`INCONSISTENT_BODY`). It
+reproduces `InterviewReadinessService.buildResult` operation for operation in IEEE-754 binary64. It
+does not use exact rationals, because the engine's own rounding decides ties such as thirds that
+sum to x.5:
+
+```
+eff(d)      = d.score present ? d.weight × (d.measured / (double) d.total) : 0.0
+measured    = DoubleStream.sum(eff(d) for d in domains, in list order)     // JDK compensated sum
+coverage    = Math.round(measured × 100.0 / 100)
+overall     = measured > 0.0
+              ? Math.round(DoubleStream.sum(d.score × eff(d) for scored d, in list order) / measured)
+              : absent
+```
+
+`coveragePercent` and `overallPercent` MUST equal these values. List order is part of the
+arithmetic, so domains travel in profile order, and that order is part of the profile fingerprint
+(section 9). `PreparationSnapshotEngineParityTest` checks this against the real engine on 5,000
+randomized profiles, including a rounding-tie case. It then re-derives the overall status:
 
 1. Any critical gate is `FAIL` ⇒ `NOT_READY`.
 2. Otherwise, any critical gate is `PARTIAL` or `NOT_MEASURED`, or `overallPercent` is absent ⇒
@@ -233,7 +254,7 @@ The receiver **re-derives** the overall status and rejects any disagreement (`IN
 
 `blockingCriticalDomainIds` is derived (critical domains that are not `PASS`) and is not
 transmitted. Under these rules, a high average with a failing or incompletely covered critical gate
-can never be sent as `READY`. READY does not by itself imply 100 % coverage of *non-critical*
+can never be sent as `READY`, and neither can a declared score that the domains do not support. READY does not by itself imply 100 % coverage of *non-critical*
 domains, which is also true of the local engine. For that reason, UIs MUST show `coveragePercent`
 beside every readiness score. Titles and descriptions are local display data and are not sent.
 
@@ -245,9 +266,10 @@ list<u8 scope>(5) scopes   strictly ascending by code; empty = revoke everything
 
 The audience MUST be DIRECT with exactly one recipient (`INVALID_AUDIENCE`). `objectId` MUST equal
 the first 16 bytes of SHA-256(`"CodeFit-Consent-v1\0"` ‖ authorId ‖ recipientId). The consent
-record for each (author, recipient) pair is therefore one object, and its envelope `revision`
-numbers give a total order. Each revision is the **complete** set of scopes, not a delta. An older
-grant that arrives after a revocation is `STALE_REVISION`, so it cannot re-enable sharing.
+record for each (author, recipient) pair is therefore one object, and its envelope
+`(epoch, revision)` gives a total order. Each revision is the **complete** set of scopes, not a
+delta. An older grant that arrives after a revocation is `STALE_REVISION`, so it cannot re-enable
+sharing. Granting again is simply a newer revision.
 
 ### 6.6 `TOMBSTONE` (schema 1)
 
@@ -257,11 +279,19 @@ u8   reason                 1 REVOKED, 2 DELETED
 bool requestCacheDeletion
 ```
 
-The envelope's `objectId` names the retired object. Its `revision` MUST be greater than every
-revision the author issued for that object. After accepting a tombstone, a receiver rejects every
-later or earlier revision of the object as `TOMBSTONED`. When `requestCacheDeletion` is set, the
-receiver deletes its cached copy. This is **cooperative**: a peer that ignores it cannot be forced,
-and product text MUST NOT promise erasure of copies already received.
+The envelope's `objectId` names the object. Its `(epoch, revision)` MUST be newer than every
+version the author issued for that object. A tombstone is a **cutoff**, not permanent retirement:
+
+* Every version at or below the cutoff is refused as `TOMBSTONED`, so replayed pre-revocation or
+  pre-deletion copies stay dead.
+* When `requestCacheDeletion` is set, the receiver deletes its cached copy.
+* A strictly newer version, which the author publishes only after sharing again (for example a
+  profile card after consent is granted again), starts a new incarnation of the object and is
+  accepted.
+
+The objects whose ids are derived (profile card, consent) therefore stay usable after revocation.
+Deletion is **cooperative**: a peer that ignores it cannot be forced, and product text MUST NOT
+promise erasure of copies already received.
 
 ### 6.7 Reserved: `CHALLENGE_MANIFEST` (code 7, #186)
 
@@ -360,12 +390,19 @@ The fingerprint is SHA-256 of `"CodeFit-Preparation-Profile-Definition-v1\0"` fo
 canonical encoding of the following fields:
 
 * The profile id.
-* For each domain, sorted by id: id, weight, critical flag and optional threshold.
-* For each requirement in the domain, sorted by id: id, `AVAILABLE`/`PLANNED`, and the optional
-  material reference (type and key).
+* For each domain, **in profile order** (which the aggregation depends on): id, weight, critical
+  flag and optional threshold.
+* For each requirement in the domain, sorted by id (domain scores are order-independent integer
+  averages): id, `AVAILABLE`/`PLANNED`, and the optional material reference (type and key).
 
-Titles and descriptions are excluded. Two snapshots are comparable only when `profileId`,
-`profileFingerprint` and `scoringVersion` are all equal. Profiles are bundled CodeFit content, so
+Titles and descriptions are excluded. There are two compatibility levels:
+
+* **Scores comparable** (`scoresComparableWith`): `profileId`, `profileFingerprint` and
+  `scoringVersion` are equal. Raw overall, domain scores and coverage may be compared as numbers, and
+  the UI labels them as such.
+* **Readiness comparable** (`readinessComparableWith`): additionally, `overallThresholdPercent` is
+  equal. Only then are READY/NOT_READY verdicts the same grade. For example, 90 % is READY at
+  threshold 75 and NOT_READY at threshold 95. Profiles are bundled CodeFit content, so
 the fingerprint reveals only which definition a peer used, not learner data.
 
 ## 10. Receiver acceptance, replay and revisions
@@ -379,25 +416,50 @@ first failure wins.
 4. Message id already accepted ⇒ `DUPLICATE`. This is an idempotent no-op and is not reported as
    an error.
 5. `epoch <` the highest epoch accepted from this author ⇒ `STALE_EPOCH`.
-6. The `(epoch, sequence)` slot is already held by a *different* message id ⇒ `FORKED`. The author
-   has two active writers or rolled back without bumping the epoch. The UI warns, and the author is
-   quarantined until the user acts.
-7. Object tombstoned ⇒ `TOMBSTONED`.
-8. `revision ≤` the held revision for this object ⇒ `STALE_REVISION`.
-9. Otherwise accept, and record the id, the slot, the revision and any tombstone.
+6. The `(epoch, sequence)` slot is already held by a *different* message id ⇒ `FORKED`. Either the
+   author has two active writers, or an epoch was reused. The UI warns the user.
+7. `(epoch, revision)` is not newer than the held version of the object (lexicographic order) ⇒
+   `TOMBSTONED` if that held version is a tombstone, otherwise `STALE_REVISION`.
+8. Otherwise accept, and record the id, the slot, and the object's `(epoch, revision, isTombstone)`.
 
 Sequence **gaps are normal**, because each recipient receives only what was shared with it.
 Whether the author's latest `CONSENT_REVISION` to this receiver grants the body's required scope is
 checked by the sync layer (#184), which owns persisted consent. Data outside the granted scopes is
 dropped. Replay state is in memory in #180 and is persisted in SQLite by #184. A slot entry may be
 pruned after its message expires, because expired messages are rejected before the replay checks.
+Replay protection is never cleared to make recovery work.
 
-**Epochs and sequence rollback.** A device keeps `(epoch, nextSequence)` next to the identity key.
-Restoring an identity from backup MUST increment the epoch before the first publication after the
-restore. Sequences from the old backup therefore cannot collide with messages that were already
-sent. Peers treat late messages from the abandoned epoch as stale. **Single active writer per
-identity is an explicit MVP limitation.** Running two installs with the same identity at once
-produces `FORKED` at peers. It is detected, but it is not supported.
+### 10.1 Writer epochs, restore, and recovery limits
+
+A counter kept in a backup cannot guarantee a fresh epoch. Restoring the same backup twice would
+reuse "backup epoch + 1", and the two restores would fork each other's slots. Epochs are therefore
+derived from the **clock at the start of a writer session** (`WriterEpoch`):
+
+* `next(previousEpoch, now) = epochAt(now)`, and the writer MUST refuse to start when
+  `previousEpoch ≥ epochAt(now)`. `previousEpoch` is the highest epoch the device knows: its own
+  stored value, or the value in the backup (0 if unknown).
+* A new session MUST start after every restore or import, and after any local database recovery
+  that may have lost `(epoch, nextSequence)` or object revisions. It MAY start on every launch.
+* Receivers reject `epoch > epochAt(createdAt)`. A clock that ran ahead therefore cannot mint an
+  epoch that would lock out later sessions.
+* Objects order by `(epoch, revision)`. A new session supersedes every revision from older epochs,
+  even when a restore rolled the local revision counter back. For example, a peer holding revision 5
+  from epoch *e₁* accepts revision 2 from epoch *e₂ > e₁*. Late messages from an abandoned epoch are
+  `STALE_EPOCH`, so they never overwrite newer state.
+* After a restore, sharing MUST stay paused until the user reviews the restored consent state. The
+  backup may predate a revocation, and the first publication in the new session is then a
+  deliberate re-grant, not an accidental one.
+
+Guarantee: any two writer sessions started at different seconds on a clock that never moves
+backwards get distinct, increasing epochs, however many times one backup is restored. Recovery
+limits, all visible and none silent:
+
+| Situation | What peers see | Recovery |
+|---|---|---|
+| Clock behind an earlier session (`previousEpoch ≥ epochAt(now)`) | nothing; the writer refuses to start | fix the clock, or wait until it passes the earlier epoch |
+| Backup older than a session peers have seen, restored on a clock set *behind* that session | `STALE_EPOCH` for the new session's messages | fix the clock and start a new session |
+| Two installs with one identity running concurrently (or two sessions in the same second) | `FORKED` on colliding slots | stop one install and start a new session. **Single active writer per identity is an explicit MVP limitation.** |
+| Identity private key lost, or no usable backup | nothing more from that identity | create a new identity and re-pair with contacts. There is no global revocation or recovery service |
 
 ## 11. Peer-visible boundary
 
@@ -423,7 +485,8 @@ This matches `docs/problem-solving-source-attribution.md`.
 | New or changed body fields | new **schemaVersion** for that type | `UNSUPPORTED_SCHEMA_VERSION`; drop that message |
 | New metric or metric formula | new `metricId` or `metricVersion` | accepted but shown as not comparable |
 | Readiness formula change | bump `SCORING_VERSION` | snapshots not comparable across versions |
-| Profile definition change | fingerprint changes | snapshots not comparable |
+| Profile definition change (including domain order) | fingerprint changes | snapshots not comparable |
+| Different overall readiness threshold | `overallThresholdPercent` differs | scores comparable, readiness verdicts not |
 
 Authors SHOULD send the lowest schema version that expresses the data, and MAY send two schema
 versions of the same object during a migration window. Received data is never silently upgraded.
@@ -445,12 +508,14 @@ and all data is synthetic.
 | `progress-summary-week-group` | complete WEEK, GROUP audience, UNAVAILABLE and INSUFFICIENT_DATA metrics |
 | `preparation-snapshot` | READY with a PASS critical gate and a partially covered non-critical domain |
 | `consent-revision` / `consent-revocation` | derived consent object, revision ordering, empty-scope revocation |
-| `tombstone` | revocation with a cache-deletion request |
+| `tombstone` | revocation cutoff with a cache-deletion request |
 
 Negative conformance cases are generated by mutating these frames and re-signing them
 (`EnvelopeRejectionTest`). They cover every codec rejection reason: bad magic, other majors, an
 oversized header or body, truncated, trailing or mismatched lengths, unknown or reserved types, an
-unknown schema, tampered bytes, a foreign signature, timestamps out of range or out of order,
+unknown schema, tampered bytes, a foreign signature, timestamps out of range or out of order, an
+epoch later than `createdAt`, snapshot aggregates that contradict their domains, a PASS gate with
+nothing measured,
 negative or zero counters, all audience shape errors, non-NFC text, control and bidi characters,
 invalid UTF-8, non-binary booleans, a wrong derived object id, unsorted metrics, a consent audience
 with two recipients, and a summary newer than its envelope. An independent implementation is

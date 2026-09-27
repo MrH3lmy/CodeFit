@@ -1,8 +1,9 @@
 package com.codefit.peer.protocol;
 
 /**
- * One domain of a {@link PreparationSnapshot}: the same invariants as
- * {@code InterviewDomainReadiness}, by id only (titles are local display data).
+ * One domain of a {@link PreparationSnapshot}. It enforces the same invariants as
+ * {@code InterviewDomainReadiness}, including that a score exists exactly when at least one
+ * requirement was measured. Domains are identified by id only; titles are local display data.
  */
 public record DomainSnapshot(String domainId, int weightPercent, boolean criticalGate, Integer thresholdPercent,
                              Integer scorePercent, int coveragePercent, int measuredRequirementCount,
@@ -30,6 +31,10 @@ public record DomainSnapshot(String domainId, int weightPercent, boolean critica
         if ((status == DomainStatus.NOT_MEASURED) == hasScore) {
             throw new IllegalArgumentException("Domain '" + domainId + "': NOT_MEASURED exactly when there is no score.");
         }
+        if (hasScore != (measuredRequirementCount > 0)) {
+            // Engine rule: a domain has a score exactly when at least one requirement is measurable.
+            throw new IllegalArgumentException("Domain '" + domainId + "': a score requires at least one measured requirement, and vice versa.");
+        }
         boolean criticalStatus = status == DomainStatus.PASS || status == DomainStatus.FAIL || status == DomainStatus.PARTIAL;
         if (criticalStatus && !criticalGate) {
             throw new IllegalArgumentException("Domain '" + domainId + "': " + status + " applies only to critical gates.");
@@ -50,6 +55,14 @@ public record DomainSnapshot(String domainId, int weightPercent, boolean critica
             throw new IllegalArgumentException("Domain '" + domainId + "': PARTIAL is an at/above-threshold score with unmeasured requirements.");
         }
         // FAIL may carry a score at/above threshold: direct mock evidence below threshold forces FAIL.
+    }
+
+    /** Mirrors {@code InterviewReadinessService.effectiveMeasuredWeightPercent} operation for operation (binary64). */
+    double effectiveMeasuredWeightPercent() {
+        if (scorePercent == null || totalRequirementCount <= 0) {
+            return 0.0;
+        }
+        return weightPercent * (measuredRequirementCount / (double) totalRequirementCount);
     }
 
     private static void percent(int value, String field) {

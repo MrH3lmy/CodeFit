@@ -276,6 +276,50 @@ class EnvelopeRejectionTest {
     }
 
     @Test
+    void epochLaterThanCreationTimeIsInvalid() {
+        byte[] unsigned = unsignedPayload("social-profile-card");
+        Arrays.fill(unsigned, 53, 57, (byte) 0xff); // epoch 2^32-1, far beyond createdAt's epoch
+        assertRejected(RejectionReason.INVALID_TIMESTAMP, resign(unsigned));
+    }
+
+    /** Hand-encoded snapshot body (bypasses the constructor) with an arbitrary declared overall/coverage/status. */
+    private static byte[] snapshotBody(Integer overall, int coverage, PreparationStatus status, DomainRow... domains) {
+        CanonicalWriter writer = new CanonicalWriter().string("synthetic-backend", 64).fixed(new byte[32], 32)
+                .u16(1).u8(75).i64(ProtocolFixtures.CREATED.minusSeconds(60).toEpochMilli())
+                .optionalU8(overall).u8(coverage).u8(status.code());
+        writer.list(List.of(domains), 64, (w, d) -> w.string(d.id(), 64).u8(d.weight()).bool(d.critical())
+                .optionalU8(d.threshold()).optionalU8(d.score()).u8(d.coverage()).u16(d.measured()).u16(d.total())
+                .u8(d.status().code()));
+        return writer.toByteArray();
+    }
+
+    private record DomainRow(String id, int weight, boolean critical, Integer threshold, Integer score, int coverage,
+                             int measured, int total, DomainStatus status) {
+    }
+
+    private static byte[] signedSnapshot(byte[] body) {
+        EnvelopeHeader header = ProtocolFixtures.header(ProtocolFixtures.objectId(5), 5, 1, ProtocolFixtures.toB());
+        return resign(withBody(header, MessageType.PREPARATION_SNAPSHOT.code(), 1, body));
+    }
+
+    @Test
+    void snapshotWhoseAggregatesContradictItsDomainsIsRejected() {
+        DomainRow gate = new DomainRow("gate", 10, true, 70, 80, 100, 1, 1, DomainStatus.PASS);
+        DomainRow other = new DomainRow("other", 90, false, null, 20, 100, 1, 1, DomainStatus.MEASURED);
+        // Review counterexample: declared READY at 100% / 0% coverage; the engine computes 26% / 100% NOT_READY.
+        assertRejected(RejectionReason.INCONSISTENT_BODY, signedSnapshot(snapshotBody(100, 0, PreparationStatus.READY, gate, other)));
+        // The consistent encoding of the same domains decodes.
+        SignedEnvelope ok = EnvelopeCodec.decodeFrame(signedSnapshot(snapshotBody(26, 100, PreparationStatus.NOT_READY, gate, other)));
+        assertEquals(PreparationStatus.NOT_READY, ((PreparationSnapshot) ok.body()).status());
+    }
+
+    @Test
+    void snapshotClaimingAPassWithNothingMeasuredIsRejected() {
+        DomainRow unmeasuredPass = new DomainRow("gate", 100, true, 70, 100, 0, 0, 0, DomainStatus.PASS);
+        assertRejected(RejectionReason.INCONSISTENT_BODY, signedSnapshot(snapshotBody(100, 0, PreparationStatus.READY, unmeasuredPass)));
+    }
+
+    @Test
     void authorsCannotEncodeInvalidEnvelopesEither() {
         assertReason(RejectionReason.INVALID_AUDIENCE, () -> new EnvelopeHeader(0, ProtocolFixtures.AUTHOR,
                 ProtocolFixtures.objectId(1), 1, 1, 1, ProtocolFixtures.CREATED, ProtocolFixtures.EXPIRES,

@@ -37,12 +37,12 @@ public enum RejectionReason {
     EXPIRED,
     /** Same message id already accepted; idempotent no-op. */
     DUPLICATE,
-    /** Author epoch lower than one already accepted from this author. */
+    /** Author epoch lower than one already accepted from this author (a late message from an abandoned session). */
     STALE_EPOCH,
-    /** Object revision not newer than the revision already held. */
+    /** Object {@code (epoch, revision)} not newer than the version already held. */
     STALE_REVISION,
     /** Two different messages share one author (epoch, sequence): two writers or a rollback. */
     FORKED,
-    /** The object was tombstoned; later/earlier revisions are not resurrected. */
+    /** At or below a tombstone cutoff for the object: a replay of a revoked or deleted version. */
     TOMBSTONED
 }

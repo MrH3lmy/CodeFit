@@ -1,11 +1,9 @@
 package com.codefit.peer.protocol;
 
 import com.codefit.model.InterviewPreparationProfile;
-import com.codefit.service.InterviewDomainReadiness;
 import com.codefit.service.InterviewReadinessResult;
 
 import java.time.Instant;
-import java.util.Comparator;
 
 /**
  * Adapter from an existing {@link InterviewReadinessResult} to a {@link PreparationSnapshot}. It reads
@@ -30,8 +28,8 @@ public final class PreparationSnapshots {
             throw new IllegalArgumentException("Readiness result belongs to '" + result.profileId()
                     + "', not '" + profile.getId() + "'.");
         }
+        // Keep the engine's (profile) order: the overall score's floating-point sum depends on it.
         var domains = result.domains().stream()
-                .sorted(Comparator.comparing(InterviewDomainReadiness::domainId))
                 .map(d -> new DomainSnapshot(d.domainId(), d.weightPercent(), d.criticalGate(),
                         d.minimumReadinessThresholdPercent(), d.scorePercent(), d.coveragePercent(),
                         d.measuredRequirementCount(), d.totalRequirementCount(), DomainStatus.valueOf(d.status().name())))
@@ -39,7 +37,7 @@ public final class PreparationSnapshots {
         PreparationSnapshot snapshot = new PreparationSnapshot(profile.getId(), PreparationProfileFingerprint.of(profile),
                 SCORING_VERSION, overallThresholdPercent, capturedAt, result.overallReadinessPercent(),
                 result.coveragePercent(), PreparationStatus.valueOf(result.status().name()), domains);
-        if (!snapshot.blockingCriticalDomainIds().equals(result.blockingCriticalDomainIds().stream().sorted().toList())) {
+        if (!snapshot.blockingCriticalDomainIds().equals(result.blockingCriticalDomainIds())) {
             throw new IllegalStateException("Blocking critical domains changed during snapshotting.");
         }
         return snapshot;

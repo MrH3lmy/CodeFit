@@ -8,9 +8,11 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * SHA-256 over the scoring-relevant definition of an {@link InterviewPreparationProfile}: profile id;
- * per domain (sorted by id) its id, weight, critical flag and threshold; per requirement (sorted by id)
- * its id, AVAILABLE/PLANNED status and material reference. Titles and descriptions are excluded - they
+ * SHA-256 over the scoring-relevant definition of an {@link InterviewPreparationProfile}: the profile
+ * id; for each domain, <em>in profile order</em> (the floating-point aggregation depends on that
+ * order), its id, weight, critical flag, and threshold; for each requirement (sorted by id, since
+ * domain scores are order-independent integer averages), its id, AVAILABLE/PLANNED status, and
+ * material reference. Titles and descriptions are excluded - they
  * change presentation, not comparability. Any change that could change a score changes the fingerprint,
  * so "73% on Revolut Java" is only compared with a peer's snapshot of the identical definition.
  *
@@ -25,8 +27,7 @@ public final class PreparationProfileFingerprint {
 
     public static byte[] of(InterviewPreparationProfile profile) {
         CanonicalWriter writer = new CanonicalWriter().string(profile.getId(), MAX_KEY_BYTES);
-        List<InterviewDomain> domains = profile.getDomains().stream()
-                .sorted(Comparator.comparing(InterviewDomain::getId)).toList();
+        List<InterviewDomain> domains = profile.getDomains();
         writer.list(domains, 0xFFFF, (w, domain) -> {
             w.string(domain.getId(), MAX_KEY_BYTES)
                     .u8(domain.getWeightPercent())

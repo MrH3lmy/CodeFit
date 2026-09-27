@@ -3,11 +3,15 @@ package com.codefit.peer.protocol;
 import java.util.Objects;
 
 /**
- * Retires the object named by the envelope's {@code objectId}; the envelope revision must exceed every
- * revision the author ever issued for it. Receivers drop the object's cached copy when
- * {@code requestCacheDeletion} is set and afterwards reject every revision of it as
- * {@link RejectionReason#TOMBSTONED}. This is cooperative deletion: a peer that ignores it cannot be
- * forced, and the UI must not promise otherwise.
+ * A cutoff for the object named by the envelope's {@code objectId}. The envelope's
+ * {@code (epoch, revision)} must be newer than every earlier version of the object. Receivers delete
+ * their cached copy when {@code requestCacheDeletion} is set. After that they reject every version at
+ * or below the cutoff as {@link RejectionReason#TOMBSTONED}, so replayed pre-revocation copies stay
+ * dead. A strictly newer version, published only once the author shares again, starts a new
+ * incarnation. For example, a profile card published after consent is re-granted is accepted.
+ *
+ * <p>This is cooperative deletion. A peer that ignores it cannot be forced to comply, and the UI must
+ * not claim otherwise.
  *
  * @param targetType the retired object's message type; consent is revoked with an empty
  *                   {@link ConsentRevision}, and tombstones are not themselves tombstoned

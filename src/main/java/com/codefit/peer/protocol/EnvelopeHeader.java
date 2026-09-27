@@ -9,9 +9,9 @@ import java.util.Objects;
  * @param minorVersion  envelope minor version the author wrote (informational within major 1)
  * @param author        Ed25519 identity key that signs the envelope
  * @param objectId      logical object this message is a revision of
- * @param epoch         author epoch, bumped on identity restore so a rolled-back sequence can't collide (1..2^32-1)
+ * @param epoch         writer-session epoch ({@link WriterEpoch}), 1..{@link WriterEpoch#maxAt}(createdAt)
  * @param sequence      per-author, per-epoch strictly increasing counter (1..2^63-1); gaps are normal with selective sharing
- * @param revision      per-object revision (1..2^32-1); newer revision supersedes older
+ * @param revision      per-object revision within the epoch (1..2^32-1); objects order by (epoch, revision)
  * @param createdAt     UTC instant, millisecond precision
  * @param expiresAt     UTC instant after which receivers drop the message and cached copies
  * @param audience      explicit recipients
@@ -47,6 +47,9 @@ public record EnvelopeHeader(
         }
         long created = ProtocolTime.toWireMillis(createdAt, "createdAt");
         long expires = ProtocolTime.toWireMillis(expiresAt, "expiresAt");
+        if (epoch > WriterEpoch.maxAt(createdAt)) {
+            throw new ProtocolException(RejectionReason.INVALID_TIMESTAMP, "Epoch is later than the envelope's createdAt.");
+        }
         if (expires <= created) {
             throw new ProtocolException(RejectionReason.INVALID_TIMESTAMP, "expiresAt must be after createdAt.");
         }

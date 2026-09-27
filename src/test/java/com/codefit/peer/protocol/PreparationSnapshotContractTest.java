@@ -33,31 +33,72 @@ class PreparationSnapshotContractTest {
                 measured, 2, score == null ? DomainStatus.NOT_MEASURED : DomainStatus.MEASURED);
     }
 
-    private static PreparationSnapshot snapshot(PreparationStatus status, Integer overall, DomainSnapshot... domains) {
-        return new PreparationSnapshot("synthetic-backend", FP, 1, 75, CAPTURED, overall, 80, status, List.of(domains));
+    private static PreparationSnapshot snapshot(PreparationStatus status, Integer overall, int coverage,
+                                                DomainSnapshot... domains) {
+        return new PreparationSnapshot("synthetic-backend", FP, 1, 75, CAPTURED, overall, coverage, status, List.of(domains));
     }
 
     @Test
     void readyCannotBeClaimedWithAFailingOrPartialCriticalGate() {
+        // 60% * 95 + 40% * 90 = 93, full coverage; the critical gate FAILs (e.g. mock evidence).
         assertThrows(IllegalArgumentException.class,
-                () -> snapshot(PreparationStatus.READY, 90, critical(DomainStatus.FAIL, 95, 2, 2), sql(90, 2)));
+                () -> snapshot(PreparationStatus.READY, 93, 100, critical(DomainStatus.FAIL, 95, 2, 2), sql(90, 2)));
+        // Partial critical gate: effective weights 30 + 40 = 70 -> coverage 70, overall 92.
         assertThrows(IllegalArgumentException.class,
-                () -> snapshot(PreparationStatus.READY, 90, critical(DomainStatus.PARTIAL, 95, 1, 2), sql(90, 2)));
+                () -> snapshot(PreparationStatus.READY, 92, 70, critical(DomainStatus.PARTIAL, 95, 1, 2), sql(90, 2)));
         assertEquals(PreparationStatus.INSUFFICIENT_DATA,
-                snapshot(PreparationStatus.INSUFFICIENT_DATA, 90, critical(DomainStatus.PARTIAL, 95, 1, 2), sql(90, 2)).status());
+                snapshot(PreparationStatus.INSUFFICIENT_DATA, 92, 70, critical(DomainStatus.PARTIAL, 95, 1, 2), sql(90, 2)).status());
     }
 
     @Test
     void failCanCarryAnAboveThresholdScoreBecauseMockEvidenceForcesFail() {
-        PreparationSnapshot snapshot = snapshot(PreparationStatus.NOT_READY, 90, critical(DomainStatus.FAIL, 95, 2, 2), sql(90, 2));
+        PreparationSnapshot snapshot = snapshot(PreparationStatus.NOT_READY, 93, 100,
+                critical(DomainStatus.FAIL, 95, 2, 2), sql(90, 2));
         assertEquals(List.of("concurrency"), snapshot.blockingCriticalDomainIds());
     }
 
     @Test
     void readyMayCoexistWithUnmeasuredNonCriticalDomainsSoCoverageTravelsWithIt() {
-        PreparationSnapshot snapshot = snapshot(PreparationStatus.READY, 80, critical(DomainStatus.PASS, 80, 2, 2), sql(null, 0));
+        PreparationSnapshot snapshot = snapshot(PreparationStatus.READY, 80, 60, critical(DomainStatus.PASS, 80, 2, 2), sql(null, 0));
         assertTrue(snapshot.blockingCriticalDomainIds().isEmpty());
-        assertEquals(80, snapshot.coveragePercent());
+        assertEquals(60, snapshot.coveragePercent());
+    }
+
+    @Test
+    void declaredOverallAndCoverageMustMatchTheDomains() {
+        DomainSnapshot gate = new DomainSnapshot("gate", 10, true, 70, 80, 100, 1, 1, DomainStatus.PASS);
+        DomainSnapshot other = new DomainSnapshot("other", 90, false, null, 20, 100, 1, 1, DomainStatus.MEASURED);
+        // Review counterexample: the engine computes overall 26, coverage 100 -> NOT_READY.
+        assertThrows(IllegalArgumentException.class, () -> new PreparationSnapshot("p", FP, 1, 75, CAPTURED, 100, 0,
+                PreparationStatus.READY, List.of(gate, other)));
+        assertThrows(IllegalArgumentException.class, () -> new PreparationSnapshot("p", FP, 1, 75, CAPTURED, 26, 0,
+                PreparationStatus.NOT_READY, List.of(gate, other)), "coverage alone wrong");
+        assertThrows(IllegalArgumentException.class, () -> new PreparationSnapshot("p", FP, 1, 75, CAPTURED, 27, 100,
+                PreparationStatus.NOT_READY, List.of(gate, other)), "overall off by one");
+        assertThrows(IllegalArgumentException.class, () -> new PreparationSnapshot("p", FP, 1, 75, CAPTURED, null, 100,
+                PreparationStatus.INSUFFICIENT_DATA, List.of(gate, other)), "overall omitted despite measured domains");
+        PreparationSnapshot consistent = new PreparationSnapshot("p", FP, 1, 75, CAPTURED, 26, 100,
+                PreparationStatus.NOT_READY, List.of(gate, other));
+        assertEquals(PreparationStatus.NOT_READY, consistent.status());
+    }
+
+    @Test
+    void nothingMeasuredMeansNoOverallAndZeroCoverage() {
+        assertEquals(PreparationStatus.INSUFFICIENT_DATA, snapshot(PreparationStatus.INSUFFICIENT_DATA, null, 0,
+                new DomainSnapshot("concurrency", 60, true, 70, null, 0, 0, 2, DomainStatus.NOT_MEASURED), sql(null, 0)).status());
+        assertThrows(IllegalArgumentException.class, () -> snapshot(PreparationStatus.INSUFFICIENT_DATA, 0, 0,
+                new DomainSnapshot("concurrency", 60, true, 70, null, 0, 0, 2, DomainStatus.NOT_MEASURED), sql(null, 0)));
+    }
+
+    @Test
+    void aScoreRequiresMeasuredEvidence() {
+        // Review counterexample: a PASS critical gate with 0/0 measured requirements and a score of 100.
+        assertThrows(IllegalArgumentException.class,
+                () -> new DomainSnapshot("gate", 100, true, 70, 100, 0, 0, 0, DomainStatus.PASS));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DomainSnapshot("sql", 40, false, null, 50, 0, 0, 2, DomainStatus.MEASURED));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DomainSnapshot("sql", 40, false, null, null, 50, 1, 2, DomainStatus.NOT_MEASURED));
     }
 
     @Test
@@ -76,12 +117,14 @@ class PreparationSnapshotContractTest {
     }
 
     @Test
-    void weightsMustSumToOneHundredAndDomainsMustBeSorted() {
-        assertThrows(IllegalArgumentException.class, () -> snapshot(PreparationStatus.INSUFFICIENT_DATA, null,
+    void weightsMustSumToOneHundredAndDomainIdsMustBeUnique() {
+        assertThrows(IllegalArgumentException.class, () -> snapshot(PreparationStatus.INSUFFICIENT_DATA, null, 0,
                 new DomainSnapshot("concurrency", 50, true, 70, null, 0, 0, 2, DomainStatus.NOT_MEASURED), sql(null, 0)));
-        ProtocolException unsorted = assertThrows(ProtocolException.class,
-                () -> snapshot(PreparationStatus.READY, 80, sql(null, 0), critical(DomainStatus.PASS, 80, 2, 2)));
-        assertEquals(RejectionReason.NON_CANONICAL, unsorted.reason());
+        assertThrows(IllegalArgumentException.class, () -> snapshot(PreparationStatus.INSUFFICIENT_DATA, null, 0,
+                new DomainSnapshot("sql", 60, false, null, null, 0, 0, 2, DomainStatus.NOT_MEASURED), sql(null, 0)));
+        // Profile order is preserved (not sorted): it is part of the engine's arithmetic.
+        PreparationSnapshot profileOrder = snapshot(PreparationStatus.READY, 80, 60, sql(null, 0), critical(DomainStatus.PASS, 80, 2, 2));
+        assertEquals(List.of("sql", "concurrency"), profileOrder.domains().stream().map(DomainSnapshot::domainId).toList());
     }
 
     @Test
@@ -100,7 +143,8 @@ class PreparationSnapshotContractTest {
         assertEquals(73, snapshot.overallPercent());
         assertEquals(50, snapshot.coveragePercent());
         assertEquals(List.of("concurrency"), snapshot.blockingCriticalDomainIds());
-        assertEquals(List.of("concurrency", "sql"), snapshot.domains().stream().map(DomainSnapshot::domainId).toList());
+        assertEquals(List.of("sql", "concurrency"), snapshot.domains().stream().map(DomainSnapshot::domainId).toList(),
+                "engine (profile) order is preserved");
         assertArrayEquals(PreparationProfileFingerprint.of(profile), snapshot.profileFingerprint());
     }
 
@@ -126,10 +170,23 @@ class PreparationSnapshotContractTest {
     @Test
     void comparabilityRequiresSameProfileFingerprintAndScoringVersion() {
         PreparationSnapshot a = ProtocolFixtures.snapshot();
-        assertTrue(a.comparableWith(ProtocolFixtures.snapshot()));
+        assertTrue(a.readinessComparableWith(ProtocolFixtures.snapshot()));
         PreparationSnapshot otherScoring = new PreparationSnapshot(a.profileId(), a.profileFingerprint(), 2,
                 a.overallThresholdPercent(), a.capturedAt(), a.overallPercent(), a.coveragePercent(), a.status(), a.domains());
-        assertFalse(a.comparableWith(otherScoring));
+        assertFalse(a.scoresComparableWith(otherScoring));
+        assertFalse(a.readinessComparableWith(otherScoring));
+    }
+
+    @Test
+    void readinessVerdictsAreComparableOnlyUnderTheSameOverallThreshold() {
+        DomainSnapshot gate = critical(DomainStatus.PASS, 90, 2, 2);
+        DomainSnapshot measuredSql = sql(90, 2);
+        PreparationSnapshot lenient = new PreparationSnapshot("synthetic-backend", FP, 1, 75, CAPTURED, 90, 100,
+                PreparationStatus.READY, List.of(gate, measuredSql));
+        PreparationSnapshot strict = new PreparationSnapshot("synthetic-backend", FP, 1, 95, CAPTURED, 90, 100,
+                PreparationStatus.NOT_READY, List.of(gate, measuredSql));
+        assertTrue(lenient.scoresComparableWith(strict), "the same 90% may be compared as a raw number");
+        assertFalse(lenient.readinessComparableWith(strict), "READY at 75 and NOT_READY at 95 are different grades");
     }
 
     @Test

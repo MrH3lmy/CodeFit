@@ -59,11 +59,16 @@ Relevant facts from the repository on `main` (`519edea`):
 * Display names are not unique or verified. Contacts are pinned by `IdentityId` at pairing time. UIs
   show a short fingerprint so users can compare it out of band (format fixed in #181).
 * **Backup and restore (#181).** The encrypted identity export contains the identity private key and
-  the `(epoch, nextSequence)` counter. The candidate at-rest protection is JDK
-  `PBKDF2WithHmacSHA256` with `AES/GCM/NoPadding`, both present in the JDK 21 `SunJCE` provider
-  (verified locally). Parameters are fixed in #181. Restore **increments the epoch** before the
-  first publication, so a sequence rolled back from an older backup never collides (see protocol
-  §10).
+  its last known epoch. The candidate at-rest protection is JDK `PBKDF2WithHmacSHA256` with
+  `AES/GCM/NoPadding`, both present in the JDK 21 `SunJCE` provider (verified locally). Parameters
+  are fixed in #181.
+* **Fresh ordering after restore.** A counter kept in a backup cannot guarantee uniqueness: restoring
+  the same backup twice would reuse it. Every restore therefore starts a new **clock-derived writer
+  epoch**, and receivers order objects by `(epoch, revision)`. Rolled-back revisions are superseded,
+  and late messages from the abandoned session are stale. Sharing stays paused after a restore until
+  the user reviews consent. When the clock is behind an earlier session, or the key is lost, the
+  recovery paths are documented instead of hidden: fix the clock, or create a new identity and
+  re-pair (protocol §10.1).
 * **Single active signing writer per identity is an explicit MVP limitation.** Two concurrent
   installs sharing one identity are detected by peers as `FORKED`. They are not supported.
 * A signature means *published by this key*, never *earned honestly*. There is no anti-cheat,
@@ -176,14 +181,17 @@ continuous availability.
 
 * A **per-recipient** `CONSENT_REVISION` names the complete set of scopes shared with that contact.
   Revocation is a new revision with fewer scopes. Earlier copies can only be asked to be deleted
-  (cooperative tombstone).
+  (cooperative tombstone). A tombstone is a cutoff, so re-granting consent lets newer versions flow
+  again, while replayed pre-revocation copies stay rejected.
 * Only aggregates travel. `PROGRESS_SUMMARY` carries versioned integer metrics with sample size,
   **provenance** (verified vs. self-rated vs. legacy fallback vs. learner-reported vs. timer vs. mock
   self-score), and **timestamp basis** (exact UTC vs. legacy assumptions). `PREPARATION_SNAPSHOT`
-  preserves coverage and critical gates, and the receiver re-derives its status.
+  preserves coverage and critical gates. The receiver re-derives its overall score, coverage, and
+  status with the engine's exact arithmetic.
 * **Comparisons are local.** Each device compares cached, verified summaries. It uses explicit UTC
   windows labelled with zone and week start, partial-period cutoffs, equal-elapsed alignment,
-  minimum sample sizes, and profile-fingerprint and scoring-version compatibility (protocol §7–§9).
+  minimum sample sizes, and profile-fingerprint and scoring-version compatibility. Readiness verdicts
+  are compared only under the same overall threshold (protocol §7–§9).
   Missing data is `UNAVAILABLE` or `INSUFFICIENT_DATA`, never zero.
 * **Group challenges** (#186) are a signed manifest with an explicit member list and a GROUP
   audience. Every member ranks the same accepted record set with integer arithmetic and a fixed

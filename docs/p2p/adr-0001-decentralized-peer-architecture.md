@@ -1,9 +1,11 @@
 # ADR-0001: Fully decentralized peer profiles, comparisons, and competition
 
-* **Status:** Accepted (foundation slice #180 of epic #179)
+* **Status:** Accepted (foundation slice #180 of epic #179). The transport/invitation/discovery design in
+  §4-§6 below is implemented by #182; see [transport v1](transport-v1.md) for the concrete byte formats,
+  handshake sequence, and bounds that slice delivered.
 * **Date:** 2026-09-26
 * **Related:** [protocol v1](protocol-v1.md) · [threat model & data flows](threat-model.md) ·
-  [runtime dependency inventory](runtime-dependency-inventory.md)
+  [runtime dependency inventory](runtime-dependency-inventory.md) · [transport v1](transport-v1.md)
 
 ## Context
 

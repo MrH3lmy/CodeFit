@@ -97,7 +97,15 @@ Trust boundaries:
 
 * #180: golden fixtures, rejection matrix, acceptance policy tests, the peer-visible allow-list, and
   the no-networking, no-wiring, no-new-dependency guard (`src/test/java/com/codefit/peer/protocol`).
-* #182: handshake tests with pinned and mismatched keys; tests showing the listener is off by
-  default; an assertion that revocation and AIA are disabled.
+* #182 (delivered): real loopback mutual-TLS handshake tests with pinned and mismatched keys
+  (`TlsContextsTest`, `PeerSessionTest`), a disabled-by-default assertion and full teardown/re-bind
+  evidence (`PeerNetworkServiceTest`), bounded-connection and listener-shutdown tests
+  (`PeerListenerAndDialerTest`), malformed/oversized-frame rejection before allocation
+  (`HandshakeIoTest`), a hosted-service/hardcoded-hostname source scan
+  (`NoHiddenServiceDependencyTest`), an invitation codec conformance/rejection suite
+  (`InvitationCodecTest`), a LAN-discovery recognition/self-loopback suite
+  (`LanAnnouncementCodecTest`, `LanDiscoveryServiceTest`), and a literal two-OS-process,
+  two-database, two-key-pair, real-socket demonstration (`TwoProcessPeerDemoTest`). Revocation/AIA
+  are asserted disabled in `TlsContexts`.
 * #189: an isolated two- and three-peer run with recorded egress. It must show traffic only to
   authorized peer addresses and LAN multicast, and no DNS, NTP, HTTP, or other destination.

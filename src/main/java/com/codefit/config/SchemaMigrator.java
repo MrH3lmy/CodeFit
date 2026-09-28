@@ -47,7 +47,16 @@ final class SchemaMigrator {
                     SchemaMigrator::createPeerIdentityTables),
             new VersionedMigration(5,
                     "Add peer contacts, sharing permissions, and consent-change outbox tables (#181)",
-                    SchemaMigrator::createPeerContactTables)
+                    SchemaMigrator::createPeerContactTables),
+            new VersionedMigration(6,
+                    "Add the local transport identity table for TLS mutual authentication (#182)",
+                    SchemaMigrator::createTransportIdentityTable),
+            new VersionedMigration(7,
+                    "Add the local reachable-address cache per contact (#182)",
+                    SchemaMigrator::createContactAddressTable),
+            new VersionedMigration(8,
+                    "Add the last-observed transport-key binding per contact, for dial-time pinning (#182)",
+                    SchemaMigrator::createContactTransportBindingTable)
     );
 
     static void migrate(Connection connection) throws SQLException {
@@ -328,6 +337,80 @@ final class SchemaMigrator {
                     )
                     """);
             statement.execute("CREATE INDEX IF NOT EXISTS idx_consent_change_events_contact_id ON consent_change_events(contact_id)");
+        }
+    }
+
+    /**
+     * #182's local transport key pair and its current {@code IDENTITY_BINDING} validity window: the
+     * separate Ed25519 key used in the device's self-signed mutual-TLS certificate (ADR-0001 §1/§5),
+     * distinct from the identity key in {@code peer_identity}. A singleton table ({@code CHECK (id = 1)}),
+     * matching {@code peer_identity}'s own convention, because #182 supports exactly one active transport
+     * key per local identity at a time. The private key is sealed the same way the identity vault seals
+     * its own private key (PBKDF2 + AES/GCM, {@code com.codefit.peer.identity.crypto.PassphraseCipher}),
+     * under the same vault passphrase, so enabling networking and unlocking the identity are one action.
+     */
+    private static void createTransportIdentityTable(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS transport_identity (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        transport_public_key BLOB NOT NULL,
+                        private_key_ciphertext BLOB NOT NULL,
+                        private_key_salt BLOB NOT NULL,
+                        private_key_iterations INTEGER NOT NULL,
+                        private_key_nonce BLOB NOT NULL,
+                        binding_valid_from TEXT NOT NULL,
+                        binding_valid_until TEXT NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+        }
+    }
+
+    /**
+     * #182's local cache of reachable addresses per contact: seeded from an accepted invitation's
+     * IP-literal addresses, extendable with an explicit manual address or an opt-in LAN discovery hit
+     * ("Reconnect from a local contact/address cache", #182). {@code UNIQUE(contact_id, host, port)}
+     * turns a repeated sighting of the same address into an update of {@code last_seen_at} rather than a
+     * duplicate row; {@code ON DELETE CASCADE} matches every other contact-scoped table so removing a
+     * contact removes its cached addresses too.
+     */
+    private static void createContactAddressTable(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS contact_addresses (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+                        host TEXT NOT NULL,
+                        port INTEGER NOT NULL,
+                        source TEXT NOT NULL,
+                        added_at TEXT NOT NULL,
+                        last_seen_at TEXT NOT NULL,
+                        UNIQUE(contact_id, host, port)
+                    )
+                    """);
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_contact_addresses_contact_id ON contact_addresses(contact_id)");
+        }
+    }
+
+    /**
+     * #182's last-observed transport key and {@code IDENTITY_BINDING} validity window per contact: what
+     * a future dial pins against (protocol/ADR "pin the expected transport key"). Seeded from an accepted
+     * invitation's declared binding, and refreshed whenever a live connection authenticates that contact
+     * under a (possibly rotated) transport key. A singleton row per contact ({@code PRIMARY KEY
+     * contact_id}), since only the most recent observation is ever useful for pinning the next dial.
+     */
+    private static void createContactTransportBindingTable(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS contact_transport_bindings (
+                        contact_id INTEGER PRIMARY KEY REFERENCES contacts(id) ON DELETE CASCADE,
+                        transport_public_key BLOB NOT NULL,
+                        valid_from TEXT NOT NULL,
+                        valid_until TEXT NOT NULL,
+                        observed_at TEXT NOT NULL
+                    )
+                    """);
         }
     }
 

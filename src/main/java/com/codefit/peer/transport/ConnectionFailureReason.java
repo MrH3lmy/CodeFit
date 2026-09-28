@@ -1,0 +1,27 @@
+package com.codefit.peer.transport;
+
+/** Why a connection attempt did not (or no longer) produce an authenticated session. */
+public enum ConnectionFailureReason {
+    NONE,
+    CONNECT_TIMEOUT,
+    CONNECTION_REFUSED,
+    NETWORK_UNREACHABLE,
+    TLS_HANDSHAKE_FAILED,
+    WRONG_PIN,
+    UNSUPPORTED_VERSION,
+    MALFORMED_FRAME,
+    OVERSIZED_FRAME,
+    HANDSHAKE_TIMEOUT,
+    UNKNOWN_IDENTITY,
+    NOT_PAIRED,
+    IDENTITY_MISMATCH,
+    BINDING_KEY_MISMATCH,
+    BINDING_NOT_YET_VALID,
+    BINDING_EXPIRED,
+    ENVELOPE_REJECTED,
+    CANCELLED,
+    LISTENER_NOT_RUNNING,
+    CONNECTION_LIMIT_REACHED,
+    NETWORKING_DISABLED,
+    NO_KNOWN_ADDRESS
+}

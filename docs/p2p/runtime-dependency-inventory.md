@@ -9,10 +9,10 @@ evidence. Related: [ADR-0001](adr-0001-decentralized-peer-architecture.md) ·
 
 | Endpoint | Allowed? | Condition | Introduced by |
 |---|---|---|---|
-| Any network endpoint | **No** (current state) | #180 adds no listener and no egress (`NoNetworkingContractTest`) | — |
-| An explicitly invited or paired peer's `IP:port` (TCP, TLS 1.3) | Yes, later | The user accepted the invitation or pairing. IP literals only | #182 |
-| Inbound TCP listener on a user-chosen port | Yes, later | **Off by default**; enabled only when the user turns sharing on | #182 |
-| Link-local multicast for LAN discovery | Yes, later | **Opt-in**, off by default; announcements recognizable only by paired peers | #182 |
+| Any network endpoint | **No** by default | Nothing opens until `NetworkingService.enableNetworking` is called; `NoHiddenServiceDependencyTest`/`PeerNetworkServiceTest.isDisabledByDefault` pin this | #182 |
+| An explicitly invited or paired peer's `IP:port` (TCP, TLS 1.3) | **Yes, implemented** | The user accepted the invitation or pairing, and the dial is pinned to that peer's last-observed transport key (`ObservedTransportBinding`). IP literals only, never a hostname (`PeerAddress`) | #182 |
+| Inbound TCP listener on a user-chosen port (0 = OS-assigned ephemeral) | **Yes, implemented** | **Off by default**; started only by `NetworkingService.enableNetworking`, stopped by `disableNetworking`/`close` | #182 |
+| Link-local (administratively-scoped, RFC 2365) multicast `239.192.42.99:52735` for LAN discovery | **Yes, implemented** | **Opt-in** (`NetworkingService.enableLanDiscovery`), off by default; announcements carry no cleartext identity and are recognizable only by a peer holding the pairwise recognition key (`LanAnnouncementCodec`) | #182 |
 | The user's own router via UPnP-IGD / NAT-PMP | Maybe, later | Opt-in only. It is the user's device, not a service | future, if proposed |
 | A consenting participant peer acting as forwarder | Yes, later | Opt-in on both sides, with quotas, retention, and recipient allow-list | #188 |
 
@@ -49,7 +49,13 @@ evidence. Related: [ADR-0001](adr-0001-decentralized-peer-architecture.md) ·
 
 `NoNetworkingContractTest.noRuntimeDependencyWasAddedForThisSlice` asserts that the POM still
 declares exactly these dependencies plus JUnit, and none of libp2p, Netty, Bouncy Castle, Tink,
-IPFS, WebRTC, ice4j, or JmDNS.
+IPFS, WebRTC, ice4j, or JmDNS. **Still true after #182**: the transport, invitation, and LAN discovery
+code (`com.codefit.peer.transport`, `com.codefit.peer.invitation`, `com.codefit.peer.discovery`) adds
+zero new Maven dependencies — TLS is `javax.net.ssl`, framing/certificates use `java.io`/`java.security`,
+and LAN discovery uses `java.net.MulticastSocket`/`javax.crypto.Mac`, all `java.base`/`SunJCE`/`SunJSSE`.
+`NoHiddenServiceDependencyTest` additionally scans the #182 packages for hosted-service patterns
+(STUN/TURN, bootstrap lists, signaling/rendezvous, IP-check services, telemetry) and hardcoded external
+hostnames.
 
 ## 3. Cryptography and transport: selection record
 
@@ -59,9 +65,10 @@ Sources were checked on 2026-09-26.
 |---|---|---|---|
 | Signatures (identity, envelopes, bindings) | JDK `Signature.getInstance("Ed25519")` | **Used in #180** | Java SE 21 Standard Algorithm Names; RFC 8032 §7.1 vectors 1–3 reproduced by `Ed25519ConformanceTest` |
 | Hashing (ids, fingerprints) | JDK SHA-256 | **Used in #180** | Required on every Java SE platform |
-| Transport security | JDK JSSE `TLSv1.3`, mutual auth, Ed25519 self-signed certificates, key-pinning trust manager | **Selected for #182** | Standard Names lists `TLSv1.3`, the `ed25519` signature scheme, and the `x25519` group. A local loopback probe on OpenJDK 21.0.10 negotiated TLSv1.3 / `TLS_AES_256_GCM_SHA384` with Ed25519 certificates on both sides and rejected a wrong pin |
-| Self-signed certificate creation | small in-repo DER template **or** `org.bouncycastle:bcpkix-jdk18on` 1.86 | **Decide in #182**; zero-dependency preferred | The JDK has no public X.509 builder. BC 1.86 is the latest on Maven Central (metadata 2026-09-11), pure Java, MIT-style licence |
-| Key encryption at rest (#181) | JDK `PBKDF2WithHmacSHA256` + `AES/GCM/NoPadding` | **Candidate for #181** | Both resolve from `SunJCE` on 21.0.10. Parameters fixed in #181 |
+| Transport security | JDK JSSE `TLSv1.3`, mutual auth, Ed25519 self-signed certificates, key-pinning trust manager | **Used in #182** (`TlsContexts`, `PinnedTransportTrustManager`, `StructuralTransportTrustManager`) | `TlsContextsTest`/`PeerSessionTest` complete real loopback mutual TLS 1.3 handshakes (`TLS_AES_256_GCM_SHA384`) and reject a wrong pin outright |
+| Self-signed certificate creation | small in-repo DER template (zero-dependency option) | **Used in #182** (`Der`, `SelfSignedCertificateFactory`) — Bouncy Castle was not needed | `SelfSignedCertificateFactoryTest` parses the generated certificate with the JDK's own `CertificateFactory`, verifies its self-signature, and enforces its validity window |
+| Key encryption at rest (#181) | JDK `PBKDF2WithHmacSHA256` + `AES/GCM/NoPadding` | **Used in #181 and #182** | #182's transport key reuses `PassphraseCipher` unchanged (`TransportKeyService`) rather than adding a second at-rest scheme |
+| LAN discovery recognition tags | JDK `Mac.getInstance("HmacSHA256")` | **Used in #182** (`LanAnnouncementCodec`) | `SunJCE`-provided HMAC, required on every Java SE platform; keyed by a pairwise value derived from both peers' already-known identity keys, never a value exchanged over the network |
 | Sealed forwarding (#188) | HPKE (RFC 9180) via Tink `com.google.crypto.tink:tink` 1.23.0 (Apache-2.0) or Bouncy Castle 1.86 | **Decide in #188** | JDK 21 has no HPKE and no public HKDF. The KDF API is final only in JDK 25 (JEP 510), after preview in JDK 24 (JEP 478). Tink's optional KMS integrations are separate modules and must not be added |
 | P2P framework | jvm-libp2p 1.3.7 | **Not selected for the MVP**; possible #188 feasibility spike | Kotlin, MIT/Apache-2.0, JDK 11+. Published on Cloudsmith and JitPack, not Maven Central. Pulls Netty 4.2, protobuf, Bouncy Castle, `noise-java`, and native QUIC and BoringSSL binaries for five targets. Several components are beta. DHT, relay, and identify defaults would need auditing and disabling |
 | NAT traversal via public infrastructure (STUN/TURN, WebRTC, Tor, I2P, IPFS/DHT) | — | **Rejected** | Each needs operator-run servers, directory authorities, or bootstrap lists |

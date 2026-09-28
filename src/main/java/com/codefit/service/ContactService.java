@@ -1,18 +1,24 @@
 package com.codefit.service;
 
 import com.codefit.peer.identity.Contact;
+import com.codefit.peer.identity.ContactAddress;
+import com.codefit.peer.identity.ContactAddressSource;
 import com.codefit.peer.identity.ContactNotFoundException;
 import com.codefit.peer.identity.ContactPermission;
 import com.codefit.peer.identity.ConsentChangeReason;
 import com.codefit.peer.identity.IdentityFingerprint;
 import com.codefit.peer.identity.IllegalContactStateException;
+import com.codefit.peer.identity.ObservedTransportBinding;
 import com.codefit.peer.identity.PermissionGrant;
 import com.codefit.peer.identity.TrustState;
 import com.codefit.peer.protocol.IdentityKey;
 import com.codefit.peer.protocol.SharingScope;
+import com.codefit.peer.transport.PeerAddress;
 import com.codefit.repository.ConsentChangeEventRepository;
+import com.codefit.repository.ContactAddressRepository;
 import com.codefit.repository.ContactPermissionRepository;
 import com.codefit.repository.ContactRepository;
+import com.codefit.repository.ContactTransportBindingRepository;
 import com.codefit.repository.PeerIdentityRepository;
 
 import java.sql.Connection;
@@ -53,18 +59,29 @@ public class ContactService {
     private final ContactPermissionRepository permissionRepository;
     private final ConsentChangeEventRepository outboxRepository;
     private final PeerIdentityRepository identityRepository;
+    private final ContactAddressRepository addressRepository;
+    private final ContactTransportBindingRepository transportBindingRepository;
 
     public ContactService() {
         this(new ContactRepository(), new ContactPermissionRepository(), new ConsentChangeEventRepository(),
-                new PeerIdentityRepository());
+                new PeerIdentityRepository(), new ContactAddressRepository(), new ContactTransportBindingRepository());
     }
 
     ContactService(ContactRepository contactRepository, ContactPermissionRepository permissionRepository,
                     ConsentChangeEventRepository outboxRepository, PeerIdentityRepository identityRepository) {
+        this(contactRepository, permissionRepository, outboxRepository, identityRepository,
+                new ContactAddressRepository(), new ContactTransportBindingRepository());
+    }
+
+    ContactService(ContactRepository contactRepository, ContactPermissionRepository permissionRepository,
+                    ConsentChangeEventRepository outboxRepository, PeerIdentityRepository identityRepository,
+                    ContactAddressRepository addressRepository, ContactTransportBindingRepository transportBindingRepository) {
         this.contactRepository = contactRepository;
         this.permissionRepository = permissionRepository;
         this.outboxRepository = outboxRepository;
         this.identityRepository = identityRepository;
+        this.addressRepository = addressRepository;
+        this.transportBindingRepository = transportBindingRepository;
     }
 
     public List<Contact> listContacts() {
@@ -274,6 +291,49 @@ public class ContactService {
         ContactPermission permission = permissionRepository.find(contactId).orElseThrow();
         Integer days = permission.historicalWindowDays();
         return Optional.of(days == null ? permission.updatedAt() : now.minus(java.time.Duration.ofDays(days)));
+    }
+
+    /**
+     * The local reachable-address cache for a contact (#182: "Reconnect from a local contact/address
+     * cache"), most-recently-seen first. Never itself a trust decision: dialing any of these still
+     * requires the full mutual-TLS + {@code IDENTITY_BINDING} handshake to authenticate whoever answers.
+     */
+    public List<ContactAddress> knownAddresses(long contactId) {
+        requireContact(contactId);
+        return addressRepository.findByContactId(contactId);
+    }
+
+    /**
+     * Records one sighting of {@code address} for {@code contactId} (from an accepted invitation, a
+     * manual entry, or an opt-in LAN discovery match) and enforces the bounded cache size, evicting the
+     * least-recently-seen address first. A repeat sighting of an address already cached only refreshes
+     * its recency; it never grows the cache.
+     */
+    public void recordAddressSighting(long contactId, PeerAddress address, ContactAddressSource source, Instant now) {
+        requireContact(contactId);
+        addressRepository.recordSighting(contactId, address, source, now);
+        addressRepository.evictOldestBeyond(contactId, ContactAddress.MAX_ADDRESSES_PER_CONTACT);
+    }
+
+    /**
+     * The last transport key/{@code IDENTITY_BINDING} validity window observed for this contact, if any
+     * — what {@code NetworkingService} pins a dial against (#182: "Pin the expected transport key and
+     * validate its identity binding and validity"). Never itself sufficient to authenticate a connection.
+     */
+    public Optional<ObservedTransportBinding> lastObservedTransportBinding(long contactId) {
+        requireContact(contactId);
+        return transportBindingRepository.find(contactId);
+    }
+
+    /**
+     * Records the transport key and validity window most recently proven for this contact, either from
+     * an accepted invitation's declared binding or from a live, authenticated connection's
+     * {@code IDENTITY_BINDING}. Always the single latest observation; an older one is simply overwritten.
+     */
+    public void recordObservedTransportBinding(long contactId, IdentityKey transportKey, Instant validFrom,
+                                                Instant validUntil, Instant now) {
+        requireContact(contactId);
+        transportBindingRepository.save(new ObservedTransportBinding(contactId, transportKey, validFrom, validUntil, now));
     }
 
     /**

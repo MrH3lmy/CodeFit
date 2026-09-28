@@ -27,6 +27,7 @@ public final class PeerIdentityTestTables {
             statement.execute("DELETE FROM identity_key_rotations");
             statement.execute("DELETE FROM social_profile");
             statement.execute("DELETE FROM peer_identity");
+            statement.execute("DELETE FROM transport_identity");
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to reset peer identity test tables", exception);
         }

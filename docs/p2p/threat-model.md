@@ -97,7 +97,34 @@ Trust boundaries:
 
 * #180: golden fixtures, rejection matrix, acceptance policy tests, the peer-visible allow-list, and
   the no-networking, no-wiring, no-new-dependency guard (`src/test/java/com/codefit/peer/protocol`).
-* #182: handshake tests with pinned and mismatched keys; tests showing the listener is off by
-  default; an assertion that revocation and AIA are disabled.
+* #182 (delivered): real loopback mutual-TLS handshake tests with pinned and mismatched keys
+  (`TlsContextsTest`, `PeerSessionTest`), a disabled-by-default assertion and full teardown/re-bind
+  evidence (`PeerNetworkServiceTest`), bounded-connection and listener-shutdown tests
+  (`PeerListenerAndDialerTest`), malformed/oversized-frame rejection before allocation
+  (`HandshakeIoTest`), a hosted-service/hardcoded-hostname source scan
+  (`NoHiddenServiceDependencyTest`), an invitation codec conformance/rejection suite
+  (`InvitationCodecTest`), a LAN-discovery recognition/self-loopback suite
+  (`LanAnnouncementCodecTest`, `LanDiscoveryServiceTest`), and a literal two-OS-process,
+  two-database, two-key-pair, real-socket demonstration (`TwoProcessPeerDemoTest`, including a case
+  that connects through a non-loopback interface address taken from the invitation). Revocation/AIA
+  are asserted disabled in `TlsContexts`. Reachability and key lifecycle (transport-v1 §8-§9):
+  `PeerListenerLanReachabilityTest` (wildcard/specific/loopback-only binds through a real LAN address),
+  `LanDiscoveryInterfaceSelectionTest`, `TransportRolloverTest` (rollover proof, stale/unauthorized
+  replacement keys, nothing disclosed to an unproven peer, double rotation refused),
+  `NetworkingServiceKeyLifecycleTest` (persisted key = live key = advertised key = emitted binding across
+  invitation creation, renewal-window rotation, forced rotation, restart, and pin persistence), and
+  `TransportKeyRecoveryTest` (transport-v1 §9.1: the double-rotation recovery itself — refused rollover
+  recovered through an explicit, re-verified fresh invitation and a successful reconnect; staleness/replay
+  ignored without rolling the pin back; an invitation from a different identity refused; a blocked/removed
+  contact refused until explicitly re-paired; a fresh invitation for an already-known identity refused
+  without creating a duplicate; the same method proven direction-agnostic across two fully independent
+  `NetworkingService`/database pairs; and — since `SignedInvitation`'s own public constructor checks only
+  signature length — that `recoverContactTransportKey`/`registerPendingContactFromInvitation` independently
+  verify a `SignedInvitation`'s signature themselves via `InvitationCodec.verify` rather than trusting a
+  caller's sequencing: a genuine identity key paired with a random signature is rejected with the pin,
+  contact state, and permissions untouched, and a genuinely signed invitation with its transport key or
+  binding window subsequently altered under the original signature is rejected before those tampered values
+  can reach the pin-monotonicity check). Residual risks introduced by listening on all interfaces and by
+  rollover are listed in transport-v1 §8 and §9.
 * #189: an isolated two- and three-peer run with recorded egress. It must show traffic only to
   authorized peer addresses and LAN multicast, and no DNS, NTP, HTTP, or other destination.

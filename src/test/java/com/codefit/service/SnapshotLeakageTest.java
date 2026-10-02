@@ -160,8 +160,7 @@ class SnapshotLeakageTest {
                 new PermissionGrant(List.of(SharingScope.DAILY_SUMMARY), null, null, false), BASE);
 
         ComparisonWindow window = ComparisonWindow.day(day, UTC);
-        Instant now = day.atTime(23, 0).atZone(UTC).toInstant();
-        SignedEnvelope envelope = publicationService.publishProgressSummary(contact.id(), identity, 1, window, now);
+        SignedEnvelope envelope = publicationService.publishProgressSummary(contact.id(), identity, 1, window);
 
         String wire = rawBytesAsLatin1(EnvelopeCodec.encodeFrame(envelope));
 
@@ -183,8 +182,7 @@ class SnapshotLeakageTest {
                 new PermissionGrant(List.of(SharingScope.PREPARATION_SNAPSHOT), null, null, false), BASE);
         String profileId = new InterviewProfileService().getRevolutJavaProfile().getId();
 
-        SignedEnvelope envelope = publicationService.publishPreparationSnapshot(contact.id(), identity, 1, profileId,
-                BASE.plusSeconds(100));
+        SignedEnvelope envelope = publicationService.publishPreparationSnapshot(contact.id(), identity, 1, profileId);
         String wire = rawBytesAsLatin1(EnvelopeCodec.encodeFrame(envelope));
 
         assertTrue(wire.contains(profileId), "sanity check: the profile id itself is legitimately on the wire");

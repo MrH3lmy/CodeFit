@@ -22,10 +22,10 @@ import java.util.Objects;
  * same namespace as a future #184 "received/cached peer snapshot" store — see
  * {@code com.codefit.repository.LocalProgressSnapshotRepository}.
  *
- * @param revision   strictly increasing per logical window (same {@code window} identity); a later
- *                    capture of the same window is a correction that replaces this one, never a second
- *                    additive total. Derived from {@code cutoff}, matching the established pattern in
- *                    {@code com.codefit.peer.transport} rather than a separately persisted counter.
+ * @param revision   strictly increasing per logical window (same {@code window} identity), assigned by
+ *                    {@code LocalProgressSnapshotRepository} itself (1, then existing + 1 on a genuine
+ *                    change) — never derived from a wall-clock timestamp, since two real, distinct
+ *                    captures of the same window can land within the same wall-clock second.
  * @param capturedAt  when this device ran the capture; always {@code >= cutoff}. Local-only metadata:
  *                    not part of the signed {@link ProgressSummary} body (the envelope's own
  *                    {@code createdAt} plays that role on the wire).
@@ -47,11 +47,6 @@ public record LocalProgressSnapshot(ComparisonWindow window, Instant cutoff, lon
         if (metrics.isEmpty()) {
             throw new IllegalArgumentException("A progress snapshot needs at least one metric.");
         }
-    }
-
-    /** The revision {@link #capture} derives for a given {@code cutoff}: whole epoch seconds, clamped to the wire range. */
-    public static long revisionFor(Instant cutoff) {
-        return Math.min(Math.max(cutoff.getEpochSecond(), 1L), 0xFFFF_FFFFL);
     }
 
     /** The wire body: metrics sorted strictly ascending by {@code (metricId, metricVersion)}, as {@link ProgressSummary} requires. */

@@ -21,27 +21,44 @@ import java.util.Optional;
 
 /**
  * Persists #183's own local, dated {@link LocalPreparationCheckpoint} captures. At most one row per
- * {@code (profile_id, checkpoint_date)} UTC day; a same-day re-capture only ever {@link #save replaces}
- * it when strictly newer, a different day is a new permanent historical row (never derived from
- * today's readiness - see {@code PreparationSnapshotCaptureService}). Namespaced apart from any future
- * #184 received/cached peer snapshot store.
+ * {@code (profile_id, checkpoint_date)} UTC day; a same-day re-capture either {@link #save replaces} it
+ * (the readiness content genuinely changed) or leaves it untouched (an idempotent resend of the
+ * identical content), and a different day is a new permanent historical row. Namespaced apart from any
+ * future #184 received/cached peer snapshot store.
+ *
+ * <p>{@code revision} is assigned here, not by the caller, exactly like
+ * {@code LocalProgressSnapshotRepository}: the first capture for a {@code (profileId, checkpointDateUtc)}
+ * pair is revision 1, and a later same-day capture whose content actually differs is
+ * {@code existingRevision + 1} — never derived from {@code capturedAt}'s timestamp, which could collide
+ * across two real, distinct same-day captures made within the same wall-clock second. This LOCAL,
+ * per-day revision is deliberately a different counter from the WIRE preparation-snapshot object's own
+ * revision (see {@code PreparationSnapshotWireStateRepository}): the wire object is keyed only by
+ * profile (an evolving "latest readiness" stream spanning many days), so reusing this per-day revision
+ * as the wire revision would let two different days each restart at revision 1 and collide on the wire.
  */
 public class LocalPreparationCheckpointRepository {
 
     /** What {@link #save} did with a captured checkpoint. */
     public enum SaveOutcome {
+        /** No checkpoint existed yet for this (profile, day); this one is now recorded as revision 1. */
         RECORDED_FIRST,
+        /** A checkpoint already existed for this (profile, day) with different content; it was replaced. */
         REPLACED,
-        IGNORED_STALE
+        /** A checkpoint already existed for this (profile, day) with identical content; nothing changed. */
+        UNCHANGED
     }
 
-    public SaveOutcome save(LocalPreparationCheckpoint checkpoint) {
+    /** The outcome of {@link #save}, and the checkpoint as actually persisted (with its real, assigned revision). */
+    public record SaveResult(SaveOutcome outcome, LocalPreparationCheckpoint checkpoint) {
+    }
+
+    public SaveResult save(String profileId, LocalDate checkpointDateUtc, PreparationSnapshot snapshot) {
         try (Connection connection = DatabaseConfig.getConnection()) {
             connection.setAutoCommit(false);
             try {
-                SaveOutcome outcome = save(connection, checkpoint);
+                SaveResult result = save(connection, profileId, checkpointDateUtc, snapshot);
                 connection.commit();
-                return outcome;
+                return result;
             } catch (SQLException | RuntimeException exception) {
                 connection.rollback();
                 throw exception;
@@ -53,18 +70,36 @@ public class LocalPreparationCheckpointRepository {
         }
     }
 
-    private SaveOutcome save(Connection connection, LocalPreparationCheckpoint checkpoint) throws SQLException {
-        Optional<Long> existingId = findRowId(connection, checkpoint.profileId(), checkpoint.checkpointDateUtc());
+    private SaveResult save(Connection connection, String profileId, LocalDate checkpointDateUtc, PreparationSnapshot snapshot)
+            throws SQLException {
+        Optional<Long> existingId = findRowId(connection, profileId, checkpointDateUtc);
         if (existingId.isPresent()) {
-            long existingRevision = findRevision(connection, existingId.get());
-            if (checkpoint.revision() <= existingRevision) {
-                return SaveOutcome.IGNORED_STALE;
+            LocalPreparationCheckpoint existing = load(connection, existingId.get(), profileId, checkpointDateUtc);
+            if (sameContent(existing.snapshot(), snapshot)) {
+                return new SaveResult(SaveOutcome.UNCHANGED, existing);
             }
+            long newRevision = existing.revision() + 1;
             deleteRow(connection, existingId.get());
+            LocalPreparationCheckpoint persisted = new LocalPreparationCheckpoint(profileId, checkpointDateUtc, newRevision, snapshot);
+            long id = insertCheckpointRow(connection, persisted);
+            insertDomains(connection, id, persisted.snapshot().domains());
+            return new SaveResult(SaveOutcome.REPLACED, persisted);
         }
-        long id = insertCheckpointRow(connection, checkpoint);
-        insertDomains(connection, id, checkpoint.snapshot().domains());
-        return existingId.isPresent() ? SaveOutcome.REPLACED : SaveOutcome.RECORDED_FIRST;
+        LocalPreparationCheckpoint persisted = new LocalPreparationCheckpoint(profileId, checkpointDateUtc, 1, snapshot);
+        long id = insertCheckpointRow(connection, persisted);
+        insertDomains(connection, id, persisted.snapshot().domains());
+        return new SaveResult(SaveOutcome.RECORDED_FIRST, persisted);
+    }
+
+    /** Content equality ignoring {@code capturedAt}, which always differs between two real captures. */
+    private static boolean sameContent(PreparationSnapshot a, PreparationSnapshot b) {
+        return a.scoringVersion() == b.scoringVersion()
+                && a.overallThresholdPercent() == b.overallThresholdPercent()
+                && java.util.Arrays.equals(a.profileFingerprint(), b.profileFingerprint())
+                && java.util.Objects.equals(a.overallPercent(), b.overallPercent())
+                && a.coveragePercent() == b.coveragePercent()
+                && a.status() == b.status()
+                && a.domains().equals(b.domains());
     }
 
     /** The checkpoint for this exact UTC day, if one was ever captured - never reconstructed from another day. */
@@ -109,17 +144,6 @@ public class LocalPreparationCheckpointRepository {
             statement.setString(2, checkpointDateUtc.toString());
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? Optional.of(resultSet.getLong("id")) : Optional.empty();
-            }
-        }
-    }
-
-    private long findRevision(Connection connection, long id) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT revision FROM local_preparation_checkpoints WHERE id = ?")) {
-            statement.setLong(1, id);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                resultSet.next();
-                return resultSet.getLong("revision");
             }
         }
     }

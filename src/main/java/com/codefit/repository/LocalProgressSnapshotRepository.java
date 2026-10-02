@@ -17,6 +17,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,30 +25,44 @@ import java.util.Optional;
  * Persists #183's own local, dated {@link LocalProgressSnapshot} captures — never a received peer
  * snapshot (that is a future #184 concern, in its own, differently named tables). One row per logical
  * window ({@code UNIQUE(window_kind, local_start_epoch_day, zone_id, week_start)}); a later capture of
- * the same window only ever {@link #replace}s it when strictly newer (see {@link #save}), matching the
- * forward-only pattern {@code ContactService.recordAuthenticatedTransportBinding} already established
- * for #182's transport-key pin. Metrics live in a child table so each stays individually typed and
- * queryable rather than packed into a blob.
+ * the same window either {@link #save replaces} it (the body genuinely changed) or leaves it untouched
+ * (an idempotent resend of the identical body). Metrics live in a child table so each stays
+ * individually typed and queryable rather than packed into a blob.
+ *
+ * <p>{@code revision} is assigned here, not by the caller: the first capture of a window is always
+ * revision 1, and each later capture whose body actually differs is {@code existingRevision + 1}. This
+ * is deliberately <em>not</em> derived from any timestamp (an earlier version derived it from
+ * {@code cutoff}'s epoch second, which let two real, distinct captures of the same window within the
+ * same wall-clock second collide on one revision number — a signed update built from the second capture
+ * could then be rejected by a receiver as a stale revision of the first).
  */
 public class LocalProgressSnapshotRepository {
 
     /** What {@link #save} did with a captured snapshot. */
     public enum SaveOutcome {
-        /** No snapshot existed yet for this window; this one is now recorded. */
+        /** No snapshot existed yet for this window; this one is now recorded as revision 1. */
         RECORDED_FIRST,
-        /** A snapshot already existed for this window with a strictly older revision; it was replaced. */
+        /** A snapshot already existed for this window with a different body; it was replaced. */
         REPLACED,
-        /** A snapshot already existed with a revision at or after this one; nothing changed. */
-        IGNORED_STALE
+        /** A snapshot already existed for this window with the identical body; nothing changed. */
+        UNCHANGED
     }
 
-    public SaveOutcome save(LocalProgressSnapshot snapshot) {
+    /** The outcome of {@link #save}, and the snapshot as actually persisted (with its real, assigned revision). */
+    public record SaveResult(SaveOutcome outcome, LocalProgressSnapshot snapshot) {
+    }
+
+    /**
+     * Computes and assigns the revision for a freshly captured {@code (window, cutoff, metrics)} and
+     * persists it. The caller supplies no revision at all — only this repository ever decides one.
+     */
+    public SaveResult save(ComparisonWindow window, Instant cutoff, Instant capturedAt, List<MetricValue> metrics) {
         try (Connection connection = DatabaseConfig.getConnection()) {
             connection.setAutoCommit(false);
             try {
-                SaveOutcome outcome = save(connection, snapshot);
+                SaveResult result = save(connection, window, cutoff, capturedAt, metrics);
                 connection.commit();
-                return outcome;
+                return result;
             } catch (SQLException | RuntimeException exception) {
                 connection.rollback();
                 throw exception;
@@ -59,19 +74,35 @@ public class LocalProgressSnapshotRepository {
         }
     }
 
-    private SaveOutcome save(Connection connection, LocalProgressSnapshot snapshot) throws SQLException {
-        ComparisonWindow window = snapshot.window();
+    private SaveResult save(Connection connection, ComparisonWindow window, Instant cutoff, Instant capturedAt,
+                             List<MetricValue> metrics) throws SQLException {
         Optional<Long> existingId = findRowId(connection, window);
         if (existingId.isPresent()) {
-            long existingRevision = findRevision(connection, existingId.get());
-            if (snapshot.revision() <= existingRevision) {
-                return SaveOutcome.IGNORED_STALE;
+            LocalProgressSnapshot existing = load(connection, existingId.get(), window);
+            if (existing.cutoff().equals(cutoff) && sameMetrics(existing.metrics(), metrics)) {
+                return new SaveResult(SaveOutcome.UNCHANGED, existing);
             }
+            long newRevision = existing.revision() + 1;
             deleteRow(connection, existingId.get());
+            LocalProgressSnapshot persisted = new LocalProgressSnapshot(window, cutoff, newRevision, capturedAt, metrics);
+            long id = insertSnapshotRow(connection, persisted);
+            insertMetrics(connection, id, persisted.metrics());
+            return new SaveResult(SaveOutcome.REPLACED, persisted);
         }
-        long id = insertSnapshotRow(connection, snapshot);
-        insertMetrics(connection, id, snapshot.metrics());
-        return existingId.isPresent() ? SaveOutcome.REPLACED : SaveOutcome.RECORDED_FIRST;
+        LocalProgressSnapshot persisted = new LocalProgressSnapshot(window, cutoff, 1, capturedAt, metrics);
+        long id = insertSnapshotRow(connection, persisted);
+        insertMetrics(connection, id, persisted.metrics());
+        return new SaveResult(SaveOutcome.RECORDED_FIRST, persisted);
+    }
+
+    private static boolean sameMetrics(List<MetricValue> a, List<MetricValue> b) {
+        return canonicalOrder(a).equals(canonicalOrder(b));
+    }
+
+    private static List<MetricValue> canonicalOrder(List<MetricValue> metrics) {
+        List<MetricValue> sorted = new ArrayList<>(metrics);
+        sorted.sort(Comparator.comparing(MetricValue::metricId).thenComparingInt(MetricValue::metricVersion));
+        return sorted;
     }
 
     public Optional<LocalProgressSnapshot> findByWindow(ComparisonWindow window) {
@@ -98,17 +129,6 @@ public class LocalProgressSnapshotRepository {
             setNullableInt(statement, 5, weekStart);
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? Optional.of(resultSet.getLong("id")) : Optional.empty();
-            }
-        }
-    }
-
-    private long findRevision(Connection connection, long id) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT revision FROM local_progress_snapshots WHERE id = ?")) {
-            statement.setLong(1, id);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                resultSet.next();
-                return resultSet.getLong("revision");
             }
         }
     }

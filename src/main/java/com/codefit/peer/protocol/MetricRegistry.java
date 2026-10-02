@@ -27,7 +27,12 @@ public final class MetricRegistry {
                     "objective review_history rows with a non-blank validation_result; excludes the legacy self-rating fallback"),
             new MetricDefinition("review.self_rated_success_rate", 1, MetricUnit.BASIS_POINTS, 10,
                     Set.of(MetricProvenance.SELF_RATED, MetricProvenance.LEGACY_SELF_RATING_FALLBACK),
-                    "subjective reviews plus legacy objective rows without validation_result; GOOD/EASY count as success"),
+                    "GOOD/EASY counts as success; a single instance's samples are always genuinely one "
+                            + "provenance or the other, never pooled (#183 review fix: the legacy fallback evidence "
+                            + "also has its own dedicated metric, review.legacy_rating_fallback_success_rate, so a "
+                            + "caller choosing to keep the two separate per window never needs to use this id for "
+                            + "legacy-fallback samples at all - this definition stays permissive at the registry "
+                            + "level only for the rare case upstream evidence genuinely is self-rated by either path)"),
             new MetricDefinition("problem.attempts", 1, MetricUnit.COUNT, 0,
                     Set.of(MetricProvenance.LOCAL_RECORD),
                     "problem_attempts rows with submitted_at in window"),
@@ -48,7 +53,12 @@ public final class MetricRegistry {
             new MetricDefinition("review.hint_free_rate", 1, MetricUnit.BASIS_POINTS, 10,
                     Set.of(MetricProvenance.LOCAL_RECORD),
                     "#183: share of review_history rows (boss_battle = 0) with hint_used = 0 in window "
-                            + "(independence signal; hint_used is recorded directly by the app, not self-reported)"));
+                            + "(independence signal; hint_used is recorded directly by the app, not self-reported)"),
+            new MetricDefinition("review.legacy_rating_fallback_success_rate", 1, MetricUnit.BASIS_POINTS, 10,
+                    Set.of(MetricProvenance.LEGACY_SELF_RATING_FALLBACK),
+                    "#183 review fix: legacy non-subjective review_history rows with no validation_result, graded "
+                            + "by rating (GOOD/EASY = success); kept separate from review.self_rated_success_rate so "
+                            + "neither metric's declared provenance describes samples it doesn't own"));
 
     private static final Map<String, MetricDefinition> BY_KEY = V1.stream()
             .collect(Collectors.toUnmodifiableMap(d -> key(d.metricId(), d.version()), Function.identity()));

@@ -19,6 +19,7 @@ import com.codefit.repository.ReviewHistoryRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -59,36 +60,43 @@ public class ProgressSnapshotService {
     private final ProblemProgressRepository problemProgressRepository;
     private final InterviewMockRepository interviewMockRepository;
     private final LocalProgressSnapshotRepository snapshotRepository;
+    private final Clock clock;
 
     public ProgressSnapshotService() {
         this(new ReviewHistoryRepository(), new ProblemAttemptRepository(), new ProblemProgressRepository(),
-                new InterviewMockRepository(), new LocalProgressSnapshotRepository());
+                new InterviewMockRepository(), new LocalProgressSnapshotRepository(), Clock.systemUTC());
     }
 
     ProgressSnapshotService(ReviewHistoryRepository reviewHistoryRepository, ProblemAttemptRepository problemAttemptRepository,
                              ProblemProgressRepository problemProgressRepository, InterviewMockRepository interviewMockRepository,
-                             LocalProgressSnapshotRepository snapshotRepository) {
+                             LocalProgressSnapshotRepository snapshotRepository, Clock clock) {
         this.reviewHistoryRepository = reviewHistoryRepository;
         this.problemAttemptRepository = problemAttemptRepository;
         this.problemProgressRepository = problemProgressRepository;
         this.interviewMockRepository = interviewMockRepository;
         this.snapshotRepository = snapshotRepository;
+        this.clock = clock;
     }
 
     /**
-     * Computes and persists the snapshot for {@code window} as of {@code now}. {@code now} may be in
-     * the past relative to the caller's wall clock (a late capture of an already-closed window from
-     * already-stored evidence is legitimate — the evidence's own timestamps are real); it may not
-     * produce a cutoff before the window's own start.
+     * Computes and persists the snapshot for {@code window} as of right now — always this service's
+     * own trusted {@link Clock} ({@link Clock#systemUTC()} in production, {@link Clock#fixed} in
+     * tests), never a value a caller could choose. An earlier version of this method took an
+     * {@code Instant now} parameter instead; that let a caller evaluate a still-open window's cutoff at
+     * an arbitrary point, which is harmless on its own, but the same pattern elsewhere in this PR let a
+     * caller backdate a genuinely new capture — removed here too for the same reason, and so every
+     * capture's {@code capturedAt} is honest about when it actually ran.
      *
      * @return the captured snapshot and how it relates to any snapshot previously captured for the same window
      */
-    public Capture capture(ComparisonWindow window, Instant now) {
+    public Capture capture(ComparisonWindow window) {
+        // Truncated to millisecond precision: ProgressSummary/EnvelopeHeader require wire timestamps
+        // at millisecond precision, and Clock.systemUTC() reports nanoseconds on most JVMs.
+        Instant now = Instant.ofEpochMilli(clock.instant().toEpochMilli());
         Instant cutoff = window.cutoffAt(now);
-        LocalProgressSnapshot snapshot = new LocalProgressSnapshot(window, cutoff,
-                LocalProgressSnapshot.revisionFor(cutoff), now, computeMetrics(window, cutoff));
-        LocalProgressSnapshotRepository.SaveOutcome outcome = snapshotRepository.save(snapshot);
-        return new Capture(snapshot, outcome);
+        List<MetricValue> metrics = computeMetrics(window, cutoff);
+        LocalProgressSnapshotRepository.SaveResult result = snapshotRepository.save(window, cutoff, now, metrics);
+        return new Capture(result.snapshot(), result.outcome());
     }
 
     public record Capture(LocalProgressSnapshot snapshot, LocalProgressSnapshotRepository.SaveOutcome outcome) {
@@ -110,6 +118,7 @@ public class ProgressSnapshotService {
         metrics.add(reviewAttempts(reviews));
         metrics.add(verifiedCorrectRate(reviews));
         metrics.add(selfRatedSuccessRate(reviews));
+        metrics.add(legacyRatingFallbackSuccessRate(reviews));
         metrics.add(hintFreeRate(reviews));
         metrics.add(problemAttempts(attempts));
         metrics.add(problemAccepted(attempts));
@@ -146,39 +155,59 @@ public class ProgressSnapshotService {
     }
 
     /**
-     * Pools subjective reviews and legacy blank-validation objective reviews, both graded the same way
-     * (rating GOOD/EASY = success). {@link com.codefit.peer.protocol.MetricProvenance} has no "mixed"
-     * code for a single metric instance (unlike {@link TimestampBasis#MIXED}), so when both subsets
-     * genuinely contribute in the same window, this reports whichever subset is larger - sample size
-     * still reflects the true pooled count. Documented known simplification; see class docs.
+     * Genuinely subjective self-ratings only (the learner rated their own recall, no judge/validator
+     * was ever involved). {@code review.legacy_rating_fallback_success_rate} is the separate metric for
+     * the different evidence class below; the two are never pooled into one, because
+     * {@link com.codefit.peer.protocol.MetricProvenance} has no "mixed" code for a single metric
+     * instance (unlike {@link TimestampBasis#MIXED}) — a signed metric whose declared provenance does
+     * not describe every one of its own samples is exactly the fabrication #183 forbids.
      */
     private MetricValue selfRatedSuccessRate(List<ReviewHistory> reviews) {
-        long subjectiveCount = 0;
-        long subjectiveSuccess = 0;
-        long legacyFallbackCount = 0;
-        long legacyFallbackSuccess = 0;
+        long count = 0;
+        long success = 0;
         for (ReviewHistory review : reviews) {
-            boolean success = review.getRating() == ReviewRating.GOOD || review.getRating() == ReviewRating.EASY;
-            if (review.isSubjective()) {
-                subjectiveCount++;
-                if (success) {
-                    subjectiveSuccess++;
-                }
-            } else {
-                String validation = review.getValidationResult();
-                if (validation == null || validation.isBlank()) {
-                    legacyFallbackCount++;
-                    if (success) {
-                        legacyFallbackSuccess++;
-                    }
-                }
+            if (!review.isSubjective()) {
+                continue;
+            }
+            count++;
+            if (isSuccess(review)) {
+                success++;
             }
         }
-        long denominator = subjectiveCount + legacyFallbackCount;
-        long numerator = subjectiveSuccess + legacyFallbackSuccess;
-        MetricProvenance provenance = legacyFallbackCount > subjectiveCount
-                ? MetricProvenance.LEGACY_SELF_RATING_FALLBACK : MetricProvenance.SELF_RATED;
-        return rate("review.self_rated_success_rate", 1, numerator, denominator, provenance, TimestampBasis.LEGACY_SQLITE_UTC);
+        return rate("review.self_rated_success_rate", 1, success, count,
+                MetricProvenance.SELF_RATED, TimestampBasis.LEGACY_SQLITE_UTC);
+    }
+
+    /**
+     * Legacy, non-subjective review_history rows that predate {@code validation_result} and so fall
+     * back to grading by the stored rating (GOOD/EASY = success) — {@link ReviewHistory#isObjectivelyCorrect()}'s
+     * own legacy fallback, kept in its own metric with its own honest
+     * {@link MetricProvenance#LEGACY_SELF_RATING_FALLBACK} provenance rather than pooled into
+     * {@code review.self_rated_success_rate}, whose declared {@link MetricProvenance#SELF_RATED} must
+     * never silently describe a sample it doesn't own.
+     */
+    private MetricValue legacyRatingFallbackSuccessRate(List<ReviewHistory> reviews) {
+        long count = 0;
+        long success = 0;
+        for (ReviewHistory review : reviews) {
+            if (review.isSubjective()) {
+                continue;
+            }
+            String validation = review.getValidationResult();
+            if (validation != null && !validation.isBlank()) {
+                continue; // objectively verified - not the legacy fallback
+            }
+            count++;
+            if (isSuccess(review)) {
+                success++;
+            }
+        }
+        return rate("review.legacy_rating_fallback_success_rate", 1, success, count,
+                MetricProvenance.LEGACY_SELF_RATING_FALLBACK, TimestampBasis.LEGACY_SQLITE_UTC);
+    }
+
+    private static boolean isSuccess(ReviewHistory review) {
+        return review.getRating() == ReviewRating.GOOD || review.getRating() == ReviewRating.EASY;
     }
 
     private MetricValue hintFreeRate(List<ReviewHistory> reviews) {

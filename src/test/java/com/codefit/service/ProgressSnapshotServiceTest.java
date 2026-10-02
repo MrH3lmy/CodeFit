@@ -19,10 +19,12 @@ import com.codefit.peer.protocol.MetricProvenance;
 import com.codefit.peer.protocol.MetricValue;
 import com.codefit.peer.protocol.TimestampBasis;
 import com.codefit.peer.snapshot.LocalProgressSnapshot;
+import com.codefit.repository.InterviewMockRepository;
 import com.codefit.repository.LocalProgressSnapshotRepository;
 import com.codefit.repository.ProblemAttemptRepository;
 import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ProblemRepository;
+import com.codefit.repository.ReviewHistoryRepository;
 import com.codefit.repository.RoadmapEntryRepository;
 import com.codefit.testsupport.IsolatedDatabaseExtension;
 import com.codefit.testsupport.PeerIdentityTestTables;
@@ -34,11 +36,13 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,6 +55,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code reviewed_at}/{@code submitted_at} explicitly (via a raw UPDATE after the repository's own
  * {@code save}, since neither repository's public API accepts one — both always write
  * {@code CURRENT_TIMESTAMP}), which is exactly what makes the window-boundary tests below meaningful.
+ *
+ * <p>{@link ProgressSnapshotService#capture(ComparisonWindow)} takes no {@code Instant} parameter — it
+ * always uses its own trusted {@link Clock} — so every test here builds its own service via
+ * {@link #serviceAt} with a {@link Clock#fixed} at the instant the test wants to simulate "now" as.
  */
 @ExtendWith(IsolatedDatabaseExtension.class)
 @ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
@@ -62,14 +70,13 @@ class ProgressSnapshotServiceTest {
     private ProblemProgressRepository problemProgressRepository;
     private ProblemRepository problemRepository;
     private RoadmapEntryRepository roadmapEntryRepository;
-    private ProgressSnapshotService service;
 
     @BeforeEach
     void setUp() {
         PeerIdentityTestTables.resetAll();
         // interview_mock_runs is created lazily by InterviewMockRepository itself; touch it once so the
         // table exists before this method's own cleanup tries to delete from it.
-        new com.codefit.repository.InterviewMockRepository().findOverallScoresCompletedBetween(LocalDateTime.MIN, LocalDateTime.MIN);
+        new InterviewMockRepository().findOverallScoresCompletedBetween(LocalDateTime.MIN, LocalDateTime.MIN);
         try (Connection connection = DatabaseConfig.getConnection(); var statement = connection.createStatement()) {
             statement.execute("DELETE FROM review_history");
             statement.execute("DELETE FROM problem_attempts");
@@ -86,7 +93,13 @@ class ProgressSnapshotServiceTest {
         problemProgressRepository = new ProblemProgressRepository();
         problemRepository = new ProblemRepository();
         roadmapEntryRepository = new RoadmapEntryRepository();
-        service = new ProgressSnapshotService();
+    }
+
+    /** A fresh service whose trusted clock is fixed at {@code now} — never a caller-chosen {@code Instant} parameter. */
+    private ProgressSnapshotService serviceAt(Instant now) {
+        return new ProgressSnapshotService(new ReviewHistoryRepository(), new ProblemAttemptRepository(),
+                new ProblemProgressRepository(), new InterviewMockRepository(), new LocalProgressSnapshotRepository(),
+                Clock.fixed(now, ZoneOffset.UTC));
     }
 
     private MetricValue metric(LocalProgressSnapshot snapshot, String id) {
@@ -106,7 +119,7 @@ class ProgressSnapshotServiceTest {
         // One review the next day must not count.
         reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, day.plusDays(1).atTime(1, 0));
 
-        LocalProgressSnapshot snapshot = service.capture(window, day.atTime(23, 59).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 59).atZone(UTC).toInstant()).capture(window).snapshot();
 
         assertEquals(3, metric(snapshot, "review.attempts").value());
     }
@@ -121,7 +134,8 @@ class ProgressSnapshotServiceTest {
         reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, monday.plusDays(6).atTime(23, 0)); // Sunday, still in week
         reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, monday.plusDays(7).atTime(0, 0)); // next Monday: excluded
 
-        LocalProgressSnapshot snapshot = service.capture(window, monday.plusDays(7).atTime(0, 0).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(monday.plusDays(7).atTime(0, 0).atZone(UTC).toInstant())
+                .capture(window).snapshot();
 
         assertEquals(2, metric(snapshot, "review.attempts").value());
     }
@@ -139,7 +153,7 @@ class ProgressSnapshotServiceTest {
             reviews.insertReview(flashcardId, "WRONG_ANSWER", ReviewRating.AGAIN, day.atTime(2, i));
         }
 
-        LocalProgressSnapshot snapshot = service.capture(window, day.atTime(23, 0).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
         MetricValue rate = metric(snapshot, "review.verified_correct_rate");
 
         assertEquals(MetricAvailability.MEASURED, rate.availability());
@@ -159,7 +173,7 @@ class ProgressSnapshotServiceTest {
         insertAttempt(problemId, 3, SubmissionResult.ACX, day.atTime(10, 30)); // learner "re-accepted" the same problem
         problemProgressRepository.save(solvedProgress(problemId, day.atTime(10, 0)));
 
-        LocalProgressSnapshot snapshot = service.capture(window, day.atTime(23, 0).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
 
         assertEquals(3, metric(snapshot, "problem.attempts").value(), "attempt volume counts every submission");
         assertEquals(2, metric(snapshot, "problem.accepted").value(), "accepted-attempt volume counts both AC and ACX events");
@@ -175,7 +189,7 @@ class ProgressSnapshotServiceTest {
         roadmapEntryRepository.save(new RoadmapEntry(problemId, RoadmapStage.B, 1, null, true, DifficultyLevel.EASY));
         problemProgressRepository.save(solvedProgress(problemId, day.atTime(10, 0)));
 
-        LocalProgressSnapshot snapshot = service.capture(window, day.atTime(23, 0).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
 
         assertEquals(1, metric(snapshot, "problem.unique_completed").value(),
                 "the same problem in two roadmap stages is still one completion");
@@ -196,7 +210,7 @@ class ProgressSnapshotServiceTest {
         // problem_progress row for it (problem_id is UNIQUE), so nothing more to do here except confirm
         // the count is still exactly one.
 
-        LocalProgressSnapshot snapshot = service.capture(window, day.atTime(23, 0).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
         assertEquals(1, metric(snapshot, "problem.unique_completed").value());
     }
 
@@ -212,7 +226,7 @@ class ProgressSnapshotServiceTest {
             reviews.insertSubjective(flashcardId, ReviewRating.GOOD, day.atTime(2, i)); // subjective self-rating
         }
 
-        LocalProgressSnapshot snapshot = service.capture(window, day.atTime(23, 0).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
 
         MetricValue verified = metric(snapshot, "review.verified_correct_rate");
         MetricValue selfRated = metric(snapshot, "review.self_rated_success_rate");
@@ -236,13 +250,41 @@ class ProgressSnapshotServiceTest {
             reviews.insertLegacyBlankValidation(flashcardId, ReviewRating.GOOD, day.atTime(3, i));
         }
 
-        LocalProgressSnapshot snapshot = service.capture(window, day.atTime(23, 0).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
 
         MetricValue verified = metric(snapshot, "review.verified_correct_rate");
         assertEquals(10, verified.sampleSize(), "the 5 legacy fallback rows must never count toward verified evidence");
         MetricValue selfRated = metric(snapshot, "review.self_rated_success_rate");
-        assertEquals(MetricProvenance.LEGACY_SELF_RATING_FALLBACK, selfRated.provenance());
-        assertEquals(5, selfRated.sampleSize(), "the legacy fallback rows are counted here instead, labelled as such");
+        assertEquals(0, selfRated.sampleSize(), "legacy fallback rows must never be pooled into the genuine self-rated metric either");
+        MetricValue legacyFallback = metric(snapshot, "review.legacy_rating_fallback_success_rate");
+        assertEquals(MetricProvenance.LEGACY_SELF_RATING_FALLBACK, legacyFallback.provenance());
+        assertEquals(5, legacyFallback.sampleSize(), "the legacy fallback rows are counted here instead, labelled as such");
+    }
+
+    @Test
+    void genuineSubjectiveAndLegacyFallbackSamplesAreExportedSeparatelyWhenBothPresent() {
+        // The exact scenario the review flagged: both evidence subsets present simultaneously. Neither
+        // metric's sample size may absorb the other's samples, and neither declared provenance may
+        // describe a sample it doesn't own.
+        long flashcardId = createFlashcard();
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        for (int i = 0; i < 6; i++) {
+            reviews.insertSubjective(flashcardId, ReviewRating.GOOD, day.atTime(1, i));
+        }
+        for (int i = 0; i < 5; i++) {
+            reviews.insertLegacyBlankValidation(flashcardId, ReviewRating.AGAIN, day.atTime(2, i));
+        }
+
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
+
+        MetricValue selfRated = metric(snapshot, "review.self_rated_success_rate");
+        MetricValue legacyFallback = metric(snapshot, "review.legacy_rating_fallback_success_rate");
+        assertEquals(MetricProvenance.SELF_RATED, selfRated.provenance());
+        assertEquals(6, selfRated.sampleSize(), "only the genuinely subjective rows");
+        assertEquals(MetricProvenance.LEGACY_SELF_RATING_FALLBACK, legacyFallback.provenance());
+        assertEquals(5, legacyFallback.sampleSize(), "only the legacy fallback rows");
+        assertEquals(11, selfRated.sampleSize() + legacyFallback.sampleSize(), "together they account for every row, split, not pooled");
     }
 
     @Test
@@ -250,7 +292,7 @@ class ProgressSnapshotServiceTest {
         LocalDate day = LocalDate.of(2026, 1, 15);
         ComparisonWindow window = ComparisonWindow.day(day, UTC);
 
-        LocalProgressSnapshot snapshot = service.capture(window, day.atTime(23, 0).atZone(UTC).toInstant()).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
 
         MetricValue verified = metric(snapshot, "review.verified_correct_rate");
         assertEquals(MetricAvailability.INSUFFICIENT_DATA, verified.availability());
@@ -270,7 +312,7 @@ class ProgressSnapshotServiceTest {
         reviews.insertReviewUtc(flashcardId, "EXACT", ReviewRating.GOOD, LocalDateTime.of(2026, 1, 16, 5, 0, 1));
 
         Instant cutoff = LocalDateTime.of(2026, 1, 16, 12, 0).atZone(zone).toInstant();
-        LocalProgressSnapshot snapshot = service.capture(window, cutoff).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(cutoff).capture(window).snapshot();
 
         assertEquals(1, metric(snapshot, "review.attempts").value(), "only the row strictly inside [start, end) in UTC counts");
     }
@@ -287,7 +329,7 @@ class ProgressSnapshotServiceTest {
         problemProgressRepository.save(solvedProgress(problemId, LocalDateTime.of(2026, 1, 16, 2, 0)));
 
         Instant cutoff = LocalDateTime.of(2026, 1, 17, 0, 0).atZone(zone).toInstant();
-        LocalProgressSnapshot snapshot = service.capture(window, cutoff).snapshot();
+        LocalProgressSnapshot snapshot = serviceAt(cutoff).capture(window).snapshot();
 
         assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
                 "a zone-local 02:00 on the next day must not be pulled into the previous local day");
@@ -300,17 +342,64 @@ class ProgressSnapshotServiceTest {
         long flashcardId = createFlashcard();
         reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, day.atTime(9, 0));
 
-        ProgressSnapshotService.Capture first = service.capture(window, day.atTime(12, 0).atZone(UTC).toInstant());
+        ProgressSnapshotService.Capture first = serviceAt(day.atTime(12, 0).atZone(UTC).toInstant()).capture(window);
         assertEquals(LocalProgressSnapshotRepository.SaveOutcome.RECORDED_FIRST, first.outcome());
 
         reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, day.atTime(13, 0));
-        ProgressSnapshotService.Capture second = service.capture(window, day.atTime(14, 0).atZone(UTC).toInstant());
+        ProgressSnapshotService.Capture second = serviceAt(day.atTime(14, 0).atZone(UTC).toInstant()).capture(window);
         assertEquals(LocalProgressSnapshotRepository.SaveOutcome.REPLACED, second.outcome());
+        assertEquals(1, first.snapshot().revision());
+        assertEquals(2, second.snapshot().revision(), "a genuine correction is revision 2, not a second revision-1 row");
 
         LocalProgressSnapshot reloaded = new LocalProgressSnapshotRepository().findByWindow(window).orElseThrow();
         assertEquals(2, metric(reloaded, "review.attempts").value(), "the correction replaced the row, not appended a second one");
         assertEquals(second.snapshot().revision(), reloaded.revision());
         assertEquals(second.snapshot().capturedAt(), reloaded.capturedAt());
+    }
+
+    @Test
+    void unchangedResendWithinTheSameSecondIsIdempotentAndDoesNotBumpTheRevision() {
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        long flashcardId = createFlashcard();
+        reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, day.atTime(9, 0));
+        Instant now = day.atTime(12, 0, 0, 500_000_000).atZone(UTC).toInstant();
+
+        ProgressSnapshotService.Capture first = serviceAt(now).capture(window);
+        assertEquals(LocalProgressSnapshotRepository.SaveOutcome.RECORDED_FIRST, first.outcome());
+
+        // No new evidence, exact same instant: a byte-identical resend.
+        ProgressSnapshotService.Capture second = serviceAt(now).capture(window);
+        assertEquals(LocalProgressSnapshotRepository.SaveOutcome.UNCHANGED, second.outcome());
+        assertEquals(first.snapshot().revision(), second.snapshot().revision(), "an unchanged resend never bumps the revision");
+    }
+
+    @Test
+    void twoGenuinelyDifferentCapturesWithinTheSameWallClockSecondGetStrictlyIncreasingRevisions() {
+        // 12:00:00.100 and 12:00:00.900 share the same whole epoch second, which is exactly what the
+        // old cutoff.getEpochSecond()-derived revision would have collided on.
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        long flashcardId = createFlashcard();
+        reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, day.atTime(9, 0));
+        Instant firstInstant = day.atTime(12, 0, 0, 100_000_000).atZone(UTC).toInstant();
+        Instant secondInstant = day.atTime(12, 0, 0, 900_000_000).atZone(UTC).toInstant();
+        assertEquals(firstInstant.getEpochSecond(), secondInstant.getEpochSecond(), "sanity check: same whole epoch second");
+
+        ProgressSnapshotService.Capture first = serviceAt(firstInstant).capture(window);
+        assertEquals(1, first.snapshot().revision());
+
+        // A genuinely new review landed between the two captures.
+        reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, day.atTime(9, 30));
+        ProgressSnapshotService.Capture second = serviceAt(secondInstant).capture(window);
+
+        assertEquals(LocalProgressSnapshotRepository.SaveOutcome.REPLACED, second.outcome());
+        assertEquals(2, second.snapshot().revision(), "the second, genuinely different capture must get a strictly higher revision");
+        assertTrue(second.snapshot().revision() > first.snapshot().revision());
+
+        LocalProgressSnapshot reloaded = new LocalProgressSnapshotRepository().findByWindow(window).orElseThrow();
+        assertEquals(2, reloaded.revision(), "local persistence keeps the latest body under the higher revision");
+        assertEquals(2, metric(reloaded, "review.attempts").value());
     }
 
     // --- fixtures ---
@@ -371,7 +460,7 @@ class ProgressSnapshotServiceTest {
 
     /** Controls {@code review_history.reviewed_at}/{@code validation_result} explicitly for deterministic fixtures. */
     private static final class ReviewHistoryRepositoryHelper {
-        private final com.codefit.repository.ReviewHistoryRepository repository = new com.codefit.repository.ReviewHistoryRepository();
+        private final ReviewHistoryRepository repository = new ReviewHistoryRepository();
 
         void insertReview(long flashcardId, String validationResult, ReviewRating rating, LocalDateTime reviewedAtUtc) {
             insertReviewUtc(flashcardId, validationResult, rating, reviewedAtUtc);

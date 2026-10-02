@@ -59,7 +59,11 @@ final class SchemaMigrator {
                     SchemaMigrator::createContactTransportBindingTable),
             new VersionedMigration(9,
                     "Add local progress/preparation snapshot and checkpoint tables (#183)",
-                    SchemaMigrator::createLocalSnapshotTables)
+                    SchemaMigrator::createLocalSnapshotTables),
+            new VersionedMigration(10,
+                    "Add the preparation-snapshot wire revision state, independent of the per-day local "
+                            + "checkpoint revision (#183 review fix)",
+                    SchemaMigrator::createPreparationSnapshotWireStateTable)
     );
 
     static void migrate(Connection connection) throws SQLException {
@@ -506,6 +510,30 @@ final class SchemaMigrator {
                     + "ON local_preparation_checkpoints(profile_id, checkpoint_date)");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_local_preparation_checkpoint_domains_checkpoint "
                     + "ON local_preparation_checkpoint_domains(checkpoint_id)");
+        }
+    }
+
+    /**
+     * The wire-facing {@code PreparationSnapshot} object is keyed only by (author, recipient, profile
+     * id) — an evolving "this profile's latest known readiness" stream, the same object across every
+     * day it is ever published for. That is a <em>different</em> logical object from
+     * {@code local_preparation_checkpoints}, which is keyed per UTC day for the learner's own local
+     * historical trend. Reusing the per-day local checkpoint's own revision as the wire revision would
+     * collide: two different days' first-ever local capture would each independently start at revision
+     * 1, so the second day's publish would be rejected by a receiver as a stale/duplicate revision of
+     * the first day's. This table gives the wire object its own revision counter, strictly increasing
+     * per {@code object_id} regardless of which local day produced the content, and lets an unchanged
+     * resend (identical {@code body_fingerprint}) reuse the same revision rather than bumping it.
+     */
+    private static void createPreparationSnapshotWireStateTable(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS preparation_snapshot_wire_state (
+                        object_id BLOB PRIMARY KEY,
+                        revision INTEGER NOT NULL,
+                        body_fingerprint BLOB NOT NULL
+                    )
+                    """);
         }
     }
 

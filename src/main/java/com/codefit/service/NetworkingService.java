@@ -388,10 +388,19 @@ public class NetworkingService implements AutoCloseable {
      * {@link #recoverContactTransportKey} instead, which the caller routes to using the existing contact
      * id this exception carries.
      *
-     * @throws InvitationException    the invitation is expired or not yet valid
+     * <p>This method does not assume {@code signed} already passed through {@link #parseInvitationBase64}
+     * or {@link InvitationCodec#decode} — {@code SignedInvitation}'s own public constructor only checks
+     * the signature's length, never that it actually verifies, so a caller-constructed instance proves
+     * nothing by itself. This method independently calls {@link InvitationCodec#verify} first, before any
+     * other check or mutation, so it never acts on an invitation whose signature it has not itself checked.
+     *
+     * @throws InvitationException    {@link InvitationRejectionReason#BAD_SIGNATURE} the signature does
+     *                                 not verify for the claimed identity key; otherwise, the invitation is
+     *                                 expired or not yet valid
      * @throws KnownIdentityException this identity is already a known contact
      */
     public Contact registerPendingContactFromInvitation(SignedInvitation signed, Instant now) {
+        InvitationCodec.verify(signed);
         now = wireTime(now);
         Invitation invitation = signed.invitation();
         if (invitation.isExpired(now)) {
@@ -430,21 +439,29 @@ public class NetworkingService implements AutoCloseable {
      * than searching for or inferring one — the caller (eventually a #187 UI control) must already know,
      * and must have shown the user for out-of-band re-verification against the identity fingerprint,
      * exactly which existing contact this invitation is claimed to be for. Nothing here substitutes for
-     * that out-of-band check: this method only verifies the invitation's own signature (already done by
-     * {@link InvitationCodec#decode}/{@link #parseInvitationBase64}) and that its identity key is exactly
-     * this contact's pinned identity — it never trusts the invitation's claim over the account record it
-     * is being matched against.
+     * that out-of-band check, and nothing here assumes {@code signed} already passed through
+     * {@link #parseInvitationBase64} or {@link InvitationCodec#decode} either —
+     * {@code SignedInvitation}'s own public constructor checks only the signature's <em>length</em>, never
+     * that it actually verifies, so a caller-constructed instance is not by itself proof of anything, no
+     * matter whose identity key it names. This method independently calls {@link InvitationCodec#verify}
+     * first, before any other check or mutation, and separately confirms the now-verified identity key is
+     * exactly this contact's pinned identity — it never trusts the invitation's claim over the account
+     * record it is being matched against, and never lets an unverified field (including a forged, newer
+     * {@code bindingValidFrom}) reach the pin-monotonicity check below.
      *
      * <p>Refuses outright, mutating nothing:
      * <ul>
+     *   <li>the signature does not verify for the claimed identity key
+     *       ({@link InvitationException}, {@link InvitationRejectionReason#BAD_SIGNATURE}) — checked
+     *       first, before every other check;</li>
      *   <li>the contact is not currently {@link TrustState#PAIRED} — a {@link TrustState#BLOCKED} or
      *       {@link TrustState#REMOVED} contact must be explicitly re-paired first via
      *       {@code ContactService.rePair}, which is its own deliberate act of restored trust; this method
      *       never restores trust by itself, so a blocked or removed contact can never silently regain it
      *       through this path;</li>
-     *   <li>the invitation was not signed by this contact's own pinned identity key
-     *       ({@link IdentityMismatchException}) — a validly-signed invitation from any other identity is
-     *       refused, never silently attributed to this contact;</li>
+     *   <li>the (now cryptographically verified) invitation identity is not this contact's own pinned
+     *       identity ({@link IdentityMismatchException}) — a validly-signed invitation from any other
+     *       identity is refused, never silently attributed to this contact;</li>
      *   <li>the invitation itself, or its declared transport-key binding window, is not valid right now
      *       ({@link InvitationException}).</li>
      * </ul>
@@ -459,11 +476,14 @@ public class NetworkingService implements AutoCloseable {
      * onto the wire — it only updates what will be checked against next time. Contact id, alias, cached
      * display name, address cache, sharing permissions, consent revisions, and history are never touched.
      *
+     * @throws InvitationException          {@link InvitationRejectionReason#BAD_SIGNATURE} the signature
+     *                                       does not verify for the claimed identity key; otherwise, the
+     *                                       invitation or its declared binding window is not currently valid
      * @throws IllegalContactStateException the contact is not {@link TrustState#PAIRED}
-     * @throws IdentityMismatchException    the invitation was not signed by this contact's own identity key
-     * @throws InvitationException          the invitation, or its declared binding window, is not currently valid
+     * @throws IdentityMismatchException    the (verified) invitation identity is not this contact's own identity key
      */
     public ContactService.TransportBindingUpdate recoverContactTransportKey(long contactId, SignedInvitation signed, Instant now) {
+        InvitationCodec.verify(signed);
         now = wireTime(now);
         Invitation invitation = signed.invitation();
         Contact contact = contactService.requireContact(contactId);

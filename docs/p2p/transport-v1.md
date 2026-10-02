@@ -95,9 +95,14 @@ bytes[64]  signature            (Ed25519, over everything above, by identityKey)
 ```
 
 Decoding (`InvitationCodec.decode`) only parses and verifies the signature; it never registers a contact
-or dials anything. Expiry/not-yet-valid are exposed as `Invitation.isExpired`/`isNotYetValid` for the
-caller to check explicitly — "parsing an invitation alone must not establish trust" is enforced by that
-separation, not by convention. `NetworkingService.registerPendingContactFromInvitation` is the explicit,
+or dials anything. The signature check itself lives in `InvitationCodec.verify(SignedInvitation)` — `decode`
+calls it rather than duplicating it, and it is also the one place that check happens for a `SignedInvitation`
+a caller constructs some other way: the record's own public constructor checks only the signature's
+*length*, so a `SignedInvitation` is not by itself proof of anything, and every `NetworkingService` method
+that mutates contact/trust/pinning state from one calls `InvitationCodec.verify` itself rather than assuming
+the caller already decoded it (§9.1). Expiry/not-yet-valid are exposed as
+`Invitation.isExpired`/`isNotYetValid` for the caller to check explicitly — "parsing an invitation alone must
+not establish trust" is enforced by that separation, not by convention. `NetworkingService.registerPendingContactFromInvitation` is the explicit,
 separate step that turns a parsed invitation into a `PENDING` contact (never `PAIRED` by itself), after
 which the existing #181 `ContactService.acceptInvitation` is the user's explicit pairing action. It refuses
 outright, creating nothing, when the invitation's identity is already a known contact in any trust state
@@ -305,16 +310,26 @@ signedInvitation, now)`.
 This is a deliberate, separate action from `registerPendingContactFromInvitation`, not something an
 ordinary re-import of an invitation ever triggers automatically:
 
+* **It verifies the invitation's signature itself, first, before any other check.** `SignedInvitation`'s
+  own (public, record-generated) constructor checks only that the signature is the right *length* — it is
+  not proof of anything, and nothing in the type system stops a caller from constructing one directly with
+  an arbitrary `Invitation` (including one naming the correct contact's real, public identity key) and an
+  arbitrary 64-byte value. This method never assumes `signed` already passed through `InvitationCodec.decode`
+  or `parseInvitationBase64`; it calls the now-shared `InvitationCodec.verify(signed)` itself
+  (`InvitationRejectionReason.BAD_SIGNATURE` on failure) before looking at a single field of the invitation,
+  so a forged invitation — a genuine identity key with a fabricated signature, or a genuinely-signed
+  invitation with any field (transport key, binding window) subsequently altered — never reaches any later
+  check, and never has a chance to poison the pin before the pin-monotonicity check ever runs.
 * It never creates a contact. The caller supplies the existing `contactId` explicitly — this method never
   searches for or infers one from the invitation — so the UI flow that calls it has already shown the user
   the identity fingerprint for the same out-of-band re-verification first pairing required.
 * It refuses outright, mutating nothing, when: the contact is not currently `PAIRED` (a `BLOCKED` or
   `REMOVED` contact must go through the existing, explicit `ContactService.rePair` first — its own
   deliberate act of restored trust, so a blocked or removed contact can never silently regain trust through
-  this path); the invitation was not signed by *this contact's own* pinned identity key
-  (`IdentityMismatchException` — a validly-signed invitation from a different identity is never silently
-  attributed to this contact); or the invitation itself, or its declared transport-key binding window, is
-  not currently valid (`InvitationException`).
+  this path); the (now cryptographically verified) invitation identity is not *this contact's own* pinned
+  identity key (`IdentityMismatchException` — a validly-signed invitation from a different identity is
+  never silently attributed to this contact); or the invitation itself, or its declared transport-key
+  binding window, is not currently valid (`InvitationException`).
 * Beyond those checks, the pinned key only ever moves forward through the exact same rule as a live
   rollover proof (`ContactService.recordAuthenticatedTransportBinding`): the same key refreshes its window, a
   different key replaces the pin only when its binding is strictly newer, and a stale or replayed invitation
@@ -325,17 +340,36 @@ ordinary re-import of an invitation ever triggers automatically:
 * Contact id, alias, cached display name, address cache, sharing permissions, consent revisions, and history
   are never touched.
 
-`registerPendingContactFromInvitation` is the companion half: it refuses outright
-(`KnownIdentityException`, carrying the existing contact's id and trust state) when the invitation's
-identity is already a known contact in any trust state, rather than raising a bare "already a known
-contact" error with nowhere to go. A caller that catches it routes to `recoverContactTransportKey` for a
-`PAIRED` contact, or to `ContactService.rePair` first for a `BLOCKED`/`REMOVED` one.
+`registerPendingContactFromInvitation` is the companion half, and enforces the identical invariant: it too
+calls `InvitationCodec.verify` itself, first, rather than assuming the caller already decoded `signed` —
+a manually constructed `SignedInvitation` with a forged or missing signature is refused
+(`InvitationRejectionReason.BAD_SIGNATURE`) before it can create anything. It separately refuses outright
+(`KnownIdentityException`, carrying the existing contact's id and trust state) when the (verified)
+invitation's identity is already a known contact in any trust state, rather than raising a bare "already a
+known contact" error with nowhere to go. A caller that catches it routes to `recoverContactTransportKey` for
+a `PAIRED` contact, or to `ContactService.rePair` first for a `BLOCKED`/`REMOVED` one.
+
+**The invariant, stated once:** any service method that mutates contact, trust, or pinning state from a
+caller-supplied `SignedInvitation` must cryptographically verify it itself (`InvitationCodec.verify`, which
+`decode`/`fromBase64` also call rather than duplicating the check) before trusting anything in it — never by
+assuming the caller already went through the decode path. `registerPendingContactFromInvitation` and
+`recoverContactTransportKey` are, at the time of writing, the only two methods in
+`com.codefit.service.NetworkingService` that accept a caller-supplied `SignedInvitation`
+(`createInvitation` only ever *produces* a genuinely signed one via `InvitationCodec.sign`, and
+`parseInvitationBase64` takes a `String` and already goes through `fromBase64`); both were audited and now
+hold the invariant.
 
 Verified by `TransportKeyRecoveryTest`: the refused-rollover-then-recovered-then-reconnected round trip,
 staleness/replay is ignored without rolling the pin back, an invitation signed by a different identity is
 refused, a blocked/removed contact is refused until re-paired, a fresh invitation for an already-known
 identity never creates a duplicate contact, an invitation whose declared binding window does not cover
-`now` is refused, and — using two fully independent `NetworkingService` instances, each over its own
+`now` is refused, a manually constructed invitation carrying a genuine identity key but a random signature
+is rejected (`BAD_SIGNATURE`) with the pin, contact state, and permissions all left untouched, a genuinely
+signed invitation subsequently tampered (transport key, or binding window) under the original signature is
+likewise rejected before the tampered values can reach the pin-monotonicity check, a genuinely signed fresh
+invitation still recovers successfully, `registerPendingContactFromInvitation` itself rejects the same kind
+of forged invitation without creating a contact, and — using two fully independent `NetworkingService`
+instances, each over its own
 database — that the method has no built-in direction: whichever paired identity calls it, it is the exact
 same code path.
 

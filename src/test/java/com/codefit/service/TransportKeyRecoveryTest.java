@@ -9,9 +9,11 @@ import com.codefit.peer.identity.KnownIdentityException;
 import com.codefit.peer.identity.ObservedTransportBinding;
 import com.codefit.peer.identity.PermissionGrant;
 import com.codefit.peer.identity.TrustState;
+import com.codefit.peer.identity.crypto.KeyPairs;
 import com.codefit.peer.invitation.Invitation;
 import com.codefit.peer.invitation.InvitationCodec;
 import com.codefit.peer.invitation.InvitationException;
+import com.codefit.peer.invitation.InvitationRejectionReason;
 import com.codefit.peer.invitation.SignedInvitation;
 import com.codefit.peer.protocol.IdentityId;
 import com.codefit.peer.protocol.IdentityKey;
@@ -303,7 +305,7 @@ class TransportKeyRecoveryTest {
         NetworkingService alice = newNetworking();
 
         // A genuinely signed invitation whose declared binding is not valid until the future.
-        TransportKeyMaterial notYetValid = new TransportKeyMaterial(com.codefit.peer.identity.crypto.KeyPairs.generate(),
+        TransportKeyMaterial notYetValid = new TransportKeyMaterial(KeyPairs.generate(),
                 now.plus(Duration.ofHours(2)), now.plus(Duration.ofDays(90)));
         SignedInvitation futureInvitation = invitationFrom(bob, notYetValid, now);
         assertThrows(InvitationException.class,
@@ -386,6 +388,135 @@ class TransportKeyRecoveryTest {
             DatabaseConfig.useDatabaseUrl(savedDatabaseUrl);
             deleteRecursively(bobDbDir);
         }
+    }
+
+    private static IdentityKey attackerTransportKey() {
+        return new IdentityKey(KeyPairs.rawPublicKey(KeyPairs.generate().getPublic()));
+    }
+
+    /**
+     * {@link SignedInvitation}'s own public constructor only checks the signature's length — it is not
+     * itself proof of anything. These tests exercise the trust boundary directly: every service method
+     * that mutates contact/trust/pinning state from a caller-supplied {@code SignedInvitation} must
+     * independently verify it cryptographically (via {@link InvitationCodec#verify}) before trusting
+     * anything in it, never assuming the caller already went through {@link InvitationCodec#decode}.
+     */
+    @Test
+    @Timeout(90)
+    void recoveryRejectsAForgedInvitationWithBobsRealIdentityKeyButARandomSignature() throws Exception {
+        TestPeer bob = TestPeer.create();
+        TransportKeyMaterial bobOldKey = bob.newTransportKey(hoursAgo(4));
+        Contact bobContact = pairAliceWithBob(bob, bobOldKey, 4242);
+        contactService.updatePermissions(bobContact.id(),
+                new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), null, null, false), now);
+        ContactPermission permissionBefore = contactService.permissionsFor(bobContact.id()).orElseThrow();
+        ObservedTransportBinding pinBefore = contactService.lastObservedTransportBinding(bobContact.id()).orElseThrow();
+        NetworkingService alice = newNetworking();
+
+        // Bob's identity public key is public knowledge; matching it proves nothing by itself. Paired
+        // here with an attacker-controlled transport key and a validFrom strictly newer than the pinned
+        // key's — exactly what would poison Bob's pin if the signature were never actually checked — but
+        // wrapped in a 64-byte value nobody ever signed with Bob's private key.
+        Invitation forged = new Invitation(bob.identity.publicKey(), attackerTransportKey(),
+                now, now.plus(Duration.ofDays(90)), List.of(new PeerAddress("127.0.0.1", 1)),
+                nonce(), now, now.plus(Duration.ofHours(1)));
+        SignedInvitation forgedSigned = new SignedInvitation(forged, new byte[SignedInvitation.SIGNATURE_LENGTH]);
+
+        InvitationException thrown = assertThrows(InvitationException.class,
+                () -> alice.recoverContactTransportKey(bobContact.id(), forgedSigned, now));
+        assertEquals(InvitationRejectionReason.BAD_SIGNATURE, thrown.reason());
+        assertEquals(pinBefore, contactService.lastObservedTransportBinding(bobContact.id()).orElseThrow(),
+                "a forged invitation must never move the pin, however plausible its claimed identity");
+        assertEquals(TrustState.PAIRED, contactService.requireContact(bobContact.id()).trustState());
+        assertEquals(permissionBefore, contactService.permissionsFor(bobContact.id()).orElseThrow(),
+                "a forged invitation must never touch sharing permissions");
+    }
+
+    @Test
+    @Timeout(90)
+    void recoveryRejectsATamperedTransportKeyEvenUnderTheOriginalGenuineSignature() throws Exception {
+        TestPeer bob = TestPeer.create();
+        TransportKeyMaterial bobOldKey = bob.newTransportKey(hoursAgo(4));
+        TransportKeyMaterial bobNewKey = bob.newTransportKey(hoursAgo(1));
+        Contact bobContact = pairAliceWithBob(bob, bobOldKey, 4242);
+        NetworkingService alice = newNetworking();
+
+        // Start from a genuinely Bob-signed invitation, then swap in an attacker's transport key while
+        // keeping Bob's real signature bytes: the signature was never over this payload.
+        SignedInvitation genuine = invitationFrom(bob, bobNewKey, now);
+        Invitation tamperedKey = new Invitation(genuine.invitation().identityKey(), attackerTransportKey(),
+                genuine.invitation().bindingValidFrom(), genuine.invitation().bindingValidUntil(),
+                genuine.invitation().addresses(), genuine.invitation().nonce(),
+                genuine.invitation().issuedAt(), genuine.invitation().expiresAt());
+        SignedInvitation tamperedSigned = new SignedInvitation(tamperedKey, genuine.signature());
+
+        InvitationException thrown = assertThrows(InvitationException.class,
+                () -> alice.recoverContactTransportKey(bobContact.id(), tamperedSigned, now));
+        assertEquals(InvitationRejectionReason.BAD_SIGNATURE, thrown.reason());
+        assertEquals(keyOf(bobOldKey), contactService.lastObservedTransportBinding(bobContact.id()).orElseThrow().transportKey(),
+                "swapping the transport key under someone else's genuine signature must never move the pin");
+    }
+
+    @Test
+    @Timeout(90)
+    void recoveryRejectsATamperedBindingWindowEvenUnderTheOriginalGenuineSignature() throws Exception {
+        TestPeer bob = TestPeer.create();
+        TransportKeyMaterial bobOldKey = bob.newTransportKey(hoursAgo(4));
+        TransportKeyMaterial bobNewKey = bob.newTransportKey(hoursAgo(1));
+        Contact bobContact = pairAliceWithBob(bob, bobOldKey, 4242);
+        NetworkingService alice = newNetworking();
+
+        SignedInvitation genuine = invitationFrom(bob, bobNewKey, now);
+        // The tampered window still covers "now" and is still strictly newer than the pinned key's
+        // validFrom — if signature verification did not run first, the forward-only pin check alone
+        // would have accepted it. The tamper must be caught before that check ever sees these values.
+        Instant tamperedValidFrom = now.minus(Duration.ofMinutes(1));
+        Instant tamperedValidUntil = now.plus(Duration.ofDays(90));
+        Invitation tamperedWindow = new Invitation(genuine.invitation().identityKey(), genuine.invitation().transportKey(),
+                tamperedValidFrom, tamperedValidUntil, genuine.invitation().addresses(), genuine.invitation().nonce(),
+                genuine.invitation().issuedAt(), genuine.invitation().expiresAt());
+        SignedInvitation tamperedSigned = new SignedInvitation(tamperedWindow, genuine.signature());
+
+        InvitationException thrown = assertThrows(InvitationException.class,
+                () -> alice.recoverContactTransportKey(bobContact.id(), tamperedSigned, now));
+        assertEquals(InvitationRejectionReason.BAD_SIGNATURE, thrown.reason());
+        assertEquals(keyOf(bobOldKey), contactService.lastObservedTransportBinding(bobContact.id()).orElseThrow().transportKey(),
+                "tampering the binding window under someone else's genuine signature must never move the pin");
+    }
+
+    @Test
+    @Timeout(90)
+    void recoverySucceedsForAGenuinelySignedFreshInvitation() throws Exception {
+        TestPeer bob = TestPeer.create();
+        TransportKeyMaterial bobOldKey = bob.newTransportKey(hoursAgo(4));
+        TransportKeyMaterial bobNewKey = bob.newTransportKey(hoursAgo(1));
+        Contact bobContact = pairAliceWithBob(bob, bobOldKey, 4242);
+        NetworkingService alice = newNetworking();
+
+        SignedInvitation genuine = invitationFrom(bob, bobNewKey, now);
+        ContactService.TransportBindingUpdate update = alice.recoverContactTransportKey(bobContact.id(), genuine, now);
+
+        assertEquals(ContactService.TransportBindingUpdate.ROTATED, update);
+        assertEquals(keyOf(bobNewKey), contactService.lastObservedTransportBinding(bobContact.id()).orElseThrow().transportKey());
+    }
+
+    @Test
+    @Timeout(90)
+    void registrationRejectsAManuallyConstructedInvitationWithAnInvalidSignature() throws Exception {
+        TestPeer mallory = TestPeer.create();
+        NetworkingService alice = newNetworking();
+
+        // SignedInvitation's public constructor only checks the signature's length: nothing stops a
+        // caller from building one directly, bypassing InvitationCodec.decode's own signature check.
+        TransportKeyMaterial malloryKey = mallory.newTransportKey(hoursAgo(1));
+        Invitation forged = new Invitation(mallory.identity.publicKey(), keyOf(malloryKey), malloryKey.validFrom(),
+                malloryKey.validUntil(), List.of(new PeerAddress("127.0.0.1", 1)), nonce(), now, now.plus(Duration.ofHours(1)));
+        SignedInvitation forgedSigned = new SignedInvitation(forged, new byte[SignedInvitation.SIGNATURE_LENGTH]);
+
+        InvitationException thrown = assertThrows(InvitationException.class,
+                () -> alice.registerPendingContactFromInvitation(forgedSigned, now));
+        assertEquals(InvitationRejectionReason.BAD_SIGNATURE, thrown.reason());
+        assertTrue(contactService.listContacts().isEmpty(), "a forged invitation must never create a contact");
     }
 
     private static void deleteRecursively(Path root) throws Exception {

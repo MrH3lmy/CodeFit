@@ -117,8 +117,14 @@ Trust boundaries:
   recovered through an explicit, re-verified fresh invitation and a successful reconnect; staleness/replay
   ignored without rolling the pin back; an invitation from a different identity refused; a blocked/removed
   contact refused until explicitly re-paired; a fresh invitation for an already-known identity refused
-  without creating a duplicate; and the same method proven direction-agnostic across two fully independent
-  `NetworkingService`/database pairs). Residual risks introduced by listening on all interfaces and by
+  without creating a duplicate; the same method proven direction-agnostic across two fully independent
+  `NetworkingService`/database pairs; and — since `SignedInvitation`'s own public constructor checks only
+  signature length — that `recoverContactTransportKey`/`registerPendingContactFromInvitation` independently
+  verify a `SignedInvitation`'s signature themselves via `InvitationCodec.verify` rather than trusting a
+  caller's sequencing: a genuine identity key paired with a random signature is rejected with the pin,
+  contact state, and permissions untouched, and a genuinely signed invitation with its transport key or
+  binding window subsequently altered under the original signature is rejected before those tampered values
+  can reach the pin-monotonicity check). Residual risks introduced by listening on all interfaces and by
   rollover are listed in transport-v1 §8 and §9.
 * #189: an isolated two- and three-peer run with recorded egress. It must show traffic only to
   authorized peer addresses and LAN multicast, and no DNS, NTP, HTTP, or other destination.

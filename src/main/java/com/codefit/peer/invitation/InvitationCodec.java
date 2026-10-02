@@ -105,7 +105,6 @@ public final class InvitationCodec {
         byte[] nonce = cursor.fixed(Invitation.NONCE_LENGTH);
         Instant issuedAt = Instant.ofEpochMilli(cursor.i64());
         Instant expiresAt = Instant.ofEpochMilli(cursor.i64());
-        int unsignedLength = cursor.position();
         byte[] signature = cursor.fixed(SignedInvitation.SIGNATURE_LENGTH);
         cursor.requireExhausted();
 
@@ -118,14 +117,36 @@ public final class InvitationCodec {
             throw new InvitationException(InvitationRejectionReason.MALFORMED, e.getMessage());
         }
 
-        byte[] unsigned = new byte[unsignedLength];
-        System.arraycopy(bytes, 0, unsigned, 0, unsignedLength);
-        byte[] signingBytes = withContext(unsigned);
-        boolean verified = KeyPairs.verify(KeyPairs.publicKeyFromRaw(identityKey.bytes()), signingBytes, signature);
+        SignedInvitation signed = new SignedInvitation(invitation, signature);
+        verify(signed);
+        return signed;
+    }
+
+    /**
+     * Cryptographically verifies that {@code signed.signature()} is a genuine Ed25519 signature, under
+     * this format's own signing context, by {@code signed.invitation().identityKey()} over
+     * {@code signed.invitation()}'s own fields. {@link #decode}/{@link #fromBase64} already call this —
+     * the only reason to call it directly is a {@link SignedInvitation} that did not come from one of
+     * them.
+     *
+     * <p>{@link SignedInvitation}'s own (public, record-generated) constructor checks only that the
+     * signature is {@link SignedInvitation#SIGNATURE_LENGTH} bytes, never that it actually verifies —
+     * nothing stops a caller from constructing one directly with an arbitrary {@link Invitation} and an
+     * arbitrary 64-byte value. A {@code SignedInvitation} is therefore not itself proof of anything;
+     * <strong>every</strong> service method that mutates contact, trust, or pinning state from a
+     * caller-supplied {@code SignedInvitation} MUST call this (or {@link #decode}/{@link #fromBase64})
+     * before trusting anything in it, rather than assuming the caller already did.
+     *
+     * @throws InvitationException {@link InvitationRejectionReason#BAD_SIGNATURE} the signature does not
+     *                              verify for the claimed identity key
+     */
+    public static void verify(SignedInvitation signed) {
+        byte[] signingBytes = signingBytes(signed.invitation());
+        boolean verified = KeyPairs.verify(
+                KeyPairs.publicKeyFromRaw(signed.invitation().identityKey().bytes()), signingBytes, signed.signature());
         if (!verified) {
             throw new InvitationException(InvitationRejectionReason.BAD_SIGNATURE, "Signature does not verify for the claimed identity key.");
         }
-        return new SignedInvitation(invitation, signature);
     }
 
     private static byte[] signingBytes(Invitation invitation) {

@@ -28,6 +28,8 @@ public final class PeerIdentityTestTables {
             statement.execute("DELETE FROM social_profile");
             statement.execute("DELETE FROM peer_identity");
             statement.execute("DELETE FROM transport_identity");
+            statement.execute("DELETE FROM local_progress_snapshots");
+            statement.execute("DELETE FROM local_preparation_checkpoints");
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to reset peer identity test tables", exception);
         }

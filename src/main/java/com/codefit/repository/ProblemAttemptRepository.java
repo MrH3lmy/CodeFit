@@ -44,6 +44,30 @@ public class ProblemAttemptRepository {
         }
     }
 
+    /**
+     * Attempts whose {@code submitted_at} falls in {@code [startUtcInclusive, endUtcExclusive)}, both
+     * given as the window's UTC bounds converted to a naive {@link LocalDateTime} (#183:
+     * {@code submitted_at} is {@code CURRENT_TIMESTAMP}-sourced, i.e. {@code LEGACY_SQLITE_UTC} — exact
+     * UTC despite carrying no offset — so the caller must pass UTC bounds here, never comparison-zone
+     * bounds). {@code datetime()} on both sides normalizes the SQLite-default ' ' separator against
+     * Java's 'T' separator before comparing, exactly as {@code ReviewHistoryRepository.findFiltered}
+     * already does for the same reason.
+     */
+    public List<ProblemAttempt> findSubmittedBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
+        String sql = "SELECT * FROM problem_attempts WHERE datetime(submitted_at) >= datetime(?) "
+                + "AND datetime(submitted_at) < datetime(?) ORDER BY problem_id, attempt_number";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, startUtcInclusive.toString());
+            statement.setString(2, endUtcExclusive.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return mapAll(resultSet);
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load problem attempts in window", exception);
+        }
+    }
+
     /** Every attempt across every problem, for dashboard aggregation (#147) — one query rather than
      *  one round trip per problem, so aggregation stays responsive with the full imported roadmap. */
     public List<ProblemAttempt> findAll() {

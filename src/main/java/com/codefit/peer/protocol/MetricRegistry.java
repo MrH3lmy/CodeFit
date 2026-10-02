@@ -39,7 +39,16 @@ public final class MetricRegistry {
                     "sum of phase-timer seconds on problem_attempts in window"),
             new MetricDefinition("mock.overall_score", 1, MetricUnit.PERCENT, 1,
                     Set.of(MetricProvenance.MOCK_SELF_SCORE),
-                    "mean interview_mock_runs.overall_score_percent completed in window"));
+                    "mean interview_mock_runs.overall_score_percent completed in window"),
+            new MetricDefinition("problem.unique_completed", 1, MetricUnit.COUNT, 0,
+                    Set.of(MetricProvenance.LOCAL_RECORD),
+                    "#183: distinct problem_progress rows with state = SOLVED and completed_at in window "
+                            + "(problem_id is UNIQUE in problem_progress, so repeated attempts, multiple roadmap "
+                            + "memberships, and re-import can never inflate this count)"),
+            new MetricDefinition("review.hint_free_rate", 1, MetricUnit.BASIS_POINTS, 10,
+                    Set.of(MetricProvenance.LOCAL_RECORD),
+                    "#183: share of review_history rows (boss_battle = 0) with hint_used = 0 in window "
+                            + "(independence signal; hint_used is recorded directly by the app, not self-reported)"));
 
     private static final Map<String, MetricDefinition> BY_KEY = V1.stream()
             .collect(Collectors.toUnmodifiableMap(d -> key(d.metricId(), d.version()), Function.identity()));

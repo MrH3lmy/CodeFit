@@ -164,6 +164,32 @@ public class ReviewHistoryRepository {
         }
     }
 
+    /**
+     * Half-open {@code [startUtcInclusive, endUtcExclusive)} window over non-boss-battle reviews, for
+     * #183's comparison-grade snapshots. Deliberately a separate query from {@link #findFiltered}:
+     * that method's {@code end} bound is inclusive (built for dashboard "up to and including this
+     * date" filtering), which would double-count a review landing exactly on a window boundary instant
+     * - the opposite of what a deterministic, non-overlapping daily/weekly snapshot needs.
+     */
+    public List<ReviewHistory> findReviewedBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
+        String sql = "SELECT * FROM review_history WHERE boss_battle = 0 AND datetime(reviewed_at) >= datetime(?) "
+                + "AND datetime(reviewed_at) < datetime(?) ORDER BY reviewed_at, id";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, startUtcInclusive.toString());
+            statement.setString(2, endUtcExclusive.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<ReviewHistory> history = new ArrayList<>();
+                while (resultSet.next()) {
+                    history.add(mapReviewHistory(resultSet));
+                }
+                return history;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load review history in window", exception);
+        }
+    }
+
     public boolean hasBossBattleSince(java.time.LocalDate since) {
         String sql = "SELECT 1 FROM review_history WHERE boss_battle = 1 AND date(reviewed_at) >= date(?) LIMIT 1";
         try (Connection connection = DatabaseConfig.getConnection();

@@ -28,6 +28,7 @@ class SchemaMigratorTest {
     void setUp(@TempDir Path tempDir) throws SQLException {
         connection = DriverManager.getConnection("jdbc:sqlite:" + tempDir.resolve("legacy.db"));
         try (Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA foreign_keys = ON");
             statement.execute("""
                     CREATE TABLE flashcards (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -209,6 +210,105 @@ class SchemaMigratorTest {
 
         assertEquals("REVIEW", afterFirstRun);
         assertEquals(afterFirstRun, afterSecondRun);
+    }
+
+    @Test
+    void createsLocalProgressSnapshotTablesWithTheWindowIdentityUniqueConstraint() throws SQLException {
+        SchemaMigrator.migrate(connection);
+
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO local_progress_snapshots (window_kind, local_start_epoch_day, zone_id, week_start, "
+                        + "window_start, window_end, cutoff, revision, captured_at) VALUES ('DAY', 20000, 'UTC', NULL, "
+                        + "'2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z', '2026-01-01T12:00:00Z', 1, '2026-01-01T12:00:00Z')",
+                Statement.RETURN_GENERATED_KEYS)) {
+            statement.executeUpdate();
+            long id;
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                keys.next();
+                id = keys.getLong(1);
+            }
+            try (PreparedStatement metric = connection.prepareStatement(
+                    "INSERT INTO local_progress_snapshot_metrics (snapshot_id, metric_order, metric_id, metric_version, "
+                            + "unit, availability, value, sample_size, provenance, timestamp_basis) "
+                            + "VALUES (?, 0, 'review.attempts', 1, 'COUNT', 'MEASURED', 3, 3, 'LOCAL_RECORD', 'LEGACY_SQLITE_UTC')")) {
+                metric.setLong(1, id);
+                metric.executeUpdate();
+            }
+        }
+
+        // The same logical window (kind, local date, zone, week start) is a duplicate, not a second row.
+        assertThrows(SQLException.class, () -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "INSERT INTO local_progress_snapshots (window_kind, local_start_epoch_day, zone_id, week_start, "
+                            + "window_start, window_end, cutoff, revision, captured_at) VALUES ('DAY', 20000, 'UTC', NULL, "
+                            + "'2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z', '2026-01-01T18:00:00Z', 2, '2026-01-01T18:00:00Z')")) {
+                statement.executeUpdate();
+            }
+        });
+
+        // Deleting the snapshot cascades to its metrics.
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("DELETE FROM local_progress_snapshots");
+            try (ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM local_progress_snapshot_metrics")) {
+                resultSet.next();
+                assertEquals(0, resultSet.getInt(1));
+            }
+        }
+    }
+
+    @Test
+    void createsLocalPreparationCheckpointTablesWithTheProfileDateUniqueConstraint() throws SQLException {
+        SchemaMigrator.migrate(connection);
+
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO local_preparation_checkpoints (profile_id, checkpoint_date, revision, profile_fingerprint, "
+                        + "scoring_version, overall_threshold_percent, captured_at, overall_percent, coverage_percent, status) "
+                        + "VALUES ('revolut-java', '2026-01-01', 1, X'00', 1, 75, '2026-01-01T12:00:00Z', 80, 100, 'READY')",
+                Statement.RETURN_GENERATED_KEYS)) {
+            statement.executeUpdate();
+            long id;
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                keys.next();
+                id = keys.getLong(1);
+            }
+            try (PreparedStatement domain = connection.prepareStatement(
+                    "INSERT INTO local_preparation_checkpoint_domains (checkpoint_id, domain_order, domain_id, "
+                            + "weight_percent, critical_gate, threshold_percent, score_percent, coverage_percent, "
+                            + "measured_requirement_count, total_requirement_count, status) "
+                            + "VALUES (?, 0, 'java-core', 100, 1, 70, 80, 100, 2, 2, 'PASS')")) {
+                domain.setLong(1, id);
+                domain.executeUpdate();
+            }
+        }
+
+        assertThrows(SQLException.class, () -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "INSERT INTO local_preparation_checkpoints (profile_id, checkpoint_date, revision, profile_fingerprint, "
+                            + "scoring_version, overall_threshold_percent, captured_at, overall_percent, coverage_percent, status) "
+                            + "VALUES ('revolut-java', '2026-01-01', 2, X'00', 1, 75, '2026-01-01T18:00:00Z', 85, 100, 'READY')")) {
+                statement.executeUpdate();
+            }
+        });
+
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("DELETE FROM local_preparation_checkpoints");
+            try (ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM local_preparation_checkpoint_domains")) {
+                resultSet.next();
+                assertEquals(0, resultSet.getInt(1));
+            }
+        }
+    }
+
+    @Test
+    void localSnapshotTablesMigrationIsIdempotent() throws SQLException {
+        SchemaMigrator.migrate(connection);
+        SchemaMigrator.migrate(connection);
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM schema_migrations WHERE version = 9")) {
+            assertTrue(resultSet.next());
+            assertEquals(1, resultSet.getInt(1));
+        }
     }
 
     private long insertCard(String cardType, String acceptedAnswers) throws SQLException {

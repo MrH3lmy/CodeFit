@@ -56,7 +56,10 @@ final class SchemaMigrator {
                     SchemaMigrator::createContactAddressTable),
             new VersionedMigration(8,
                     "Add the last-observed transport-key binding per contact, for dial-time pinning (#182)",
-                    SchemaMigrator::createContactTransportBindingTable)
+                    SchemaMigrator::createContactTransportBindingTable),
+            new VersionedMigration(9,
+                    "Add local progress/preparation snapshot and checkpoint tables (#183)",
+                    SchemaMigrator::createLocalSnapshotTables)
     );
 
     static void migrate(Connection connection) throws SQLException {
@@ -411,6 +414,98 @@ final class SchemaMigrator {
                         observed_at TEXT NOT NULL
                     )
                     """);
+        }
+    }
+
+    /**
+     * #183's own, locally generated snapshot/checkpoint storage — deliberately named and namespaced
+     * apart from any future #184 "received/cached peer snapshot" tables, which must never share this
+     * prefix. A progress snapshot is keyed by the local window it describes ({@code window_kind},
+     * {@code local_start_epoch_day}, {@code zone_id}, {@code week_start}): capturing the same window
+     * again is a <em>correction</em> that replaces this row (the service layer enforces the revision
+     * can only move forward), not a second additive total. A preparation checkpoint is keyed by
+     * {@code (profile_id, checkpoint_date)} (a UTC calendar day): at most one checkpoint per profile
+     * per day, so a same-day re-capture corrects it and a different day is a genuinely new, permanent
+     * historical row — never replaced by a later capture. Metrics/domains are child rows rather than
+     * an encoded blob so each value stays individually queryable and typed.
+     */
+    private static void createLocalSnapshotTables(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS local_progress_snapshots (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        window_kind TEXT NOT NULL,
+                        local_start_epoch_day INTEGER NOT NULL,
+                        zone_id TEXT NOT NULL,
+                        week_start INTEGER,
+                        window_start TEXT NOT NULL,
+                        window_end TEXT NOT NULL,
+                        cutoff TEXT NOT NULL,
+                        revision INTEGER NOT NULL,
+                        captured_at TEXT NOT NULL
+                    )
+                    """);
+            // A plain UNIQUE(...) table constraint treats every NULL week_start (every DAY window) as
+            // distinct from every other, since SQL NULLs never compare equal to each other - so a DAY
+            // window's identity would never be enforced as unique at the database level. COALESCE makes
+            // the index itself NULL-safe; the repository's own lookup is independently NULL-safe too.
+            statement.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_local_progress_snapshots_window "
+                    + "ON local_progress_snapshots(window_kind, local_start_epoch_day, zone_id, COALESCE(week_start, -1))");
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS local_progress_snapshot_metrics (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        snapshot_id INTEGER NOT NULL REFERENCES local_progress_snapshots(id) ON DELETE CASCADE,
+                        metric_order INTEGER NOT NULL,
+                        metric_id TEXT NOT NULL,
+                        metric_version INTEGER NOT NULL,
+                        unit TEXT NOT NULL,
+                        availability TEXT NOT NULL,
+                        value INTEGER NOT NULL,
+                        sample_size INTEGER NOT NULL,
+                        provenance TEXT NOT NULL,
+                        timestamp_basis TEXT NOT NULL,
+                        UNIQUE(snapshot_id, metric_id, metric_version)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS local_preparation_checkpoints (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        profile_id TEXT NOT NULL,
+                        checkpoint_date TEXT NOT NULL,
+                        revision INTEGER NOT NULL,
+                        profile_fingerprint BLOB NOT NULL,
+                        scoring_version INTEGER NOT NULL,
+                        overall_threshold_percent INTEGER NOT NULL,
+                        captured_at TEXT NOT NULL,
+                        overall_percent INTEGER,
+                        coverage_percent INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        UNIQUE(profile_id, checkpoint_date)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS local_preparation_checkpoint_domains (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        checkpoint_id INTEGER NOT NULL REFERENCES local_preparation_checkpoints(id) ON DELETE CASCADE,
+                        domain_order INTEGER NOT NULL,
+                        domain_id TEXT NOT NULL,
+                        weight_percent INTEGER NOT NULL,
+                        critical_gate INTEGER NOT NULL,
+                        threshold_percent INTEGER,
+                        score_percent INTEGER,
+                        coverage_percent INTEGER NOT NULL,
+                        measured_requirement_count INTEGER NOT NULL,
+                        total_requirement_count INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        UNIQUE(checkpoint_id, domain_id)
+                    )
+                    """);
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_local_progress_snapshot_metrics_snapshot "
+                    + "ON local_progress_snapshot_metrics(snapshot_id)");
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_local_preparation_checkpoints_profile "
+                    + "ON local_preparation_checkpoints(profile_id, checkpoint_date)");
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_local_preparation_checkpoint_domains_checkpoint "
+                    + "ON local_preparation_checkpoint_domains(checkpoint_id)");
         }
     }
 

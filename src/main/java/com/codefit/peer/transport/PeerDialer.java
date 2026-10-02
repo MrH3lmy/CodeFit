@@ -35,7 +35,8 @@ final class PeerDialer {
             ConnectionFailureReason.UNSUPPORTED_VERSION, ConnectionFailureReason.BINDING_KEY_MISMATCH,
             ConnectionFailureReason.BINDING_EXPIRED, ConnectionFailureReason.BINDING_NOT_YET_VALID,
             ConnectionFailureReason.MALFORMED_FRAME, ConnectionFailureReason.OVERSIZED_FRAME,
-            ConnectionFailureReason.ENVELOPE_REJECTED);
+            ConnectionFailureReason.ENVELOPE_REJECTED, ConnectionFailureReason.STALE_BINDING,
+            ConnectionFailureReason.ROLLOVER_REFUSED);
 
     private PeerDialer() {
     }
@@ -51,13 +52,46 @@ final class PeerDialer {
                                  IdentityId expectedRemoteIdentity, IdentityKey expectedTransportKey, Instant now,
                                  int connectTimeoutMillis, int handshakeTimeoutMillis) {
         SSLContext tls = TlsContexts.forDialer(localTransport, expectedTransportKey);
+        return attempt(tls, address, connectTimeoutMillis, handshakeTimeoutMillis,
+                socket -> PeerSession.dial(socket, context, expectedRemoteIdentity, now));
+    }
+
+    /**
+     * One transport-key <em>rollover</em> attempt, made only after a pinned dial was refused with
+     * {@link ConnectionFailureReason#WRONG_PIN}. TLS here accepts any structurally valid certificate (the
+     * pin is exactly what just failed), so the connection is trusted only if the peer then proves, with an
+     * identity-signed binding strictly newer than {@code pinned}, that its identity authorizes the key it
+     * presented; see {@link PeerSession#dialForRollover}. Never retried: a failure means the peer holds no
+     * valid newer authorization and the old pin stays exactly as it was.
+     */
+    static DialOutcome rolloverOnce(TransportIdentity localTransport, PeerSession.Context context, PeerAddress address,
+                                     IdentityId expectedRemoteIdentity, PinnedBinding pinned, Instant now) {
+        return rolloverOnce(localTransport, context, address, expectedRemoteIdentity, pinned, now,
+                DEFAULT_CONNECT_TIMEOUT_MILLIS, DEFAULT_HANDSHAKE_TIMEOUT_MILLIS);
+    }
+
+    static DialOutcome rolloverOnce(TransportIdentity localTransport, PeerSession.Context context, PeerAddress address,
+                                     IdentityId expectedRemoteIdentity, PinnedBinding pinned, Instant now,
+                                     int connectTimeoutMillis, int handshakeTimeoutMillis) {
+        SSLContext tls = TlsContexts.forRolloverDialer(localTransport);
+        return attempt(tls, address, connectTimeoutMillis, handshakeTimeoutMillis,
+                socket -> PeerSession.dialForRollover(socket, context, expectedRemoteIdentity, pinned, now));
+    }
+
+    @FunctionalInterface
+    private interface SessionAction {
+        ConnectionOutcome run(SSLSocket socket) throws IOException;
+    }
+
+    private static DialOutcome attempt(SSLContext tls, PeerAddress address, int connectTimeoutMillis,
+                                        int handshakeTimeoutMillis, SessionAction action) {
         SSLSocket socket = null;
         try {
             socket = (SSLSocket) tls.getSocketFactory().createSocket();
             socket.connect(new InetSocketAddress(address.toInetAddress(), address.port()), connectTimeoutMillis);
             TlsContexts.hardenSocket(socket, false);
             socket.setSoTimeout(handshakeTimeoutMillis);
-            ConnectionOutcome result = PeerSession.dial(socket, context, expectedRemoteIdentity, now);
+            ConnectionOutcome result = action.run(socket);
             if (result.authenticated()) {
                 socket.setSoTimeout(0);
                 return new DialOutcome(result, new PeerConnection(socket, result.remoteIdentityId(), Instant.now()));

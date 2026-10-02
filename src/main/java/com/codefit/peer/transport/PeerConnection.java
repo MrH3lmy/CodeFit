@@ -35,6 +35,11 @@ public final class PeerConnection implements AutoCloseable {
         return remoteIdentityId;
     }
 
+    /** The peer's socket address as seen on this connection (the interface address it actually came through or went to). */
+    public java.net.SocketAddress remoteAddress() {
+        return socket.getRemoteSocketAddress();
+    }
+
     public Instant connectedAt() {
         return connectedAt;
     }

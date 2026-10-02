@@ -105,7 +105,15 @@ Trust boundaries:
   (`NoHiddenServiceDependencyTest`), an invitation codec conformance/rejection suite
   (`InvitationCodecTest`), a LAN-discovery recognition/self-loopback suite
   (`LanAnnouncementCodecTest`, `LanDiscoveryServiceTest`), and a literal two-OS-process,
-  two-database, two-key-pair, real-socket demonstration (`TwoProcessPeerDemoTest`). Revocation/AIA
-  are asserted disabled in `TlsContexts`.
+  two-database, two-key-pair, real-socket demonstration (`TwoProcessPeerDemoTest`, including a case
+  that connects through a non-loopback interface address taken from the invitation). Revocation/AIA
+  are asserted disabled in `TlsContexts`. Reachability and key lifecycle (transport-v1 §8-§9):
+  `PeerListenerLanReachabilityTest` (wildcard/specific/loopback-only binds through a real LAN address),
+  `LanDiscoveryInterfaceSelectionTest`, `TransportRolloverTest` (rollover proof, stale/unauthorized
+  replacement keys, nothing disclosed to an unproven peer, double rotation refused), and
+  `NetworkingServiceKeyLifecycleTest` (persisted key = live key = advertised key = emitted binding across
+  invitation creation, renewal-window rotation, forced rotation, restart, and pin persistence).
+  Residual risks introduced by listening on all interfaces and by rollover are listed in transport-v1 §8
+  and §9.
 * #189: an isolated two- and three-peer run with recorded egress. It must show traffic only to
   authorized peer addresses and LAN multicast, and no DNS, NTP, HTTP, or other destination.

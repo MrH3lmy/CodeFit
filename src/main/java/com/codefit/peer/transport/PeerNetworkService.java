@@ -6,6 +6,7 @@ import com.codefit.peer.protocol.IdentityId;
 import com.codefit.peer.protocol.IdentityKey;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -36,6 +37,7 @@ public final class PeerNetworkService implements AutoCloseable {
 
     private final KnownContactLookup contactLookup;
     private final ConnectionEventListener eventListener;
+    private final VerifiedBindingListener bindingListener;
     private final LocalBindingEnvelopeCache bindingCache = new LocalBindingEnvelopeCache();
     private final PeerSession.ReplayStates replayStates = new PeerSession.ReplayStates();
     private final Map<IdentityId, PeerConnection> connections = new ConcurrentHashMap<>();
@@ -47,10 +49,21 @@ public final class PeerNetworkService implements AutoCloseable {
     private volatile UnlockedIdentity localIdentity;
     private volatile TransportIdentity localTransport;
     private volatile long writerEpoch;
+    private volatile ListenerBindAddress bindAddress;
 
     public PeerNetworkService(KnownContactLookup contactLookup, ConnectionEventListener eventListener) {
+        this(contactLookup, eventListener, (identity, binding) -> { });
+    }
+
+    /**
+     * @param bindingListener told the verified remote {@code IDENTITY_BINDING} of every connection that
+     *                        fully authenticated, inbound or outbound, before the connection is handed out
+     */
+    public PeerNetworkService(KnownContactLookup contactLookup, ConnectionEventListener eventListener,
+                              VerifiedBindingListener bindingListener) {
         this.contactLookup = contactLookup;
         this.eventListener = eventListener;
+        this.bindingListener = bindingListener;
     }
 
     public synchronized boolean isEnabled() {
@@ -61,6 +74,11 @@ public final class PeerNetworkService implements AutoCloseable {
         return listener == null ? Optional.empty() : Optional.of(listener.localPort());
     }
 
+    /** Where the listener is bound, or empty while disabled. */
+    public synchronized Optional<ListenerBindAddress> boundAddress() {
+        return listener == null ? Optional.empty() : Optional.of(bindAddress);
+    }
+
     public synchronized Optional<IdentityBinding> currentBinding() {
         return localTransport == null ? Optional.empty() : Optional.of(localTransport.toBinding());
     }
@@ -69,26 +87,68 @@ public final class PeerNetworkService implements AutoCloseable {
         return localTransport == null ? Optional.empty() : Optional.of(localTransport.publicKey());
     }
 
-    /** Idempotent: calling this while already enabled with the same material is a harmless no-op. */
+    /** Enables on every local interface ({@link ListenerBindAddress#wildcard()}). */
     public synchronized void enable(UnlockedIdentity identity, TransportKeyMaterial transportMaterial, long writerEpoch,
                                      int listenPort) throws IOException {
+        enable(identity, transportMaterial, writerEpoch, listenPort, ListenerBindAddress.wildcard());
+    }
+
+    /**
+     * Idempotent: calling this while already enabled is a harmless no-op (it neither rebinds nor swaps the
+     * key; use {@link #rekey} for the latter).
+     */
+    public synchronized void enable(UnlockedIdentity identity, TransportKeyMaterial transportMaterial, long writerEpoch,
+                                     int listenPort, ListenerBindAddress bind) throws IOException {
         if (listener != null) {
             return;
         }
         this.localIdentity = identity;
         this.localTransport = TransportIdentity.from(transportMaterial);
         this.writerEpoch = writerEpoch;
+        this.bindAddress = bind;
         PeerSession.Context context = new PeerSession.Context(localIdentity, localTransport, writerEpoch,
                 bindingCache, replayStates, contactLookup);
-        this.listener = new PeerListener(localTransport, context, listenPort, LISTENER_BACKLOG,
-                MAX_CONCURRENT_HANDSHAKES, MAX_QUEUED_HANDSHAKES, MAX_AUTHENTICATED_INBOUND_CONNECTIONS,
-                this::trackInboundConnection, eventListener);
+        try {
+            this.listener = new PeerListener(localTransport, context, bind, listenPort, LISTENER_BACKLOG,
+                    MAX_CONCURRENT_HANDSHAKES, MAX_QUEUED_HANDSHAKES, MAX_AUTHENTICATED_INBOUND_CONNECTIONS,
+                    this::trackInboundConnection, eventListener, bindingListener);
+        } catch (IOException | RuntimeException bindFailed) {
+            // Not enabled after all (e.g. the port is taken): do not keep the unlocked identity or key in memory.
+            this.localIdentity = null;
+            this.localTransport = null;
+            this.bindAddress = null;
+            throw bindFailed;
+        }
         ThreadFactory daemonFactory = runnable -> {
             Thread thread = new Thread(runnable, "codefit-peer-dial-" + dialThreadCounter.incrementAndGet());
             thread.setDaemon(true);
             return thread;
         };
         this.dialExecutor = Executors.newFixedThreadPool(MAX_CONCURRENT_OUTBOUND_DIALS, daemonFactory);
+    }
+
+    /**
+     * Switches the live transport key to {@code newMaterial}: every connection accepted from now on is
+     * presented the new certificate and answered with a binding for the new key, on the same port, and every
+     * later dial uses it too. Connections already authenticated stay open. A no-op when {@code newMaterial}
+     * is the key already live.
+     *
+     * @return {@code true} when the live key actually changed
+     * @throws IllegalStateException networking is not enabled
+     */
+    public synchronized boolean rekey(TransportKeyMaterial newMaterial) {
+        if (listener == null) {
+            throw new IllegalStateException("Networking is disabled.");
+        }
+        TransportIdentity next = TransportIdentity.from(newMaterial);
+        if (next.publicKey().equals(localTransport.publicKey())) {
+            return false;
+        }
+        PeerSession.Context context = new PeerSession.Context(localIdentity, next, writerEpoch,
+                bindingCache, replayStates, contactLookup);
+        listener.rekey(next, context);
+        this.localTransport = next;
+        return true;
     }
 
     /** Stops the listener, cancels dialing, closes every open connection, and forgets key material. Safe to call repeatedly. */
@@ -134,6 +194,27 @@ public final class PeerNetworkService implements AutoCloseable {
     public CompletableFuture<DialOutcome> connect(IdentityId contactId, PeerAddress address,
                                                               IdentityKey expectedTransportKey, RetryPolicy policy,
                                                               AtomicBoolean cancelToken) {
+        return connectInternal(contactId, address, expectedTransportKey, null, policy, cancelToken);
+    }
+
+    /**
+     * Like {@link #connect(IdentityId, PeerAddress, IdentityKey, RetryPolicy, AtomicBoolean)} for a contact
+     * whose pinned transport key may since have been rotated. The pinned dial goes first, exactly as
+     * before. Only if the peer's certificate is refused by the pin ({@link ConnectionFailureReason#WRONG_PIN})
+     * is a single <em>rollover</em> attempt made: the peer must then prove, before this side discloses
+     * anything, an identity-signed binding for the key it presented that is valid now and strictly newer
+     * than {@code pinned}. A peer that cannot is refused and the pin is untouched. On success the verified
+     * binding reaches the {@link VerifiedBindingListener} like any other authenticated connection, which is
+     * what moves the pin forward.
+     */
+    public CompletableFuture<DialOutcome> connect(IdentityId contactId, PeerAddress address, PinnedBinding pinned,
+                                                  RetryPolicy policy, AtomicBoolean cancelToken) {
+        return connectInternal(contactId, address, pinned.transportKey(), pinned, policy, cancelToken);
+    }
+
+    private CompletableFuture<DialOutcome> connectInternal(IdentityId contactId, PeerAddress address,
+                                                           IdentityKey expectedTransportKey, PinnedBinding rolloverPin,
+                                                           RetryPolicy policy, AtomicBoolean cancelToken) {
         ExecutorService executor;
         UnlockedIdentity identity;
         TransportIdentity transport;
@@ -153,13 +234,29 @@ public final class PeerNetworkService implements AutoCloseable {
             return CompletableFuture.completedFuture(limitReached);
         }
         PeerSession.Context context = new PeerSession.Context(identity, transport, epoch, bindingCache, replayStates, contactLookup);
-        return CompletableFuture.supplyAsync(
-                () -> PeerDialer.dialWithRetry(transport, context, address, contactId, expectedTransportKey, policy, cancelToken, e -> notifyEvent(e)),
-                executor
-        ).whenComplete((outcome, throwable) -> {
+        return CompletableFuture.supplyAsync(() -> {
+            DialOutcome outcome = PeerDialer.dialWithRetry(transport, context, address, contactId, expectedTransportKey,
+                    policy, cancelToken, e -> notifyEvent(e));
+            if (rolloverPin != null && !outcome.result().authenticated()
+                    && outcome.result().failureReason() == ConnectionFailureReason.WRONG_PIN && !cancelToken.get()) {
+                notifyEvent(ConnectionEvent.of(contactId, ConnectionState.CONNECTING));
+                outcome = PeerDialer.rolloverOnce(transport, context, address, contactId, rolloverPin, Instant.now());
+                if (!outcome.result().authenticated()) {
+                    notifyEvent(ConnectionEvent.failed(contactId, ConnectionState.REJECTED,
+                            outcome.result().failureReason(), outcome.result().detail()));
+                }
+            }
+            return outcome;
+        }, executor).whenComplete((outcome, throwable) -> {
             outboundSlots.release();
             if (throwable == null && outcome.connection() != null) {
                 trackOutboundConnection(contactId, outcome.connection());
+                try {
+                    bindingListener.onVerifiedBinding(contactId, outcome.result().remoteBinding());
+                } catch (RuntimeException persistenceFailure) {
+                    notifyEvent(ConnectionEvent.failed(contactId, ConnectionState.CONNECTED,
+                            ConnectionFailureReason.BINDING_NOT_PERSISTED, String.valueOf(persistenceFailure.getMessage())));
+                }
             }
         });
     }

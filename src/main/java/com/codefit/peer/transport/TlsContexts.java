@@ -63,6 +63,16 @@ final class TlsContexts {
         return build(local, new TrustManager[]{new PinnedTransportTrustManager(expectedTransportKey)});
     }
 
+    /**
+     * For a dial made <em>only</em> in rollover mode (after the pinned dial failed): any structurally valid
+     * certificate is accepted at the TLS layer because the identity-signed rollover proof, not the
+     * certificate, is what authorizes the key. Must never be used for an ordinary dial, which sends this
+     * device's own binding before the peer has proven anything.
+     */
+    static SSLContext forRolloverDialer(TransportIdentity local) {
+        return build(local, new TrustManager[]{new StructuralTransportTrustManager()});
+    }
+
     private static SSLContext build(TransportIdentity local, TrustManager[] trustManagers) {
         try {
             char[] password = "codefit-transport".toCharArray();

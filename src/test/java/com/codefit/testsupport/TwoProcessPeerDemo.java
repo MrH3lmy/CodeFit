@@ -32,6 +32,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * unambiguous. Role {@code DIALER} then actively connects; role {@code LISTENER} waits for the inbound
  * connection to appear. Both write {@code SUCCESS <fingerprint>} or {@code FAILURE <reason>} to
  * {@code resultFile} and exit 0/1 accordingly.
+ *
+ * <p>An optional sixth argument selects how the invitation advertises the listener: {@code LOOPBACK}
+ * (default, an explicit {@code 127.0.0.1} address) or {@code LAN}, where the invitation carries
+ * {@link NetworkingService#reachableAddresses()} - this machine's real, non-loopback interface addresses
+ * paired with the actual listening port - and the dialer connects to the first address <em>from the
+ * invitation</em>, exactly as a peer on another device would. The result line then names the address used.
  */
 public final class TwoProcessPeerDemo {
     private static final char[] VAULT_PASSPHRASE = "two-process-demo-passphrase".toCharArray();
@@ -41,10 +47,11 @@ public final class TwoProcessPeerDemo {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 5) {
-            System.err.println("Usage: role dbFile ownInviteFile peerInviteFileOrNONE resultFile");
+        if (args.length != 5 && args.length != 6) {
+            System.err.println("Usage: role dbFile ownInviteFile peerInviteFileOrNONE resultFile [LOOPBACK|LAN]");
             System.exit(2);
         }
+        boolean lan = args.length == 6 && "LAN".equals(args[5]);
         String role = args[0];
         Path dbFile = Path.of(args[1]);
         Path ownInviteFile = Path.of(args[2]);
@@ -52,7 +59,7 @@ public final class TwoProcessPeerDemo {
         Path resultFile = Path.of(args[4]);
 
         try {
-            run(role, dbFile, ownInviteFile, "NONE".equals(peerInviteArg) ? null : Path.of(peerInviteArg), resultFile);
+            run(role, dbFile, ownInviteFile, "NONE".equals(peerInviteArg) ? null : Path.of(peerInviteArg), resultFile, lan);
         } catch (Exception e) {
             writeResult(resultFile, "FAILURE " + e);
             e.printStackTrace();
@@ -60,7 +67,8 @@ public final class TwoProcessPeerDemo {
         }
     }
 
-    private static void run(String role, Path dbFile, Path ownInviteFile, Path peerInviteFile, Path resultFile) throws Exception {
+    private static void run(String role, Path dbFile, Path ownInviteFile, Path peerInviteFile, Path resultFile,
+                            boolean lan) throws Exception {
         DatabaseConfig.useDatabaseFile(dbFile);
         DatabaseConfig.initialize();
 
@@ -76,8 +84,10 @@ public final class TwoProcessPeerDemo {
         networkingService.enableNetworking(VAULT_PASSPHRASE, 0, nowMillis());
         int ownPort = networkingService.listeningPort().orElseThrow();
 
-        SignedInvitation ownInvitation = networkingService.createInvitation(VAULT_PASSPHRASE,
-                List.of(new PeerAddress("127.0.0.1", ownPort)), Duration.ofHours(1), nowMillis());
+        SignedInvitation ownInvitation = lan
+                ? networkingService.createInvitation(VAULT_PASSPHRASE, Duration.ofHours(1), nowMillis())
+                : networkingService.createInvitation(VAULT_PASSPHRASE,
+                        List.of(new PeerAddress("127.0.0.1", ownPort)), Duration.ofHours(1), nowMillis());
         Files.writeString(ownInviteFile, com.codefit.peer.invitation.InvitationCodec.toBase64(ownInvitation), StandardCharsets.US_ASCII);
 
         if (peerInviteFile == null) {
@@ -93,15 +103,16 @@ public final class TwoProcessPeerDemo {
         IdentityId peerIdentityId = paired.identityId();
 
         if ("DIALER".equals(role)) {
-            PeerAddress peerAddress = new PeerAddress("127.0.0.1",
-                    onlyAddressPort(peerInvitation));
+            PeerAddress peerAddress = lan
+                    ? peerInvitation.invitation().addresses().get(0)
+                    : new PeerAddress("127.0.0.1", onlyAddressPort(peerInvitation));
             RetryPolicy policy = new RetryPolicy(5, Duration.ofMillis(300), Duration.ofSeconds(2), 0.1);
             DialOutcome outcome = networkingService.connectToContact(paired.id(), peerAddress, policy, new AtomicBoolean(false))
                     .get(WAIT_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
             if (!outcome.result().authenticated()) {
                 throw new IllegalStateException("Dial failed: " + outcome.result());
             }
-            writeResult(resultFile, "SUCCESS " + outcome.result().remoteIdentityId());
+            writeResult(resultFile, "SUCCESS " + outcome.result().remoteIdentityId() + " via " + peerAddress.host());
         } else {
             Instant deadline = Instant.now().plus(WAIT_TIMEOUT);
             while (Instant.now().isBefore(deadline)) {

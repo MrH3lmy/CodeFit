@@ -55,6 +55,9 @@ public class ContactService {
      */
     static final Object PERMISSION_LOCK = new Object();
 
+    /** Makes {@link #recordAuthenticatedTransportBinding}'s read-compare-write atomic against concurrent handshakes. */
+    private static final Object TRANSPORT_BINDING_LOCK = new Object();
+
     private final ContactRepository contactRepository;
     private final ContactPermissionRepository permissionRepository;
     private final ConsentChangeEventRepository outboxRepository;
@@ -334,6 +337,46 @@ public class ContactService {
                                                 Instant validUntil, Instant now) {
         requireContact(contactId);
         transportBindingRepository.save(new ObservedTransportBinding(contactId, transportKey, validFrom, validUntil, now));
+    }
+
+    /** What {@link #recordAuthenticatedTransportBinding} did with a verified live binding. */
+    public enum TransportBindingUpdate {
+        /** No key was pinned yet; this one now is. */
+        RECORDED_FIRST,
+        /** Same key as the pin; its validity window was refreshed. */
+        REFRESHED,
+        /** A different key with a strictly newer identity-signed binding replaced the pin (a rollover). */
+        ROTATED,
+        /** A different key whose binding is not newer than the pin; the pin is unchanged. */
+        IGNORED_STALE
+    }
+
+    /**
+     * Records the binding of a connection that just <em>fully authenticated</em> (mutual TLS, a signature
+     * by this contact's identity key, live-certificate-key match, valid now) as the key to pin for them -
+     * but only ever forward: the same key refreshes its window, a different key replaces the pin only if
+     * its binding's {@code validFrom} is strictly later than the pinned one's, and anything older is
+     * ignored. Callers must pass only bindings the transport has already verified; this method enforces
+     * monotonicity, not authenticity.
+     */
+    public TransportBindingUpdate recordAuthenticatedTransportBinding(long contactId, IdentityKey transportKey,
+                                                                       Instant validFrom, Instant validUntil, Instant now) {
+        requireContact(contactId);
+        synchronized (TRANSPORT_BINDING_LOCK) {
+            Optional<ObservedTransportBinding> pinned = transportBindingRepository.find(contactId);
+            TransportBindingUpdate outcome;
+            if (pinned.isEmpty()) {
+                outcome = TransportBindingUpdate.RECORDED_FIRST;
+            } else if (pinned.get().transportKey().equals(transportKey)) {
+                outcome = TransportBindingUpdate.REFRESHED;
+            } else if (validFrom.isAfter(pinned.get().validFrom())) {
+                outcome = TransportBindingUpdate.ROTATED;
+            } else {
+                return TransportBindingUpdate.IGNORED_STALE;
+            }
+            transportBindingRepository.save(new ObservedTransportBinding(contactId, transportKey, validFrom, validUntil, now));
+            return outcome;
+        }
     }
 
     /**

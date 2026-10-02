@@ -23,17 +23,31 @@ import java.util.List;
  */
 final class HandshakeIo {
     private static final byte[] HELLO_MAGIC = {'C', 'F', 'H', '1'};
+    /**
+     * Same layout as {@link #HELLO_MAGIC}, sent only by a dialer whose pinned key was refused by the
+     * listener's certificate and which is asking the peer to prove a newer, identity-authorized key
+     * <em>before</em> the dialer discloses anything (transport-v1 §9).
+     */
+    private static final byte[] ROLLOVER_HELLO_MAGIC = {'C', 'F', 'R', '1'};
     private static final int MAX_SUPPORTED_VERSIONS = 8;
 
     private HandshakeIo() {
     }
 
+    /** A parsed transport hello: the peer's supported major versions and whether it asked for a rollover proof first. */
+    record Hello(List<Integer> versions, boolean rolloverRequested) {
+    }
+
     static void writeHello(OutputStream out, List<Integer> supportedMajorVersions) throws IOException {
+        writeHello(out, supportedMajorVersions, false);
+    }
+
+    static void writeHello(OutputStream out, List<Integer> supportedMajorVersions, boolean rolloverRequested) throws IOException {
         if (supportedMajorVersions.isEmpty() || supportedMajorVersions.size() > MAX_SUPPORTED_VERSIONS) {
             throw new IllegalArgumentException("supportedMajorVersions must have 1.." + MAX_SUPPORTED_VERSIONS + " entries.");
         }
         byte[] frame = new byte[HELLO_MAGIC.length + 1 + supportedMajorVersions.size()];
-        System.arraycopy(HELLO_MAGIC, 0, frame, 0, HELLO_MAGIC.length);
+        System.arraycopy(rolloverRequested ? ROLLOVER_HELLO_MAGIC : HELLO_MAGIC, 0, frame, 0, HELLO_MAGIC.length);
         frame[HELLO_MAGIC.length] = (byte) supportedMajorVersions.size();
         for (int i = 0; i < supportedMajorVersions.size(); i++) {
             int version = supportedMajorVersions.get(i);
@@ -46,12 +60,24 @@ final class HandshakeIo {
         out.flush();
     }
 
+    /** Reads a hello and returns only its versions; a rollover request is reported as malformed here. */
     static List<Integer> readHello(InputStream in) throws IOException {
+        Hello hello = readHelloFrame(in);
+        if (hello.rolloverRequested()) {
+            throw new TransportProtocolException(ConnectionFailureReason.MALFORMED_FRAME, "Unexpected rollover hello.");
+        }
+        return hello.versions();
+    }
+
+    static Hello readHelloFrame(InputStream in) throws IOException {
         byte[] magicAndCount = readExactly(in, HELLO_MAGIC.length + 1);
-        for (int i = 0; i < HELLO_MAGIC.length; i++) {
-            if (magicAndCount[i] != HELLO_MAGIC[i]) {
-                throw new TransportProtocolException(ConnectionFailureReason.MALFORMED_FRAME, "Bad hello magic.");
-            }
+        boolean rollover;
+        if (java.util.Arrays.equals(java.util.Arrays.copyOf(magicAndCount, HELLO_MAGIC.length), HELLO_MAGIC)) {
+            rollover = false;
+        } else if (java.util.Arrays.equals(java.util.Arrays.copyOf(magicAndCount, HELLO_MAGIC.length), ROLLOVER_HELLO_MAGIC)) {
+            rollover = true;
+        } else {
+            throw new TransportProtocolException(ConnectionFailureReason.MALFORMED_FRAME, "Bad hello magic.");
         }
         int count = magicAndCount[HELLO_MAGIC.length] & 0xFF;
         if (count == 0 || count > MAX_SUPPORTED_VERSIONS) {
@@ -63,7 +89,7 @@ final class HandshakeIo {
         for (byte version : versions) {
             result.add(version & 0xFF);
         }
-        return result;
+        return new Hello(result, rollover);
     }
 
     /** Writes one complete protocol v1 frame (header + payload) as produced by {@link EnvelopeCodec#encodeFrame}. */

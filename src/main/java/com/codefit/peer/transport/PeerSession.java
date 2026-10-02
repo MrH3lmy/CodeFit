@@ -13,9 +13,11 @@ import com.codefit.peer.protocol.RejectionReason;
 import com.codefit.peer.protocol.SignedEnvelope;
 
 import javax.net.ssl.SSLSocket;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.SocketException;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
@@ -80,7 +82,56 @@ final class PeerSession {
                     "Expected " + expectedRemoteIdentity + " but the peer's binding was authored by "
                             + peerBinding.header().author().id());
         }
-        return validateBindingAndAuthorize(socket, context, peerBinding, now);
+        return validateBindingAndAuthorize(socket, context, peerBinding, now, null);
+    }
+
+    /**
+     * TLS role: dial in <em>rollover</em> mode, after the pinned dial was refused because the peer's
+     * certificate key is not the one pinned (transport-v1 §9). The TLS layer here accepts any structurally
+     * valid certificate, so nothing about the socket is trusted yet; consequently this side discloses
+     * <strong>nothing</strong> (no identity, no binding) until the peer has first proven, with an
+     * identity-signed {@code IDENTITY_BINDING}, that its identity key authorizes exactly the key it
+     * presented, that the binding is valid now, and that it is strictly newer than the pinned one. Only
+     * then does it send its own binding. A peer that cannot do that is refused and nothing is persisted.
+     */
+    static ConnectionOutcome dialForRollover(SSLSocket socket, Context context, IdentityId expectedRemoteIdentity,
+                                             PinnedBinding pinned, Instant now) throws IOException {
+        socket.startHandshake();
+        OutputStream out = socket.getOutputStream();
+        InputStream in = socket.getInputStream();
+
+        HandshakeIo.writeHello(out, SUPPORTED_MAJOR_VERSIONS, true);
+        HandshakeIo.Hello peerHello = HandshakeIo.readHelloFrame(in);
+        if (!hasOverlap(peerHello.versions(), SUPPORTED_MAJOR_VERSIONS)) {
+            return ConnectionOutcome.fail(ConnectionFailureReason.UNSUPPORTED_VERSION,
+                    "Peer supports major versions " + peerHello.versions() + ", we support " + SUPPORTED_MAJOR_VERSIONS);
+        }
+
+        SignedEnvelope peerBinding;
+        try {
+            peerBinding = HandshakeIo.readEnvelopeFrame(in);
+        } catch (EOFException | SocketException refused) {
+            return ConnectionOutcome.fail(ConnectionFailureReason.ROLLOVER_REFUSED,
+                    "The peer closed the connection instead of proving a newer transport key.");
+        }
+        if (!peerBinding.header().author().id().equals(expectedRemoteIdentity)) {
+            return ConnectionOutcome.fail(ConnectionFailureReason.IDENTITY_MISMATCH,
+                    "Expected " + expectedRemoteIdentity + " but the peer's binding was authored by "
+                            + peerBinding.header().author().id());
+        }
+        ConnectionOutcome verdict = validateBindingAndAuthorize(socket, context, peerBinding, now, pinned);
+        if (!verdict.authenticated()) {
+            return verdict;
+        }
+        if (verdict.remoteBinding().transportKey().equals(pinned.transportKey())) {
+            return ConnectionOutcome.fail(ConnectionFailureReason.ROLLOVER_REFUSED,
+                    "The peer presented the pinned key; there is nothing to roll over.");
+        }
+
+        SignedEnvelope ownBinding = context.bindingCache().get(context.localIdentity(), context.localTransport(),
+                expectedRemoteIdentity, context.writerEpoch(), now);
+        HandshakeIo.writeEnvelopeFrame(out, ownBinding);
+        return verdict;
     }
 
     /** TLS server role: accepts any structurally valid caller and learns their claimed identity from the exchange. */
@@ -91,14 +142,17 @@ final class PeerSession {
 
         HandshakeIo.writeHello(out, SUPPORTED_MAJOR_VERSIONS);
 
-        List<Integer> peerVersions = HandshakeIo.readHello(in);
+        HandshakeIo.Hello callerHello = HandshakeIo.readHelloFrame(in);
+        if (callerHello.rolloverRequested()) {
+            return acceptRollover(socket, context, callerHello, out, in, now);
+        }
         SignedEnvelope callerBinding = HandshakeIo.readEnvelopeFrame(in);
-        if (!hasOverlap(peerVersions, SUPPORTED_MAJOR_VERSIONS)) {
+        if (!hasOverlap(callerHello.versions(), SUPPORTED_MAJOR_VERSIONS)) {
             return ConnectionOutcome.fail(ConnectionFailureReason.UNSUPPORTED_VERSION,
-                    "Caller supports major versions " + peerVersions + ", we support " + SUPPORTED_MAJOR_VERSIONS);
+                    "Caller supports major versions " + callerHello.versions() + ", we support " + SUPPORTED_MAJOR_VERSIONS);
         }
 
-        ConnectionOutcome callerVerdict = validateBindingAndAuthorize(socket, context, callerBinding, now);
+        ConnectionOutcome callerVerdict = validateBindingAndAuthorize(socket, context, callerBinding, now, null);
         if (!callerVerdict.authenticated()) {
             return callerVerdict;
         }
@@ -109,8 +163,47 @@ final class PeerSession {
         return callerVerdict;
     }
 
+    /**
+     * Server side of the rollover handshake: the caller's pinned key for us was refused, so it asked us to
+     * go first. We only do so for a caller whose <em>TLS-proven</em> client key is the key we have pinned
+     * for a paired contact (that proof of possession, not any claim, is what tells us whom to address); an
+     * unrecognized key gets the connection closed with nothing disclosed. Whatever the caller then sends is
+     * validated exactly like a normal inbound binding, and must be authored by that same contact.
+     */
+    private static ConnectionOutcome acceptRollover(SSLSocket socket, Context context, HandshakeIo.Hello callerHello,
+                                                    OutputStream out, InputStream in, Instant now) throws IOException {
+        if (!hasOverlap(callerHello.versions(), SUPPORTED_MAJOR_VERSIONS)) {
+            return ConnectionOutcome.fail(ConnectionFailureReason.UNSUPPORTED_VERSION,
+                    "Caller supports major versions " + callerHello.versions() + ", we support " + SUPPORTED_MAJOR_VERSIONS);
+        }
+        IdentityKey callerTransportKey = new IdentityKey(rawPeerCertificateKey(socket));
+        java.util.Optional<IdentityId> identified = context.contactLookup().pairedContactPinnedTo(callerTransportKey);
+        if (identified.isEmpty()
+                || context.contactLookup().statusOf(identified.get()) != KnownContactLookup.Status.PAIRED) {
+            return ConnectionOutcome.fail(ConnectionFailureReason.ROLLOVER_REFUSED,
+                    "Rollover requested by a TLS client key that is not pinned for any paired contact.");
+        }
+        IdentityId caller = identified.get();
+
+        SignedEnvelope ownBinding = context.bindingCache().get(context.localIdentity(), context.localTransport(),
+                caller, context.writerEpoch(), now);
+        HandshakeIo.writeEnvelopeFrame(out, ownBinding);
+
+        SignedEnvelope callerBinding = HandshakeIo.readEnvelopeFrame(in);
+        if (!callerBinding.header().author().id().equals(caller)) {
+            return ConnectionOutcome.fail(ConnectionFailureReason.IDENTITY_MISMATCH,
+                    "The rollover caller's key is pinned for " + caller + " but its binding was authored by "
+                            + callerBinding.header().author().id());
+        }
+        return validateBindingAndAuthorize(socket, context, callerBinding, now, null);
+    }
+
+    /**
+     * @param explicitPin the pin to compare against, or {@code null} to use whatever {@code contactLookup}
+     *                    currently pins for the author (a first-ever contact simply has none)
+     */
     private static ConnectionOutcome validateBindingAndAuthorize(SSLSocket socket, Context context, SignedEnvelope bindingEnvelope,
-                                                        Instant now) throws IOException {
+                                                        Instant now, PinnedBinding explicitPin) throws IOException {
         if (!(bindingEnvelope.body() instanceof IdentityBinding binding)) {
             return ConnectionOutcome.fail(ConnectionFailureReason.MALFORMED_FRAME,
                     "Expected the first envelope to carry an IDENTITY_BINDING.");
@@ -150,7 +243,20 @@ final class PeerSession {
                     "The live TLS certificate key does not match the transport key the IDENTITY_BINDING vouches for.");
         }
 
-        return ConnectionOutcome.ok(claimedAuthorId);
+        // Staleness / rollover rule: the key we pin may only ever move forward. The same key is always
+        // fine (a plain reconnect or a validity refresh); a different key is acceptable only when its
+        // identity-signed binding is strictly newer than the pinned one, so an old binding captured
+        // before a rotation (together with a since-compromised old key) cannot roll a contact back.
+        PinnedBinding pin = explicitPin != null ? explicitPin
+                : context.contactLookup().pinnedBindingOf(claimedAuthorId).orElse(null);
+        if (pin != null && !pin.transportKey().equals(binding.transportKey())
+                && !binding.validFrom().isAfter(pin.validFrom())) {
+            return ConnectionOutcome.fail(ConnectionFailureReason.STALE_BINDING,
+                    "The IDENTITY_BINDING (valid from " + binding.validFrom() + ") is not newer than the pinned key's binding ("
+                            + pin.validFrom() + ").");
+        }
+
+        return ConnectionOutcome.ok(claimedAuthorId, binding);
     }
 
     private static IdentityId localReceiverId(Context context) {

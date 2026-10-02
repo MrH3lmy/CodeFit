@@ -74,4 +74,30 @@ class TransportKeyServiceTest {
         service.ensureCurrent("correct-pass".toCharArray(), BASE);
         assertThrows(VaultAuthenticationException.class, () -> service.ensureCurrent("wrong-pass".toCharArray(), BASE.plusSeconds(5)));
     }
+
+    @Test
+    void everyNewKeyHasAStrictlyLaterWholeSecondValidFromSoPeersCanOrderRollovers() {
+        TransportKeyService service = new TransportKeyService();
+        TransportKeyMaterial first = service.ensureCurrent("vault-pass".toCharArray(), BASE.plusMillis(250));
+        // Rotated within the same second, and then with the clock stepped backwards.
+        TransportKeyMaterial second = service.rotate("vault-pass".toCharArray(), BASE.plusMillis(900));
+        TransportKeyMaterial third = service.rotate("vault-pass".toCharArray(), BASE.minusSeconds(3_600));
+
+        assertEquals(0, first.validFrom().getNano(), "validFrom is whole seconds");
+        assertTrue(second.validFrom().isAfter(first.validFrom()));
+        assertTrue(third.validFrom().isAfter(second.validFrom()));
+        assertEquals(third.validFrom().plus(Duration.ofDays(180)), third.validUntil());
+    }
+
+    @Test
+    void currentPublicKeyTracksTheKeyInUseWithoutNeedingThePassphrase() {
+        TransportKeyService service = new TransportKeyService();
+        assertTrue(service.currentPublicKey().isEmpty());
+        TransportKeyMaterial first = service.ensureCurrent("vault-pass".toCharArray(), BASE);
+        assertArrayEquals(com.codefit.peer.identity.crypto.KeyPairs.rawPublicKey(first.keyPair().getPublic()),
+                service.currentPublicKey().orElseThrow().bytes());
+        TransportKeyMaterial rotated = service.rotate("vault-pass".toCharArray(), BASE.plusSeconds(5));
+        assertArrayEquals(com.codefit.peer.identity.crypto.KeyPairs.rawPublicKey(rotated.keyPair().getPublic()),
+                service.currentPublicKey().orElseThrow().bytes());
+    }
 }

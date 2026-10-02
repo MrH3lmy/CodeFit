@@ -19,6 +19,12 @@ public enum ConnectionFailureReason {
     BINDING_NOT_YET_VALID,
     BINDING_EXPIRED,
     ENVELOPE_REJECTED,
+    /** A binding for a different or older key than the one pinned, without a strictly-newer identity-signed proof. */
+    STALE_BINDING,
+    /** The peer would not run (or could not complete) the transport-key rollover proof for this caller. */
+    ROLLOVER_REFUSED,
+    /** Authenticated, but the refreshed binding could not be stored locally. */
+    BINDING_NOT_PERSISTED,
     CANCELLED,
     LISTENER_NOT_RUNNING,
     CONNECTION_LIMIT_REACHED,

@@ -1,11 +1,10 @@
 package com.codefit.peer.transport;
 
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLSocket;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.Instant;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -27,29 +26,61 @@ import java.util.function.Consumer;
  * ({@link ConnectionFailureReason#CONNECTION_LIMIT_REACHED}), and a {@link Semaphore} separately caps how
  * many <em>authenticated</em> connections may be held open at once, independent of how many handshake
  * attempts are in flight.
+ *
+ * <p><strong>Where it listens</strong> is an explicit {@link ListenerBindAddress}, never an accident of a
+ * default: the wildcard (every interface) for real LAN peers, one specific interface address, or
+ * loopback-only for same-machine use. Being reachable is not being trusted - every inbound socket still
+ * has to complete mutual TLS and the identity-signed {@code IDENTITY_BINDING} proof before it is anything
+ * but a bounded, short-lived pre-authentication handshake.
+ *
+ * <p><strong>Key rollover.</strong> The server socket is a plain TCP socket that never changes; TLS is
+ * layered on each accepted connection from the <em>current</em> {@link Generation} (the key pair, its
+ * certificate and the matching {@link PeerSession.Context}, all snapshotted together at accept time). So
+ * {@link #rekey} swaps the key presented to every <em>subsequent</em> connection atomically, on the same
+ * port, with no window in which the certificate and the {@code IDENTITY_BINDING} sent on that socket
+ * could disagree.
  */
 final class PeerListener implements AutoCloseable {
     private static final int HANDSHAKE_SOCKET_TIMEOUT_MILLIS = 15_000;
 
-    private final SSLServerSocket serverSocket;
-    private final PeerSession.Context context;
+    /** Everything that must change together when the local transport key changes. */
+    private record Generation(SSLContext tls, PeerSession.Context context) {
+    }
+
+    private final ServerSocket serverSocket;
+    private volatile Generation generation;
     private final ThreadPoolExecutor handshakeExecutor;
     private final Semaphore authenticatedConnectionSlots;
     private final Thread acceptThread;
     private final Consumer<PeerConnection> onAuthenticated;
     private final ConnectionEventListener onEvent;
+    private final VerifiedBindingListener onVerifiedBinding;
     private volatile boolean closing;
 
+    /** Test convenience: loopback-only, no verified-binding listener. Production code always passes a bind address. */
     PeerListener(TransportIdentity localTransport, PeerSession.Context context, int port, int backlog,
                  int maxConcurrentHandshakes, int maxQueuedHandshakes, int maxAuthenticatedConnections,
                  Consumer<PeerConnection> onAuthenticated, ConnectionEventListener onEvent) throws IOException {
-        this.context = context;
+        this(localTransport, context, ListenerBindAddress.loopbackOnly(), port, backlog, maxConcurrentHandshakes,
+                maxQueuedHandshakes, maxAuthenticatedConnections, onAuthenticated, onEvent, (id, binding) -> { });
+    }
+
+    PeerListener(TransportIdentity localTransport, PeerSession.Context context, ListenerBindAddress bindAddress,
+                 int port, int backlog, int maxConcurrentHandshakes, int maxQueuedHandshakes,
+                 int maxAuthenticatedConnections, Consumer<PeerConnection> onAuthenticated,
+                 ConnectionEventListener onEvent, VerifiedBindingListener onVerifiedBinding) throws IOException {
+        this.generation = new Generation(TlsContexts.forListener(localTransport), context);
         this.onAuthenticated = onAuthenticated;
         this.onEvent = onEvent;
-        SSLContext tls = TlsContexts.forListener(localTransport);
-        this.serverSocket = (SSLServerSocket) tls.getServerSocketFactory()
-                .createServerSocket(port, backlog, InetAddress.getLoopbackAddress());
-        TlsContexts.hardenServerSocket(serverSocket);
+        this.onVerifiedBinding = onVerifiedBinding;
+        this.serverSocket = new ServerSocket();
+        try {
+            serverSocket.setReuseAddress(true);
+            serverSocket.bind(bindAddress.toSocketAddress(port), backlog);
+        } catch (IOException | RuntimeException e) {
+            serverSocket.close();
+            throw e;
+        }
 
         AtomicInteger threadCounter = new AtomicInteger();
         ThreadFactory daemonFactory = runnable -> {
@@ -71,19 +102,29 @@ final class PeerListener implements AutoCloseable {
         return serverSocket.getLocalPort();
     }
 
+    /**
+     * Atomically switches the key presented to every connection accepted from now on. Handshakes already
+     * in flight finish under the generation they started with, and already-authenticated connections are
+     * untouched. The listening port and socket do not change.
+     */
+    void rekey(TransportIdentity newTransport, PeerSession.Context newContext) {
+        this.generation = new Generation(TlsContexts.forListener(newTransport), newContext);
+    }
+
     private void acceptLoop() {
         while (!closing) {
-            SSLSocket accepted;
+            Socket accepted;
             try {
-                accepted = (SSLSocket) serverSocket.accept();
+                accepted = serverSocket.accept();
             } catch (IOException e) {
                 if (closing) {
                     return;
                 }
                 continue;
             }
+            Generation snapshot = generation;
             try {
-                handshakeExecutor.execute(() -> handle(accepted));
+                handshakeExecutor.execute(() -> handle(accepted, snapshot));
             } catch (RejectedExecutionException fullQueue) {
                 closeQuietly(accepted);
                 fireEvent(null, ConnectionFailureReason.CONNECTION_LIMIT_REACHED, "Handshake queue is full.");
@@ -91,21 +132,23 @@ final class PeerListener implements AutoCloseable {
         }
     }
 
-    private void handle(SSLSocket socket) {
+    private void handle(Socket raw, Generation snapshot) {
         // The connection-count bound is enforced by reserving a slot BEFORE the handshake even starts,
         // not after: PeerSession.accept() already writes and sends the local IDENTITY_BINDING reply as
         // soon as the caller authenticates, so checking capacity only afterward would let the caller
         // believe it is connected (it already received a valid signed reply) even though the listener
-        // was about to refuse it — a real race a slow capacity check would lose.
+        // was about to refuse it - a real race a slow capacity check would lose.
         if (!authenticatedConnectionSlots.tryAcquire()) {
-            closeQuietly(socket);
+            closeQuietly(raw);
             fireEvent(null, ConnectionFailureReason.CONNECTION_LIMIT_REACHED, "Maximum authenticated connections reached.");
             return;
         }
         boolean handedOff = false;
+        SSLSocket socket = null;
         try {
+            socket = wrapAsTlsServer(raw, snapshot.tls());
             socket.setSoTimeout(HANDSHAKE_SOCKET_TIMEOUT_MILLIS);
-            ConnectionOutcome result = PeerSession.accept(socket, context, Instant.now());
+            ConnectionOutcome result = PeerSession.accept(socket, snapshot.context(), Instant.now());
             if (!result.authenticated()) {
                 closeQuietly(socket);
                 fireEvent(result.remoteIdentityId(), result.failureReason(), result.detail());
@@ -116,18 +159,32 @@ final class PeerListener implements AutoCloseable {
                     authenticatedConnectionSlots::release);
             handedOff = true;
             fireConnected(result.remoteIdentityId());
+            try {
+                onVerifiedBinding.onVerifiedBinding(result.remoteIdentityId(), result.remoteBinding());
+            } catch (RuntimeException persistenceFailure) {
+                fireEvent(result.remoteIdentityId(), ConnectionFailureReason.BINDING_NOT_PERSISTED,
+                        String.valueOf(persistenceFailure.getMessage()));
+            }
             onAuthenticated.accept(connection);
         } catch (TransportProtocolException e) {
-            closeQuietly(socket);
+            closeQuietly(socket != null ? socket : raw);
             fireEvent(null, e.reason(), e.getMessage());
         } catch (IOException e) {
-            closeQuietly(socket);
+            closeQuietly(socket != null ? socket : raw);
             fireEvent(null, ConnectionFailureReason.TLS_HANDSHAKE_FAILED, e.getMessage());
         } finally {
             if (!handedOff) {
                 authenticatedConnectionSlots.release();
             }
         }
+    }
+
+    /** Layers TLS 1.3 (client auth required) over an already-accepted TCP socket, using one key generation's context. */
+    private static SSLSocket wrapAsTlsServer(Socket raw, SSLContext tls) throws IOException {
+        SSLSocket socket = (SSLSocket) tls.getSocketFactory().createSocket(raw, null, raw.getPort(), true);
+        socket.setUseClientMode(false);
+        TlsContexts.hardenSocket(socket, true);
+        return socket;
     }
 
     private void fireConnected(com.codefit.peer.protocol.IdentityId remote) {
@@ -144,7 +201,7 @@ final class PeerListener implements AutoCloseable {
         }
     }
 
-    private static void closeQuietly(SSLSocket socket) {
+    private static void closeQuietly(Socket socket) {
         try {
             socket.close();
         } catch (IOException ignored) {

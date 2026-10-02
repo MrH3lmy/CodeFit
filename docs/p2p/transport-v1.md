@@ -21,7 +21,10 @@ Plain TCP, JDK JSSE `TLSv1.3`, mutual authentication, self-signed Ed25519 certif
 
 `com.sun.net.ssl.checkRevocation` and `com.sun.security.enableAIAcaIssuers` are explicitly set to
 `false` at `SSLContext` construction time (`TlsContexts`), and `TLSv1.3` is the only enabled protocol on
-every socket (`hardenSocket`/`hardenServerSocket`).
+every socket (`hardenSocket`). A third, deliberately narrow use of the structural trust manager exists for
+*rollover dials* only (§9): `TlsContexts.forRolloverDialer`. It is reachable only from
+`PeerDialer.rolloverOnce`, after a pinned dial has already failed, and the connection it produces is
+trusted solely on the strength of an identity-signed proof, never on the certificate.
 
 ## 2. Post-handshake authentication: hello + `IDENTITY_BINDING`
 
@@ -45,7 +48,9 @@ Immediately after the TLS handshake, both sides exchange, over the now-encrypted
    has learned the caller's identity from that first envelope, so it always answers second. Each device
    caches and resends the *identical* signed bytes across reconnects within one writer-session epoch
    (`LocalBindingEnvelopeCache`), so a reconnect within the epoch is reported as the protocol's own
-   idempotent `DUPLICATE`, never `STALE_REVISION`/`FORKED`.
+   idempotent `DUPLICATE`, never `STALE_REVISION`/`FORKED`. When the local transport key changes (§9) the
+   cached envelope is rebuilt for the new key with a higher revision and the next sequence number, for the
+   same reason.
 
 A live connection is accepted only when **all** of the following hold (`PeerSession`):
 
@@ -56,10 +61,14 @@ A live connection is accepted only when **all** of the following hold (`PeerSess
   in-process `AuthorReplayState` (protocol §10: replay state stays in memory until #184 persists it);
 * the binding's `[validFrom, validUntil)` window covers `now`;
 * the binding's `transportKey` equals the **live** TLS certificate's Ed25519 key on *this* socket — the
-  step that actually ties "who signed this" to "who is on the other end of this specific connection".
+  step that actually ties "who signed this" to "who is on the other end of this specific connection";
+* the binding is **not stale**: if a different key is already pinned for that contact, this binding's
+  `validFrom` must be strictly later than the pinned binding's (`STALE_BINDING` otherwise, §9). The same key
+  is always fine.
 
 Any failure yields a specific `ConnectionFailureReason` (`UNKNOWN_IDENTITY`, `NOT_PAIRED`,
-`BINDING_KEY_MISMATCH`, `BINDING_EXPIRED`, `BINDING_NOT_YET_VALID`, `ENVELOPE_REJECTED`,
+`BINDING_KEY_MISMATCH`, `BINDING_EXPIRED`, `BINDING_NOT_YET_VALID`, `ENVELOPE_REJECTED`, `STALE_BINDING`,
+`ROLLOVER_REFUSED`,
 `UNSUPPORTED_VERSION`, `MALFORMED_FRAME`, ...), never a bare boolean.
 
 ## 3. Invitation format (own signing context)
@@ -116,6 +125,16 @@ the very contact it was announcing itself to (`LanAnnouncementCodecTest` pins th
 `timeSlot` is a 30-second bucket; a receiver accepts the current slot and one slot either side, tolerating
 modest clock skew without a network time dependency.
 
+**What is announced is dialable.** The packet carries only the TCP listen port; the receiver pairs it with
+the datagram's *source address*. That pair is reachable exactly when the TCP listener accepts connections
+on that address (§8), so `LanDiscoveryService` announces and listens only on interfaces the listener's
+`ListenerBindAddress` covers: every non-loopback, up, multicast-capable IPv4 interface for the wildcard;
+only the interface owning the address for a specific bind; and it refuses to start at all for a
+loopback-only listener, which no LAN peer could ever dial. Each datagram is sent out of the interface it
+describes (`setNetworkInterface`), not whichever the OS defaults to, and the group is joined on each.
+`NetworkingService.reachableAddresses()` / `createInvitation(passphrase, lifetime, now)` use the same
+rule (`LocalAddresses`) to put real interface addresses and the real listening port into invitations.
+
 ## 5. Bounds, limits, and states
 
 | What | Bound | Enforced by |
@@ -136,6 +155,8 @@ Connection states (`ConnectionState`): `QUEUED`, `CONNECTING`, `AUTHENTICATING`,
 (`ConnectionFailureReason`) are always attached — nothing surfaces as a bare `false`.
 
 ## 6. IPv4/IPv6 and router/firewall constraints
+
+(How the listener chooses what to bind to is §8; the "same LAN" case below depends on it.)
 
 Direct TCP works when both peers are on the same LAN, or when the *listening* peer is otherwise reachable
 (a public IPv4 address, a manual port-forward, or IPv6 without an inbound block). `PeerAddress` accepts
@@ -163,3 +184,104 @@ dialing, close every tracked connection, and forget key material — safe to cal
 service was ever enabled, and verified in `PeerNetworkServiceTest` by confirming a fixed port can be
 rebound immediately afterward (proof the OS socket was actually released, not merely dereferenced).
 `LanDiscoveryService` follows the same pattern, one level up in `NetworkingService`.
+
+## 8. Where the listener listens (bind strategy)
+
+The TCP listener's bind address is an explicit choice, `ListenerBindAddress`, passed to
+`PeerNetworkService.enable` / `NetworkingService.enableNetworking`:
+
+| Strategy | Reachable by | Use |
+|---|---|---|
+| `wildcard()` (**default**) | every interface on this machine, so real LAN peers | normal operation |
+| `of(address)` | exactly that interface address | keep the listener off a VPN/public interface |
+| `loopbackOnly()` | this machine only | tests, local tooling; LAN discovery refuses it |
+
+A hardcoded loopback bind (what the first cut of #182 did) makes the listener unreachable from any other
+device, while still passing every same-host test; `PeerListenerLanReachabilityTest` and the
+`TwoProcessPeerDemoTest` LAN case therefore connect through this machine's real non-loopback interface
+address, and assert a loopback-only listener refuses that same address.
+
+**Reachability is not trust.** Binding wider changes who can *open a TCP connection*, not who is
+*accepted*. Every inbound socket must still complete mutual TLS 1.3 and then the identity-signed
+`IDENTITY_BINDING` exchange (§2) with a locally `PAIRED` contact, and until it does it is a bounded
+(8 handshake threads, 16 queued, 15 s timeout, §5), anonymous, unauthenticated socket that is told nothing
+(a failed or unknown caller learns only the listener's supported protocol versions from its `hello`, no identity or binding, and no error detail beyond the close).
+Networking itself remains **off until `enableNetworking` is called**; there is no auto-start. Exposure that
+remains and is not mitigated here: a wildcard listener on a host with a public address is reachable by
+anyone on the internet for pre-authentication handshakes; there is no per-source-IP rate limit, only the
+global bounds above. Use `of(address)` to avoid that.
+
+The server socket is a plain TCP socket bound once; TLS is layered onto each accepted connection from the
+*current key generation* (key, certificate and matching `PeerSession.Context` snapshotted together). That
+is what allows §9's rotation to swap keys on the same port with no rebinding.
+
+## 9. Transport-key lifecycle and rollover
+
+**Keys and where they live.** The *local* transport key is one row in `transport_identity` (sealed with the
+vault passphrase) plus, while networking is on, the key the listener presents. A *remote* contact's pinned
+key is one row in `contact_transport_bindings` (`transportKey`, `validFrom`, `validUntil`). A transport key
+is only ever authorized by an `IDENTITY_BINDING` signed with its owner's identity key; the identity key never
+touches a socket.
+
+**Local invariant.** The persisted key, the key the running listener presents, the key in every outgoing
+`IDENTITY_BINDING`, and the key a new invitation advertises are always the same key. Everything that can
+read or change the local key runs under one lock in `NetworkingService` (`enableNetworking`,
+`createInvitation`, `refreshTransportKey`, `rotateTransportKey`) and goes through `syncLiveTransportKey`:
+the persisted key is the source of truth, `TransportKeyService.ensureCurrent` may mint a new one (inside the
+7-day renewal window, or if missing/expired), and if networking is on the live listener is switched to it
+(`PeerNetworkService.rekey` -> `PeerListener.rekey`, same port, new connections only) *before* the key is
+returned to anyone. `createInvitation` additionally refuses to advertise a key the listener is not presenting.
+If persisting succeeds but switching fails, the next call re-converges (persisted != live -> rekey).
+`enableNetworking` while already enabled is idempotent (no second writer session). A new key's `validFrom` is
+whole seconds and strictly later than its predecessor's (`TransportKeyService`), and the binding envelope's
+`revision` is that `validFrom` in epoch seconds, so receivers order rollovers and never see a reused
+revision (`STALE_REVISION`) or sequence (`FORKED`) for a legitimately new key. The vault passphrase is not
+kept in memory, so renewal happens only on a passphrase-bearing call; a long-running session should call
+`refreshTransportKey` periodically.
+
+**Remote pin: only forward, only on proof.** The pinned key for a contact changes only when a connection
+*fully authenticates* (every check in §2) and `ContactService.recordAuthenticatedTransportBinding` finds the
+binding is the same key (refresh) or a different key whose `validFrom` is strictly later (rollover); older
+bindings are ignored. The transport reports each such binding to `NetworkingService.onVerifiedBinding`
+for inbound connections (the listener) and outbound ones (`connectToContact`) alike, before the connection
+is handed out. Invitation import can never touch an existing contact's pin (`registerPendingContact` refuses
+known identities).
+
+**State flow when Bob rotates and Alice still pins the old key (K1 -> K2):**
+
+1. Alice dials Bob pinned to K1. Bob's listener presents K2, so Alice's `PinnedTransportTrustManager`
+   refuses it: `WRONG_PIN`, before any application byte. Nothing was disclosed and nothing changed.
+2. Because the contact is `PAIRED` and a pin exists, Alice makes **one** rollover attempt
+   (`PeerDialer.rolloverOnce`): TLS accepts any structurally valid certificate (nothing is trusted yet) and
+   Alice sends a hello with magic `CFR1` (same layout as `CFH1`) and **nothing else**.
+3. Bob's listener sees the rollover hello. It learns whom to address from Alice's *TLS-proven client key*,
+   not from any claim: that key must be the key it has pinned for a `PAIRED` contact
+   (`KnownContactLookup.pairedContactPinnedTo`). If not, it closes with nothing disclosed (Alice sees
+   `ROLLOVER_REFUSED`). Otherwise Bob sends his `IDENTITY_BINDING` for K2 first, addressed to that contact.
+4. Alice accepts only if: authored by the identity she dialed; signature, audience, and replay policy pass;
+   the contact is `PAIRED`; the window covers now; `transportKey` equals the live K2 on this socket; K2 is
+   not the pinned key; and the binding's `validFrom` is strictly later than the pinned binding's
+   (else `STALE_BINDING`). Only then does Alice send her own binding.
+5. Bob validates Alice exactly like an inbound caller and requires her binding to be authored by the
+   contact her TLS key was pinned for. Both sides report the verified binding; Alice's pin moves to K2 (and
+   Bob refreshes his view of Alice). The next dial is an ordinary pinned dial against K2.
+
+If Bob dials Alice instead, Alice's listener (structural TLS) validates Bob's K2 binding like any inbound
+caller; it is adopted because it is identity-signed and strictly newer than the pin, not because TLS
+accepted the key.
+
+**What is refused (pin unchanged, nothing persisted):** a stranger or a different identity at the address
+(`IDENTITY_MISMATCH` / `UNKNOWN_IDENTITY`; the dialer has disclosed nothing); a genuine binding replayed over
+someone else's TLS key (`BINDING_KEY_MISMATCH`); a genuine but *older* binding or a superseded key
+(`STALE_BINDING`), including the case where the old key's holder dials in after the pin has moved on; an
+expired or not-yet-valid binding; and a peer that will not run the proof (`ROLLOVER_REFUSED`).
+
+**Known limits.** (1) *Both* peers rotating before reconnecting leaves neither able to identify the other's
+new TLS key, so the rollover is refused rather than disclosing first; the recovery is a fresh invitation
+exchange. Both sides renew inside the same 7-day window if paired on the same day, so this is plausible,
+though each side learns the other's key at any connection that happens in between. (2) A transport key whose
+holder is compromised stays acceptable to peers that pin it until its binding expires or a newer binding
+reaches them; revocation (`Tombstone` of the binding) is not delivered by this slice. (3) A device restored
+from an old backup presents an older binding and is refused as stale until it mints a new key.
+(4) Replay state is in memory, so a restart relies on the new writer epoch superseding the old one.
+

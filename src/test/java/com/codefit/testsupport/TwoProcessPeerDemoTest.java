@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -26,6 +27,27 @@ class TwoProcessPeerDemoTest {
     @Test
     @Timeout(60)
     void twoSeparateProcessesWithSeparateDatabasesPairAndConnectOverRealSockets() throws Exception {
+        runDemo("LOOPBACK");
+    }
+
+    /**
+     * The same two real processes, but the invitations advertise this machine's real non-loopback interface
+     * address and the dialer connects to that address taken from the invitation - the path two actual
+     * devices on a LAN take. (A listener bound only to loopback refuses that connection.)
+     */
+    @Test
+    @Timeout(60)
+    void twoSeparateProcessesConnectThroughANonLoopbackInterfaceAddressFromTheInvitation() throws Exception {
+        List<com.codefit.peer.transport.PeerAddress> lan = com.codefit.peer.transport.LocalAddresses.reachable(
+                com.codefit.peer.transport.ListenerBindAddress.wildcard(), 1, 1);
+        org.junit.jupiter.api.Assumptions.assumeFalse(lan.isEmpty(),
+                "no non-loopback interface address on this machine; cannot exercise LAN reachability");
+        String result = runDemo("LAN");
+        assertTrue(result.contains(" via " + lan.get(0).host()), "dialer should have used the LAN address, got: " + result);
+        assertFalse(result.contains(" via 127."), result);
+    }
+
+    private static String runDemo(String mode) throws Exception {
         Path workDir = Files.createTempDirectory("codefit-two-process-demo");
         Path dbA = workDir.resolve("a.db");
         Path dbB = workDir.resolve("b.db");
@@ -38,8 +60,8 @@ class TwoProcessPeerDemoTest {
         String javaBin = System.getProperty("java.home") + "/bin/java";
 
         // The listener writes its own invitation first, with no peer invitation to wait for yet.
-        Process listenerProcess = startProcess(javaBin, classpath, "LISTENER", dbA, inviteA, inviteB, resultA);
-        Process dialerProcess = startProcess(javaBin, classpath, "DIALER", dbB, inviteB, inviteA, resultB);
+        Process listenerProcess = startProcess(javaBin, classpath, "LISTENER", dbA, inviteA, inviteB, resultA, mode);
+        Process dialerProcess = startProcess(javaBin, classpath, "DIALER", dbB, inviteB, inviteA, resultB, mode);
 
         boolean listenerFinished = listenerProcess.waitFor(50, TimeUnit.SECONDS);
         boolean dialerFinished = dialerProcess.waitFor(50, TimeUnit.SECONDS);
@@ -57,12 +79,13 @@ class TwoProcessPeerDemoTest {
         // Independent databases: two distinct, non-empty SQLite files, never touched by the other process.
         assertTrue(Files.size(dbA) > 0);
         assertTrue(Files.size(dbB) > 0);
+        return dialerResult;
     }
 
     private static Process startProcess(String javaBin, String classpath, String role, Path db, Path ownInvite,
-                                         Path peerInvite, Path result) throws IOException {
+                                         Path peerInvite, Path result, String mode) throws IOException {
         List<String> command = List.of(javaBin, "-cp", classpath, "com.codefit.testsupport.TwoProcessPeerDemo",
-                role, db.toString(), ownInvite.toString(), peerInvite.toString(), result.toString());
+                role, db.toString(), ownInvite.toString(), peerInvite.toString(), result.toString(), mode);
         ProcessBuilder builder = new ProcessBuilder(command).inheritIO();
         return builder.start();
     }

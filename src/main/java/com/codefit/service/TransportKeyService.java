@@ -41,9 +41,10 @@ public class TransportKeyService {
     /**
      * Returns the current transport key material, minting a fresh key pair (and a fresh
      * {@code [now, now + 180 days)} validity window) whenever there is none yet or the existing one
-     * expires within {@link #RENEWAL_WINDOW}. Renewal here only replaces this device's own key locally;
-     * publishing the new {@code IDENTITY_BINDING} to already-paired contacts is a transport/sync concern
-     * (their cached copy of the old binding simply stops matching once it lapses).
+     * expires within {@link #RENEWAL_WINDOW}. This only changes the <em>persisted</em> key. Whoever holds a
+     * live listener must make it present the returned key too ({@code NetworkingService} does, under one
+     * lock, before it hands the key to anything else), and already-paired peers learn the new key through
+     * the rollover handshake (docs/p2p/transport-v1.md §9), never by silently accepting an unproven key.
      */
     public TransportKeyMaterial ensureCurrent(char[] vaultPassphrase, Instant now) {
         Optional<TransportIdentityRow> existing = repository.find();
@@ -53,6 +54,11 @@ public class TransportKeyService {
         return mintAndPersist(vaultPassphrase, now);
     }
 
+    /** The persisted current transport public key (no passphrase needed: it is public), if one exists. */
+    public Optional<com.codefit.peer.protocol.IdentityKey> currentPublicKey() {
+        return repository.find().map(row -> new com.codefit.peer.protocol.IdentityKey(row.transportPublicKey()));
+    }
+
     /** Forces a brand-new transport key regardless of the current one's remaining validity. */
     public TransportKeyMaterial rotate(char[] vaultPassphrase, Instant now) {
         return mintAndPersist(vaultPassphrase, now);
@@ -60,8 +66,15 @@ public class TransportKeyService {
 
     private TransportKeyMaterial mintAndPersist(char[] vaultPassphrase, Instant now) {
         KeyPair keyPair = KeyPairs.generate();
-        Instant validFrom = now;
-        Instant validUntil = now.plus(VALIDITY_PERIOD);
+        // Whole seconds, and strictly later than the key being replaced: the binding revision peers order
+        // rollovers by is validFrom in epoch seconds, so it must never repeat or go backwards even when
+        // two keys are minted within the same second or the clock steps back.
+        Instant validFrom = now.truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        Optional<TransportIdentityRow> previous = repository.find();
+        if (previous.isPresent() && !validFrom.isAfter(previous.get().bindingValidFrom())) {
+            validFrom = previous.get().bindingValidFrom().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).plusSeconds(1);
+        }
+        Instant validUntil = validFrom.plus(VALIDITY_PERIOD);
         byte[] publicKeyRaw = KeyPairs.rawPublicKey(keyPair.getPublic());
         byte[] pkcs8 = KeyPairs.pkcs8PrivateKey(keyPair.getPrivate());
         try {

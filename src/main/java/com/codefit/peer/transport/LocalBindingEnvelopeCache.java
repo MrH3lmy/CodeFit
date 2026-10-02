@@ -6,6 +6,7 @@ import com.codefit.peer.protocol.Envelope;
 import com.codefit.peer.protocol.EnvelopeHeader;
 import com.codefit.peer.protocol.IdentityBinding;
 import com.codefit.peer.protocol.IdentityId;
+import com.codefit.peer.protocol.IdentityKey;
 import com.codefit.peer.protocol.ObjectId;
 import com.codefit.peer.protocol.SignedEnvelope;
 
@@ -27,6 +28,15 @@ import java.util.concurrent.atomic.AtomicLong;
  * {@code DUPLICATE} verdict (protocol §10), never {@code STALE_REVISION} or {@code FORKED} — resending
  * it is exactly as safe as never resending it. A new epoch (a new writer session, e.g. after restart)
  * always gets a fresh cache and fresh sequence numbers, matching protocol §10.1.
+ *
+ * <p><strong>Rotation.</strong> A binding for a <em>new</em> transport key is a new version of the same
+ * binding object, and a receiver that already accepted the old one (same author, same object id, same
+ * epoch) would reject a re-use of its revision as {@code STALE_REVISION} and a re-use of its sequence
+ * number as {@code FORKED}. So the cached envelope is rebuilt whenever the local transport key changes,
+ * its {@code revision} is the binding's {@code validFrom} in whole epoch seconds (strictly increasing
+ * across rotations because {@code TransportKeyService} never mints a key with a non-increasing
+ * {@code validFrom}, and stable across restarts without any extra persisted counter), and the sequence
+ * counter simply keeps counting within the epoch.
  */
 final class LocalBindingEnvelopeCache {
     private final Map<Long, Map<IdentityId, SignedEnvelope>> byEpoch = new ConcurrentHashMap<>();
@@ -35,7 +45,18 @@ final class LocalBindingEnvelopeCache {
     SignedEnvelope get(UnlockedIdentity localIdentity, TransportIdentity localTransport, IdentityId recipientId,
                         long epoch, Instant now) {
         Map<IdentityId, SignedEnvelope> forEpoch = byEpoch.computeIfAbsent(epoch, e -> new ConcurrentHashMap<>());
-        return forEpoch.computeIfAbsent(recipientId, recipient -> build(localIdentity, localTransport, recipient, epoch, now));
+        IdentityKey currentKey = localTransport.publicKey();
+        return forEpoch.compute(recipientId, (recipient, cached) -> {
+            if (cached != null && cached.body() instanceof IdentityBinding binding && binding.transportKey().equals(currentKey)) {
+                return cached;
+            }
+            return build(localIdentity, localTransport, recipient, epoch, now);
+        });
+    }
+
+    /** Binding revision for {@code transportValidFrom}: whole epoch seconds, within the header's 1..2^32-1 range. */
+    static long revisionFor(Instant transportValidFrom) {
+        return Math.min(Math.max(transportValidFrom.getEpochSecond(), 1L), 0xFFFF_FFFFL);
     }
 
     private SignedEnvelope build(UnlockedIdentity localIdentity, TransportIdentity localTransport, IdentityId recipientId,
@@ -45,7 +66,7 @@ final class LocalBindingEnvelopeCache {
         IdentityBinding binding = localTransport.toBinding();
         Instant createdAt = Instant.ofEpochMilli(now.toEpochMilli());
         Instant expiresAt = localTransport.validUntil();
-        EnvelopeHeader header = new EnvelopeHeader(0, localIdentity.publicKey(), objectId, epoch, sequence, 1,
+        EnvelopeHeader header = new EnvelopeHeader(0, localIdentity.publicKey(), objectId, epoch, sequence, revisionFor(localTransport.validFrom()),
                 createdAt, expiresAt, Audience.direct(List.of(recipientId)));
         Envelope envelope = new Envelope(header, binding);
         byte[] signature = localIdentity.sign(envelope.signingBytes());

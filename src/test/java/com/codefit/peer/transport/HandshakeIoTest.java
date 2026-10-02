@@ -87,4 +87,26 @@ class HandshakeIoTest {
         byte[] header = {'C', 'F', 'P', 0x01, 0, 0, 0, 10};
         assertThrows(java.io.EOFException.class, () -> HandshakeIo.readEnvelopeFrame(new ByteArrayInputStream(header)));
     }
+
+    @Test
+    void aRolloverHelloRoundTripsAndIsDistinguishableFromAPlainHello() throws Exception {
+        ByteArrayOutputStream plain = new ByteArrayOutputStream();
+        HandshakeIo.writeHello(plain, List.of(1));
+        ByteArrayOutputStream rollover = new ByteArrayOutputStream();
+        HandshakeIo.writeHello(rollover, List.of(1), true);
+
+        HandshakeIo.Hello readPlain = HandshakeIo.readHelloFrame(new ByteArrayInputStream(plain.toByteArray()));
+        HandshakeIo.Hello readRollover = HandshakeIo.readHelloFrame(new ByteArrayInputStream(rollover.toByteArray()));
+        assertFalse(readPlain.rolloverRequested());
+        assertTrue(readRollover.rolloverRequested());
+        assertEquals(List.of(1), readRollover.versions());
+        assertEquals(plain.size(), rollover.size());
+    }
+
+    @Test
+    void theVersionsOnlyReaderRefusesARolloverHelloRatherThanIgnoringTheFlag() {
+        ByteArrayOutputStream rollover = new ByteArrayOutputStream();
+        assertDoesNotThrow(() -> HandshakeIo.writeHello(rollover, List.of(1), true));
+        assertThrows(TransportProtocolException.class, () -> HandshakeIo.readHello(new ByteArrayInputStream(rollover.toByteArray())));
+    }
 }

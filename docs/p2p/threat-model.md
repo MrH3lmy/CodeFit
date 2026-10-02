@@ -110,10 +110,15 @@ Trust boundaries:
   are asserted disabled in `TlsContexts`. Reachability and key lifecycle (transport-v1 §8-§9):
   `PeerListenerLanReachabilityTest` (wildcard/specific/loopback-only binds through a real LAN address),
   `LanDiscoveryInterfaceSelectionTest`, `TransportRolloverTest` (rollover proof, stale/unauthorized
-  replacement keys, nothing disclosed to an unproven peer, double rotation refused), and
+  replacement keys, nothing disclosed to an unproven peer, double rotation refused),
   `NetworkingServiceKeyLifecycleTest` (persisted key = live key = advertised key = emitted binding across
-  invitation creation, renewal-window rotation, forced rotation, restart, and pin persistence).
-  Residual risks introduced by listening on all interfaces and by rollover are listed in transport-v1 §8
-  and §9.
+  invitation creation, renewal-window rotation, forced rotation, restart, and pin persistence), and
+  `TransportKeyRecoveryTest` (transport-v1 §9.1: the double-rotation recovery itself — refused rollover
+  recovered through an explicit, re-verified fresh invitation and a successful reconnect; staleness/replay
+  ignored without rolling the pin back; an invitation from a different identity refused; a blocked/removed
+  contact refused until explicitly re-paired; a fresh invitation for an already-known identity refused
+  without creating a duplicate; and the same method proven direction-agnostic across two fully independent
+  `NetworkingService`/database pairs). Residual risks introduced by listening on all interfaces and by
+  rollover are listed in transport-v1 §8 and §9.
 * #189: an isolated two- and three-peer run with recorded egress. It must show traffic only to
   authorized peer addresses and LAN multicast, and no DNS, NTP, HTTP, or other destination.

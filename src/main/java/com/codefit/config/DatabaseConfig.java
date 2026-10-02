@@ -68,6 +68,20 @@ public final class DatabaseConfig {
         databaseUrl = DEFAULT_DATABASE_URL;
     }
 
+    /**
+     * The URL every {@link #getConnection()} call currently resolves against, so a test that must
+     * temporarily redirect it (e.g. to stand up a second, independent database representing a different
+     * peer's own device) can save and later restore exactly what was there before.
+     */
+    public static String currentDatabaseUrl() {
+        return databaseUrl;
+    }
+
+    /** Restores a URL previously captured with {@link #currentDatabaseUrl()}. */
+    public static void useDatabaseUrl(String url) {
+        databaseUrl = url;
+    }
+
     public static void initialize() {
         try (Connection connection = getConnection(); Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON");

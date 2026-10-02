@@ -96,6 +96,11 @@ public class ContactService {
                 .orElseThrow(() -> new ContactNotFoundException("No contact with id " + contactId));
     }
 
+    /** The existing contact for this identity key, in any {@link TrustState}, or empty if none exists yet. */
+    public Optional<Contact> findByIdentity(IdentityKey identityKey) {
+        return contactRepository.findByIdentityId(identityKey.id());
+    }
+
     /**
      * Registers a candidate contact learned out of band (an invitation or LAN announcement, #182) as
      * {@link TrustState#PENDING}. This alone establishes no trust and grants nothing.

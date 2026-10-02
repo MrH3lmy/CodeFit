@@ -99,7 +99,9 @@ or dials anything. Expiry/not-yet-valid are exposed as `Invitation.isExpired`/`i
 caller to check explicitly — "parsing an invitation alone must not establish trust" is enforced by that
 separation, not by convention. `NetworkingService.registerPendingContactFromInvitation` is the explicit,
 separate step that turns a parsed invitation into a `PENDING` contact (never `PAIRED` by itself), after
-which the existing #181 `ContactService.acceptInvitation` is the user's explicit pairing action.
+which the existing #181 `ContactService.acceptInvitation` is the user's explicit pairing action. It refuses
+outright, creating nothing, when the invitation's identity is already a known contact in any trust state
+(`KnownIdentityException`) — see §9.1 for the dedicated recovery flow that case routes to instead.
 
 ## 4. LAN discovery: recognition without cleartext identity
 
@@ -244,8 +246,11 @@ kept in memory, so renewal happens only on a passphrase-bearing call; a long-run
 binding is the same key (refresh) or a different key whose `validFrom` is strictly later (rollover); older
 bindings are ignored. The transport reports each such binding to `NetworkingService.onVerifiedBinding`
 for inbound connections (the listener) and outbound ones (`connectToContact`) alike, before the connection
-is handed out. Invitation import can never touch an existing contact's pin (`registerPendingContact` refuses
-known identities).
+is handed out. Ordinary invitation import can never touch an existing contact's pin or trust state:
+`registerPendingContactFromInvitation` refuses outright (`KnownIdentityException`, nothing mutated) for an
+identity that is already a known contact in any trust state. The one deliberate exception is the explicit
+out-of-band recovery in §9.1, which is a separate action an existing `PAIRED` contact's own user must invoke,
+never an automatic side effect of parsing or importing an invitation.
 
 **State flow when Bob rotates and Alice still pins the old key (K1 -> K2):**
 
@@ -277,11 +282,60 @@ someone else's TLS key (`BINDING_KEY_MISMATCH`); a genuine but *older* binding o
 expired or not-yet-valid binding; and a peer that will not run the proof (`ROLLOVER_REFUSED`).
 
 **Known limits.** (1) *Both* peers rotating before reconnecting leaves neither able to identify the other's
-new TLS key, so the rollover is refused rather than disclosing first; the recovery is a fresh invitation
-exchange. Both sides renew inside the same 7-day window if paired on the same day, so this is plausible,
-though each side learns the other's key at any connection that happens in between. (2) A transport key whose
-holder is compromised stays acceptable to peers that pin it until its binding expires or a newer binding
-reaches them; revocation (`Tombstone` of the binding) is not delivered by this slice. (3) A device restored
-from an old backup presents an older binding and is refused as stale until it mints a new key.
-(4) Replay state is in memory, so a restart relies on the new writer epoch superseding the old one.
+new TLS key over the wire, so the live rollover handshake is refused (`ROLLOVER_REFUSED`) rather than
+disclosing first; §9.1 is the out-of-band recovery for exactly this case. Both sides renew inside the same
+7-day window if paired on the same day, so this is plausible, though each side learns the other's key at any
+connection that happens in between. (2) A transport key whose holder is compromised stays acceptable to peers
+that pin it until its binding expires or a newer binding reaches them; revocation (`Tombstone` of the
+binding) is not delivered by this slice. (3) A device restored from an old backup presents an older binding
+and is refused as stale until it mints a new key. (4) Replay state is in memory, so a restart relies on the
+new writer epoch superseding the old one.
+
+### 9.1 Out-of-band recovery when both sides have rotated
+
+The live rollover handshake (above) only ever resolves a rotation on *one* side, because it works by one
+peer recognizing the *other's unchanged* TLS certificate key as something it already has pinned. When both
+sides rotated before reconnecting, neither TLS key is recognizable to the other any more, and the protocol
+correctly refuses rather than disclose an identity binding to an unrecognized caller. Recovering from this
+needs a channel outside the live connection — the same one first pairing already used: the contacts exchange
+a fresh invitation (string, QR code, or whatever out-of-band channel they trust) and each side explicitly
+re-verifies and recovers the other's new key via `NetworkingService.recoverContactTransportKey(contactId,
+signedInvitation, now)`.
+
+This is a deliberate, separate action from `registerPendingContactFromInvitation`, not something an
+ordinary re-import of an invitation ever triggers automatically:
+
+* It never creates a contact. The caller supplies the existing `contactId` explicitly — this method never
+  searches for or infers one from the invitation — so the UI flow that calls it has already shown the user
+  the identity fingerprint for the same out-of-band re-verification first pairing required.
+* It refuses outright, mutating nothing, when: the contact is not currently `PAIRED` (a `BLOCKED` or
+  `REMOVED` contact must go through the existing, explicit `ContactService.rePair` first — its own
+  deliberate act of restored trust, so a blocked or removed contact can never silently regain trust through
+  this path); the invitation was not signed by *this contact's own* pinned identity key
+  (`IdentityMismatchException` — a validly-signed invitation from a different identity is never silently
+  attributed to this contact); or the invitation itself, or its declared transport-key binding window, is
+  not currently valid (`InvitationException`).
+* Beyond those checks, the pinned key only ever moves forward through the exact same rule as a live
+  rollover proof (`ContactService.recordAuthenticatedTransportBinding`): the same key refreshes its window, a
+  different key replaces the pin only when its binding is strictly newer, and a stale or replayed invitation
+  carrying an older binding is silently ignored (`IGNORED_STALE`) rather than rolling the contact back.
+* It never itself authenticates a connection or trusts an arbitrary new TLS key onto the wire: it only
+  updates what a *future* connection's live binding will be checked against. The next dial or accept still
+  runs every check in §2, including that the live certificate's key matches the newly recovered pin.
+* Contact id, alias, cached display name, address cache, sharing permissions, consent revisions, and history
+  are never touched.
+
+`registerPendingContactFromInvitation` is the companion half: it refuses outright
+(`KnownIdentityException`, carrying the existing contact's id and trust state) when the invitation's
+identity is already a known contact in any trust state, rather than raising a bare "already a known
+contact" error with nowhere to go. A caller that catches it routes to `recoverContactTransportKey` for a
+`PAIRED` contact, or to `ContactService.rePair` first for a `BLOCKED`/`REMOVED` one.
+
+Verified by `TransportKeyRecoveryTest`: the refused-rollover-then-recovered-then-reconnected round trip,
+staleness/replay is ignored without rolling the pin back, an invitation signed by a different identity is
+refused, a blocked/removed contact is refused until re-paired, a fresh invitation for an already-known
+identity never creates a duplicate contact, an invitation whose declared binding window does not cover
+`now` is refused, and — using two fully independent `NetworkingService` instances, each over its own
+database — that the method has no built-in direction: whichever paired identity calls it, it is the exact
+same code path.
 

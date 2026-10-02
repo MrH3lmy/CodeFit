@@ -2,6 +2,9 @@ package com.codefit.service;
 
 import com.codefit.peer.identity.Contact;
 import com.codefit.peer.identity.ContactAddressSource;
+import com.codefit.peer.identity.IdentityMismatchException;
+import com.codefit.peer.identity.IllegalContactStateException;
+import com.codefit.peer.identity.KnownIdentityException;
 import com.codefit.peer.identity.LocalIdentitySummary;
 import com.codefit.peer.identity.ObservedTransportBinding;
 import com.codefit.peer.identity.TrustState;
@@ -376,7 +379,17 @@ public class NetworkingService implements AutoCloseable {
      * binding from the invitation so the very first connection attempt, once paired, has something to
      * pin against.
      *
-     * @throws InvitationException the invitation is expired or not yet valid
+     * <p>Refuses outright, mutating nothing, when this identity is already a known contact in any trust
+     * state — ordinary invitation ingestion must never silently create a duplicate contact or silently
+     * mutate an existing one's trust or pinned key (see {@link KnownIdentityException}). A fresh
+     * invitation from an identity the user has already paired with — most commonly after both sides
+     * independently rotated their transport keys and the normal rollover handshake could not resolve it
+     * (docs/p2p/transport-v1.md §9) — is handled by the separate, explicit
+     * {@link #recoverContactTransportKey} instead, which the caller routes to using the existing contact
+     * id this exception carries.
+     *
+     * @throws InvitationException    the invitation is expired or not yet valid
+     * @throws KnownIdentityException this identity is already a known contact
      */
     public Contact registerPendingContactFromInvitation(SignedInvitation signed, Instant now) {
         now = wireTime(now);
@@ -387,6 +400,11 @@ public class NetworkingService implements AutoCloseable {
         if (invitation.isNotYetValid(now)) {
             throw new InvitationException(InvitationRejectionReason.NOT_YET_VALID, "Invitation is not valid until " + invitation.issuedAt());
         }
+        Optional<Contact> existing = contactService.findByIdentity(invitation.identityKey());
+        if (existing.isPresent()) {
+            Contact contact = existing.get();
+            throw new KnownIdentityException(contact.id(), contact.trustState(), invitation.identityKey().id());
+        }
         Contact contact = contactService.registerPendingContact(invitation.identityKey(), "", now);
         for (PeerAddress address : invitation.addresses()) {
             contactService.recordAddressSighting(contact.id(), address, ContactAddressSource.INVITATION, now);
@@ -394,6 +412,86 @@ public class NetworkingService implements AutoCloseable {
         contactService.recordObservedTransportBinding(contact.id(), invitation.transportKey(),
                 invitation.bindingValidFrom(), invitation.bindingValidUntil(), now);
         return contact;
+    }
+
+    /**
+     * Explicit recovery for an existing {@link TrustState#PAIRED} contact whose transport key the normal
+     * rollover handshake could not resolve — the documented limit of the live rollover proof
+     * (docs/p2p/transport-v1.md §9), which only works when at least one side's TLS key is still the one
+     * the other side has pinned. When <em>both</em> sides have rotated before reconnecting, neither can
+     * prove itself to the other over the wire, and the live handshake correctly refuses
+     * ({@link com.codefit.peer.transport.ConnectionFailureReason#ROLLOVER_REFUSED}). This method is the
+     * out-of-band path that resolves it, exactly as documented: the contacts exchange a fresh invitation
+     * (any channel they already trust for that — the same one first pairing used), and each side
+     * explicitly re-verifies and recovers the other's new key.
+     *
+     * <p>This is a deliberate, separate action from {@link #registerPendingContactFromInvitation}: it
+     * never creates a contact, and it takes the existing {@code contactId} as an explicit argument rather
+     * than searching for or inferring one — the caller (eventually a #187 UI control) must already know,
+     * and must have shown the user for out-of-band re-verification against the identity fingerprint,
+     * exactly which existing contact this invitation is claimed to be for. Nothing here substitutes for
+     * that out-of-band check: this method only verifies the invitation's own signature (already done by
+     * {@link InvitationCodec#decode}/{@link #parseInvitationBase64}) and that its identity key is exactly
+     * this contact's pinned identity — it never trusts the invitation's claim over the account record it
+     * is being matched against.
+     *
+     * <p>Refuses outright, mutating nothing:
+     * <ul>
+     *   <li>the contact is not currently {@link TrustState#PAIRED} — a {@link TrustState#BLOCKED} or
+     *       {@link TrustState#REMOVED} contact must be explicitly re-paired first via
+     *       {@code ContactService.rePair}, which is its own deliberate act of restored trust; this method
+     *       never restores trust by itself, so a blocked or removed contact can never silently regain it
+     *       through this path;</li>
+     *   <li>the invitation was not signed by this contact's own pinned identity key
+     *       ({@link IdentityMismatchException}) — a validly-signed invitation from any other identity is
+     *       refused, never silently attributed to this contact;</li>
+     *   <li>the invitation itself, or its declared transport-key binding window, is not valid right now
+     *       ({@link InvitationException}).</li>
+     * </ul>
+     *
+     * <p>Beyond those checks the pinned key only ever moves forward, exactly as a live rollover proof
+     * would ({@link ContactService#recordAuthenticatedTransportBinding}): the same key simply refreshes
+     * its window, a different key replaces the pin only when its binding is strictly newer, and a stale
+     * or replayed invitation carrying an older binding is silently ignored ({@code IGNORED_STALE}) rather
+     * than rolling the contact back. Nothing about the live TLS trust boundary changes: a future
+     * connection must still present a certificate whose key matches the newly recovered pin and prove a
+     * current, identity-signed binding for it, so this call alone never accepts an arbitrary new TLS key
+     * onto the wire — it only updates what will be checked against next time. Contact id, alias, cached
+     * display name, address cache, sharing permissions, consent revisions, and history are never touched.
+     *
+     * @throws IllegalContactStateException the contact is not {@link TrustState#PAIRED}
+     * @throws IdentityMismatchException    the invitation was not signed by this contact's own identity key
+     * @throws InvitationException          the invitation, or its declared binding window, is not currently valid
+     */
+    public ContactService.TransportBindingUpdate recoverContactTransportKey(long contactId, SignedInvitation signed, Instant now) {
+        now = wireTime(now);
+        Invitation invitation = signed.invitation();
+        Contact contact = contactService.requireContact(contactId);
+        if (contact.trustState() != TrustState.PAIRED) {
+            throw new IllegalContactStateException("Contact " + contactId + " is " + contact.trustState()
+                    + "; transport-key recovery requires an already-PAIRED contact"
+                    + " (a blocked or removed contact must be explicitly re-paired first).");
+        }
+        if (!contact.identityId().equals(invitation.identityKey().id())) {
+            throw new IdentityMismatchException(
+                    "The invitation's identity does not match contact " + contactId + "'s pinned identity.");
+        }
+        if (invitation.isExpired(now)) {
+            throw new InvitationException(InvitationRejectionReason.EXPIRED, "Invitation expired at " + invitation.expiresAt());
+        }
+        if (invitation.isNotYetValid(now)) {
+            throw new InvitationException(InvitationRejectionReason.NOT_YET_VALID, "Invitation is not valid until " + invitation.issuedAt());
+        }
+        if (now.isBefore(invitation.bindingValidFrom())) {
+            throw new InvitationException(InvitationRejectionReason.NOT_YET_VALID,
+                    "The declared transport-key binding is not valid until " + invitation.bindingValidFrom());
+        }
+        if (!now.isBefore(invitation.bindingValidUntil())) {
+            throw new InvitationException(InvitationRejectionReason.EXPIRED,
+                    "The declared transport-key binding expired at " + invitation.bindingValidUntil());
+        }
+        return contactService.recordAuthenticatedTransportBinding(contactId, invitation.transportKey(),
+                invitation.bindingValidFrom(), invitation.bindingValidUntil(), now);
     }
 
     /**

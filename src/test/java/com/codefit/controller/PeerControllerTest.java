@@ -82,6 +82,7 @@ class PeerControllerTest {
     private NetworkingService networkingService;
     private ContactService contactService;
     private PeerConnectionPresenter presenter;
+    private com.codefit.ui.PeerDialGate dialGate;
     private PeerController controller;
 
     @BeforeEach
@@ -90,8 +91,9 @@ class PeerControllerTest {
         identityService = new IdentityService();
         contactService = new ContactService();
         presenter = new PeerConnectionPresenter();
+        dialGate = new com.codefit.ui.PeerDialGate();
         networkingService = new NetworkingService(presenter::onEvent);
-        controller = loadController(identityService, networkingService, contactService, presenter);
+        controller = loadController(identityService, networkingService, contactService, presenter, dialGate);
     }
 
     @AfterEach
@@ -258,6 +260,62 @@ class PeerControllerTest {
     }
 
     /**
+     * The review-required proof: firing "Connect" twice in immediate succession for the same contact
+     * - both clicks dispatched on the FX thread before either one's own {@link #refreshContacts()}
+     * repaint has run, the most adversarial ordering a real double-click could produce - must start
+     * only ONE in-flight dial, never two. {@link PeerDialGateTest} proves the underlying mutex itself
+     * is race-free under genuine concurrency; this proves {@code PeerController} actually uses it as
+     * the very first thing {@code connectTo} does, end to end, against a real (if unreachable) dial.
+     */
+    @Test
+    @Timeout(30)
+    void twoRapidConnectClicksForTheSameContactStartOnlyOneDial() throws Exception {
+        enableIdentityAndNetworking();
+
+        int unreachablePort = freeLoopbackPort();
+        KeyPair strangerIdentity = KeyPairs.generate();
+        IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
+        Contact contact = contactService.registerPendingContact(strangerKey, "", now());
+        contact = contactService.acceptInvitation(contact.id(), now());
+        long contactId = contact.id();
+        contactService.recordAddressSighting(contactId, new PeerAddress("127.0.0.1", unreachablePort),
+                ContactAddressSource.MANUAL, now());
+        KeyPair strangerTransportKey = KeyPairs.generate();
+        contactService.recordObservedTransportBinding(contactId, new IdentityKey(KeyPairs.rawPublicKey(strangerTransportKey.getPublic())),
+                now().minus(Duration.ofHours(1)), now().plus(Duration.ofDays(90)), now());
+
+        runOnFxThreadAndWait(controller::initialize);
+        waitUntil(() -> fxRead(() -> controller.contactsBox.getChildren().size()), size -> size == 1);
+
+        // Both clicks happen back to back inside ONE Platform.runLater block - the second is
+        // dispatched before the first click's own repaint (inside connectTo, after launching the
+        // dial) has had any chance to run, let alone disable the button on screen.
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            fireConnectButton(row);
+            fireConnectButton(row);
+        });
+
+        runOnFxThreadAndWait(() -> {
+            Label rowStatus = rowStatusLabel(controller.contactsBox.getChildren().get(0));
+            assertEquals("Connecting…", rowStatus.getText(), "exactly one dial must be recorded as in flight after both clicks");
+            Button actionButton = (Button) ((HBox) controller.contactsBox.getChildren().get(0)).getChildren().get(1);
+            assertTrue(actionButton.isDisabled(), "the action button must be disabled, not merely unresponsive, while a dial is in flight");
+        });
+
+        waitUntil(() -> fxRead(() -> controller.statusLabel.getText()),
+                text -> text != null && text.startsWith("Could not connect"));
+
+        runOnFxThreadAndWait(() -> {
+            Label rowStatus = rowStatusLabel(controller.contactsBox.getChildren().get(0));
+            assertTrue(rowStatus.getText().startsWith("Offline"), "the in-flight state must be released once the single dial completes");
+            Button actionButton = (Button) ((HBox) controller.contactsBox.getChildren().get(0)).getChildren().get(1);
+            assertEquals("Connect", actionButton.getText(), "the button must return to Connect, ready for a genuinely new attempt");
+            assertFalse(actionButton.isDisabled());
+        });
+    }
+
+    /**
      * The core threading guarantee: a transport event delivered on a plain background thread (never
      * {@code Platform.runLater}, simulating exactly how the real dial pool/listener accept thread
      * calls {@code NetworkingService}'s connection-event listener) must never throw trying to mutate a
@@ -340,7 +398,8 @@ class PeerControllerTest {
     }
 
     private PeerController loadController(IdentityService identityService, NetworkingService networkingService,
-                                           ContactService contactService, PeerConnectionPresenter presenter) throws Exception {
+                                           ContactService contactService, PeerConnectionPresenter presenter,
+                                           com.codefit.ui.PeerDialGate dialGate) throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();
         AtomicReference<PeerController> controllerRef = new AtomicReference<>();
@@ -351,7 +410,7 @@ class PeerControllerTest {
                 // peer.fxml declares fx:controller (needed for AppShellController's own plain
                 // FXMLLoader.load(resource) in production), which conflicts with setController() -
                 // a controller factory is the supported way to inject a non-default instance anyway.
-                loader.setControllerFactory(type -> new PeerController(identityService, networkingService, contactService, presenter));
+                loader.setControllerFactory(type -> new PeerController(identityService, networkingService, contactService, presenter, dialGate));
                 Parent root = loader.load();
                 if (root == null) {
                     throw new IllegalStateException("FXMLLoader returned a null root");

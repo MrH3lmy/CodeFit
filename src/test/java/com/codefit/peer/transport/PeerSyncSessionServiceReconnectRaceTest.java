@@ -20,19 +20,24 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import java.lang.reflect.Field;
 import java.security.KeyPair;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Deterministic regression coverage for the reconnect receive-loop race in
@@ -161,13 +166,62 @@ class PeerSyncSessionServiceReconnectRaceTest {
         }
     }
 
+    /**
+     * Reflectively inspects {@code PeerSyncSessionService}'s private {@code receiveLoopExecutor}
+     * field - no production code changes for this: {@code Executors.newCachedThreadPool} returns a
+     * real {@link ThreadPoolExecutor}, whose own {@link ThreadPoolExecutor#getActiveCount()} is a
+     * genuine, real-time count of threads actually executing a receive loop right now. A thread can
+     * only stop counting as "active" once {@code receiveLoop}'s {@code finally} block (its very last
+     * statement before the method - and the thread - ends) has run, so this is a true completion
+     * signal, not a timing proxy for one.
+     */
+    private static ThreadPoolExecutor receiveLoopExecutorOf(PeerSyncSessionService service) throws Exception {
+        Field field = PeerSyncSessionService.class.getDeclaredField("receiveLoopExecutor");
+        field.setAccessible(true);
+        return (ThreadPoolExecutor) field.get(service);
+    }
+
+    /** Bounded, condition-checked poll on that real thread count - never a fixed sleep standing in
+     *  for the condition itself; the short sleep between checks only paces the polling, exactly like
+     *  this file's own pre-existing {@link #waitForAcceptedCount}. */
+    private static void waitForActiveReceiveThreads(PeerSyncSessionService service, int expectedCount) throws Exception {
+        long deadline = System.currentTimeMillis() + 5_000;
+        int last = -1;
+        while (System.currentTimeMillis() < deadline) {
+            last = receiveLoopExecutorOf(service).getActiveCount();
+            if (last == expectedCount) {
+                return;
+            }
+            Thread.sleep(10);
+        }
+        fail("Timed out waiting for " + expectedCount + " active receive thread(s); last observed " + last);
+    }
+
+    /** Reflectively reads the current registration's own connection for one author identity directly
+     *  out of the private {@code activeReceiveLoops} map - the single, unambiguous source of truth
+     *  for "which connection does the map currently say is registered", with no indirect proxy for it. */
+    private static PeerConnection registeredConnectionFor(PeerSyncSessionService service, com.codefit.peer.protocol.IdentityId authorId)
+            throws Exception {
+        Field mapField = PeerSyncSessionService.class.getDeclaredField("activeReceiveLoops");
+        mapField.setAccessible(true);
+        Map<?, ?> map = (Map<?, ?>) mapField.get(service);
+        Object registration = map.get(authorId);
+        if (registration == null) {
+            return null;
+        }
+        Field connectionField = registration.getClass().getDeclaredField("connection");
+        connectionField.setAccessible(true);
+        return (PeerConnection) connectionField.get(registration);
+    }
+
     @Test
     @Timeout(30)
-    void aStaleLoopFinishingLaterNeverClobbersAFollowingNewerRegistration() throws Exception {
+    void aStaleLoopsCleanupExecutingAfterTheReplacementIsRegisteredNeverRemovesIt() throws Exception {
         Peer me = Peer.create();
         Peer contact = Peer.create();
         KnownContactLookup meKnowsContact = id -> id.equals(contact.identity().publicKey().id())
                 ? KnownContactLookup.Status.PAIRED : KnownContactLookup.Status.UNKNOWN;
+        com.codefit.peer.protocol.IdentityId contactId = contact.identity().publicKey().id();
 
         List<PeerConnection> accepted = new CopyOnWriteArrayList<>();
         PeerSession.Context contactContext = contact.context(id -> KnownContactLookup.Status.PAIRED);
@@ -183,36 +237,48 @@ class PeerSyncSessionServiceReconnectRaceTest {
             waitForAcceptedCount(accepted, 2);
             PeerConnection connectionNew = accepted.get(1);
 
-            DialOutcome thirdDial = dial(contact, contactContext, me, address);
-            waitForAcceptedCount(accepted, 3);
-            PeerConnection connectionThird = accepted.get(2);
-
             try (PeerSyncSessionService sessionService = new PeerSyncSessionService()) {
+                // Required step 1: A's receive loop exists - not merely registered, but genuinely
+                // running (the executor's own real thread count confirms it, not an assumption).
                 sessionService.startReceiving(connectionOld, me.identity().publicKey().id(), (envelope, outcome) -> { });
-                // Registering connectionNew supersedes (and closes) connectionOld. Its own receive
-                // loop's cleanup for connectionOld may run on its own schedule, at any point from now
-                // on, including strictly AFTER the next registration below - this is exactly the "old
-                // loop terminates after the replacement was already registered" ordering, and nothing
-                // here waits for or depends on exactly when that cleanup happens: the property under
-                // test (a stale loop's own cleanup only ever removes ITS OWN connection's registration)
-                // holds at every instant, which is why no synchronization on that cleanup is needed.
-                sessionService.startReceiving(connectionNew, me.identity().publicKey().id(), (envelope, outcome) -> { });
+                waitForActiveReceiveThreads(sessionService, 1);
+                assertSame(connectionOld, registeredConnectionFor(sessionService, contactId));
 
-                // A further reconnect must see connectionNew as the current registration and supersede
-                // IT specifically. If the first (connectionOld) loop's eventual cleanup had instead
-                // wrongly cleared whatever was currently registered - rather than only its own entry -
-                // this registration would find nothing to supersede, and connectionNew would never be
-                // closed by it.
-                sessionService.startReceiving(connectionThird, me.identity().publicKey().id(), (envelope, outcome) -> { });
+                // Required step 2: replacement B becomes the current registration. Registering B also
+                // closes A's connection as part of superseding it (production behavior) - that close()
+                // is the trigger for A's eventual exception, but A's own background thread can only
+                // react to it afterward: it takes an independent thread wake-up the close can only
+                // cause, never precede. So this assertion - checked immediately, before anything
+                // below waits for A to finish - already proves B is current strictly before A's
+                // cleanup has had any chance to run.
+                BlockingQueue<SyncOutcome> newOutcomes = new ArrayBlockingQueue<>(4);
+                sessionService.startReceiving(connectionNew, me.identity().publicKey().id(), (envelope, outcome) -> newOutcomes.offer(outcome));
+                assertSame(connectionNew, registeredConnectionFor(sessionService, contactId),
+                        "B must be the current registration immediately upon registering it");
 
-                assertFalse(connectionNew.isOpen(),
-                        "the second connection's registration must still have been correctly current - and so "
-                                + "correctly superseded - no matter when the first (already-superseded) connection's "
-                                + "own receive loop happened to finish cleaning up after itself");
+                // Required step 3: A's cleanup/finally executes AFTER B is registered - proven by
+                // deterministically waiting (bounded poll on a real condition, not a sleep standing in
+                // for it) for the active-thread count to settle back down to 1: it was 1 (just A)
+                // before B was registered above, transiently becomes up to 2 (A still exiting, B now
+                // running) the instant B's own thread starts, and can only return to 1 once A's thread
+                // - whose sole exit path is through its own finally block - has fully terminated.
+                // Reaching this point proves that termination happened, and it necessarily happened
+                // after the registration check just above, since nothing could wait for it before
+                // that check even ran.
+                waitForActiveReceiveThreads(sessionService, 1);
+
+                // Required step 4: A's cleanup does not remove B - checked directly against the map,
+                // now that A's cleanup is confirmed to have already run.
+                assertSame(connectionNew, registeredConnectionFor(sessionService, contactId),
+                        "A's now-completed cleanup must not have removed B's registration");
+
+                // Required step 5: B is then proven operational by receiving a real frame.
+                secondDial.connection().send(probeFrame(contact, me, 1));
+                SyncOutcome outcome = newOutcomes.poll(10, TimeUnit.SECONDS);
+                assertNotNull(outcome, "B must still have a genuinely active receive loop after A's cleanup ran");
             } finally {
                 firstDial.connection().close();
                 secondDial.connection().close();
-                thirdDial.connection().close();
             }
         }
     }

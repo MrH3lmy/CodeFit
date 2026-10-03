@@ -13,6 +13,7 @@ import com.codefit.service.ContactService;
 import com.codefit.service.IdentityService;
 import com.codefit.service.NetworkingService;
 import com.codefit.ui.PeerConnectionPresenter;
+import com.codefit.ui.PeerDialGate;
 import com.codefit.ui.PeerSessionHolder;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -102,8 +103,9 @@ public class PeerController {
      * A manual "Connect" click wants fast feedback, not {@link RetryPolicy#standard()}'s
      * minutes-long backoff ceiling (6 attempts up to a 60s cap each - meant for an unattended
      * background reconnect, not someone watching a button). A person who sees "could not connect"
-     * quickly can just click Connect again; they cannot cancel an attempt already in flight from
-     * this screen (see the end-of-PR limitations).
+     * quickly can click Connect again once it finishes - see {@link #dialGate} for why a click while
+     * one is still in flight cannot start a second, independent attempt. This screen has no Cancel
+     * action for an attempt already in flight (see the end-of-PR limitations).
      */
     private static final RetryPolicy MANUAL_CONNECT_RETRY_POLICY = new RetryPolicy(3, Duration.ofSeconds(1), Duration.ofSeconds(5), 0.2);
 
@@ -112,19 +114,29 @@ public class PeerController {
     private final ContactService contactService;
     private final PeerConnectionPresenter presenter;
 
+    /**
+     * Ensures at most one manual dial per contact is ever in flight from this UI at a time - see
+     * {@link PeerDialGate}'s own javadoc. This is UI-owned bookkeeping only, never consulted as
+     * connection state: {@code NetworkingService.activeConnection} remains the sole authority on
+     * whether a contact is actually connected.
+     */
+    private final PeerDialGate dialGate;
+
     /** Staged between a successful {@link #parseInvitation()} and {@link #registerAndAccept()}. */
     SignedInvitation parsedPeerInvitation;
 
     public PeerController() {
-        this(new IdentityService(), PeerSessionHolder.networkingService(), new ContactService(), PeerSessionHolder.presenter());
+        this(new IdentityService(), PeerSessionHolder.networkingService(), new ContactService(), PeerSessionHolder.presenter(),
+                PeerSessionHolder.dialGate());
     }
 
     PeerController(IdentityService identityService, NetworkingService networkingService, ContactService contactService,
-                    PeerConnectionPresenter presenter) {
+                    PeerConnectionPresenter presenter, PeerDialGate dialGate) {
         this.identityService = identityService;
         this.networkingService = networkingService;
         this.contactService = contactService;
         this.presenter = presenter;
+        this.dialGate = dialGate;
     }
 
     @FXML
@@ -178,6 +190,9 @@ public class PeerController {
             networkingService.disableNetworking();
             return null;
         }, (Void ignored) -> {
+            // No UI-owned dial state may outlive networking being disabled - whatever the torn-down
+            // dial futures eventually report for themselves, this screen no longer owns any of them.
+            dialGate.clear();
             refreshNetworkingStatus();
             refreshContacts();
             setStatus("Networking disabled.");
@@ -260,9 +275,24 @@ public class PeerController {
         registerAndAcceptButton.setDisable(true);
     }
 
+    /**
+     * Starts a manual dial for one contact, but only if nothing else from this UI is already dialing
+     * it: {@link #dialGate} is acquired first, atomically, as the very first thing this method does -
+     * before the known-address check, before the synchronous {@code connectToContact} call, before
+     * anything - so two back-to-back clicks (even two already queued on the FX thread before the
+     * first click's own {@link #refreshContacts()} call ever disables the button) can never both
+     * proceed past this guard. Exactly one of them acquires ownership; the other returns immediately,
+     * doing nothing further. Ownership is released in every exit path - the two early returns below,
+     * the synchronous-failure catch, and the async {@code whenComplete} (which always runs, on
+     * success, failure, or cancellation of the returned future) - so it can never be left hanging.
+     */
     private void connectTo(Contact contact) {
+        if (!dialGate.tryAcquire(contact.id())) {
+            return; // already dialing this contact from this UI - the row already shows "Connecting…"
+        }
         List<ContactAddress> addresses = contactService.knownAddresses(contact.id());
         if (addresses.isEmpty()) {
+            dialGate.release(contact.id());
             setStatus("No known address for " + displayNameFor(contact) + " yet - ask them to resend their invitation.");
             return;
         }
@@ -273,6 +303,7 @@ public class PeerController {
         try {
             networkingService.connectToContact(contact.id(), address, MANUAL_CONNECT_RETRY_POLICY, new AtomicBoolean(false))
                     .whenComplete((outcome, throwable) -> Platform.runLater(() -> {
+                        dialGate.release(contact.id());
                         refreshContacts();
                         if (throwable != null) {
                             setStatus("Connection attempt failed: " + messageOf(throwable));
@@ -283,6 +314,7 @@ public class PeerController {
                         }
                     }));
         } catch (IllegalStateException cannotDial) {
+            dialGate.release(contact.id());
             setStatus("Could not connect to " + displayNameFor(contact) + ": " + messageOf(cannotDial));
         }
         refreshContacts();
@@ -337,7 +369,12 @@ public class PeerController {
 
     private Node buildContactRow(Contact contact) {
         boolean connected = networkingService.activeConnection(contact.identityId()).isPresent();
-        String status = presenter.displayTextFor(contact.identityId(), connected);
+        // dialGate, not any transport event, is authoritative for "connecting" here: a manual dial
+        // this UI just started may not yet have produced any ConnectionEvent at all (the attempt is
+        // still queued behind the dial pool's own concurrency limit, say), but the row must still
+        // reflect that this UI already owns an in-flight request for this contact.
+        boolean dialing = !connected && dialGate.isInFlight(contact.id());
+        String status = dialing ? "Connecting…" : presenter.displayTextFor(contact.identityId(), connected);
 
         Label nameLabel = new Label(displayNameFor(contact));
         nameLabel.getStyleClass().add("problem-row-title");
@@ -349,14 +386,20 @@ public class PeerController {
         textColumn.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(textColumn, Priority.ALWAYS);
 
-        Button actionButton = new Button(connected ? "Disconnect" : "Connect");
-        actionButton.setOnAction(event -> {
-            if (connected) {
-                disconnectFrom(contact);
-            } else {
-                connectTo(contact);
-            }
-        });
+        Button actionButton;
+        if (connected) {
+            actionButton = new Button("Disconnect");
+            actionButton.setOnAction(event -> disconnectFrom(contact));
+        } else if (dialing) {
+            // Disabled, not merely left clickable-but-ignored: a disabled button is itself the
+            // feedback that this contact already has a request in flight, per the review requirement
+            // to prefer disabling/replacing the action over silently ignoring a click with no sign.
+            actionButton = new Button("Connecting…");
+            actionButton.setDisable(true);
+        } else {
+            actionButton = new Button("Connect");
+            actionButton.setOnAction(event -> connectTo(contact));
+        }
 
         HBox row = new HBox(10, textColumn, actionButton);
         row.setAlignment(Pos.CENTER_LEFT);

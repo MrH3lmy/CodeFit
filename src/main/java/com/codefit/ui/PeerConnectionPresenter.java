@@ -55,10 +55,20 @@ public final class PeerConnectionPresenter {
 
     /**
      * Subscribes (or, with {@code null}, unsubscribes) to a "something changed" notification after
-     * every recorded event. At most one subscriber at a time - exactly one Peer screen can be open.
-     * The currently-displayed {@code PeerController} sets this in its own {@code initialize()} and
-     * clears it when navigating away, so a since-replaced controller instance is never called after
-     * its scene graph is gone.
+     * every recorded event. At most one subscriber slot exists here - exactly one Peer screen can be
+     * open. {@code PeerController} sets this in its own {@code initialize()}, but ordinary sidebar
+     * navigation away from the Peers screen does <strong>not</strong> clear it: {@code
+     * NavigationService}/{@code AppShellController} have no per-route "leaving this screen" lifecycle
+     * hook today (unlike, say, {@code ProblemSolvingWorkspaceController}'s {@code canNavigateAway},
+     * which only fires for navigation routed through {@code BaseController#navigate}, a path {@code
+     * PeerController} does not use), and adding one is out of scope here. In practice this is a
+     * harmless, bounded replacement rather than a leak: the very next time the Peers screen is shown,
+     * a freshly-constructed {@code PeerController} calls {@code initialize()} again, which overwrites
+     * this single slot with its own callback - so at most one navigated-away controller's callback can
+     * ever be stale, and only until that next visit. A stale callback firing in that window just
+     * re-reads this presenter and the real connection ground truth and repaints a scene graph that is
+     * no longer attached to the stage - wasted work, not a correctness or memory-safety problem (the
+     * stale controller itself is still eligible for GC once this slot is overwritten).
      */
     public void setOnChange(Runnable onChange) {
         this.onChange = onChange;

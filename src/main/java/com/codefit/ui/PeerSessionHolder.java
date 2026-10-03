@@ -12,16 +12,18 @@ import com.codefit.service.NetworkingService;
  * {@code com.codefit.service.CompileOutcomeRegistry}/{@code BackgroundImportExecutor} already use for
  * the identical problem elsewhere in this codebase - not a new mechanism.
  *
- * <p>This is deliberately narrow: it owns exactly the one {@code NetworkingService} and the one
- * {@link PeerConnectionPresenter} the Peer screen needs across recreation, nothing else. It is not a
- * service locator - no other service is reachable through it, and nothing here decides application
- * behavior; {@code PeerController} still does all the orchestration.
+ * <p>This is deliberately narrow: it owns exactly the one {@code NetworkingService}, the one
+ * {@link PeerConnectionPresenter}, and the one {@link PeerDialGate} the Peer screen needs across
+ * recreation, nothing else. It is not a service locator - no other service is reachable through it,
+ * and nothing here decides application behavior; {@code PeerController} still does all the
+ * orchestration.
  */
 public final class PeerSessionHolder {
 
     private static final Object LOCK = new Object();
     private static NetworkingService networkingService;
     private static PeerConnectionPresenter presenter;
+    private static PeerDialGate dialGate;
 
     private PeerSessionHolder() {
     }
@@ -46,9 +48,24 @@ public final class PeerSessionHolder {
         }
     }
 
+    /** The one application-lifetime {@link PeerDialGate}, created on first use. Lives here, not as a
+     *  plain {@code PeerController} field, for the same reason {@code networkingService} does: a
+     *  manual dial started by one controller instance must still be recognized as in flight by
+     *  whatever controller instance is current if the Peer screen is left and reopened before that
+     *  dial finishes. */
+    public static PeerDialGate dialGate() {
+        synchronized (LOCK) {
+            if (dialGate == null) {
+                dialGate = new PeerDialGate();
+            }
+            return dialGate;
+        }
+    }
+
     /** Closes the networking service (tearing down the listener, dial pool, and every open
-     *  connection) and forgets both held objects. Called from {@code CodeFitApplication#stop()} on
-     *  normal application exit; also safe to call from a test teardown. Safe to call repeatedly. */
+     *  connection), forgets every UI-owned in-flight dial, and forgets all three held objects.
+     *  Called from {@code CodeFitApplication#stop()} on normal application exit; also safe to call
+     *  from a test teardown. Safe to call repeatedly. */
     public static void shutdown() {
         synchronized (LOCK) {
             if (networkingService != null) {
@@ -58,6 +75,10 @@ public final class PeerSessionHolder {
             if (presenter != null) {
                 presenter.clear();
                 presenter = null;
+            }
+            if (dialGate != null) {
+                dialGate.clear();
+                dialGate = null;
             }
         }
     }

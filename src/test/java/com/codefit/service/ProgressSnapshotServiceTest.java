@@ -383,10 +383,12 @@ class ProgressSnapshotServiceTest {
         LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant())
                 .capture(ComparisonWindow.day(day, UTC)).snapshot();
 
-        assertEquals(1, metric(snapshot, "problem.attempts").value(), "attempt volume still counts the row");
-        assertEquals(1, metric(snapshot, "problem.accepted").value(), "accepted volume still counts the row");
+        assertEquals(MetricAvailability.UNAVAILABLE, metric(snapshot, "problem.attempts").availability(),
+                "pre-column UNKNOWN may be a genuine attempt or an old workbook import, so period volume is unknowable");
+        assertEquals(MetricAvailability.UNAVAILABLE, metric(snapshot, "problem.accepted").availability());
+        assertEquals(MetricAvailability.UNAVAILABLE, metric(snapshot, "problem.solving_seconds").availability());
         assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
-                "a legacy row with unknown origin must never be fabricated into a first-time completion");
+                "an unknown-origin success must never be fabricated into a first-time completion");
     }
 
     @Test
@@ -430,21 +432,24 @@ class ProgressSnapshotServiceTest {
     }
 
     @Test
-    void genuineLegacyUnknownOriginStillCountsForAttemptAndAcceptedVolume() {
-        // Contrast with the test above: a TRUE pre-migration legacy row (never guessed as import or
-        // fresh) still has a genuine, non-fabricated submitted_at from whenever the app actually
-        // wrote it, so - unlike IMPORTED - it must keep counting for attempt/accepted volume
-        // (#183's existing allowance for attempt-volume metrics to use evidence that isn't precise
-        // enough for first-completion purposes). Only problem.unique_completed excludes it.
-        long problemId = createProblem("LEGACY-UNKNOWN-STILL-COUNTS");
+    void unknownLegacyAttemptMakesExactWindowActivityUnavailable() {
+        // UNKNOWN cannot be safely called "genuine legacy" after upgrade: pre-#183 main used the
+        // same old row shape for both real attempts and workbook imports, and the importer stamped
+        // submitted_at with import time. Without durable provenance, counting or dropping the row
+        // would both assert something we do not know, so exact period metrics must be unavailable.
+        long problemId = createProblem("LEGACY-UNKNOWN-AMBIGUOUS");
         LocalDate day = LocalDate.of(2026, 1, 15);
         insertAttemptWithOrigin(problemId, 1, SubmissionResult.AC, day.atTime(10, 0), CompletionOrigin.UNKNOWN);
 
         LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant())
                 .capture(ComparisonWindow.day(day, UTC)).snapshot();
 
-        assertEquals(1, metric(snapshot, "problem.attempts").value(), "a genuine legacy row's real submitted_at still counts");
-        assertEquals(1, metric(snapshot, "problem.accepted").value(), "a genuine legacy row's real submitted_at still counts");
+        for (String metricId : List.of("problem.attempts", "problem.accepted", "problem.solving_seconds")) {
+            MetricValue value = metric(snapshot, metricId);
+            assertEquals(MetricAvailability.UNAVAILABLE, value.availability(), metricId);
+            assertEquals(0, value.sampleSize(), metricId + " must not expose a partial denominator");
+            assertEquals(0, value.value(), metricId + " must not turn ambiguity into a measured zero");
+        }
         assertEquals(0, metric(snapshot, "problem.unique_completed").value());
     }
 

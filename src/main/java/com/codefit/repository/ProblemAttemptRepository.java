@@ -54,16 +54,17 @@ public class ProblemAttemptRepository {
      * Java's 'T' separator before comparing, exactly as {@code ReviewHistoryRepository.findFiltered}
      * already does for the same reason.
      *
-     * <p>Excludes {@code completion_origin = 'IMPORTED'} (#183 review fix, round 5): the workbook
-     * importer's {@code submitted_at} is the import's own run time, not the learner's real
-     * historical submission time, so an import would otherwise inflate whichever window it
-     * happened to run in with attempt/accepted/solving-time volume that never actually happened
-     * then. {@code UNKNOWN} (genuine pre-migration legacy rows, whose {@code submitted_at} is NOT
-     * fabricated) is deliberately still included - see {@code CompletionOrigin}.
+     * <p>Only origins whose timestamps are known to be period-attributable are returned. IMPORTED
+     * is excluded because its timestamp is the workbook import time. UNKNOWN is also excluded:
+     * before completion_origin existed, the database already contained both genuine attempts and
+     * workbook-imported attempts, so an upgraded UNKNOWN row cannot safely be treated as either.
+     * Callers must pair this query with {@link #hasUnknownSubmittedBetweenUtc} and mark aggregate
+     * activity metrics UNAVAILABLE when ambiguous legacy evidence exists in the requested window.
      */
     public List<ProblemAttempt> findSubmittedBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
         String sql = "SELECT * FROM problem_attempts WHERE datetime(submitted_at) >= datetime(?) "
-                + "AND datetime(submitted_at) < datetime(?) AND completion_origin != 'IMPORTED' "
+                + "AND datetime(submitted_at) < datetime(?) "
+                + "AND completion_origin IN ('FRESH_ATTEMPT', 'PREVIOUSLY_SOLVED') "
                 + "ORDER BY problem_id, attempt_number";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -74,6 +75,27 @@ public class ProblemAttemptRepository {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to load problem attempts in window", exception);
+        }
+    }
+
+    /**
+     * Whether this window contains a pre-completion_origin attempt whose time provenance cannot be
+     * recovered safely. UNKNOWN may be a genuine legacy workspace attempt or a pre-#183 workbook
+     * import stamped with the import run's current time; the old schema did not persist enough
+     * provenance to tell them apart. Presence of one makes exact period activity totals unknowable.
+     */
+    public boolean hasUnknownSubmittedBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
+        String sql = "SELECT 1 FROM problem_attempts WHERE datetime(submitted_at) >= datetime(?) "
+                + "AND datetime(submitted_at) < datetime(?) AND completion_origin = 'UNKNOWN' LIMIT 1";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, startUtcInclusive.toString());
+            statement.setString(2, endUtcExclusive.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to inspect ambiguous legacy problem attempts in window", exception);
         }
     }
 

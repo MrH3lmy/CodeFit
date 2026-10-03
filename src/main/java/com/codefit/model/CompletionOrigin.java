@@ -48,13 +48,14 @@ public enum CompletionOrigin {
      */
     IMPORTED,
     /**
-     * No trustworthy claim about first-completion: a row that predates this column entirely,
-     * migrated with no opinion on which path created it - never guessed from {@code
-     * submissionResult} alone (#183 review fix: be conservative, don't reinterpret old ACX rows as
-     * either fresh or previously-solved). Its {@code submittedAt} is still whatever the app
-     * genuinely wrote when the row was created - not fabricated the way an import's is - so it
-     * stays usable for attempt/accepted/solving-time volume (the same conservative allowance #183
-     * always gave attempt-volume metrics), just never for first-completion evidence.
+     * Ambiguous pre-migration evidence: a row that predates this column entirely. Before this
+     * field existed, both genuine workspace attempts and workbook-imported historical attempts were
+     * stored in the same table, and imported rows were stamped with the import run's current time.
+     * There is no durable foreign key from an attempt back to its import batch, so an upgraded row
+     * cannot be classified safely after the fact. UNKNOWN is therefore trusted for neither window
+     * attribution nor first-completion evidence; a window containing it must report the affected
+     * activity metrics as UNAVAILABLE rather than guess, silently drop evidence into a measured zero,
+     * or count an import timestamp as real learner activity.
      */
     UNKNOWN
 }

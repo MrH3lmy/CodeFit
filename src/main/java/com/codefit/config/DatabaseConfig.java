@@ -397,7 +397,8 @@ public final class DatabaseConfig {
         // that already existed before this column did - they become UNKNOWN, never guessed as
         // FRESH_ATTEMPT from submission_result alone. Every write path (ProblemAttemptService,
         // TrainingSheetImportService) explicitly sets the correct value for rows it creates from here
-        // on, so UNKNOWN only ever describes genuinely pre-existing or import-sourced evidence.
+        // on. UNKNOWN remains deliberately ambiguous on upgrade: old main had already stored both
+        // genuine attempts and workbook-imported attempts before this provenance field existed.
         addColumnIfMissing(connection, "problem_attempts", "completion_origin", "TEXT NOT NULL DEFAULT 'UNKNOWN'");
         // The highest hint ladder level opened so far *this attempt* (#162): null until the learner
         // opens the first hint. Living on the session row (not problem_progress) means it resets for

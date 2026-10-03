@@ -35,18 +35,18 @@ public final class MetricRegistry {
                             + "level only for the rare case upstream evidence genuinely is self-rated by either path)"),
             new MetricDefinition("problem.attempts", 1, MetricUnit.COUNT, 0,
                     Set.of(MetricProvenance.LOCAL_RECORD),
-                    "#183 review fix (round 5): problem_attempts rows with submitted_at in window, excluding "
-                            + "completion_origin = IMPORTED - the workbook importer's submitted_at is its own run "
-                            + "time, not when the learner actually did anything, so an import must never inflate "
-                            + "whichever window it happens to run in"),
+                    "#183 review fix (round 6): period-attributable problem_attempts rows only "
+                            + "(FRESH_ATTEMPT/PREVIOUSLY_SOLVED). IMPORTED rows are excluded; if the window contains "
+                            + "pre-column UNKNOWN rows, the metric is UNAVAILABLE because old main already stored both "
+                            + "genuine attempts and workbook imports without durable time provenance"),
             new MetricDefinition("problem.accepted", 1, MetricUnit.COUNT, 0,
                     Set.of(MetricProvenance.LEARNER_REPORTED_OUTCOME),
-                    "problem_attempts rows recorded as ACCEPTED by the learner in window, excluding "
-                            + "completion_origin = IMPORTED (see problem.attempts)"),
+                    "accepted period-attributable problem_attempts in window; IMPORTED is excluded and UNKNOWN "
+                            + "makes the metric UNAVAILABLE (see problem.attempts)"),
             new MetricDefinition("problem.solving_seconds", 1, MetricUnit.SECONDS, 0,
                     Set.of(MetricProvenance.LOCAL_TIMER),
-                    "sum of phase-timer seconds on problem_attempts in window, excluding "
-                            + "completion_origin = IMPORTED (see problem.attempts)"),
+                    "sum of phase-timer seconds on period-attributable problem_attempts in window; IMPORTED is "
+                            + "excluded and UNKNOWN makes the metric UNAVAILABLE (see problem.attempts)"),
             new MetricDefinition("mock.overall_score", 1, MetricUnit.PERCENT, 1,
                     Set.of(MetricProvenance.MOCK_SELF_SCORE),
                     "mean interview_mock_runs.overall_score_percent completed in window"),

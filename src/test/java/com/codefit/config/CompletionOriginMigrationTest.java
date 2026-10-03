@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * #183 review fix, round 4: an install that already had {@code problem_attempts} rows before
@@ -81,8 +82,17 @@ class CompletionOriginMigrationTest {
         }
 
         // And the repository layer reads that same legacy row back as UNKNOWN, not as a default null.
-        ProblemAttempt reloaded = new ProblemAttemptRepository().findByProblemId(problemId).get(0);
+        ProblemAttemptRepository repository = new ProblemAttemptRepository();
+        ProblemAttempt reloaded = repository.findByProblemId(problemId).get(0);
         assertEquals(CompletionOrigin.UNKNOWN, reloaded.completionOrigin());
+
+        // This exact old-schema row shape was also used by TrainingSheetImportService on main before
+        // completion_origin existed. There is no durable attempt->import-batch link that can prove
+        // which old UNKNOWN rows were imports, so the upgraded window must surface the ambiguity
+        // rather than trust the old submitted_at as period-attributable activity.
+        assertTrue(repository.hasUnknownSubmittedBetweenUtc(
+                LocalDateTime.of(2025, 1, 1, 0, 0),
+                LocalDateTime.of(2025, 1, 2, 0, 0)));
     }
 
     @Test

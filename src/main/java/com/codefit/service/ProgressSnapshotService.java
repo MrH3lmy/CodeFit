@@ -110,6 +110,7 @@ public class ProgressSnapshotService {
         List<ReviewHistory> reviews = reviewHistoryRepository.findReviewedBetweenUtc(utcStart, utcEnd);
         List<ReviewHistoryRepository.HintEvidence> hintEvidence = reviewHistoryRepository.findHintEvidenceBetweenUtc(utcStart, utcEnd);
         List<ProblemAttempt> attempts = problemAttemptRepository.findSubmittedBetweenUtc(utcStart, utcEnd);
+        boolean hasAmbiguousLegacyAttempts = problemAttemptRepository.hasUnknownSubmittedBetweenUtc(utcStart, utcEnd);
         int freshFirstCompletions = problemAttemptRepository.countFreshFirstCompletionsBetweenUtc(utcStart, utcEnd);
         List<Integer> mockScores = interviewMockRepository.findOverallScoresCompletedBetween(zoneStart, zoneEnd);
 
@@ -119,9 +120,9 @@ public class ProgressSnapshotService {
         metrics.add(selfRatedSuccessRate(reviews));
         metrics.add(legacyRatingFallbackSuccessRate(reviews));
         metrics.add(hintFreeRate(hintEvidence));
-        metrics.add(problemAttempts(attempts));
-        metrics.add(problemAccepted(attempts));
-        metrics.add(problemSolvingSeconds(attempts));
+        metrics.add(problemAttempts(attempts, hasAmbiguousLegacyAttempts));
+        metrics.add(problemAccepted(attempts, hasAmbiguousLegacyAttempts));
+        metrics.add(problemSolvingSeconds(attempts, hasAmbiguousLegacyAttempts));
         metrics.add(uniqueCompletedProblems(freshFirstCompletions));
         metrics.add(mockOverallScore(mockScores));
         return metrics;
@@ -231,24 +232,36 @@ public class ProgressSnapshotService {
     }
 
     // --- problem_attempts-derived metrics (LEGACY_SQLITE_UTC) ---
-    // #183 review fix (round 5): `attempts` here already excludes completion_origin = IMPORTED
-    // (ProblemAttemptRepository#findSubmittedBetweenUtc) - the workbook importer's submitted_at is
-    // its own run time, not when the learner actually did anything, so without this exclusion a
-    // single import run would inflate these three metrics with volume that never happened in
-    // whatever window the import happened to land in.
+    // #183 review fix (round 6): only FRESH_ATTEMPT/PREVIOUSLY_SOLVED rows have trustworthy
+    // period attribution. New IMPORTED rows are excluded outright. Pre-column UNKNOWN rows are
+    // ambiguous because main already persisted workbook imports before completion_origin existed,
+    // so a window containing UNKNOWN cannot produce an exact attempt/accepted/timer total. Mark
+    // those metrics UNAVAILABLE instead of counting an import timestamp or silently undercounting.
 
-    private MetricValue problemAttempts(List<ProblemAttempt> attempts) {
+    private MetricValue problemAttempts(List<ProblemAttempt> attempts, boolean hasAmbiguousLegacyAttempts) {
+        if (hasAmbiguousLegacyAttempts) {
+            return unavailable("problem.attempts", MetricUnit.COUNT, MetricProvenance.LOCAL_RECORD,
+                    TimestampBasis.LEGACY_SQLITE_UTC);
+        }
         return count("problem.attempts", 1, attempts.size(), 0, MetricProvenance.LOCAL_RECORD, TimestampBasis.LEGACY_SQLITE_UTC);
     }
 
-    private MetricValue problemAccepted(List<ProblemAttempt> attempts) {
+    private MetricValue problemAccepted(List<ProblemAttempt> attempts, boolean hasAmbiguousLegacyAttempts) {
+        if (hasAmbiguousLegacyAttempts) {
+            return unavailable("problem.accepted", MetricUnit.COUNT, MetricProvenance.LEARNER_REPORTED_OUTCOME,
+                    TimestampBasis.LEGACY_SQLITE_UTC);
+        }
         long accepted = attempts.stream()
                 .filter(a -> a.submissionResult() == SubmissionResult.AC || a.submissionResult() == SubmissionResult.ACX)
                 .count();
         return count("problem.accepted", 1, accepted, 0, MetricProvenance.LEARNER_REPORTED_OUTCOME, TimestampBasis.LEGACY_SQLITE_UTC);
     }
 
-    private MetricValue problemSolvingSeconds(List<ProblemAttempt> attempts) {
+    private MetricValue problemSolvingSeconds(List<ProblemAttempt> attempts, boolean hasAmbiguousLegacyAttempts) {
+        if (hasAmbiguousLegacyAttempts) {
+            return unavailable("problem.solving_seconds", MetricUnit.SECONDS, MetricProvenance.LOCAL_TIMER,
+                    TimestampBasis.LEGACY_SQLITE_UTC);
+        }
         long totalSeconds = attempts.stream().mapToLong(a ->
                 nz(a.readingTimeSeconds()) + nz(a.thinkingTimeSeconds()) + nz(a.codingTimeSeconds()) + nz(a.debuggingTimeSeconds())
         ).sum();
@@ -305,6 +318,12 @@ public class ProgressSnapshotService {
     }
 
     // --- shared metric-value construction ---
+
+    private static MetricValue unavailable(String metricId, MetricUnit unit,
+                                           MetricProvenance provenance, TimestampBasis basis) {
+        return new MetricValue(metricId, 1, unit, MetricAvailability.UNAVAILABLE,
+                0, 0, provenance, basis);
+    }
 
     private static MetricValue count(String metricId, int version, long value, int minSamples,
                                        MetricProvenance provenance, TimestampBasis basis) {

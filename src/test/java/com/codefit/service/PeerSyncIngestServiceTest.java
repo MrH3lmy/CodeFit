@@ -44,6 +44,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -333,5 +334,113 @@ class PeerSyncIngestServiceTest {
         var permissionAfter = contactService.permissionsFor(peerContactId);
 
         assertEquals(permissionBefore, permissionAfter, "ingesting peer data must never mutate this device's OWN grant toward that contact");
+    }
+
+    @Test
+    void acceptingAPeerProgressSummaryNeverTouchesLocalLearningTables() throws java.sql.SQLException {
+        grantDailySummaryFromPeer();
+        long attemptsBefore = countRows("problem_attempts");
+        long reviewsBefore = countRows("review_history");
+        long localSnapshotsBefore = countRows("local_progress_snapshots");
+
+        assertEquals(SyncOutcome.ACCEPTED, ingestService.ingest(peerIdentityId, myIdentityId,
+                progressSummaryEnvelope(randomObjectId(19), 1, 1, 1), NOW));
+
+        assertEquals(attemptsBefore, countRows("problem_attempts"), "peer data must never create or touch this learner's own attempts");
+        assertEquals(reviewsBefore, countRows("review_history"), "peer data must never create or touch this learner's own reviews");
+        assertEquals(localSnapshotsBefore, countRows("local_progress_snapshots"),
+                "peer data must land only in the peer inbox, never in this device's own local evidence tables");
+    }
+
+    private long countRows(String table) throws java.sql.SQLException {
+        try (var connection = com.codefit.config.DatabaseConfig.getConnection();
+             var statement = connection.createStatement();
+             var resultSet = statement.executeQuery("SELECT COUNT(*) FROM " + table)) {
+            resultSet.next();
+            return resultSet.getLong(1);
+        }
+    }
+
+    @Test
+    void twoDifferentBodiesClaimingTheSameEpochAndRevisionAreNeverArbitratedByWallClockTime() {
+        grantDailySummaryFromPeer();
+        ObjectId objectId = randomObjectId(20);
+        // First success at (epoch=1, revision=5), stamped with an EARLIER wall-clock createdAt.
+        EnvelopeHeader firstHeader = new EnvelopeHeader(0, peerIdentityKey, objectId, 1, 1, 5,
+                NOW.minusSeconds(100), NOW.plus(Duration.ofDays(30)), toMe());
+        assertEquals(SyncOutcome.ACCEPTED, ingestService.ingest(peerIdentityId, myIdentityId,
+                sign(new Envelope(firstHeader, summaryBody())), NOW));
+
+        // A second, genuinely different body (different sequence, so a different message id) at the
+        // SAME (epoch, revision) - but stamped with a LATER wall-clock createdAt than the first. If
+        // conflict resolution were wall-clock based, "later timestamp wins" would accept this. It must
+        // not: revision ordering alone decides, and equal-or-lower revision never supersedes.
+        EnvelopeHeader conflictingHeader = new EnvelopeHeader(0, peerIdentityKey, objectId, 1, 2, 5,
+                NOW.minusSeconds(1), NOW.plus(Duration.ofDays(30)), toMe());
+        SyncOutcome outcome = ingestService.ingest(peerIdentityId, myIdentityId,
+                sign(new Envelope(conflictingHeader, summaryBody())), NOW);
+
+        assertEquals(SyncOutcome.STALE_REVISION, outcome,
+                "a conflicting same-revision body is rejected by revision ordering alone, never picked by comparing wall-clock timestamps");
+        assertEquals(5L, progressSummaryRepository.findByAuthorAndObjectId(peerIdentityId, objectId).orElseThrow().revision(),
+                "the first-accepted revision 5 content must still be what is held");
+    }
+
+    @Test
+    void aForcedPersistenceFailureLeavesReplayStateUntouchedSoARetrySucceedsCleanly() throws java.sql.SQLException {
+        grantDailySummaryFromPeer();
+        ObjectId objectId = randomObjectId(21);
+        forceInsertFailureOn("peer_progress_summaries");
+
+        SignedEnvelope envelope = progressSummaryEnvelope(objectId, 1, 1, 1);
+        assertThrows(IllegalStateException.class, () -> ingestService.ingest(peerIdentityId, myIdentityId, envelope, NOW));
+        assertTrue(progressSummaryRepository.findByAuthorAndObjectId(peerIdentityId, objectId).isEmpty(),
+                "the failed attempt must not have left a half-applied cache row");
+
+        dropTriggersOn("peer_progress_summaries");
+
+        // The exact same envelope, retried after the transient failure clears, must be accepted
+        // completely normally - never STALE/DUPLICATE/FORKED from a half-recorded first attempt,
+        // since the whole transaction (body + replay state) rolled back together.
+        SyncOutcome retried = ingestService.ingest(peerIdentityId, myIdentityId, envelope, NOW);
+        assertEquals(SyncOutcome.ACCEPTED, retried);
+        assertTrue(progressSummaryRepository.findByAuthorAndObjectId(peerIdentityId, objectId).isPresent());
+    }
+
+    @Test
+    void blockingAContactAfterPairingRejectsAnythingItSendsAfterward() {
+        grantDailySummaryFromPeer();
+        contactService.block(peerContactId, true, NOW);
+
+        SyncOutcome outcome = ingestService.ingest(peerIdentityId, myIdentityId,
+                progressSummaryEnvelope(randomObjectId(22), 1, 5, 1), NOW);
+
+        assertEquals(SyncOutcome.UNKNOWN_AUTHOR, outcome, "a blocked contact's envelopes must never be accepted, even with a once-valid consent cached");
+    }
+
+    @Test
+    void removingAContactAfterPairingRejectsAnythingItSendsAfterward() {
+        grantDailySummaryFromPeer();
+        contactService.remove(peerContactId, true, NOW);
+
+        SyncOutcome outcome = ingestService.ingest(peerIdentityId, myIdentityId,
+                progressSummaryEnvelope(randomObjectId(23), 1, 5, 1), NOW);
+
+        assertEquals(SyncOutcome.UNKNOWN_AUTHOR, outcome, "a removed contact's envelopes must never be accepted");
+    }
+
+    private void forceInsertFailureOn(String table) throws java.sql.SQLException {
+        try (var connection = com.codefit.config.DatabaseConfig.getConnection();
+             var statement = connection.createStatement()) {
+            statement.execute(("CREATE TRIGGER force_failure_%s BEFORE INSERT ON %s "
+                    + "BEGIN SELECT RAISE(ABORT, 'forced failure for atomicity test'); END").formatted(table, table));
+        }
+    }
+
+    private void dropTriggersOn(String table) throws java.sql.SQLException {
+        try (var connection = com.codefit.config.DatabaseConfig.getConnection();
+             var statement = connection.createStatement()) {
+            statement.execute("DROP TRIGGER force_failure_" + table);
+        }
     }
 }

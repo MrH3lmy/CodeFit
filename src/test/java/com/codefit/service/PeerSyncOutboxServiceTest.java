@@ -161,6 +161,47 @@ class PeerSyncOutboxServiceTest {
                 "no tombstone is owed for an object nothing confirms the peer ever actually received");
     }
 
+    @Test
+    void anExpiredGrantStopsNewPublicationEvenThoughTheGrantRowStillExists() {
+        // SnapshotPublicationService deliberately evaluates authorization against its OWN fixed
+        // Clock, never a caller-supplied Instant (#183 round-2 fix: a caller must never be able to
+        // revive an expired grant merely by passing a different "now"). Simulating time actually
+        // passing therefore needs a second service instance built with a later fixed clock, not a
+        // different `now` argument to the same instance.
+        contactService.updatePermissions(contactId,
+                new PermissionGrant(List.of(SharingScope.DAILY_SUMMARY), 30, NOW.plusSeconds(10), false), NOW);
+        outboxService.approveProgressSummary(contactId, window(), NOW);
+        assertTrue(outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW).stream()
+                .anyMatch(b -> b.envelope().body() instanceof ProgressSummary), "still within the grant's expiry");
+
+        PeerSyncOutboxService laterOutboxService = outboxServiceAt(NOW.plusSeconds(20));
+        List<PeerSyncOutboxService.Batched> afterExpiry = laterOutboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch,
+                NOW.plusSeconds(20));
+        assertFalse(afterExpiry.stream().anyMatch(b -> b.envelope().body() instanceof ProgressSummary),
+                "an expired grant must stop new publication exactly like an explicit revoke, with no further action needed");
+    }
+
+    private PeerSyncOutboxService outboxServiceAt(Instant now) {
+        return new PeerSyncOutboxService(new com.codefit.repository.PublicationOutboxRepository(),
+                new com.codefit.repository.PublicationWireStateRepository(), contactService,
+                new SnapshotPublicationService(contactService, new ProgressSnapshotService(), new PreparationSnapshotCaptureService(),
+                        new com.codefit.repository.PreparationSnapshotWireStateRepository(), Clock.fixed(now, ZoneOffset.UTC)));
+    }
+
+    @Test
+    void theEligibleBatchIsBoundedEvenWithManyApprovedWindows() {
+        contactService.updatePermissions(contactId, new PermissionGrant(List.of(SharingScope.DAILY_SUMMARY), 400, null, false), NOW);
+        LocalDate start = LocalDate.of(2025, 1, 1);
+        for (int i = 0; i < 250; i++) {
+            outboxService.approveProgressSummary(contactId, ComparisonWindow.day(start.plusDays(i), ZoneId.of("UTC")), NOW);
+        }
+
+        List<PeerSyncOutboxService.Batched> batch = outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW);
+
+        assertTrue(batch.size() <= 200, "one sync pass must never enumerate unbounded history, however many objects are approved: got "
+                + batch.size());
+    }
+
     private SignedEnvelope consentEnvelope(List<PeerSyncOutboxService.Batched> batch) {
         return batch.stream().filter(b -> b.envelope().body().type() == MessageType.CONSENT_REVISION)
                 .findFirst().orElseThrow().envelope();

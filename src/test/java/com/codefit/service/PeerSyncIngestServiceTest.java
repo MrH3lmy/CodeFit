@@ -361,6 +361,24 @@ class PeerSyncIngestServiceTest {
         }
     }
 
+    /**
+     * Scoped to one object, unlike {@link #countRows}: {@code grantDailySummaryFromPeer()} itself
+     * accepts a {@code ConsentRevision}, which gets its own {@code peer_sync_object_versions} row
+     * (replay state is recorded for every accepted message, not only progress summaries) - a bare
+     * table-wide count would double-count that unrelated row.
+     */
+    private long countObjectVersionRowsFor(ObjectId objectId) throws java.sql.SQLException {
+        try (var connection = com.codefit.config.DatabaseConfig.getConnection();
+             var statement = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM peer_sync_object_versions WHERE object_id = ?")) {
+            statement.setBytes(1, objectId.bytes());
+            try (var resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getLong(1);
+            }
+        }
+    }
+
     @Test
     void twoDifferentBodiesClaimingTheSameEpochAndRevisionAreNeverArbitratedByWallClockTime() {
         grantDailySummaryFromPeer();
@@ -435,13 +453,13 @@ class PeerSyncIngestServiceTest {
         ObjectId objectId = randomObjectId(24);
         SignedEnvelope original = progressSummaryEnvelope(objectId, 1, 1, 5);
         assertEquals(SyncOutcome.ACCEPTED, ingestService.ingest(peerIdentityId, myIdentityId, original, NOW));
-        assertEquals(1L, countRows("peer_sync_object_versions"));
+        assertEquals(1L, countObjectVersionRowsFor(objectId));
 
         // Shortly afterward, pruning must be a no-op: the version row is still well within its
         // retention window, and the old revision it protects against would be wrongly resurrectable
         // if the row were gone now.
         ingestService.pruneExpiredReplayState(NOW.plus(Duration.ofDays(1)));
-        assertEquals(1L, countRows("peer_sync_object_versions"),
+        assertEquals(1L, countObjectVersionRowsFor(objectId),
                 "far too soon to prune - this row is still doing anti-resurrection work");
 
         // Long after both the max envelope lifetime and the clock-skew margin have passed, pruning the
@@ -452,7 +470,7 @@ class PeerSyncIngestServiceTest {
         Instant farFuture = NOW.plus(Duration.ofMillis(com.codefit.peer.protocol.ProtocolVersion.MAX_LIFETIME_MILLIS
                 + com.codefit.peer.protocol.ProtocolVersion.MAX_CLOCK_SKEW_MILLIS)).plusSeconds(1);
         ingestService.pruneExpiredReplayState(farFuture);
-        assertEquals(0L, countRows("peer_sync_object_versions"), "now safe to prune - the window has long closed");
+        assertEquals(0L, countObjectVersionRowsFor(objectId), "now safe to prune - the window has long closed");
 
         SyncOutcome replay = ingestService.ingest(peerIdentityId, myIdentityId, original, farFuture);
         assertEquals(SyncOutcome.EXPIRED, replay,

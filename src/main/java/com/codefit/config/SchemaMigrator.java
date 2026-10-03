@@ -565,6 +565,15 @@ final class SchemaMigrator {
      *       this device's own {@code local_progress_snapshots}/{@code local_preparation_checkpoints}:
      *       receiving a peer's result must never be mistaken for, or alter, this learner's own
      *       attempts, reviews, XP, mastery, or readiness.</li>
+     *   <li><b>Publication wire state</b> ({@code publication_wire_state}) — the strictly increasing
+     *       revision counter for {@code CONSENT_REVISION}/{@code Tombstone} envelopes this device
+     *       signs (#184), keyed by object id exactly like {@code preparation_snapshot_wire_state}
+     *       (#183) - kept as its own table rather than reused, for the same reason that one is its
+     *       own table: a different logical object domain must never share a revision counter with
+     *       another. Resending unchanged content reuses the same revision (and, via {@code
+     *       PeerSyncOutboxService}'s own in-process cache, the exact same previously-signed bytes),
+     *       so a resend is byte-identical and the receiver sees it as the idempotent {@code
+     *       DUPLICATE} rather than a nonsensical {@code STALE_REVISION} of itself.</li>
      *   <li><b>Publication outbox</b> ({@code publication_outbox}) — the logical objects a learner has
      *       explicitly approved for ongoing sharing with one contact. Sharing is never automatic from
      *       evidence/grants alone; an outbox row is the record of that explicit approval. {@code
@@ -699,6 +708,13 @@ final class SchemaMigrator {
                         comparison_zone_id TEXT NOT NULL,
                         week_start INTEGER NOT NULL,
                         received_at TEXT NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS publication_wire_state (
+                        object_id BLOB PRIMARY KEY,
+                        revision INTEGER NOT NULL,
+                        body_fingerprint BLOB NOT NULL
                     )
                     """);
             statement.execute("""

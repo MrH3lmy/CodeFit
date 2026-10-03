@@ -83,6 +83,7 @@ public class PeerSyncSessionService implements AutoCloseable {
 
     private void receiveLoop(PeerConnection connection, IdentityId myIdentityId, BiConsumer<SignedEnvelope, SyncOutcome> onOutcome) {
         try {
+            ingestService.pruneExpiredReplayState(Instant.now());
             while (connection.isOpen()) {
                 SignedEnvelope envelope;
                 try {

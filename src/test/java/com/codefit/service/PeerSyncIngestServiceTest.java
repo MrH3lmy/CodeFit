@@ -429,6 +429,36 @@ class PeerSyncIngestServiceTest {
         assertEquals(SyncOutcome.UNKNOWN_AUTHOR, outcome, "a removed contact's envelopes must never be accepted");
     }
 
+    @Test
+    void pruningExpiredReplayStateNeverAllowsResurrectionBecauseByThenTheOldEnvelopeHasAlreadyExpired() throws java.sql.SQLException {
+        grantDailySummaryFromPeer();
+        ObjectId objectId = randomObjectId(24);
+        SignedEnvelope original = progressSummaryEnvelope(objectId, 1, 1, 5);
+        assertEquals(SyncOutcome.ACCEPTED, ingestService.ingest(peerIdentityId, myIdentityId, original, NOW));
+        assertEquals(1L, countRows("peer_sync_object_versions"));
+
+        // Shortly afterward, pruning must be a no-op: the version row is still well within its
+        // retention window, and the old revision it protects against would be wrongly resurrectable
+        // if the row were gone now.
+        ingestService.pruneExpiredReplayState(NOW.plus(Duration.ofDays(1)));
+        assertEquals(1L, countRows("peer_sync_object_versions"),
+                "far too soon to prune - this row is still doing anti-resurrection work");
+
+        // Long after both the max envelope lifetime and the clock-skew margin have passed, pruning the
+        // row is finally safe - but ONLY because any envelope claiming an equal-or-older revision has,
+        // by then, necessarily already expired on its own: replaying the ORIGINAL envelope at this
+        // future time must still be rejected (as EXPIRED, not resurrected as ACCEPTED), even though
+        // nothing remembers revision 5 anymore.
+        Instant farFuture = NOW.plus(Duration.ofMillis(com.codefit.peer.protocol.ProtocolVersion.MAX_LIFETIME_MILLIS
+                + com.codefit.peer.protocol.ProtocolVersion.MAX_CLOCK_SKEW_MILLIS)).plusSeconds(1);
+        ingestService.pruneExpiredReplayState(farFuture);
+        assertEquals(0L, countRows("peer_sync_object_versions"), "now safe to prune - the window has long closed");
+
+        SyncOutcome replay = ingestService.ingest(peerIdentityId, myIdentityId, original, farFuture);
+        assertEquals(SyncOutcome.EXPIRED, replay,
+                "pruning is only safe because the original envelope's own expiry already rejects it - it must never resurrect as ACCEPTED");
+    }
+
     private void forceInsertFailureOn(String table) throws java.sql.SQLException {
         try (var connection = com.codefit.config.DatabaseConfig.getConnection();
              var statement = connection.createStatement()) {

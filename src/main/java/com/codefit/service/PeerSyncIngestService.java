@@ -48,6 +48,21 @@ import java.time.Instant;
  */
 public class PeerSyncIngestService {
 
+    /**
+     * Serializes every ingest's read-then-write sequence (#184 review finding, the same class of
+     * race {@code ContactService.PERMISSION_LOCK}/{@code PreparationSnapshotWireStateRepository
+     * .REVISION_LOCK} already guard against elsewhere in this codebase). Without it, two envelopes
+     * for the same author processed on two separate SQLite connections could each read "slot/object
+     * version not yet taken" before either commits - SQLite's own single-writer lock only serializes
+     * the write phase, not the read phase before it - and then both blindly insert, letting a second,
+     * conflicting message land as if it were the first ever seen instead of being correctly rejected
+     * as {@code FORKED}/{@code STALE_REVISION}. The protocol's own "single active writer per identity"
+     * MVP limitation (protocol-v1.md §10.1) makes two genuinely concurrent connections from one
+     * identity an edge case, not the common path, so serializing globally (not per-author) is a safe,
+     * simple trade: ingest is not a high-throughput hot path.
+     */
+    private static final Object INGEST_LOCK = new Object();
+
     private final ContactService contactService;
     private final PeerSyncAuthorStateRepository authorStateRepository;
     private final PeerSyncConsentRepository consentRepository;
@@ -105,13 +120,15 @@ public class PeerSyncIngestService {
         }
 
         SyncOutcome[] result = new SyncOutcome[1];
-        Transactions.run(connection -> {
-            try {
-                result[0] = ingestWithinTransaction(connection, claimedAuthor, envelope, now);
-            } catch (SQLException exception) {
-                throw new IllegalStateException("Unable to ingest peer sync envelope", exception);
-            }
-        });
+        synchronized (INGEST_LOCK) {
+            Transactions.run(connection -> {
+                try {
+                    result[0] = ingestWithinTransaction(connection, claimedAuthor, envelope, now);
+                } catch (SQLException exception) {
+                    throw new IllegalStateException("Unable to ingest peer sync envelope", exception);
+                }
+            });
+        }
         return result[0];
     }
 
@@ -183,5 +200,35 @@ public class PeerSyncIngestService {
             case SOCIAL_PROFILE_CARD -> socialProfileCardRepository.delete(connection, author, objectId);
             default -> { }
         }
+    }
+
+    /**
+     * Opportunistic maintenance (#184 review finding: {@code PeerSyncAuthorStateRepository
+     * .pruneExpired} had no caller anywhere). {@code PeerSyncSessionService} calls this once per
+     * connection, right before it starts receiving - frequent enough that the tables never grow
+     * unbounded over a long-lived pairing, infrequent enough that it is never a hot-path cost.
+     *
+     * <p>The retention cutoff is deliberately conservative: a replayed envelope can only still be
+     * accepted as non-expired "now" if it was created after {@code now - MAX_LIFETIME_MILLIS}
+     * (every envelope's own {@code expiresAt <= createdAt + MAX_LIFETIME_MILLIS}, enforced by
+     * {@code EnvelopeAcceptancePolicy}/this class's own {@code EXPIRED} check). An object-version row
+     * holds the latest revision's own acceptance time, and a correctly-behaved author never creates
+     * an older revision later than a newer one - so once that acceptance time is older than {@code
+     * now - MAX_LIFETIME_MILLIS - MAX_CLOCK_SKEW_MILLIS} (the extra margin absorbing permitted clock
+     * skew), every envelope carrying an equal-or-older revision for that object has necessarily
+     * already expired and would be rejected by the {@code EXPIRED} check alone - the version row is
+     * no longer doing any anti-resurrection work and is safe to drop. Pruning any sooner is exactly
+     * the bug this review pass was hunting for: it would let a still-unexpired, merely-delayed old
+     * revision resurrect once nothing remembers it was ever superseded or tombstoned.
+     */
+    public void pruneExpiredReplayState(Instant now) {
+        Instant retentionCutoff = now.minusMillis(ProtocolVersion.MAX_LIFETIME_MILLIS + ProtocolVersion.MAX_CLOCK_SKEW_MILLIS);
+        Transactions.run(connection -> {
+            try {
+                authorStateRepository.pruneExpired(connection, now, retentionCutoff);
+            } catch (SQLException exception) {
+                throw new IllegalStateException("Unable to prune expired peer sync replay state", exception);
+            }
+        });
     }
 }

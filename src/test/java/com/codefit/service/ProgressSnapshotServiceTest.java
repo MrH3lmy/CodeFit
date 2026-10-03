@@ -392,18 +392,60 @@ class ProgressSnapshotServiceTest {
     @Test
     void reImportStillDoesNotCreateACompletion() {
         // #183 review fix, round 4: the workbook importer's own write path
-        // (TrainingSheetImportService#applyProblem) must explicitly record UNKNOWN, since its
+        // (TrainingSheetImportService#applyProblem) must explicitly record IMPORTED, since its
         // submittedAt is the import's own timestamp, not the learner's real historical submission
         // time - keeping this existing green behavior intact under the new origin-aware query.
-        long problemId = createProblem("REIMPORT-UNKNOWN");
+        long problemId = createProblem("REIMPORT-IMPORTED");
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        insertAttemptWithOrigin(problemId, 1, SubmissionResult.AC, day.atTime(10, 0), CompletionOrigin.IMPORTED);
+
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant())
+                .capture(ComparisonWindow.day(day, UTC)).snapshot();
+
+        assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
+                "an import-sourced attempt (IMPORTED origin) must never count as a fresh completion");
+    }
+
+    @Test
+    void importedAttemptNeverInflatesAttemptAcceptedOrSolvingSecondsForTheImportsOwnWindow() {
+        // #183 review fix, round 5: a workbook import's submitted_at is the import's own run time,
+        // not when the learner actually solved anything - the workbook describes historical
+        // activity with no real timestamp of its own. Before this fix, an import landing "today"
+        // inflated problem.attempts/accepted/solving_seconds for today's window with volume that
+        // never genuinely happened then.
+        long problemId = createProblem("IMPORT-DOES-NOT-INFLATE-VOLUME");
+        LocalDate importDay = LocalDate.of(2026, 1, 15);
+        insertAttemptWithOrigin(problemId, 1, SubmissionResult.AC, importDay.atTime(10, 0), CompletionOrigin.IMPORTED);
+
+        LocalProgressSnapshot snapshot = serviceAt(importDay.atTime(23, 0).atZone(UTC).toInstant())
+                .capture(ComparisonWindow.day(importDay, UTC)).snapshot();
+
+        assertEquals(0, metric(snapshot, "problem.attempts").value(),
+                "an imported attempt must never be counted as attempt volume in the window it happened to be imported into");
+        assertEquals(0, metric(snapshot, "problem.accepted").value(),
+                "an imported attempt must never be counted as accepted volume in the window it happened to be imported into");
+        assertEquals(0, metric(snapshot, "problem.solving_seconds").value(),
+                "an imported attempt must never be counted as solving time in the window it happened to be imported into");
+        assertEquals(0, metric(snapshot, "problem.unique_completed").value());
+    }
+
+    @Test
+    void genuineLegacyUnknownOriginStillCountsForAttemptAndAcceptedVolume() {
+        // Contrast with the test above: a TRUE pre-migration legacy row (never guessed as import or
+        // fresh) still has a genuine, non-fabricated submitted_at from whenever the app actually
+        // wrote it, so - unlike IMPORTED - it must keep counting for attempt/accepted volume
+        // (#183's existing allowance for attempt-volume metrics to use evidence that isn't precise
+        // enough for first-completion purposes). Only problem.unique_completed excludes it.
+        long problemId = createProblem("LEGACY-UNKNOWN-STILL-COUNTS");
         LocalDate day = LocalDate.of(2026, 1, 15);
         insertAttemptWithOrigin(problemId, 1, SubmissionResult.AC, day.atTime(10, 0), CompletionOrigin.UNKNOWN);
 
         LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant())
                 .capture(ComparisonWindow.day(day, UTC)).snapshot();
 
-        assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
-                "an import-sourced attempt (UNKNOWN origin) must never count as a fresh completion");
+        assertEquals(1, metric(snapshot, "problem.attempts").value(), "a genuine legacy row's real submitted_at still counts");
+        assertEquals(1, metric(snapshot, "problem.accepted").value(), "a genuine legacy row's real submitted_at still counts");
+        assertEquals(0, metric(snapshot, "problem.unique_completed").value());
     }
 
     @Test

@@ -53,10 +53,18 @@ public class ProblemAttemptRepository {
      * bounds). {@code datetime()} on both sides normalizes the SQLite-default ' ' separator against
      * Java's 'T' separator before comparing, exactly as {@code ReviewHistoryRepository.findFiltered}
      * already does for the same reason.
+     *
+     * <p>Excludes {@code completion_origin = 'IMPORTED'} (#183 review fix, round 5): the workbook
+     * importer's {@code submitted_at} is the import's own run time, not the learner's real
+     * historical submission time, so an import would otherwise inflate whichever window it
+     * happened to run in with attempt/accepted/solving-time volume that never actually happened
+     * then. {@code UNKNOWN} (genuine pre-migration legacy rows, whose {@code submitted_at} is NOT
+     * fabricated) is deliberately still included - see {@code CompletionOrigin}.
      */
     public List<ProblemAttempt> findSubmittedBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
         String sql = "SELECT * FROM problem_attempts WHERE datetime(submitted_at) >= datetime(?) "
-                + "AND datetime(submitted_at) < datetime(?) ORDER BY problem_id, attempt_number";
+                + "AND datetime(submitted_at) < datetime(?) AND completion_origin != 'IMPORTED' "
+                + "ORDER BY problem_id, attempt_number";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, startUtcInclusive.toString());

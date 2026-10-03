@@ -35,13 +35,18 @@ public final class MetricRegistry {
                             + "level only for the rare case upstream evidence genuinely is self-rated by either path)"),
             new MetricDefinition("problem.attempts", 1, MetricUnit.COUNT, 0,
                     Set.of(MetricProvenance.LOCAL_RECORD),
-                    "problem_attempts rows with submitted_at in window"),
+                    "#183 review fix (round 5): problem_attempts rows with submitted_at in window, excluding "
+                            + "completion_origin = IMPORTED - the workbook importer's submitted_at is its own run "
+                            + "time, not when the learner actually did anything, so an import must never inflate "
+                            + "whichever window it happens to run in"),
             new MetricDefinition("problem.accepted", 1, MetricUnit.COUNT, 0,
                     Set.of(MetricProvenance.LEARNER_REPORTED_OUTCOME),
-                    "problem_attempts rows recorded as ACCEPTED by the learner in window"),
+                    "problem_attempts rows recorded as ACCEPTED by the learner in window, excluding "
+                            + "completion_origin = IMPORTED (see problem.attempts)"),
             new MetricDefinition("problem.solving_seconds", 1, MetricUnit.SECONDS, 0,
                     Set.of(MetricProvenance.LOCAL_TIMER),
-                    "sum of phase-timer seconds on problem_attempts in window"),
+                    "sum of phase-timer seconds on problem_attempts in window, excluding "
+                            + "completion_origin = IMPORTED (see problem.attempts)"),
             new MetricDefinition("mock.overall_score", 1, MetricUnit.PERCENT, 1,
                     Set.of(MetricProvenance.MOCK_SELF_SCORE),
                     "mean interview_mock_runs.overall_score_percent completed in window"),
@@ -50,9 +55,9 @@ public final class MetricRegistry {
                     "#183 review fix (round 4): problems whose FIRST successful (AC/ACX) problem_attempts row "
                             + "both falls in window and carries completion_origin = FRESH_ATTEMPT - never "
                             + "problem_progress.completed_at, which later successful re-attempts overwrite, and "
-                            + "never a markPreviouslySolved() attempt (completion_origin = PREVIOUSLY_SOLVED) or a "
-                            + "row whose origin predates this column or arrived only through import "
-                            + "(completion_origin = UNKNOWN) - those carry no trustworthy evidence of when the "
+                            + "never a markPreviouslySolved() attempt (completion_origin = PREVIOUSLY_SOLVED), an "
+                            + "imported row (completion_origin = IMPORTED), or a row whose origin predates this "
+                            + "column (completion_origin = UNKNOWN) - those carry no trustworthy evidence of when the "
                             + "problem was actually first completed, however early their own submitted_at is "
                             + "(see ProgressSnapshotService#uniqueCompletedProblems, "
                             + "ProblemAttemptRepository#countFreshFirstCompletionsBetweenUtc)"),

@@ -231,6 +231,11 @@ public class ProgressSnapshotService {
     }
 
     // --- problem_attempts-derived metrics (LEGACY_SQLITE_UTC) ---
+    // #183 review fix (round 5): `attempts` here already excludes completion_origin = IMPORTED
+    // (ProblemAttemptRepository#findSubmittedBetweenUtc) - the workbook importer's submitted_at is
+    // its own run time, not when the learner actually did anything, so without this exclusion a
+    // single import run would inflate these three metrics with volume that never happened in
+    // whatever window the import happened to land in.
 
     private MetricValue problemAttempts(List<ProblemAttempt> attempts) {
         return count("problem.attempts", 1, attempts.size(), 0, MetricProvenance.LOCAL_RECORD, TimestampBasis.LEGACY_SQLITE_UTC);
@@ -274,8 +279,8 @@ public class ProgressSnapshotService {
      * earliest row's {@code completion_origin} be {@code FRESH_ATTEMPT} (see {@link
      * com.codefit.model.CompletionOrigin}), which only a genuine real-time workspace finish sets -
      * including a genuine accept-after-failures ACX, which stays countable. {@code
-     * markPreviouslySolved} attempts, and any row whose origin predates this column or arrived only
-     * through import (both {@code UNKNOWN}), are excluded the same way a missing attempt is:
+     * markPreviouslySolved} attempts, imported rows ({@code IMPORTED}), and any row whose origin
+     * predates this column ({@code UNKNOWN}), are all excluded the same way a missing attempt is:
      * unavailable, never fabricated.
      */
     private MetricValue uniqueCompletedProblems(int freshFirstCompletionsInWindow) {

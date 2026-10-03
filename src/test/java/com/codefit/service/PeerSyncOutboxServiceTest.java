@@ -200,12 +200,13 @@ class PeerSyncOutboxServiceTest {
 
         java.util.Set<Long> reached = new java.util.HashSet<>();
         for (int pass = 0; pass < 3 && reached.size() < 250; pass++) {
+            Instant passNow = NOW.plusSeconds(pass);
             List<PeerSyncOutboxService.Batched> batch =
-                    outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW.plusSeconds(pass));
+                    outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, passNow);
             for (PeerSyncOutboxService.Batched item : batch) {
                 item.outboxEntryId().ifPresent(id -> {
                     reached.add(id);
-                    outboxService.markSynced(id, item.envelope().header().revision(), NOW.plusSeconds(pass));
+                    outboxService.markSynced(id, item.envelope().header().revision(), passNow);
                 });
             }
         }

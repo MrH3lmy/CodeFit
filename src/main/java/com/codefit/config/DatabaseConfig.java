@@ -392,6 +392,13 @@ public final class DatabaseConfig {
         // Set only for attempts created by finishing a workspace session; null for attempts recorded
         // any other way (e.g. the workbook importer never sets this).
         addColumnIfMissing(connection, "problem_attempts", "session_outcome", "TEXT");
+        // #183 review fix (round 4): whether this attempt's own submitted_at is trustworthy evidence
+        // of the problem's first-ever completion (see CompletionOrigin). The DEFAULT applies to rows
+        // that already existed before this column did - they become UNKNOWN, never guessed as
+        // FRESH_ATTEMPT from submission_result alone. Every write path (ProblemAttemptService,
+        // TrainingSheetImportService) explicitly sets the correct value for rows it creates from here
+        // on, so UNKNOWN only ever describes genuinely pre-existing or import-sourced evidence.
+        addColumnIfMissing(connection, "problem_attempts", "completion_origin", "TEXT NOT NULL DEFAULT 'UNKNOWN'");
         // The highest hint ladder level opened so far *this attempt* (#162): null until the learner
         // opens the first hint. Living on the session row (not problem_progress) means it resets for
         // free the moment a new attempt starts, since finishing a session deletes this row (see

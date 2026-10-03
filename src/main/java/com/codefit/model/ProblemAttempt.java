@@ -17,16 +17,30 @@ import java.time.LocalDateTime;
  * ({@code SUBMITTED}/{@code ACCEPTED}/{@code COULD_NOT_SOLVE}), which is a different axis from
  * {@code submissionResult}'s judge verdict (e.g. a {@code SUBMITTED} finish can carry any verdict,
  * not just a successful one). It is {@code null} for attempts recorded any other way.
+ *
+ * <p>{@code completionOrigin} (#183 review fix) is a third, independent axis: whether this
+ * attempt's own {@code submittedAt} is trustworthy evidence of the problem's first-ever
+ * completion. See {@link CompletionOrigin} - it is never derived from {@code submissionResult},
+ * since {@code ACX} alone cannot tell a genuine first-time accept-after-failures apart from
+ * {@code markPreviouslySolved}'s "solved before using CodeFit, at an unknown time".
  */
 public record ProblemAttempt(long id, long problemId, int attemptNumber, SubmissionResult submissionResult,
                               Integer readingTimeSeconds, Integer thinkingTimeSeconds, Integer codingTimeSeconds,
                               Integer debuggingTimeSeconds, LocalDateTime submittedAt, String notes,
-                              SessionFinishOutcome sessionOutcome) {
+                              SessionFinishOutcome sessionOutcome, CompletionOrigin completionOrigin) {
+
+    public ProblemAttempt(long id, long problemId, int attemptNumber, SubmissionResult submissionResult,
+                          Integer readingTimeSeconds, Integer thinkingTimeSeconds, Integer codingTimeSeconds,
+                          Integer debuggingTimeSeconds, LocalDateTime submittedAt, String notes,
+                          SessionFinishOutcome sessionOutcome) {
+        this(id, problemId, attemptNumber, submissionResult, readingTimeSeconds, thinkingTimeSeconds,
+                codingTimeSeconds, debuggingTimeSeconds, submittedAt, notes, sessionOutcome, CompletionOrigin.UNKNOWN);
+    }
 
     public ProblemAttempt(long id, long problemId, int attemptNumber, SubmissionResult submissionResult,
                           Integer readingTimeSeconds, Integer thinkingTimeSeconds, Integer codingTimeSeconds,
                           Integer debuggingTimeSeconds, LocalDateTime submittedAt, String notes) {
         this(id, problemId, attemptNumber, submissionResult, readingTimeSeconds, thinkingTimeSeconds,
-                codingTimeSeconds, debuggingTimeSeconds, submittedAt, notes, null);
+                codingTimeSeconds, debuggingTimeSeconds, submittedAt, notes, null, CompletionOrigin.UNKNOWN);
     }
 }

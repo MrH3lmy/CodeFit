@@ -1,5 +1,6 @@
 package com.codefit.service;
 
+import com.codefit.model.CompletionOrigin;
 import com.codefit.model.ProblemAttempt;
 import com.codefit.model.SessionFinishOutcome;
 import com.codefit.model.SubmissionResult;
@@ -59,13 +60,33 @@ public class ProblemAttemptService {
     public ProblemAttempt recordAttempt(long problemId, SubmissionResult submissionResult, Integer readingTimeSeconds,
                                         Integer thinkingTimeSeconds, Integer codingTimeSeconds,
                                         Integer debuggingTimeSeconds, String notes, SessionFinishOutcome sessionOutcome) {
+        // No caller of this overload makes any claim about first-completion evidence (#183 review
+        // fix, round 4): conservative default, never counted as a fresh observed completion.
+        return recordAttempt(problemId, submissionResult, readingTimeSeconds, thinkingTimeSeconds, codingTimeSeconds,
+                debuggingTimeSeconds, notes, sessionOutcome, CompletionOrigin.UNKNOWN);
+    }
+
+    /**
+     * Same as the seven-argument overload, but also records {@code completionOrigin} - whether this
+     * attempt's own {@code submittedAt} is trustworthy evidence of the problem's first-ever
+     * completion (#183 review fix, round 4; see {@link CompletionOrigin}). This is the overload
+     * {@link ProblemSolvingWorkspaceService} calls, since it is the only caller that genuinely knows
+     * which case it is in.
+     */
+    public ProblemAttempt recordAttempt(long problemId, SubmissionResult submissionResult, Integer readingTimeSeconds,
+                                        Integer thinkingTimeSeconds, Integer codingTimeSeconds,
+                                        Integer debuggingTimeSeconds, String notes, SessionFinishOutcome sessionOutcome,
+                                        CompletionOrigin completionOrigin) {
         if (submissionResult == null) {
             throw new IllegalArgumentException("A submission result is required to record an attempt.");
+        }
+        if (completionOrigin == null) {
+            throw new IllegalArgumentException("A completion origin is required to record an attempt.");
         }
         int nextAttemptNumber = attemptRepository.countByProblemId(problemId) + 1;
         ProblemAttempt attempt = new ProblemAttempt(0, problemId, nextAttemptNumber, submissionResult,
                 readingTimeSeconds, thinkingTimeSeconds, codingTimeSeconds, debuggingTimeSeconds,
-                LocalDateTime.now(), notes, sessionOutcome);
+                LocalDateTime.now(), notes, sessionOutcome, completionOrigin);
         return attemptRepository.save(attempt);
     }
 }

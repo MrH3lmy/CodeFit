@@ -47,10 +47,15 @@ public final class MetricRegistry {
                     "mean interview_mock_runs.overall_score_percent completed in window"),
             new MetricDefinition("problem.unique_completed", 1, MetricUnit.COUNT, 0,
                     Set.of(MetricProvenance.LEARNER_REPORTED_OUTCOME),
-                    "#183 review fix: problems whose FIRST successful (AC/ACX) problem_attempts row falls in "
-                            + "window, counted via immutable MIN(submitted_at) per problem_id - never "
-                            + "problem_progress.completed_at, which later successful re-attempts overwrite "
-                            + "(see ProgressSnapshotService#uniqueCompletedProblems)"),
+                    "#183 review fix (round 4): problems whose FIRST successful (AC/ACX) problem_attempts row "
+                            + "both falls in window and carries completion_origin = FRESH_ATTEMPT - never "
+                            + "problem_progress.completed_at, which later successful re-attempts overwrite, and "
+                            + "never a markPreviouslySolved() attempt (completion_origin = PREVIOUSLY_SOLVED) or a "
+                            + "row whose origin predates this column or arrived only through import "
+                            + "(completion_origin = UNKNOWN) - those carry no trustworthy evidence of when the "
+                            + "problem was actually first completed, however early their own submitted_at is "
+                            + "(see ProgressSnapshotService#uniqueCompletedProblems, "
+                            + "ProblemAttemptRepository#countFreshFirstCompletionsBetweenUtc)"),
             new MetricDefinition("review.hint_free_rate", 1, MetricUnit.BASIS_POINTS, 10,
                     Set.of(MetricProvenance.LOCAL_RECORD),
                     "#183: share of review_history rows (boss_battle = 0) with hint_used = 0, restricted to "

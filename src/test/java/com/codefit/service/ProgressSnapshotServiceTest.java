@@ -1,6 +1,7 @@
 package com.codefit.service;
 
 import com.codefit.config.DatabaseConfig;
+import com.codefit.model.CompletionOrigin;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
@@ -281,6 +282,128 @@ class ProgressSnapshotServiceTest {
 
         assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
                 "no timestamped attempt evidence exists for problem " + problemId + " - it must not appear in any window");
+    }
+
+    // --- #183 review fix, round 4: completion_origin keeps markPreviouslySolved() from being
+    // misclassified as a trustworthy first-time completion ---
+
+    @Test
+    void markingPreviouslySolvedNeverCountsAsATodaysCompletion() {
+        // The exact bug the review identified: markPreviouslySolved() records a genuine SUBMITTED/ACX
+        // attempt (so attempts/accepted volume must still move), but CodeFit has no idea when the
+        // learner actually first solved this problem - it must never become "completed today" just
+        // because today's mark-previously-solved happens to be the first AC/ACX row on file.
+        ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
+        long problemId = createProblem("PREVIOUSLY-SOLVED");
+        LocalDate today = LocalDate.of(2026, 1, 15);
+
+        ProblemAttempt attempt = workspaceService.markPreviouslySolved(problemId, "already knew this one");
+        retimeAttemptAndProgress(problemId, attempt.id(), today.atTime(10, 0));
+
+        LocalProgressSnapshot snapshot = serviceAt(today.atTime(23, 0).atZone(UTC).toInstant())
+                .capture(ComparisonWindow.day(today, UTC)).snapshot();
+
+        assertEquals(1, metric(snapshot, "problem.attempts").value(), "the attempt itself still counts for attempt volume");
+        assertEquals(1, metric(snapshot, "problem.accepted").value(),
+                "existing attempt semantics still treat ACX as accepted, regardless of completion_origin");
+        assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
+                "markPreviouslySolved's completion time is unknown - it must never be fabricated into today's window");
+    }
+
+    @Test
+    void genuineWorkspaceAcceptedCompletionCounts() {
+        ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
+        long problemId = createProblem("GENUINE-AC");
+        LocalDate today = LocalDate.of(2026, 1, 15);
+
+        ProblemAttempt attempt = workspaceService.finish(problemId, SessionFinishOutcome.ACCEPTED, null, "solved it").orElseThrow();
+        retimeAttemptAndProgress(problemId, attempt.id(), today.atTime(10, 0));
+
+        LocalProgressSnapshot snapshot = serviceAt(today.atTime(23, 0).atZone(UTC).toInstant())
+                .capture(ComparisonWindow.day(today, UTC)).snapshot();
+
+        assertEquals(1, metric(snapshot, "problem.unique_completed").value(), "a fresh, genuine AC is trustworthy first-completion evidence");
+    }
+
+    @Test
+    void genuineAcxAfterRealPriorFailuresStillCounts() {
+        // The review's explicit constraint: a real Monday-WA/Tuesday-ACX flow through the genuine
+        // solving/submission path must still count - the fix must not simply exclude all ACX.
+        ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
+        long problemId = createProblem("GENUINE-ACX-AFTER-FAILURE");
+        LocalDate monday = LocalDate.of(2026, 1, 12);
+        LocalDate tuesday = monday.plusDays(1);
+
+        ProblemAttempt failed = workspaceService.finish(problemId, SessionFinishOutcome.COULD_NOT_SOLVE, SubmissionResult.WA, "didn't get it")
+                .orElseThrow();
+        retimeAttemptAndProgress(problemId, failed.id(), monday.atTime(10, 0));
+
+        ProblemAttempt accepted = workspaceService.finish(problemId, SessionFinishOutcome.SUBMITTED, SubmissionResult.ACX, "got it this time")
+                .orElseThrow();
+        retimeAttemptAndProgress(problemId, accepted.id(), tuesday.atTime(10, 0));
+
+        LocalProgressSnapshot snapshot = serviceAt(tuesday.atTime(23, 0).atZone(UTC).toInstant())
+                .capture(ComparisonWindow.day(tuesday, UTC)).snapshot();
+
+        assertEquals(1, metric(snapshot, "problem.unique_completed").value(),
+                "a genuine ACX that really is the learner's first observed success must still count, exactly like a genuine AC");
+    }
+
+    @Test
+    void reSolvingLaterThroughTheWorkspaceStillDoesNotCreateAnotherCompletion() {
+        ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
+        long problemId = createProblem("GENUINE-RESOLVE");
+        LocalDate monday = LocalDate.of(2026, 1, 12);
+        LocalDate tuesday = monday.plusDays(1);
+
+        ProblemAttempt first = workspaceService.finish(problemId, SessionFinishOutcome.ACCEPTED, null, "first solve").orElseThrow();
+        retimeAttemptAndProgress(problemId, first.id(), monday.atTime(10, 0));
+
+        ProblemAttempt second = workspaceService.finish(problemId, SessionFinishOutcome.ACCEPTED, null, "re-solved it").orElseThrow();
+        retimeAttemptAndProgress(problemId, second.id(), tuesday.atTime(10, 0));
+
+        Instant afterBoth = tuesday.atTime(23, 0).atZone(UTC).toInstant();
+        LocalProgressSnapshot mondaySnapshot = serviceAt(afterBoth).capture(ComparisonWindow.day(monday, UTC)).snapshot();
+        LocalProgressSnapshot tuesdaySnapshot = serviceAt(afterBoth).capture(ComparisonWindow.day(tuesday, UTC)).snapshot();
+
+        assertEquals(1, metric(mondaySnapshot, "problem.unique_completed").value(), "Monday's genuine first solve is the completion");
+        assertEquals(0, metric(tuesdaySnapshot, "problem.unique_completed").value(), "Tuesday's re-solve must not create a second completion");
+        assertEquals(1, metric(tuesdaySnapshot, "problem.attempts").value(), "Tuesday's own attempt volume still increases");
+        assertEquals(1, metric(tuesdaySnapshot, "problem.accepted").value(), "Tuesday's own accepted volume still increases");
+    }
+
+    @Test
+    void legacyUnknownOriginAcxNeverFabricatesACompletion() {
+        // A row that predates completion_origin entirely (migrated to UNKNOWN - never guessed as
+        // FRESH_ATTEMPT just because submission_result is ACX).
+        long problemId = createProblem("LEGACY-UNKNOWN-ACX");
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        insertAttemptWithOrigin(problemId, 1, SubmissionResult.ACX, day.atTime(10, 0), CompletionOrigin.UNKNOWN);
+
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant())
+                .capture(ComparisonWindow.day(day, UTC)).snapshot();
+
+        assertEquals(1, metric(snapshot, "problem.attempts").value(), "attempt volume still counts the row");
+        assertEquals(1, metric(snapshot, "problem.accepted").value(), "accepted volume still counts the row");
+        assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
+                "a legacy row with unknown origin must never be fabricated into a first-time completion");
+    }
+
+    @Test
+    void reImportStillDoesNotCreateACompletion() {
+        // #183 review fix, round 4: the workbook importer's own write path
+        // (TrainingSheetImportService#applyProblem) must explicitly record UNKNOWN, since its
+        // submittedAt is the import's own timestamp, not the learner's real historical submission
+        // time - keeping this existing green behavior intact under the new origin-aware query.
+        long problemId = createProblem("REIMPORT-UNKNOWN");
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        insertAttemptWithOrigin(problemId, 1, SubmissionResult.AC, day.atTime(10, 0), CompletionOrigin.UNKNOWN);
+
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant())
+                .capture(ComparisonWindow.day(day, UTC)).snapshot();
+
+        assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
+                "an import-sourced attempt (UNKNOWN origin) must never count as a fresh completion");
     }
 
     @Test
@@ -602,9 +725,22 @@ class ProgressSnapshotServiceTest {
         return saved.getId();
     }
 
+    /**
+     * Inserts a genuine, fresh attempt directly (bypassing the workspace service) so a test can
+     * control {@code submittedAt} precisely. {@code CompletionOrigin.FRESH_ATTEMPT} matches what
+     * every one of these fixtures actually models: a real, directly-observed submission, never a
+     * {@code markPreviouslySolved}/import-style attempt whose completion time is unknown (#183
+     * review fix, round 4) - those are modeled by the dedicated legacy/previously-solved tests
+     * instead, via {@link #insertAttemptWithOrigin}.
+     */
     private void insertAttempt(long problemId, int attemptNumber, SubmissionResult result, LocalDateTime submittedAtUtc) {
+        insertAttemptWithOrigin(problemId, attemptNumber, result, submittedAtUtc, CompletionOrigin.FRESH_ATTEMPT);
+    }
+
+    private void insertAttemptWithOrigin(long problemId, int attemptNumber, SubmissionResult result,
+                                          LocalDateTime submittedAtUtc, CompletionOrigin completionOrigin) {
         ProblemAttempt saved = problemAttemptRepository.save(new ProblemAttempt(0, problemId, attemptNumber, result,
-                null, null, null, null, submittedAtUtc, null));
+                null, null, null, null, submittedAtUtc, null, null, completionOrigin));
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement("UPDATE problem_attempts SET submitted_at = ? WHERE id = ?")) {
             statement.setString(1, submittedAtUtc.toString());

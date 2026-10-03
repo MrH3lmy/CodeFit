@@ -1,6 +1,7 @@
 package com.codefit.service;
 
 import com.codefit.config.DatabaseConfig;
+import com.codefit.model.CompletionOrigin;
 import com.codefit.model.ImportBatch;
 import com.codefit.model.ProblemAttempt;
 import com.codefit.repository.ImportBatchRepository;
@@ -194,10 +195,14 @@ public class TrainingSheetImportService {
             outcome.progressRecordsImported++;
         }
         if (problem.submissionResult() != null && problemAttemptRepository.countByProblemId(connection, problemId) == 0) {
+            // #183 review fix (round 4): submittedAt here is the import's own timestamp, not the
+            // learner's real historical submission time, which the workbook never carries - so this
+            // can never be trustworthy first-completion evidence. Explicit UNKNOWN, never guessed as
+            // FRESH_ATTEMPT just because submissionResult happens to be AC/ACX.
             problemAttemptRepository.save(connection, new ProblemAttempt(0, problemId,
                     problem.submitCount() != null && problem.submitCount() > 0 ? problem.submitCount() : 1, problem.submissionResult(),
                     problem.readingSeconds(), problem.thinkingSeconds(), problem.codingSeconds(), problem.debuggingSeconds(),
-                    LocalDateTime.now(), problem.attemptNotes()));
+                    LocalDateTime.now(), problem.attemptNotes(), null, CompletionOrigin.UNKNOWN));
             outcome.attemptsImported++;
         }
         if (problem.perceivedDifficulty() != null || problem.solvedWith() != null || problem.actualTopic() != null || problem.approachNotes() != null) {

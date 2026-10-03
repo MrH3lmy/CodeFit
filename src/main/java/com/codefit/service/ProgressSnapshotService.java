@@ -110,7 +110,7 @@ public class ProgressSnapshotService {
         List<ReviewHistory> reviews = reviewHistoryRepository.findReviewedBetweenUtc(utcStart, utcEnd);
         List<ReviewHistoryRepository.HintEvidence> hintEvidence = reviewHistoryRepository.findHintEvidenceBetweenUtc(utcStart, utcEnd);
         List<ProblemAttempt> attempts = problemAttemptRepository.findSubmittedBetweenUtc(utcStart, utcEnd);
-        int firstSuccessfulAttempts = problemAttemptRepository.countFirstSuccessfulAttemptsBetweenUtc(utcStart, utcEnd);
+        int freshFirstCompletions = problemAttemptRepository.countFreshFirstCompletionsBetweenUtc(utcStart, utcEnd);
         List<Integer> mockScores = interviewMockRepository.findOverallScoresCompletedBetween(zoneStart, zoneEnd);
 
         List<MetricValue> metrics = new ArrayList<>();
@@ -122,7 +122,7 @@ public class ProgressSnapshotService {
         metrics.add(problemAttempts(attempts));
         metrics.add(problemAccepted(attempts));
         metrics.add(problemSolvingSeconds(attempts));
-        metrics.add(uniqueCompletedProblems(firstSuccessfulAttempts));
+        metrics.add(uniqueCompletedProblems(freshFirstCompletions));
         metrics.add(mockOverallScore(mockScores));
         return metrics;
     }
@@ -264,9 +264,22 @@ public class ProgressSnapshotService {
      * import or legacy data, with no matching timestamped attempt, simply never appears in this count
      * for any window - unavailable, never fabricated - rather than being derived from the mutable
      * progress row.
+     *
+     * <p>Round 4: "first successful attempt on file" alone is still not enough. {@code
+     * ProblemSolvingWorkspaceService#markPreviouslySolved} also records a {@code SUBMITTED}/{@code
+     * ACX} attempt - for a problem the learner solved before ever using CodeFit, at a time CodeFit
+     * has no record of - so it can legitimately be the earliest AC/ACX row for a problem without
+     * being first-completion evidence at all. {@code
+     * ProblemAttemptRepository#countFreshFirstCompletionsBetweenUtc} additionally requires that
+     * earliest row's {@code completion_origin} be {@code FRESH_ATTEMPT} (see {@link
+     * com.codefit.model.CompletionOrigin}), which only a genuine real-time workspace finish sets -
+     * including a genuine accept-after-failures ACX, which stays countable. {@code
+     * markPreviouslySolved} attempts, and any row whose origin predates this column or arrived only
+     * through import (both {@code UNKNOWN}), are excluded the same way a missing attempt is:
+     * unavailable, never fabricated.
      */
-    private MetricValue uniqueCompletedProblems(int firstSuccessfulAttemptsInWindow) {
-        return count("problem.unique_completed", 1, firstSuccessfulAttemptsInWindow, 0,
+    private MetricValue uniqueCompletedProblems(int freshFirstCompletionsInWindow) {
+        return count("problem.unique_completed", 1, freshFirstCompletionsInWindow, 0,
                 MetricProvenance.LEARNER_REPORTED_OUTCOME, TimestampBasis.LEGACY_SQLITE_UTC);
     }
 

@@ -101,6 +101,11 @@ public class ContactService {
         return contactRepository.findByIdentityId(identityKey.id());
     }
 
+    /** Same lookup as {@link #findByIdentity}, from the identity's derived id directly (#184: an authenticated transport only ever exposes this). */
+    public Optional<Contact> findByIdentityId(com.codefit.peer.protocol.IdentityId identityId) {
+        return contactRepository.findByIdentityId(identityId);
+    }
+
     /**
      * Registers a candidate contact learned out of band (an invitation or LAN announcement, #182) as
      * {@link TrustState#PENDING}. This alone establishes no trust and grants nothing.

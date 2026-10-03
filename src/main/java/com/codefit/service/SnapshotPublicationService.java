@@ -27,7 +27,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The privacy/trust boundary for #183: the <em>only</em> place a {@link ProgressSummary} or
@@ -117,8 +116,7 @@ public class SnapshotPublicationService {
         // needs to coordinate with a permission mutation, only the authorization decision below does.
         LocalProgressSnapshot captured = progressSnapshotService.capture(window).snapshot();
         ProgressSummary body = captured.toProgressSummary();
-        ObjectId objectId = deriveObjectId("CodeFit-Progress-Summary-v1", identity.publicKey().id(), contact.identityId(),
-                windowIdentityBytes(window));
+        ObjectId objectId = progressSummaryObjectId(identity.publicKey().id(), contact.identityId(), window);
 
         synchronized (ContactService.PERMISSION_LOCK) {
             Instant now = clock.instant();
@@ -148,8 +146,7 @@ public class SnapshotPublicationService {
         PreparationSnapshotCaptureService.Capture captured = preparationSnapshotCaptureService.capture(profileId)
                 .orElseThrow(() -> new IllegalArgumentException("No known preparation profile '" + profileId + "'."));
         PreparationSnapshot body = captured.checkpoint().snapshot();
-        ObjectId objectId = deriveObjectId("CodeFit-Preparation-Snapshot-v1", identity.publicKey().id(), contact.identityId(),
-                profileId.getBytes(StandardCharsets.UTF_8));
+        ObjectId objectId = preparationSnapshotObjectId(identity.publicKey().id(), contact.identityId(), profileId);
 
         synchronized (ContactService.PERMISSION_LOCK) {
             Instant now = clock.instant();
@@ -197,6 +194,22 @@ public class SnapshotPublicationService {
         }
     }
 
+    /**
+     * The exact {@link ObjectId} {@link #publishProgressSummary} signs a given window's envelope
+     * under, for a given author/recipient pair. Exposed so #184's publication outbox can address a
+     * {@code Tombstone} at the same logical object once a contact's authorization for it is
+     * withdrawn, without duplicating this derivation (which must never drift from what was actually
+     * signed and sent).
+     */
+    public static ObjectId progressSummaryObjectId(IdentityId authorId, IdentityId recipientId, ComparisonWindow window) {
+        return deriveObjectId("CodeFit-Progress-Summary-v1", authorId, recipientId, windowIdentityBytes(window));
+    }
+
+    /** Same purpose as {@link #progressSummaryObjectId}, for {@link #publishPreparationSnapshot}. */
+    public static ObjectId preparationSnapshotObjectId(IdentityId authorId, IdentityId recipientId, String profileId) {
+        return deriveObjectId("CodeFit-Preparation-Snapshot-v1", authorId, recipientId, profileId.getBytes(StandardCharsets.UTF_8));
+    }
+
     private static byte[] windowIdentityBytes(ComparisonWindow window) {
         byte[] zoneBytes = window.zoneId().getBytes(StandardCharsets.UTF_8);
         byte[] out = new byte[1 + 8 + zoneBytes.length + 1];
@@ -241,10 +254,16 @@ public class SnapshotPublicationService {
         }
 
         private final Map<Long, Map<Key, SignedEnvelope>> byEpoch = new ConcurrentHashMap<>();
-        private final Map<Long, AtomicLong> sequenceCounters = new ConcurrentHashMap<>();
 
+        /**
+         * Delegates to the process-wide {@link WriterSessionSequencer} (#184 fix), not a counter
+         * private to this cache instance: a second {@code SnapshotPublicationService} constructed
+         * later in the same process (every call in this class's own javadoc examples constructs a
+         * fresh one per call) would otherwise start its own counter back at zero and risk colliding
+         * with a sequence this epoch already used for a different, unrelated object.
+         */
         long nextSequence(long epoch) {
-            return sequenceCounters.computeIfAbsent(epoch, e -> new AtomicLong(0)).incrementAndGet();
+            return WriterSessionSequencer.next(epoch);
         }
 
         SignedEnvelope get(UnlockedIdentity identity, long epoch, IdentityId recipient, ObjectId objectId,

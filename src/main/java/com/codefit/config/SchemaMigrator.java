@@ -63,7 +63,11 @@ final class SchemaMigrator {
             new VersionedMigration(10,
                     "Add the preparation-snapshot wire revision state, independent of the per-day local "
                             + "checkpoint revision (#183 review fix)",
-                    SchemaMigrator::createPreparationSnapshotWireStateTable)
+                    SchemaMigrator::createPreparationSnapshotWireStateTable),
+            new VersionedMigration(11,
+                    "Add #184 resumable peer sync: persisted per-author replay state, the validated "
+                            + "peer inbox cache, and the publication outbox",
+                    SchemaMigrator::createPeerSyncTables)
     );
 
     static void migrate(Connection connection) throws SQLException {
@@ -534,6 +538,183 @@ final class SchemaMigrator {
                         body_fingerprint BLOB NOT NULL
                     )
                     """);
+        }
+    }
+
+    /**
+     * #184: resumable peer synchronization. Three distinct concerns, each its own table family, none
+     * sharing a name prefix with {@code local_*} (this device's own evidence) so the two can never be
+     * confused (see {@code createLocalSnapshotTables}'s own warning):
+     *
+     * <ul>
+     *   <li><b>Persisted replay state</b> ({@code peer_sync_*}) — the durable counterpart of
+     *       {@code com.codefit.peer.protocol.AuthorReplayState}, which protocol-v1.md §10 and that
+     *       class's own javadoc explicitly declare in-memory-only and {@code #184}'s to persist: the
+     *       highest epoch accepted per remote author, every accepted message id/{@code (epoch,
+     *       sequence)} slot (duplicate/fork detection), and the latest {@code (epoch, revision,
+     *       isTombstone)} per {@code (author, objectId)} (stale-revision/anti-resurrection). Also the
+     *       receiver-side cache of each author's latest accepted {@code CONSENT_REVISION} scopes,
+     *       which §10 says the sync layer owns and must check before trusting a body's required scope.
+     *       {@code peer_sync_object_versions} is never deleted for a tombstoned object before its
+     *       retention window elapses (see {@code PeerSyncRetention}) — that row is the only thing
+     *       standing between a replayed pre-revocation copy and resurrection.</li>
+     *   <li><b>Validated peer inbox</b> ({@code peer_progress_summaries}/{@code
+     *       peer_preparation_snapshots}/{@code peer_social_profile_cards}) — cached remote content that
+     *       passed every check, holding only the latest revision per {@code (author, objectId)}
+     *       (supersession, not an append log). Deliberately a completely separate table family from
+     *       this device's own {@code local_progress_snapshots}/{@code local_preparation_checkpoints}:
+     *       receiving a peer's result must never be mistaken for, or alter, this learner's own
+     *       attempts, reviews, XP, mastery, or readiness.</li>
+     *   <li><b>Publication outbox</b> ({@code publication_outbox}) — the logical objects a learner has
+     *       explicitly approved for ongoing sharing with one contact. Sharing is never automatic from
+     *       evidence/grants alone; an outbox row is the record of that explicit approval. {@code
+     *       last_synced_revision}/{@code last_synced_at} are optimistic, UI-facing hints only (updated
+     *       after a full clean bidirectional session, never merely after a local socket write - see
+     *       {@code PeerSyncService}) and are never consulted to decide what to (re)send, so an
+     *       over-optimistic hint can delay a UI update but can never lose data: resend is always the
+     *       full current eligible set, and the receiver's own replay state makes redelivery harmless.</li>
+     * </ul>
+     */
+    private static void createPeerSyncTables(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_sync_author_state (
+                        author_identity_id BLOB PRIMARY KEY,
+                        highest_epoch INTEGER NOT NULL DEFAULT 0,
+                        updated_at TEXT NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_sync_accepted_messages (
+                        author_identity_id BLOB NOT NULL,
+                        message_id BLOB NOT NULL,
+                        epoch INTEGER NOT NULL,
+                        sequence INTEGER NOT NULL,
+                        expires_at TEXT NOT NULL,
+                        PRIMARY KEY (author_identity_id, message_id)
+                    )
+                    """);
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_peer_sync_accepted_messages_slot "
+                    + "ON peer_sync_accepted_messages(author_identity_id, epoch, sequence)");
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_peer_sync_accepted_messages_expiry "
+                    + "ON peer_sync_accepted_messages(expires_at)");
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_sync_object_versions (
+                        author_identity_id BLOB NOT NULL,
+                        object_id BLOB NOT NULL,
+                        epoch INTEGER NOT NULL,
+                        revision INTEGER NOT NULL,
+                        is_tombstone INTEGER NOT NULL DEFAULT 0,
+                        updated_at TEXT NOT NULL,
+                        PRIMARY KEY (author_identity_id, object_id)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_sync_consent (
+                        author_identity_id BLOB PRIMARY KEY,
+                        allowed_scopes TEXT NOT NULL,
+                        epoch INTEGER NOT NULL,
+                        revision INTEGER NOT NULL,
+                        updated_at TEXT NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_progress_summaries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        author_identity_id BLOB NOT NULL,
+                        object_id BLOB NOT NULL,
+                        epoch INTEGER NOT NULL,
+                        revision INTEGER NOT NULL,
+                        window_kind TEXT NOT NULL,
+                        local_start_epoch_day INTEGER NOT NULL,
+                        zone_id TEXT NOT NULL,
+                        week_start INTEGER,
+                        window_start TEXT NOT NULL,
+                        window_end TEXT NOT NULL,
+                        cutoff TEXT NOT NULL,
+                        received_at TEXT NOT NULL,
+                        UNIQUE(author_identity_id, object_id)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_progress_summary_metrics (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        summary_id INTEGER NOT NULL REFERENCES peer_progress_summaries(id) ON DELETE CASCADE,
+                        metric_order INTEGER NOT NULL,
+                        metric_id TEXT NOT NULL,
+                        metric_version INTEGER NOT NULL,
+                        unit TEXT NOT NULL,
+                        availability TEXT NOT NULL,
+                        value INTEGER NOT NULL,
+                        sample_size INTEGER NOT NULL,
+                        provenance TEXT NOT NULL,
+                        timestamp_basis TEXT NOT NULL,
+                        UNIQUE(summary_id, metric_id, metric_version)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_preparation_snapshots (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        author_identity_id BLOB NOT NULL,
+                        object_id BLOB NOT NULL,
+                        epoch INTEGER NOT NULL,
+                        revision INTEGER NOT NULL,
+                        profile_id TEXT NOT NULL,
+                        profile_fingerprint BLOB NOT NULL,
+                        scoring_version INTEGER NOT NULL,
+                        overall_threshold_percent INTEGER NOT NULL,
+                        captured_at TEXT NOT NULL,
+                        overall_percent INTEGER,
+                        coverage_percent INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        received_at TEXT NOT NULL,
+                        UNIQUE(author_identity_id, object_id)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_preparation_snapshot_domains (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        snapshot_id INTEGER NOT NULL REFERENCES peer_preparation_snapshots(id) ON DELETE CASCADE,
+                        domain_order INTEGER NOT NULL,
+                        domain_id TEXT NOT NULL,
+                        weight_percent INTEGER NOT NULL,
+                        critical_gate INTEGER NOT NULL,
+                        threshold_percent INTEGER,
+                        score_percent INTEGER,
+                        coverage_percent INTEGER NOT NULL,
+                        measured_requirement_count INTEGER NOT NULL,
+                        total_requirement_count INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        UNIQUE(snapshot_id, domain_id)
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS peer_social_profile_cards (
+                        author_identity_id BLOB PRIMARY KEY,
+                        object_id BLOB NOT NULL,
+                        epoch INTEGER NOT NULL,
+                        revision INTEGER NOT NULL,
+                        display_name TEXT NOT NULL,
+                        bio TEXT,
+                        comparison_zone_id TEXT NOT NULL,
+                        week_start INTEGER NOT NULL,
+                        received_at TEXT NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS publication_outbox (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+                        message_type TEXT NOT NULL,
+                        logical_key TEXT NOT NULL,
+                        approved_at TEXT NOT NULL,
+                        last_synced_revision INTEGER,
+                        last_synced_at TEXT,
+                        UNIQUE(contact_id, message_type, logical_key)
+                    )
+                    """);
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_publication_outbox_contact "
+                    + "ON publication_outbox(contact_id)");
         }
     }
 

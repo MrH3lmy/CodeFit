@@ -179,6 +179,8 @@ class PeerSyncOutboxServiceTest {
                 NOW.plusSeconds(20));
         assertFalse(afterExpiry.stream().anyMatch(b -> b.envelope().body() instanceof ProgressSummary),
                 "an expired grant must stop new publication exactly like an explicit revoke, with no further action needed");
+        assertEquals(List.of(), ((ConsentRevision) consentEnvelope(afterExpiry).body()).scopes(),
+                "expiry must synchronize effective empty consent so delayed/replayed data cannot remain authorized");
     }
 
     private PeerSyncOutboxService outboxServiceAt(Instant now) {
@@ -186,6 +188,30 @@ class PeerSyncOutboxServiceTest {
                 new com.codefit.repository.PublicationWireStateRepository(), contactService,
                 new SnapshotPublicationService(contactService, new ProgressSnapshotService(), new PreparationSnapshotCaptureService(),
                         new com.codefit.repository.PreparationSnapshotWireStateRepository(), Clock.fixed(now, ZoneOffset.UTC)));
+    }
+
+    @Test
+    void repeatedBoundedPassesEventuallyReachEveryApprovedWindow() {
+        contactService.updatePermissions(contactId, new PermissionGrant(List.of(SharingScope.DAILY_SUMMARY), 400, null, false), NOW);
+        LocalDate start = LocalDate.of(2025, 1, 1);
+        for (int i = 0; i < 250; i++) {
+            outboxService.approveProgressSummary(contactId, ComparisonWindow.day(start.plusDays(i), ZoneId.of("UTC")), NOW);
+        }
+
+        java.util.Set<Long> reached = new java.util.HashSet<>();
+        for (int pass = 0; pass < 3 && reached.size() < 250; pass++) {
+            List<PeerSyncOutboxService.Batched> batch =
+                    outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW.plusSeconds(pass));
+            for (PeerSyncOutboxService.Batched item : batch) {
+                item.outboxEntryId().ifPresent(id -> {
+                    reached.add(id);
+                    outboxService.markSynced(id, item.envelope().header().revision(), NOW.plusSeconds(pass));
+                });
+            }
+        }
+
+        assertEquals(250, reached.size(),
+                "bounded passes must rotate through the durable outbox instead of starving rows beyond the first batch");
     }
 
     @Test

@@ -48,14 +48,17 @@ public class PublicationOutboxRepository {
      * a contact paired for a very long time with many approved windows would have every one of them
      * loaded into memory before {@code PeerSyncOutboxService} ever gets to apply its own, tighter
      * per-batch cap - defense in depth against unbounded memory growth, not merely an in-memory
-     * truncation after an unbounded fetch. Most-recently-approved rows win if the bound is ever hit.
+     * truncation after an unbounded fetch. Never-synced rows come first; previously-synced rows rotate
+     * oldest-first. That ordering is correctness-critical: repeated bounded passes must eventually
+     * reach every approved object instead of permanently starving older rows behind the same prefix.
      */
     private static final int MAX_ROWS_PER_CONTACT = 1000;
 
     public List<PublicationOutboxEntry> findByContact(long contactId) {
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(
-                     "SELECT * FROM publication_outbox WHERE contact_id = ? ORDER BY id DESC LIMIT ?")) {
+                     "SELECT * FROM publication_outbox WHERE contact_id = ? "
+                             + "ORDER BY (last_synced_at IS NOT NULL), last_synced_at ASC, id ASC LIMIT ?")) {
             statement.setLong(1, contactId);
             statement.setInt(2, MAX_ROWS_PER_CONTACT);
             try (ResultSet resultSet = statement.executeQuery()) {

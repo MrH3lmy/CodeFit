@@ -115,9 +115,16 @@ public class PeerSyncOutboxService {
 
         Optional<com.codefit.peer.identity.ContactPermission> permission = contactService.permissionsFor(contactId);
         if (permission.isPresent() && batch.size() < MAX_ENVELOPES_PER_BATCH) {
+            // Consent on the wire must describe what is effective NOW, not merely what remains stored
+            // in the permission row. In particular an expired grant keeps its historical scopes in
+            // SQLite, but publishing them here would let the receiver continue authorizing delayed
+            // envelopes after expiry. The same filtering also respects paused sharing/trust changes.
+            List<SharingScope> effectiveScopes = permission.get().scopes().stream()
+                    .filter(scope -> contactService.isAuthorizedToPublish(contactId, scope, now))
+                    .toList();
             ObjectId consentObjectId = ConsentRevision.objectIdFor(identity.publicKey().id(), contact.identityId());
             SignedEnvelope envelope = signControlEnvelope(identity, writerEpoch, contact.identityId(), consentObjectId,
-                    new ConsentRevision(permission.get().scopes()), now);
+                    new ConsentRevision(effectiveScopes), now);
             batch.add(new Batched(envelope, Optional.empty()));
         }
 

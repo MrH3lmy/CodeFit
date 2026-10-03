@@ -1,5 +1,6 @@
 package com.codefit.service;
 
+import com.codefit.model.CompletionOrigin;
 import com.codefit.model.HintLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
@@ -117,6 +118,16 @@ public class ProblemSolvingWorkspaceService {
      * @return the recorded attempt, or empty for {@code ABANDONED}
      */
     public Optional<ProblemAttempt> finish(long problemId, SessionFinishOutcome outcome, SubmissionResult submissionResult, String notes) {
+        // A genuine real-time workspace finish (#183 review fix, round 4): whatever verdict is
+        // recorded, submittedAt is this method's own trustworthy observation of when it happened, so
+        // it is always FRESH_ATTEMPT - including a genuine accept-after-failures ACX. The one caller
+        // that is NOT this kind of evidence (markPreviouslySolved) deliberately bypasses this public
+        // method's default and calls the private overload below with PREVIOUSLY_SOLVED instead.
+        return finish(problemId, outcome, submissionResult, notes, CompletionOrigin.FRESH_ATTEMPT);
+    }
+
+    private Optional<ProblemAttempt> finish(long problemId, SessionFinishOutcome outcome, SubmissionResult submissionResult,
+                                             String notes, CompletionOrigin completionOrigin) {
         if (outcome == null) {
             throw new IllegalArgumentException("A finish outcome is required.");
         }
@@ -130,7 +141,7 @@ public class ProblemSolvingWorkspaceService {
 
         ProblemAttempt recorded = attemptService.recordAttempt(problemId, resolvedResult,
                 session.getReadingSecondsElapsed(), session.getThinkingSecondsElapsed(),
-                session.getCodingSecondsElapsed(), session.getDebuggingSecondsElapsed(), notes, outcome);
+                session.getCodingSecondsElapsed(), session.getDebuggingSecondsElapsed(), notes, outcome, completionOrigin);
 
         applyProgressForOutcome(problemId, outcome, resolvedResult);
         applyAssistanceForSuccessfulCompletion(problemId, outcome, resolvedResult, session.getHighestHintLevelOpened());
@@ -188,9 +199,18 @@ public class ProblemSolvingWorkspaceService {
      * before using CodeFit) without requiring a new timed workspace session (#146): records an
      * {@code ACX} attempt using whatever phase times the session happens to have (zero if none were
      * ever run) and moves progress to {@code SOLVED} with {@code solvedWith = PREVIOUSLY_SOLVED}.
+     *
+     * <p>#183 review fix (round 4): the recorded attempt is explicitly {@link
+     * CompletionOrigin#PREVIOUSLY_SOLVED}, never {@code FRESH_ATTEMPT} - CodeFit has no idea when
+     * the learner actually first solved this problem, so it must never be counted as today's
+     * {@code problem.unique_completed} evidence just because this is the first AC/ACX row on file
+     * for it. This deliberately bypasses the public {@link #finish} overload's {@code FRESH_ATTEMPT}
+     * default, since this is the one case where a {@code SUBMITTED}/{@code ACX} finish is NOT
+     * trustworthy first-completion evidence.
      */
     public ProblemAttempt markPreviouslySolved(long problemId, String notes) {
-        ProblemAttempt attempt = finish(problemId, SessionFinishOutcome.SUBMITTED, SubmissionResult.ACX, notes)
+        ProblemAttempt attempt = finish(problemId, SessionFinishOutcome.SUBMITTED, SubmissionResult.ACX, notes,
+                CompletionOrigin.PREVIOUSLY_SOLVED)
                 .orElseThrow(() -> new IllegalStateException("Marking previously solved must always record an attempt."));
         ProblemProgress progress = progressService.getOrCreate(problemId);
         ProblemReflection reflection = new ProblemReflection(progress.getPerceivedDifficultyRating(), SolvedWith.PREVIOUSLY_SOLVED,

@@ -77,6 +77,32 @@ public class InterviewMockRepository {
         }
     }
 
+    /**
+     * {@code overall_score_percent} values across every profile whose {@code completed_at} falls in
+     * {@code [startInclusive, endExclusive)}, both given <strong>in the comparison zone</strong> (#183:
+     * {@code completed_at} is written from {@code InterviewMockEvaluation.completedAt()}, a Java
+     * {@code LocalDateTime} with no offset — {@code LEGACY_LOCAL_ASSUMED_ZONE} — never UTC bounds).
+     */
+    public List<Integer> findOverallScoresCompletedBetween(LocalDateTime startInclusive, LocalDateTime endExclusive) {
+        ensureSchema();
+        String sql = "SELECT overall_score_percent FROM interview_mock_runs "
+                + "WHERE datetime(completed_at) >= datetime(?) AND datetime(completed_at) < datetime(?)";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, startInclusive.toString());
+            statement.setString(2, endExclusive.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<Integer> scores = new ArrayList<>();
+                while (resultSet.next()) {
+                    scores.add(resultSet.getInt("overall_score_percent"));
+                }
+                return scores;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load interview mock scores in window", exception);
+        }
+    }
+
     /** Latest scored mock evidence for one interview domain, newest first. */
     public List<StoredDomainScore> findRecentDomainScores(String profileId, String domainId, int limit) {
         if (limit <= 0) {

@@ -15,7 +15,12 @@ import java.util.List;
 
 public class ReviewHistoryRepository {
     public ReviewHistory save(ReviewHistory history) {
-        String sql = "INSERT INTO review_history (flashcard_id, rating, previous_interval_days, new_interval_days, submitted_in_time, boss_battle, validation_result, submitted_answer, response_time_ms, hint_used, session_id, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // hint_usage_recorded is hardcoded to 1 (true), never taken from the model: this is the only
+        // review_history insert path in the whole app, and every caller reaching it is recording a
+        // genuinely new review happening right now, for which the app always knows hintUsed for real
+        // (see DatabaseConfig#ensureReviewHistoryColumns for why a legacy row defaults to 0/unknown
+        // instead - that default only ever applies to rows that already existed before this column did).
+        String sql = "INSERT INTO review_history (flashcard_id, rating, previous_interval_days, new_interval_days, submitted_in_time, boss_battle, validation_result, submitted_answer, response_time_ms, hint_used, session_id, confidence, hint_usage_recorded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, history.getFlashcardId());
@@ -161,6 +166,62 @@ public class ReviewHistoryRepository {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to load filtered review history", exception);
+        }
+    }
+
+    /**
+     * Half-open {@code [startUtcInclusive, endUtcExclusive)} window over non-boss-battle reviews, for
+     * #183's comparison-grade snapshots. Deliberately a separate query from {@link #findFiltered}:
+     * that method's {@code end} bound is inclusive (built for dashboard "up to and including this
+     * date" filtering), which would double-count a review landing exactly on a window boundary instant
+     * - the opposite of what a deterministic, non-overlapping daily/weekly snapshot needs.
+     */
+    public List<ReviewHistory> findReviewedBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
+        String sql = "SELECT * FROM review_history WHERE boss_battle = 0 AND datetime(reviewed_at) >= datetime(?) "
+                + "AND datetime(reviewed_at) < datetime(?) ORDER BY reviewed_at, id";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, startUtcInclusive.toString());
+            statement.setString(2, endUtcExclusive.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<ReviewHistory> history = new ArrayList<>();
+                while (resultSet.next()) {
+                    history.add(mapReviewHistory(resultSet));
+                }
+                return history;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load review history in window", exception);
+        }
+    }
+
+    /** Whether a review's {@code hint_used} value is genuinely known, and what it is if so. */
+    public record HintEvidence(boolean hintUsageRecorded, boolean hintUsed) {
+    }
+
+    /**
+     * Hint-usage evidence for non-boss-battle reviews in {@code [startUtcInclusive, endUtcExclusive)},
+     * separate from {@link #findReviewedBetweenUtc} (#183 review fix): {@code hint_used} alone cannot
+     * distinguish a genuinely hint-free review from a legacy row defaulted to 0 before hint tracking
+     * existed, so this also reads {@code hint_usage_recorded} - a legacy row's evidence must never be
+     * read as "known, hint-free".
+     */
+    public List<HintEvidence> findHintEvidenceBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
+        String sql = "SELECT hint_used, hint_usage_recorded FROM review_history WHERE boss_battle = 0 "
+                + "AND datetime(reviewed_at) >= datetime(?) AND datetime(reviewed_at) < datetime(?)";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, startUtcInclusive.toString());
+            statement.setString(2, endUtcExclusive.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<HintEvidence> evidence = new ArrayList<>();
+                while (resultSet.next()) {
+                    evidence.add(new HintEvidence(resultSet.getInt("hint_usage_recorded") == 1, resultSet.getInt("hint_used") == 1));
+                }
+                return evidence;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to load hint evidence in window", exception);
         }
     }
 

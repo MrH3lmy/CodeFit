@@ -5,6 +5,7 @@ import com.codefit.service.BackgroundImportExecutor;
 import com.codefit.service.CompileOutcomeRegistry;
 import com.codefit.service.JavaExecutionCoordinator;
 import com.codefit.ui.NavigationService;
+import com.codefit.ui.PeerSessionHolder;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
@@ -30,6 +31,7 @@ public class CodeFitApplication extends Application {
         JavaExecutionCoordinator.cancelActiveAndAwait(20, TimeUnit.SECONDS);
         BackgroundImportExecutor.shutdown(10, TimeUnit.SECONDS);
         CompileOutcomeRegistry.closeCurrent();
+        PeerSessionHolder.shutdown();
     }
 
     public static void main(String[] args) {

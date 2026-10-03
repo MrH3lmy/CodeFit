@@ -46,7 +46,12 @@ public class PeerSyncSessionService implements AutoCloseable {
     private final PeerSyncOutboxService outboxService;
     private final ContactService contactService;
     private final ExecutorService receiveLoopExecutor;
-    private final Map<IdentityId, Future<?>> activeReceiveLoops = new ConcurrentHashMap<>();
+    private final Map<IdentityId, Registration> activeReceiveLoops = new ConcurrentHashMap<>();
+
+    /** Which {@link PeerConnection} a registered receive loop is actually reading from, so a stale
+     *  loop can never be confused with - or clobber the registration of - a newer one. */
+    private record Registration(PeerConnection connection, Future<?> loop) {
+    }
 
     public PeerSyncSessionService() {
         this(new PeerSyncIngestService(), new PeerSyncOutboxService(), new ContactService());
@@ -65,16 +70,31 @@ public class PeerSyncSessionService implements AutoCloseable {
     }
 
     /**
-     * Starts (idempotently - a second call for an already-receiving peer is a no-op) a background
-     * loop that validates and persists every envelope this connection's peer sends, until the
-     * connection closes or a connection-fatal rejection occurs (see {@link SyncOutcome#connectionRecoverable()}).
+     * Starts a background loop that validates and persists every envelope this connection's peer
+     * sends, until the connection closes or a connection-fatal rejection occurs (see
+     * {@link SyncOutcome#connectionRecoverable()}). Idempotent only for the exact same, still-live
+     * {@code connection} object - a second call with it is a no-op. A call for a <em>different</em>
+     * {@code PeerConnection} belonging to the same {@code remoteIdentityId} (a reconnect) always gets
+     * its own fresh loop, even if an earlier registration for that identity has not yet noticed its
+     * own connection died and removed itself: that stale registration's connection is proactively
+     * closed (forcing its loop to exit on its own time, never blocking this call on it) and replaced,
+     * rather than being silently skipped because the identity key was already "taken" in the map. See
+     * {@code PeerSyncSessionServiceReconnectRaceTest} for the exact race this guards against.
      *
      * @param onOutcome called, off the caller's thread, after each received frame is classified - for
      *                  logging/UI/test observation only; never required for correctness
      */
     public void startReceiving(PeerConnection connection, IdentityId myIdentityId, BiConsumer<SignedEnvelope, SyncOutcome> onOutcome) {
-        activeReceiveLoops.computeIfAbsent(connection.remoteIdentityId(),
-                id -> receiveLoopExecutor.submit(() -> receiveLoop(connection, myIdentityId, onOutcome)));
+        activeReceiveLoops.compute(connection.remoteIdentityId(), (id, existing) -> {
+            if (existing != null && existing.connection() == connection) {
+                return existing;
+            }
+            if (existing != null) {
+                existing.connection().close();
+            }
+            Future<?> loop = receiveLoopExecutor.submit(() -> receiveLoop(connection, myIdentityId, onOutcome));
+            return new Registration(connection, loop);
+        });
     }
 
     public void startReceiving(PeerConnection connection, IdentityId myIdentityId) {
@@ -103,7 +123,10 @@ public class PeerSyncSessionService implements AutoCloseable {
                 onOutcome.accept(envelope, outcome);
             }
         } finally {
-            activeReceiveLoops.remove(connection.remoteIdentityId());
+            // Only remove the registration if it is still THIS connection's - a newer registration
+            // (already installed by a reconnect while this loop was still winding down) must survive.
+            activeReceiveLoops.computeIfPresent(connection.remoteIdentityId(),
+                    (id, registration) -> registration.connection() == connection ? null : registration);
         }
     }
 

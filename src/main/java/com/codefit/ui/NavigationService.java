@@ -241,6 +241,10 @@ public final class NavigationService {
         navigate(Route.SETTINGS);
     }
 
+    public static void showPeers() {
+        navigate(Route.PEERS);
+    }
+
     /** Navigates to a route, building the persistent shell on first use. Only the shell's content
      *  host is swapped on subsequent calls, so the sidebar and top bar are never reconstructed. */
     public static void navigate(Route route) {

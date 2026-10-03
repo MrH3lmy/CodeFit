@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.PeerController">
+    <content>
+        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+            <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
+                <Label text="Peers" styleClass="page-title" wrapText="true" />
+                <Label text="Pair with another CodeFit instance on the same network and establish a direct, authenticated connection. Nothing here goes through any server - both sides must exchange and accept each other's invitation before a connection can succeed." styleClass="muted" wrapText="true" />
+            </VBox>
+
+            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
+                <Label text="Your Identity" styleClass="section-title" />
+                <Label fx:id="identityStatusLabel" styleClass="dashboard-card-helper" wrapText="true" />
+                <PasswordField fx:id="vaultPassphraseField" promptText="Vault passphrase" maxWidth="Infinity" />
+                <HBox spacing="8">
+                    <Button fx:id="createIdentityButton" text="Create Identity" onAction="#createIdentity" />
+                    <Button fx:id="enableNetworkingButton" text="Enable Networking" onAction="#enableNetworking" />
+                    <Button fx:id="disableNetworkingButton" text="Disable Networking" onAction="#disableNetworking" />
+                </HBox>
+                <Label fx:id="networkingStatusLabel" styleClass="dashboard-card-helper" wrapText="true" />
+            </VBox>
+
+            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
+                <Label text="Your Invitation" styleClass="section-title" />
+                <Label text="Create an invitation and send the text below to the other person through any channel you like (chat, email, read it aloud) - CodeFit never sends it anywhere itself." styleClass="muted" wrapText="true" />
+                <Button fx:id="createInvitationButton" text="Create Invitation" onAction="#createInvitation" />
+                <TextArea fx:id="myInvitationArea" editable="false" wrapText="true" prefRowCount="3" maxWidth="Infinity" />
+                <Button fx:id="copyInvitationButton" text="Copy" onAction="#copyInvitation" />
+            </VBox>
+
+            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
+                <Label text="Their Invitation" styleClass="section-title" />
+                <Label text="Paste the invitation text the other person sent you, then verify the fingerprint with them out of band before accepting." styleClass="muted" wrapText="true" />
+                <TextArea fx:id="peerInvitationArea" wrapText="true" prefRowCount="3" maxWidth="Infinity" promptText="Paste their invitation text here" />
+                <Button fx:id="parseInvitationButton" text="Parse" onAction="#parseInvitation" />
+                <Label fx:id="parsedFingerprintLabel" styleClass="dashboard-card-helper" wrapText="true" managed="false" visible="false" />
+                <Button fx:id="registerAndAcceptButton" text="Register &amp; Accept" onAction="#registerAndAccept" disable="true" />
+            </VBox>
+
+            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
+                <Label text="Paired Peers" styleClass="section-title" />
+                <Label text="Both sides must have registered and accepted each other's invitation before a connection can succeed - a rejection below usually just means the other device hasn't done that yet." styleClass="muted" wrapText="true" />
+                <Label fx:id="noContactsLabel" text="No paired peers yet." styleClass="muted" wrapText="true" managed="false" visible="false" />
+                <VBox fx:id="contactsBox" spacing="6" maxWidth="Infinity" />
+            </VBox>
+
+            <Label fx:id="statusLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
+        </VBox>
+    </content>
+</ScrollPane>

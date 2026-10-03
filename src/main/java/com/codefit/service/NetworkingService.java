@@ -20,6 +20,7 @@ import com.codefit.peer.invitation.SignedInvitation;
 import com.codefit.peer.protocol.IdentityBinding;
 import com.codefit.peer.protocol.IdentityId;
 import com.codefit.peer.protocol.IdentityKey;
+import com.codefit.peer.transport.ConnectionEventListener;
 import com.codefit.peer.transport.DialOutcome;
 import com.codefit.peer.transport.KnownContactLookup;
 import com.codefit.peer.transport.ListenerBindAddress;
@@ -67,14 +68,32 @@ public class NetworkingService implements AutoCloseable {
     private volatile LanDiscoveryService lanDiscoveryService;
 
     public NetworkingService() {
-        this(new IdentityService(), new ContactService(), new TransportKeyService());
+        this(event -> { });
+    }
+
+    /**
+     * @param connectionEventListener told every connection state transition (#182's own
+     *                                {@code ConnectionEventListener}/{@code ConnectionEvent}) as it
+     *                                happens, on whatever background thread the transport fires it
+     *                                from - never the caller's thread. This is the exact seam this
+     *                                class's own javadoc already calls out as "a future UI (#187) is
+     *                                expected to call"; the no-arg constructor keeps every existing
+     *                                caller's behavior unchanged by defaulting it to a no-op.
+     */
+    public NetworkingService(ConnectionEventListener connectionEventListener) {
+        this(new IdentityService(), new ContactService(), new TransportKeyService(), connectionEventListener);
     }
 
     NetworkingService(IdentityService identityService, ContactService contactService, TransportKeyService transportKeyService) {
+        this(identityService, contactService, transportKeyService, event -> { });
+    }
+
+    NetworkingService(IdentityService identityService, ContactService contactService, TransportKeyService transportKeyService,
+                       ConnectionEventListener connectionEventListener) {
         this.identityService = identityService;
         this.contactService = contactService;
         this.transportKeyService = transportKeyService;
-        this.peerNetworkService = new PeerNetworkService(new ContactLookup(), event -> { }, this::onVerifiedBinding);
+        this.peerNetworkService = new PeerNetworkService(new ContactLookup(), connectionEventListener, this::onVerifiedBinding);
     }
 
     /** What the transport asks of local contact state; every answer is read fresh from the contact store. */

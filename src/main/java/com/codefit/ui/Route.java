@@ -13,6 +13,7 @@ public enum Route {
     INTERVIEW("interview-prep.fxml", "Interview", "CodeFit - Interview Prep", NavItem.INTERVIEW),
     INTERVIEW_MOCK("interview-mock.fxml", "Mock Interview", "CodeFit - Mock Interview", NavItem.INTERVIEW),
     PROGRESS("stats.fxml", "Progress", "CodeFit - Progress", NavItem.PROGRESS),
+    PEERS("peer.fxml", "Peers", "CodeFit - Peers", NavItem.PEERS),
     ADD_CARD("add-card.fxml", "New Card", "CodeFit - New Card", null),
     SOLVING_WORKSPACE("problem-solving-workspace.fxml", "Solving Workspace", "CodeFit - Solving Workspace", null),
     PROBLEM_DASHBOARD("problem-dashboard.fxml", "Dashboard", "CodeFit - Problem-Solving Dashboard", null),
@@ -62,6 +63,7 @@ public enum Route {
         LIBRARY,
         PROBLEMS,
         INTERVIEW,
-        PROGRESS
+        PROGRESS,
+        PEERS
     }
 }

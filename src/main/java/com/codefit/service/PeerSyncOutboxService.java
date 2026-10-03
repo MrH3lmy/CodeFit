@@ -63,6 +63,7 @@ public class PeerSyncOutboxService {
      * construct and must not reset this bookkeeping.
      */
     private static final Map<CacheKey, SignedEnvelope> CONTROL_ENVELOPE_CACHE = new ConcurrentHashMap<>();
+    private static final Object CONTROL_ENVELOPE_LOCK = new Object();
 
     private record CacheKey(IdentityId recipient, ObjectId objectId) {
     }
@@ -183,20 +184,22 @@ public class PeerSyncOutboxService {
     private SignedEnvelope signControlEnvelope(UnlockedIdentity identity, long writerEpoch, IdentityId recipient,
                                                 ObjectId objectId, MessageBody body, Instant now) {
         CacheKey key = new CacheKey(recipient, objectId);
-        SignedEnvelope cached = CONTROL_ENVELOPE_CACHE.get(key);
-        byte[] fingerprint = fingerprint(body);
-        if (cached != null && cached.body().equals(body) && cached.header().author().equals(identity.publicKey())) {
-            return cached;
+        synchronized (CONTROL_ENVELOPE_LOCK) {
+            SignedEnvelope cached = CONTROL_ENVELOPE_CACHE.get(key);
+            byte[] fingerprint = fingerprint(body);
+            if (cached != null && cached.body().equals(body) && cached.header().author().equals(identity.publicKey())) {
+                return cached;
+            }
+            long revision = wireStateRepository.nextRevision(objectId, fingerprint);
+            Instant createdAt = Instant.ofEpochMilli(now.toEpochMilli());
+            EnvelopeHeader header = new EnvelopeHeader(0, identity.publicKey(), objectId, writerEpoch,
+                    WriterSessionSequencer.next(writerEpoch), revision, createdAt, createdAt.plus(CONTROL_ENVELOPE_LIFETIME),
+                    Audience.direct(List.of(recipient)));
+            Envelope envelope = new Envelope(header, body);
+            SignedEnvelope signed = new SignedEnvelope(envelope, identity.sign(envelope.signingBytes()));
+            CONTROL_ENVELOPE_CACHE.put(key, signed);
+            return signed;
         }
-        long revision = wireStateRepository.nextRevision(objectId, fingerprint);
-        Instant createdAt = Instant.ofEpochMilli(now.toEpochMilli());
-        EnvelopeHeader header = new EnvelopeHeader(0, identity.publicKey(), objectId, writerEpoch,
-                WriterSessionSequencer.next(writerEpoch), revision, createdAt, createdAt.plus(CONTROL_ENVELOPE_LIFETIME),
-                Audience.direct(List.of(recipient)));
-        Envelope envelope = new Envelope(header, body);
-        SignedEnvelope signed = new SignedEnvelope(envelope, identity.sign(envelope.signingBytes()));
-        CONTROL_ENVELOPE_CACHE.put(key, signed);
-        return signed;
     }
 
     private static byte[] fingerprint(MessageBody body) {

@@ -28,6 +28,8 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -124,6 +126,48 @@ class PeerSyncOutboxServiceTest {
         SignedEnvelope secondConsent = consentEnvelope(second);
         assertEquals(firstConsent.messageId(), secondConsent.messageId(),
                 "an unchanged resend must be byte-identical (same message id), or a receiver would wrongly see STALE_REVISION");
+    }
+
+    @Test
+    void concurrentUnchangedControlPublicationReusesTheExactSameSignedEnvelope() throws Exception {
+        contactService.updatePermissions(contactId,
+                new PermissionGrant(List.of(SharingScope.DAILY_SUMMARY), 30, null, false), NOW);
+
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicReference<SignedEnvelope> first = new AtomicReference<>();
+        AtomicReference<SignedEnvelope> second = new AtomicReference<>();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+
+        Thread one = new Thread(() -> {
+            try {
+                start.await();
+                first.set(consentEnvelope(outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW)).body() instanceof ConsentRevision
+                        ? consentEnvelope(outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW))
+                        : null);
+            } catch (Throwable throwable) {
+                failure.compareAndSet(null, throwable);
+            }
+        });
+        Thread two = new Thread(() -> {
+            try {
+                start.await();
+                second.set(consentEnvelope(outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW)));
+            } catch (Throwable throwable) {
+                failure.compareAndSet(null, throwable);
+            }
+        });
+
+        one.start();
+        two.start();
+        start.countDown();
+        one.join();
+        two.join();
+
+        if (failure.get() != null) {
+            throw new AssertionError("concurrent control publication failed", failure.get());
+        }
+        assertEquals(first.get().messageId(), second.get().messageId(),
+                "concurrent unchanged publication must resolve to the same signed envelope, not two sequences at one revision");
     }
 
     @Test

@@ -19,7 +19,6 @@ import com.codefit.repository.LocalPreparationCheckpointRepository;
 import com.codefit.repository.LocalProgressSnapshotRepository;
 import com.codefit.repository.PreparationSnapshotWireStateRepository;
 import com.codefit.repository.ProblemAttemptRepository;
-import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ReviewHistoryRepository;
 import com.codefit.testsupport.IsolatedDatabaseExtension;
 import com.codefit.testsupport.PeerIdentityTestTables;
@@ -83,7 +82,7 @@ class SnapshotPublicationServiceTest {
 
     private SnapshotPublicationService publicationServiceWithClock(Clock clock) {
         ProgressSnapshotService progressSnapshotService = new ProgressSnapshotService(new ReviewHistoryRepository(),
-                new ProblemAttemptRepository(), new ProblemProgressRepository(), new InterviewMockRepository(),
+                new ProblemAttemptRepository(), new InterviewMockRepository(),
                 new LocalProgressSnapshotRepository(), clock);
         PreparationSnapshotCaptureService preparationSnapshotCaptureService = new PreparationSnapshotCaptureService(
                 new InterviewReadinessService(), new InterviewProfileService(), new LocalPreparationCheckpointRepository(), clock);

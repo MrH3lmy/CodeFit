@@ -68,6 +68,35 @@ public class ProblemAttemptRepository {
         }
     }
 
+    /**
+     * How many problems' FIRST successful (AC/ACX) attempt falls in {@code [startUtcInclusive,
+     * endUtcExclusive)} (#183 review fix). {@code problem_attempts} is append-only — nothing in this
+     * repository or anywhere else ever updates or deletes a row — so {@code MIN(submitted_at)} over a
+     * problem's AC/ACX attempts is immutable: once computed for a given problem, no later attempt at
+     * that same problem (another successful re-solve, a retried import, anything) can ever change
+     * which attempt was first or when it happened, unlike {@code problem_progress.completed_at} (which
+     * {@code ProblemSolvingWorkspaceService} overwrites on every later successful finish). A problem
+     * marked solved only through import or legacy data, with no matching timestamped AC/ACX attempt,
+     * contributes to no window at all here - unavailable, never fabricated.
+     */
+    public int countFirstSuccessfulAttemptsBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
+        String sql = "SELECT COUNT(*) FROM ("
+                + "  SELECT problem_id, MIN(submitted_at) AS first_success FROM problem_attempts "
+                + "  WHERE submission_result IN ('AC', 'ACX') GROUP BY problem_id"
+                + ") first_successes "
+                + "WHERE datetime(first_success) >= datetime(?) AND datetime(first_success) < datetime(?)";
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, startUtcInclusive.toString());
+            statement.setString(2, endUtcExclusive.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? resultSet.getInt(1) : 0;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to count first successful attempts in window", exception);
+        }
+    }
+
     /** Every attempt across every problem, for dashboard aggregation (#147) — one query rather than
      *  one round trip per problem, so aggregation stays responsive with the full imported roadmap. */
     public List<ProblemAttempt> findAll() {

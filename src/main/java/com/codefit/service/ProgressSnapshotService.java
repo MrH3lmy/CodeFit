@@ -14,7 +14,6 @@ import com.codefit.peer.snapshot.LocalProgressSnapshot;
 import com.codefit.repository.InterviewMockRepository;
 import com.codefit.repository.LocalProgressSnapshotRepository;
 import com.codefit.repository.ProblemAttemptRepository;
-import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ReviewHistoryRepository;
 
 import java.math.BigDecimal;
@@ -41,10 +40,11 @@ import java.util.List;
  * own {@code CURRENT_TIMESTAMP} ({@code review_history.reviewed_at}, {@code problem_attempts.submitted_at})
  * are exact UTC despite carrying no offset, so they are queried with this window's UTC
  * {@code [start, cutoff)} bound. Columns written from Java {@code LocalDateTime.now()}
- * ({@code problem_progress.completed_at}, {@code interview_mock_runs.completed_at}) are only ever
- * approximately the comparison zone's local time, so they are queried with this window's bounds
- * converted into that zone instead. Mixing these up would silently misplace evidence across a
- * midnight/week boundary - exactly the bug this split exists to prevent.
+ * ({@code interview_mock_runs.completed_at}) are only ever approximately the comparison zone's local
+ * time, so they are queried with this window's bounds converted into that zone instead. Mixing these
+ * up would silently misplace evidence across a midnight/week boundary - exactly the bug this split
+ * exists to prevent. ({@code problem_progress.completed_at} is deliberately not used by this class at
+ * all - see {@link #uniqueCompletedProblems}.)
  *
  * <h2>Partial periods</h2>
  * Every query's upper bound is {@code cutoff}, never {@code window.end()}: a snapshot captured before
@@ -57,22 +57,20 @@ public class ProgressSnapshotService {
 
     private final ReviewHistoryRepository reviewHistoryRepository;
     private final ProblemAttemptRepository problemAttemptRepository;
-    private final ProblemProgressRepository problemProgressRepository;
     private final InterviewMockRepository interviewMockRepository;
     private final LocalProgressSnapshotRepository snapshotRepository;
     private final Clock clock;
 
     public ProgressSnapshotService() {
-        this(new ReviewHistoryRepository(), new ProblemAttemptRepository(), new ProblemProgressRepository(),
+        this(new ReviewHistoryRepository(), new ProblemAttemptRepository(),
                 new InterviewMockRepository(), new LocalProgressSnapshotRepository(), Clock.systemUTC());
     }
 
     ProgressSnapshotService(ReviewHistoryRepository reviewHistoryRepository, ProblemAttemptRepository problemAttemptRepository,
-                             ProblemProgressRepository problemProgressRepository, InterviewMockRepository interviewMockRepository,
+                             InterviewMockRepository interviewMockRepository,
                              LocalProgressSnapshotRepository snapshotRepository, Clock clock) {
         this.reviewHistoryRepository = reviewHistoryRepository;
         this.problemAttemptRepository = problemAttemptRepository;
-        this.problemProgressRepository = problemProgressRepository;
         this.interviewMockRepository = interviewMockRepository;
         this.snapshotRepository = snapshotRepository;
         this.clock = clock;
@@ -110,8 +108,9 @@ public class ProgressSnapshotService {
         LocalDateTime zoneEnd = cutoff.atZone(zone).toLocalDateTime();
 
         List<ReviewHistory> reviews = reviewHistoryRepository.findReviewedBetweenUtc(utcStart, utcEnd);
+        List<ReviewHistoryRepository.HintEvidence> hintEvidence = reviewHistoryRepository.findHintEvidenceBetweenUtc(utcStart, utcEnd);
         List<ProblemAttempt> attempts = problemAttemptRepository.findSubmittedBetweenUtc(utcStart, utcEnd);
-        int uniqueCompleted = problemProgressRepository.countSolvedBetween(zoneStart, zoneEnd);
+        int firstSuccessfulAttempts = problemAttemptRepository.countFirstSuccessfulAttemptsBetweenUtc(utcStart, utcEnd);
         List<Integer> mockScores = interviewMockRepository.findOverallScoresCompletedBetween(zoneStart, zoneEnd);
 
         List<MetricValue> metrics = new ArrayList<>();
@@ -119,11 +118,11 @@ public class ProgressSnapshotService {
         metrics.add(verifiedCorrectRate(reviews));
         metrics.add(selfRatedSuccessRate(reviews));
         metrics.add(legacyRatingFallbackSuccessRate(reviews));
-        metrics.add(hintFreeRate(reviews));
+        metrics.add(hintFreeRate(hintEvidence));
         metrics.add(problemAttempts(attempts));
         metrics.add(problemAccepted(attempts));
         metrics.add(problemSolvingSeconds(attempts));
-        metrics.add(uniqueCompletedProblems(uniqueCompleted));
+        metrics.add(uniqueCompletedProblems(firstSuccessfulAttempts));
         metrics.add(mockOverallScore(mockScores));
         return metrics;
     }
@@ -210,9 +209,24 @@ public class ProgressSnapshotService {
         return review.getRating() == ReviewRating.GOOD || review.getRating() == ReviewRating.EASY;
     }
 
-    private MetricValue hintFreeRate(List<ReviewHistory> reviews) {
-        long denominator = reviews.size();
-        long numerator = reviews.stream().filter(r -> !r.isHintUsed()).count();
+    /**
+     * {@code hint_used} alone cannot distinguish "the app recorded no hint was used" from "this row
+     * predates hint tracking and was defaulted to 0" (#183 review fix). Only rows with
+     * {@code hint_usage_recorded = 1} contribute to either the numerator or the denominator; a legacy
+     * row with unknown hint evidence is excluded from both, never counted as a known hint-free sample.
+     */
+    private MetricValue hintFreeRate(List<ReviewHistoryRepository.HintEvidence> hintEvidence) {
+        long denominator = 0;
+        long numerator = 0;
+        for (ReviewHistoryRepository.HintEvidence evidence : hintEvidence) {
+            if (!evidence.hintUsageRecorded()) {
+                continue;
+            }
+            denominator++;
+            if (!evidence.hintUsed()) {
+                numerator++;
+            }
+        }
         return rate("review.hint_free_rate", 1, numerator, denominator, MetricProvenance.LOCAL_RECORD, TimestampBasis.LEGACY_SQLITE_UTC);
     }
 
@@ -237,11 +251,23 @@ public class ProgressSnapshotService {
                 totalSeconds, attempts.size(), MetricProvenance.LOCAL_TIMER, TimestampBasis.LEGACY_SQLITE_UTC);
     }
 
-    // --- problem_progress-derived metric (LEGACY_LOCAL_ASSUMED_ZONE: Java LocalDateTime, zone-bounded) ---
+    // --- problem_attempts-derived metric (LEGACY_SQLITE_UTC) ---
 
-    private MetricValue uniqueCompletedProblems(int uniqueCompleted) {
-        return count("problem.unique_completed", 1, uniqueCompleted, 0,
-                MetricProvenance.LOCAL_RECORD, TimestampBasis.LEGACY_LOCAL_ASSUMED_ZONE);
+    /**
+     * #183 review fix: {@code problem_progress.completed_at} is mutable - every later successful
+     * re-attempt at an already-solved problem overwrites it with the real current time
+     * ({@code ProblemSolvingWorkspaceService#applyProgressForOutcome}), which would move a problem's
+     * completion into whichever window last happened to touch it. {@code problem_attempts} rows are
+     * append-only (never updated or deleted - see {@code ProblemAttemptRepository}), so the FIRST
+     * successful (AC/ACX) attempt's own {@code submitted_at} is immutable evidence of when a problem
+     * was first completed, and recomputing history can never move it. A problem marked SOLVED only via
+     * import or legacy data, with no matching timestamped attempt, simply never appears in this count
+     * for any window - unavailable, never fabricated - rather than being derived from the mutable
+     * progress row.
+     */
+    private MetricValue uniqueCompletedProblems(int firstSuccessfulAttemptsInWindow) {
+        return count("problem.unique_completed", 1, firstSuccessfulAttemptsInWindow, 0,
+                MetricProvenance.LEARNER_REPORTED_OUTCOME, TimestampBasis.LEGACY_SQLITE_UTC);
     }
 
     // --- interview_mock_runs-derived metric (LEGACY_LOCAL_ASSUMED_ZONE) ---

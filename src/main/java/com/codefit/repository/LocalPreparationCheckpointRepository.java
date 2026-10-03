@@ -35,8 +35,16 @@ import java.util.Optional;
  * revision (see {@code PreparationSnapshotWireStateRepository}): the wire object is keyed only by
  * profile (an evolving "latest readiness" stream spanning many days), so reusing this per-day revision
  * as the wire revision would let two different days each restart at revision 1 and collide on the wire.
+ *
+ * <p>The read-compare-write that assigns a revision runs inside {@link #REVISION_LOCK} (#183 review
+ * fix) for the same reason {@code LocalProgressSnapshotRepository} does: two threads on separate
+ * connections could otherwise both read the same existing revision before either commits and compute
+ * the same "next" revision independently, silently losing whichever one commits first.
  */
 public class LocalPreparationCheckpointRepository {
+
+    /** Serializes every read-compare-write revision assignment in this class; see the class Javadoc. */
+    private static final Object REVISION_LOCK = new Object();
 
     /** What {@link #save} did with a captured checkpoint. */
     public enum SaveOutcome {
@@ -53,20 +61,22 @@ public class LocalPreparationCheckpointRepository {
     }
 
     public SaveResult save(String profileId, LocalDate checkpointDateUtc, PreparationSnapshot snapshot) {
-        try (Connection connection = DatabaseConfig.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                SaveResult result = save(connection, profileId, checkpointDateUtc, snapshot);
-                connection.commit();
-                return result;
-            } catch (SQLException | RuntimeException exception) {
-                connection.rollback();
-                throw exception;
-            } finally {
-                connection.setAutoCommit(true);
+        synchronized (REVISION_LOCK) {
+            try (Connection connection = DatabaseConfig.getConnection()) {
+                connection.setAutoCommit(false);
+                try {
+                    SaveResult result = save(connection, profileId, checkpointDateUtc, snapshot);
+                    connection.commit();
+                    return result;
+                } catch (SQLException | RuntimeException exception) {
+                    connection.rollback();
+                    throw exception;
+                } finally {
+                    connection.setAutoCommit(true);
+                }
+            } catch (SQLException exception) {
+                throw new IllegalStateException("Unable to save local preparation checkpoint", exception);
             }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to save local preparation checkpoint", exception);
         }
     }
 

@@ -46,14 +46,16 @@ public final class MetricRegistry {
                     Set.of(MetricProvenance.MOCK_SELF_SCORE),
                     "mean interview_mock_runs.overall_score_percent completed in window"),
             new MetricDefinition("problem.unique_completed", 1, MetricUnit.COUNT, 0,
-                    Set.of(MetricProvenance.LOCAL_RECORD),
-                    "#183: distinct problem_progress rows with state = SOLVED and completed_at in window "
-                            + "(problem_id is UNIQUE in problem_progress, so repeated attempts, multiple roadmap "
-                            + "memberships, and re-import can never inflate this count)"),
+                    Set.of(MetricProvenance.LEARNER_REPORTED_OUTCOME),
+                    "#183 review fix: problems whose FIRST successful (AC/ACX) problem_attempts row falls in "
+                            + "window, counted via immutable MIN(submitted_at) per problem_id - never "
+                            + "problem_progress.completed_at, which later successful re-attempts overwrite "
+                            + "(see ProgressSnapshotService#uniqueCompletedProblems)"),
             new MetricDefinition("review.hint_free_rate", 1, MetricUnit.BASIS_POINTS, 10,
                     Set.of(MetricProvenance.LOCAL_RECORD),
-                    "#183: share of review_history rows (boss_battle = 0) with hint_used = 0 in window "
-                            + "(independence signal; hint_used is recorded directly by the app, not self-reported)"),
+                    "#183: share of review_history rows (boss_battle = 0) with hint_used = 0, restricted to "
+                            + "rows where hint_usage_recorded = 1 - a legacy row defaulted to hint_used = 0 before "
+                            + "hint tracking existed is never counted as a known hint-free sample"),
             new MetricDefinition("review.legacy_rating_fallback_success_rate", 1, MetricUnit.BASIS_POINTS, 10,
                     Set.of(MetricProvenance.LEGACY_SELF_RATING_FALLBACK),
                     "#183 review fix: legacy non-subjective review_history rows with no validation_result, graded "

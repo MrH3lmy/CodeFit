@@ -17,24 +17,37 @@ import java.util.Optional;
  * per call: reads the current (revision, fingerprint) for this object id and either reuses the
  * existing revision (fingerprint unchanged — an idempotent resend) or assigns the next one (fingerprint
  * changed, or no row yet), all inside one transaction.
+ *
+ * <p>The read-compare-write runs inside {@link #REVISION_LOCK} (#183 review fix), the same reason
+ * {@code LocalProgressSnapshotRepository}/{@code LocalPreparationCheckpointRepository} do: two threads
+ * on separate connections could otherwise both read the same (revision, fingerprint) before either
+ * commits and independently compute the same "next" revision. This is always called from inside
+ * {@code SnapshotPublicationService}'s own {@code synchronized (ContactService.PERMISSION_LOCK)} block,
+ * so the lock ordering here is always {@code PERMISSION_LOCK} (outer) then this one (inner), never the
+ * reverse - this class never tries to acquire {@code PERMISSION_LOCK} itself.
  */
 public class PreparationSnapshotWireStateRepository {
 
+    /** Serializes every read-compare-write revision assignment in this class; see the class Javadoc. */
+    private static final Object REVISION_LOCK = new Object();
+
     public long nextRevision(ObjectId objectId, byte[] bodyFingerprint) {
-        try (Connection connection = DatabaseConfig.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                long revision = nextRevision(connection, objectId, bodyFingerprint);
-                connection.commit();
-                return revision;
-            } catch (SQLException | RuntimeException exception) {
-                connection.rollback();
-                throw exception;
-            } finally {
-                connection.setAutoCommit(true);
+        synchronized (REVISION_LOCK) {
+            try (Connection connection = DatabaseConfig.getConnection()) {
+                connection.setAutoCommit(false);
+                try {
+                    long revision = nextRevision(connection, objectId, bodyFingerprint);
+                    connection.commit();
+                    return revision;
+                } catch (SQLException | RuntimeException exception) {
+                    connection.rollback();
+                    throw exception;
+                } finally {
+                    connection.setAutoCommit(true);
+                }
+            } catch (SQLException exception) {
+                throw new IllegalStateException("Unable to assign a preparation snapshot wire revision", exception);
             }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to assign a preparation snapshot wire revision", exception);
         }
     }
 

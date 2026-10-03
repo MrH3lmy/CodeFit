@@ -1,17 +1,14 @@
 package com.codefit.service;
 
 import com.codefit.config.DatabaseConfig;
-import com.codefit.model.ComplexityClass;
 import com.codefit.model.DifficultyLevel;
 import com.codefit.model.Problem;
 import com.codefit.model.ProblemAttempt;
-import com.codefit.model.ProblemProgress;
-import com.codefit.model.ProblemState;
 import com.codefit.model.ReviewHistory;
 import com.codefit.model.ReviewRating;
 import com.codefit.model.RoadmapEntry;
 import com.codefit.model.RoadmapStage;
-import com.codefit.model.SolvedWith;
+import com.codefit.model.SessionFinishOutcome;
 import com.codefit.model.SubmissionResult;
 import com.codefit.peer.protocol.ComparisonWindow;
 import com.codefit.peer.protocol.MetricAvailability;
@@ -22,7 +19,6 @@ import com.codefit.peer.snapshot.LocalProgressSnapshot;
 import com.codefit.repository.InterviewMockRepository;
 import com.codefit.repository.LocalProgressSnapshotRepository;
 import com.codefit.repository.ProblemAttemptRepository;
-import com.codefit.repository.ProblemProgressRepository;
 import com.codefit.repository.ProblemRepository;
 import com.codefit.repository.ReviewHistoryRepository;
 import com.codefit.repository.RoadmapEntryRepository;
@@ -67,7 +63,6 @@ class ProgressSnapshotServiceTest {
 
     private ReviewHistoryRepositoryHelper reviews;
     private ProblemAttemptRepository problemAttemptRepository;
-    private ProblemProgressRepository problemProgressRepository;
     private ProblemRepository problemRepository;
     private RoadmapEntryRepository roadmapEntryRepository;
 
@@ -90,7 +85,6 @@ class ProgressSnapshotServiceTest {
         }
         reviews = new ReviewHistoryRepositoryHelper();
         problemAttemptRepository = new ProblemAttemptRepository();
-        problemProgressRepository = new ProblemProgressRepository();
         problemRepository = new ProblemRepository();
         roadmapEntryRepository = new RoadmapEntryRepository();
     }
@@ -98,7 +92,7 @@ class ProgressSnapshotServiceTest {
     /** A fresh service whose trusted clock is fixed at {@code now} — never a caller-chosen {@code Instant} parameter. */
     private ProgressSnapshotService serviceAt(Instant now) {
         return new ProgressSnapshotService(new ReviewHistoryRepository(), new ProblemAttemptRepository(),
-                new ProblemProgressRepository(), new InterviewMockRepository(), new LocalProgressSnapshotRepository(),
+                new InterviewMockRepository(), new LocalProgressSnapshotRepository(),
                 Clock.fixed(now, ZoneOffset.UTC));
     }
 
@@ -171,7 +165,6 @@ class ProgressSnapshotServiceTest {
         insertAttempt(problemId, 1, SubmissionResult.WA, day.atTime(9, 0));
         insertAttempt(problemId, 2, SubmissionResult.AC, day.atTime(10, 0));
         insertAttempt(problemId, 3, SubmissionResult.ACX, day.atTime(10, 30)); // learner "re-accepted" the same problem
-        problemProgressRepository.save(solvedProgress(problemId, day.atTime(10, 0)));
 
         LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
 
@@ -187,7 +180,7 @@ class ProgressSnapshotServiceTest {
         long problemId = createProblem("P2");
         roadmapEntryRepository.save(new RoadmapEntry(problemId, RoadmapStage.A, 1, null, true, DifficultyLevel.EASY));
         roadmapEntryRepository.save(new RoadmapEntry(problemId, RoadmapStage.B, 1, null, true, DifficultyLevel.EASY));
-        problemProgressRepository.save(solvedProgress(problemId, day.atTime(10, 0)));
+        insertAttempt(problemId, 1, SubmissionResult.AC, day.atTime(10, 0));
 
         LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
 
@@ -200,18 +193,94 @@ class ProgressSnapshotServiceTest {
         LocalDate day = LocalDate.of(2026, 1, 15);
         ComparisonWindow window = ComparisonWindow.day(day, UTC);
         long problemId = createProblem("P3");
-        problemProgressRepository.save(solvedProgress(problemId, day.atTime(10, 0)));
+        insertAttempt(problemId, 1, SubmissionResult.AC, day.atTime(10, 0));
 
         // A re-import looks the problem up by its natural key instead of inserting a new row.
         Optional<Problem> reImported = problemRepository.findByPlatformAndExternalCode("JUNIOR", "P3");
         assertTrue(reImported.isPresent());
         assertEquals(problemId, reImported.get().getId(), "re-import resolves to the SAME problem row");
-        // Progress already exists for this problem_id; a well-behaved importer never inserts a second
-        // problem_progress row for it (problem_id is UNIQUE), so nothing more to do here except confirm
-        // the count is still exactly one.
+        // problem_attempts has UNIQUE(problem_id, attempt_number), so a well-behaved re-importer that
+        // recomputes the next attempt number from existing rows never inserts a duplicate for it -
+        // nothing more to do here except confirm the count is still exactly one.
 
         LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
         assertEquals(1, metric(snapshot, "problem.unique_completed").value());
+    }
+
+    @Test
+    void laterSuccessfulReAttemptsNeverMoveAProblemsCompletionThroughHistory() {
+        // The exact production bug: ProblemSolvingWorkspaceService#applyProgressForOutcome
+        // overwrites problem_progress.completed_at on every later successful finish, which used to
+        // move problem.unique_completed out of the day it actually first happened on and into
+        // whichever day last touched the row. problem_attempts is append-only, so the FIRST AC/ACX's
+        // own submitted_at is what must anchor this metric instead.
+        long problemId = createProblem("REATTEMPT");
+        LocalDate monday = LocalDate.of(2026, 1, 12);
+        LocalDate tuesday = monday.plusDays(1);
+        insertAttempt(problemId, 1, SubmissionResult.AC, monday.atTime(10, 0));
+        insertAttempt(problemId, 2, SubmissionResult.AC, tuesday.atTime(10, 0)); // a later, genuinely real re-solve
+
+        ComparisonWindow mondayWindow = ComparisonWindow.day(monday, UTC);
+        ComparisonWindow tuesdayWindow = ComparisonWindow.day(tuesday, UTC);
+        Instant afterBoth = tuesday.atTime(23, 0).atZone(UTC).toInstant();
+
+        LocalProgressSnapshot mondaySnapshot = serviceAt(afterBoth).capture(mondayWindow).snapshot();
+        LocalProgressSnapshot tuesdaySnapshot = serviceAt(afterBoth).capture(tuesdayWindow).snapshot();
+
+        assertEquals(1, metric(mondaySnapshot, "problem.unique_completed").value(),
+                "the completion stays on Monday, where the FIRST successful attempt actually happened");
+        assertEquals(0, metric(tuesdaySnapshot, "problem.unique_completed").value(),
+                "Tuesday's re-solve of an already-completed problem must not count as a second completion");
+        assertEquals(1, metric(tuesdaySnapshot, "problem.attempts").value(), "Tuesday's own attempt volume still increases");
+        assertEquals(1, metric(tuesdaySnapshot, "problem.accepted").value(), "Tuesday's own accepted volume still increases");
+    }
+
+    @Test
+    void productionWorkspaceFlowNeverMovesHistoricalCompletionOnALaterReAttempt() {
+        // Drives the actual, real ProblemSolvingWorkspaceService#finish flow (not a hand-inserted
+        // attempt row) - the exact code path the review identified as overwriting
+        // problem_progress.completed_at on every later successful finish
+        // (ProblemSolvingWorkspaceService#applyProgressForOutcome).
+        ProblemSolvingWorkspaceService workspaceService = new ProblemSolvingWorkspaceService();
+        long problemId = createProblem("WORKSPACE-REATTEMPT");
+        LocalDate monday = LocalDate.of(2026, 1, 12);
+        LocalDate tuesday = monday.plusDays(1);
+
+        ProblemAttempt first = workspaceService.finish(problemId, SessionFinishOutcome.ACCEPTED, null, "first solve").orElseThrow();
+        retimeAttemptAndProgress(problemId, first.id(), monday.atTime(10, 0));
+
+        // A genuine later re-solve through the real workflow: this DOES overwrite
+        // problem_progress.completed_at (confirmed by inspecting applyProgressForOutcome), which is
+        // exactly the mutation this metric must now be immune to.
+        ProblemAttempt second = workspaceService.finish(problemId, SessionFinishOutcome.ACCEPTED, null, "second solve").orElseThrow();
+        retimeAttemptAndProgress(problemId, second.id(), tuesday.atTime(10, 0));
+
+        Instant afterBoth = tuesday.atTime(23, 0).atZone(UTC).toInstant();
+        LocalProgressSnapshot mondaySnapshot = serviceAt(afterBoth).capture(ComparisonWindow.day(monday, UTC)).snapshot();
+        LocalProgressSnapshot tuesdaySnapshot = serviceAt(afterBoth).capture(ComparisonWindow.day(tuesday, UTC)).snapshot();
+
+        assertEquals(1, metric(mondaySnapshot, "problem.unique_completed").value(),
+                "the real workspace flow's first finish is what anchors the completion to Monday");
+        assertEquals(0, metric(tuesdaySnapshot, "problem.unique_completed").value(),
+                "the real workspace flow's later re-finish - which does overwrite problem_progress.completed_at - must not move the completion");
+        assertEquals(1, metric(tuesdaySnapshot, "problem.attempts").value(), "Tuesday's own attempt volume still increases");
+        assertEquals(1, metric(tuesdaySnapshot, "problem.accepted").value(), "Tuesday's own accepted volume still increases");
+    }
+
+    @Test
+    void aProblemSolvedOnlyThroughImportWithNoTimestampedAttemptNeverCountsAsACompletion() {
+        // A problem that arrived as already-SOLVED purely through import/legacy data, with no matching
+        // problem_attempts row at all, has no trustworthy first-completion timestamp - it must stay
+        // unavailable from this metric for every window, never fabricated into whichever window a
+        // caller happens to check.
+        long problemId = createProblem("LEGACY-NO-ATTEMPT");
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
+
+        assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
+                "no timestamped attempt evidence exists for problem " + problemId + " - it must not appear in any window");
     }
 
     @Test
@@ -288,6 +357,101 @@ class ProgressSnapshotServiceTest {
     }
 
     @Test
+    void legacyUnknownHintUsageNeverEntersTheNumeratorOrDenominator() {
+        long flashcardId = createFlashcard();
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        for (int i = 0; i < 10; i++) {
+            reviews.insertWithKnownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(1, i), false);
+        }
+        // If these wrongly entered the denominator (as "known, hint used"), the rate would drop from
+        // 10000 to 10/15 = 6667 basis points - a detectable, not merely cosmetic, pollution.
+        for (int i = 0; i < 5; i++) {
+            reviews.insertLegacyUnknownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(2, i));
+        }
+
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
+        MetricValue hintFree = metric(snapshot, "review.hint_free_rate");
+
+        assertEquals(10, hintFree.sampleSize(), "the 5 legacy unknown rows must never enter the denominator");
+        assertEquals(10_000, hintFree.value(), "10/10 known hint-free, unaffected by the legacy rows");
+    }
+
+    @Test
+    void aNewExplicitlyHintFreeReviewIncreasesBothNumeratorAndDenominator() {
+        long flashcardId = createFlashcard();
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        for (int i = 0; i < 9; i++) {
+            reviews.insertWithKnownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(1, i), false);
+        }
+        LocalProgressSnapshot before = serviceAt(day.atTime(12, 0).atZone(UTC).toInstant()).capture(window).snapshot();
+        assertEquals(MetricAvailability.INSUFFICIENT_DATA, metric(before, "review.hint_free_rate").availability(),
+                "only 9 known samples so far - below the minimum of 10");
+
+        reviews.insertWithKnownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(1, 9), false);
+        LocalProgressSnapshot after = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
+        MetricValue hintFree = metric(after, "review.hint_free_rate");
+
+        assertEquals(10, hintFree.sampleSize(), "denominator increased by exactly 1");
+        assertEquals(10_000, hintFree.value(), "the new review was hint-free, so the numerator increased by 1 too");
+    }
+
+    @Test
+    void aNewExplicitlyHintUsedReviewIncreasesTheDenominatorButNotTheNumerator() {
+        long flashcardId = createFlashcard();
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        for (int i = 0; i < 9; i++) {
+            reviews.insertWithKnownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(1, i), false);
+        }
+
+        reviews.insertWithKnownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(1, 9), true);
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
+        MetricValue hintFree = metric(snapshot, "review.hint_free_rate");
+
+        assertEquals(10, hintFree.sampleSize(), "denominator increased by 1 for the new known sample");
+        assertEquals(9_000, hintFree.value(), "9 of 10 are hint-free - the hint-used review never joins the numerator");
+    }
+
+    @Test
+    void onlyLegacyUnknownHintReviewsStaysInsufficientDataNeverAFabricatedHundredPercent() {
+        long flashcardId = createFlashcard();
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        for (int i = 0; i < 20; i++) {
+            reviews.insertLegacyUnknownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(1, i));
+        }
+
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
+        MetricValue hintFree = metric(snapshot, "review.hint_free_rate");
+
+        assertEquals(MetricAvailability.INSUFFICIENT_DATA, hintFree.availability(),
+                "20 legacy rows with unknown hint usage must never be reported as a measured rate");
+        assertEquals(0, hintFree.sampleSize());
+        assertEquals(0, hintFree.value(), "never a fabricated 100% (or any other value) from unknown evidence");
+    }
+
+    @Test
+    void mixedKnownAndUnknownHintReviewsSampleSizeReflectsOnlyKnownEvidence() {
+        long flashcardId = createFlashcard();
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        for (int i = 0; i < 12; i++) {
+            reviews.insertWithKnownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(1, i), i < 3);
+        }
+        for (int i = 0; i < 8; i++) {
+            reviews.insertLegacyUnknownHintUsage(flashcardId, ReviewRating.GOOD, day.atTime(2, i));
+        }
+
+        LocalProgressSnapshot snapshot = serviceAt(day.atTime(23, 0).atZone(UTC).toInstant()).capture(window).snapshot();
+        MetricValue hintFree = metric(snapshot, "review.hint_free_rate");
+
+        assertEquals(12, hintFree.sampleSize(), "the 8 unknown rows must never inflate the sample size");
+        assertEquals(7_500, hintFree.value(), "9 of 12 known reviews were hint-free");
+    }
+
+    @Test
     void missingEvidenceIsInsufficientDataNeverAMeasuredZero() {
         LocalDate day = LocalDate.of(2026, 1, 15);
         ComparisonWindow window = ComparisonWindow.day(day, UTC);
@@ -320,18 +484,17 @@ class ProgressSnapshotServiceTest {
     @Test
     void legacyZoneLocalColumnIsComparedInTheComparisonZoneNotUtc() {
         // Same window as above: local day 2026-01-15 in America/New_York = UTC [...T05:00Z, ...T05:00Z).
-        // problem_progress.completed_at is written as a naive LocalDateTime assumed to be zone-local.
+        // interview_mock_runs.completed_at is written as a naive LocalDateTime assumed to be zone-local.
         // 2026-01-16T02:00 "local" belongs to the NEXT local day and must be excluded - but a UTC-bound
         // comparison of the same raw string would wrongly include it (02:00 < the window's 05:00Z end).
         ZoneId zone = ZoneId.of("America/New_York");
         ComparisonWindow window = ComparisonWindow.day(LocalDate.of(2026, 1, 15), zone);
-        long problemId = createProblem("TZ1");
-        problemProgressRepository.save(solvedProgress(problemId, LocalDateTime.of(2026, 1, 16, 2, 0)));
+        insertMockRun(80, LocalDateTime.of(2026, 1, 16, 2, 0));
 
         Instant cutoff = LocalDateTime.of(2026, 1, 17, 0, 0).atZone(zone).toInstant();
         LocalProgressSnapshot snapshot = serviceAt(cutoff).capture(window).snapshot();
 
-        assertEquals(0, metric(snapshot, "problem.unique_completed").value(),
+        assertEquals(MetricAvailability.INSUFFICIENT_DATA, metric(snapshot, "mock.overall_score").availability(),
                 "a zone-local 02:00 on the next day must not be pulled into the previous local day");
     }
 
@@ -452,10 +615,42 @@ class ProgressSnapshotServiceTest {
         }
     }
 
-    private ProblemProgress solvedProgress(long problemId, LocalDateTime completedAt) {
-        return new ProblemProgress(0, problemId, ProblemState.SOLVED, null, SolvedWith.SELF, null,
-                null, null, null, (ComplexityClass) null, (ComplexityClass) null, null, null,
-                false, false, false, false, completedAt, completedAt);
+    /**
+     * Backdates a real {@code ProblemSolvingWorkspaceService#finish} result's {@code problem_attempts}
+     * row and the problem's (shared, overwritten-on-each-finish) {@code problem_progress} row to a
+     * fixed instant, so the production-path regression test above can place two real finishes on two
+     * different calendar days without waiting on the real wall clock.
+     */
+    private void retimeAttemptAndProgress(long problemId, long attemptId, LocalDateTime at) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            try (PreparedStatement statement = connection.prepareStatement("UPDATE problem_attempts SET submitted_at = ? WHERE id = ?")) {
+                statement.setString(1, at.toString());
+                statement.setLong(2, attemptId);
+                statement.executeUpdate();
+            }
+            try (PreparedStatement statement = connection.prepareStatement("UPDATE problem_progress SET completed_at = ? WHERE problem_id = ?")) {
+                statement.setString(1, at.toString());
+                statement.setLong(2, problemId);
+                statement.executeUpdate();
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Inserts a raw {@code interview_mock_runs} row with an explicit {@code completed_at}, for zone-boundary fixtures. */
+    private void insertMockRun(int overallScorePercent, LocalDateTime completedAt) {
+        try (Connection connection = DatabaseConfig.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "INSERT INTO interview_mock_runs (run_id, profile_id, mode, overall_score_percent, completed_at) "
+                             + "VALUES (?, 'fixture-profile', 'LIVE_CODING', ?, ?)")) {
+            statement.setString(1, "fixture-run-" + System.nanoTime());
+            statement.setInt(2, overallScorePercent);
+            statement.setString(3, completedAt.toString());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** Controls {@code review_history.reviewed_at}/{@code validation_result} explicitly for deterministic fixtures. */
@@ -482,6 +677,38 @@ class ProgressSnapshotServiceTest {
             ReviewHistory saved = repository.save(new ReviewHistory(0, flashcardId, rating, 0, 1, reviewedAtUtc, true, false,
                     null, null, null, false, null, null));
             setReviewedAt(saved.getId(), reviewedAtUtc);
+        }
+
+        /** A genuinely new review with known, explicit hint usage - exactly what {@code save()} always marks as recorded. */
+        void insertWithKnownHintUsage(long flashcardId, ReviewRating rating, LocalDateTime reviewedAtUtc, boolean hintUsed) {
+            ReviewHistory saved = repository.save(new ReviewHistory(0, flashcardId, rating, 0, 1, reviewedAtUtc, true, false,
+                    "EXACT", null, null, hintUsed, null, null));
+            setReviewedAt(saved.getId(), reviewedAtUtc);
+        }
+
+        /**
+         * Simulates a row that already existed before hint tracking was added: {@code save()} always
+         * marks hint usage as recorded, so this inserts normally and then forces
+         * {@code hint_usage_recorded} back to 0 directly - exactly what the additive
+         * {@code ALTER TABLE ... ADD COLUMN hint_usage_recorded INTEGER NOT NULL DEFAULT 0} migration
+         * does to every row that already existed when it ran, regardless of {@code hint_used}'s value.
+         */
+        void insertLegacyUnknownHintUsage(long flashcardId, ReviewRating rating, LocalDateTime reviewedAtUtc) {
+            ReviewHistory saved = repository.save(new ReviewHistory(0, flashcardId, rating, 0, 1, reviewedAtUtc, true, false,
+                    "EXACT", null, null, true, null, null));
+            setReviewedAt(saved.getId(), reviewedAtUtc);
+            markHintUsageUnknown(saved.getId());
+        }
+
+        private void markHintUsageUnknown(long id) {
+            try (Connection connection = DatabaseConfig.getConnection();
+                 PreparedStatement statement = connection.prepareStatement(
+                         "UPDATE review_history SET hint_usage_recorded = 0 WHERE id = ?")) {
+                statement.setLong(1, id);
+                statement.executeUpdate();
+            } catch (SQLException e) {
+                throw new IllegalStateException(e);
+            }
         }
 
         private void setReviewedAt(long id, LocalDateTime reviewedAtUtc) {

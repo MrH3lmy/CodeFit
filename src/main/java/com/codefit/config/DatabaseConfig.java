@@ -244,6 +244,13 @@ public final class DatabaseConfig {
         addColumnIfMissing(connection, "review_history", "hint_used", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "review_history", "session_id", "TEXT");
         addColumnIfMissing(connection, "review_history", "confidence", "TEXT");
+        // #183 review fix: hint_used alone cannot distinguish "the app recorded no hint was used"
+        // from "this row predates hint tracking and was defaulted". Adding this column backfills every
+        // row that already exists (whatever its hint_used value) to 0/unknown via the same ALTER TABLE
+        // DEFAULT mechanism this file already relies on everywhere else; only ReviewHistoryRepository's
+        // save() (the sole review_history insert path) explicitly marks a NEW row's hint evidence as
+        // known, going forward.
+        addColumnIfMissing(connection, "review_history", "hint_usage_recorded", "INTEGER NOT NULL DEFAULT 0");
     }
 
     private static void ensureUserProgressColumns(Connection connection) throws SQLException {

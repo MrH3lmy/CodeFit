@@ -35,8 +35,21 @@ import java.util.Optional;
  * {@code cutoff}'s epoch second, which let two real, distinct captures of the same window within the
  * same wall-clock second collide on one revision number — a signed update built from the second capture
  * could then be rejected by a receiver as a stale revision of the first).
+ *
+ * <p>The read-compare-write that assigns a revision runs inside {@link #REVISION_LOCK} (#183 review
+ * fix), the same in-process-mutual-exclusion pattern {@code ContactService.PERMISSION_LOCK} already
+ * established for CodeFit's single-writer model: two threads opening separate connections could
+ * otherwise both read the same existing revision before either commits (SQLite's own write-lock only
+ * serializes the commits themselves, not this method's read), each independently compute
+ * {@code existing + 1}, and the loser's commit would then silently overwrite the winner's content
+ * under a revision number that was never actually unique to it. One coarse, table-wide lock (rather
+ * than a lock per window) matches {@code PERMISSION_LOCK}'s own granularity and this app's single-user,
+ * low-concurrency reality.
  */
 public class LocalProgressSnapshotRepository {
+
+    /** Serializes every read-compare-write revision assignment in this class; see the class Javadoc. */
+    private static final Object REVISION_LOCK = new Object();
 
     /** What {@link #save} did with a captured snapshot. */
     public enum SaveOutcome {
@@ -57,20 +70,22 @@ public class LocalProgressSnapshotRepository {
      * persists it. The caller supplies no revision at all — only this repository ever decides one.
      */
     public SaveResult save(ComparisonWindow window, Instant cutoff, Instant capturedAt, List<MetricValue> metrics) {
-        try (Connection connection = DatabaseConfig.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                SaveResult result = save(connection, window, cutoff, capturedAt, metrics);
-                connection.commit();
-                return result;
-            } catch (SQLException | RuntimeException exception) {
-                connection.rollback();
-                throw exception;
-            } finally {
-                connection.setAutoCommit(true);
+        synchronized (REVISION_LOCK) {
+            try (Connection connection = DatabaseConfig.getConnection()) {
+                connection.setAutoCommit(false);
+                try {
+                    SaveResult result = save(connection, window, cutoff, capturedAt, metrics);
+                    connection.commit();
+                    return result;
+                } catch (SQLException | RuntimeException exception) {
+                    connection.rollback();
+                    throw exception;
+                } finally {
+                    connection.setAutoCommit(true);
+                }
+            } catch (SQLException exception) {
+                throw new IllegalStateException("Unable to save local progress snapshot", exception);
             }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to save local progress snapshot", exception);
         }
     }
 

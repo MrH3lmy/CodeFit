@@ -50,31 +50,6 @@ public class ProblemProgressRepository {
         }
     }
 
-    /**
-     * Distinct problems whose {@code state = SOLVED} and whose {@code completed_at} falls in
-     * {@code [startInclusive, endExclusive)}, both given as the window's bounds converted to a naive
-     * {@link LocalDateTime} <strong>in the comparison zone</strong> (#183: {@code completed_at} is
-     * written from Java {@code LocalDateTime.now()} with no offset — {@code LEGACY_LOCAL_ASSUMED_ZONE}
-     * — so it must be compared against zone-local bounds, never UTC bounds; see
-     * {@code com.codefit.peer.protocol.TimestampBasis}). {@code problem_id} is {@code UNIQUE} in this
-     * table, so this count can never double-count a repeated attempt, a problem shared by several
-     * roadmap stages, or a re-import: there is only ever one row per problem to begin with.
-     */
-    public int countSolvedBetween(LocalDateTime startInclusive, LocalDateTime endExclusive) {
-        String sql = "SELECT COUNT(*) FROM problem_progress WHERE state = 'SOLVED' AND completed_at IS NOT NULL "
-                + "AND datetime(completed_at) >= datetime(?) AND datetime(completed_at) < datetime(?)";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, startInclusive.toString());
-            statement.setString(2, endExclusive.toString());
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next() ? resultSet.getInt(1) : 0;
-            }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to count solved problems in window", exception);
-        }
-    }
-
     /** Every progress row, for dashboard aggregation (#147) — loaded once rather than per-problem. */
     public List<ProblemProgress> findAll() {
         String sql = "SELECT * FROM problem_progress";

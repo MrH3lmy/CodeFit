@@ -26,6 +26,9 @@ public record ComparisonWindow(WindowKind kind, LocalDate localStartDate, String
     private static final Duration MAX_DAY = Duration.ofHours(26);
     private static final Duration MIN_WEEK = Duration.ofHours(7 * 24 - 2);
     private static final Duration MAX_WEEK = Duration.ofHours(7 * 24 + 2);
+    /** Bounds exactly the predefined Study Match duration set (15/30/60 minutes) - see {@link MatchDuration}. */
+    private static final Duration MIN_MATCH = Duration.ofMinutes(15);
+    private static final Duration MAX_MATCH = Duration.ofMinutes(60);
 
     public ComparisonWindow {
         Objects.requireNonNull(kind, "kind");
@@ -34,19 +37,30 @@ public record ComparisonWindow(WindowKind kind, LocalDate localStartDate, String
         ProtocolTime.toWireMillis(Objects.requireNonNull(start, "start"), "window start");
         ProtocolTime.toWireMillis(Objects.requireNonNull(end, "end"), "window end");
         Duration length = Duration.between(start, end);
-        if (kind == WindowKind.DAY) {
-            if (weekStart != null) {
-                throw new IllegalArgumentException("A DAY window carries no week start.");
+        switch (kind) {
+            case DAY -> {
+                if (weekStart != null) {
+                    throw new IllegalArgumentException("A DAY window carries no week start.");
+                }
+                if (length.compareTo(MIN_DAY) < 0 || length.compareTo(MAX_DAY) > 0) {
+                    throw new IllegalArgumentException("DAY window length out of bounds: " + length);
+                }
             }
-            if (length.compareTo(MIN_DAY) < 0 || length.compareTo(MAX_DAY) > 0) {
-                throw new IllegalArgumentException("DAY window length out of bounds: " + length);
+            case WEEK -> {
+                if (weekStart == null || localStartDate.getDayOfWeek() != weekStart) {
+                    throw new IllegalArgumentException("A WEEK window must start on its declared week-start day.");
+                }
+                if (length.compareTo(MIN_WEEK) < 0 || length.compareTo(MAX_WEEK) > 0) {
+                    throw new IllegalArgumentException("WEEK window length out of bounds: " + length);
+                }
             }
-        } else {
-            if (weekStart == null || localStartDate.getDayOfWeek() != weekStart) {
-                throw new IllegalArgumentException("A WEEK window must start on its declared week-start day.");
-            }
-            if (length.compareTo(MIN_WEEK) < 0 || length.compareTo(MAX_WEEK) > 0) {
-                throw new IllegalArgumentException("WEEK window length out of bounds: " + length);
+            case MATCH -> {
+                if (weekStart != null) {
+                    throw new IllegalArgumentException("A MATCH window carries no week start.");
+                }
+                if (length.compareTo(MIN_MATCH) < 0 || length.compareTo(MAX_MATCH) > 0) {
+                    throw new IllegalArgumentException("MATCH window length out of bounds: " + length);
+                }
             }
         }
     }
@@ -65,6 +79,21 @@ public record ComparisonWindow(WindowKind kind, LocalDate localStartDate, String
         LocalDate first = anyDayInWeek.with(TemporalAdjusters.previousOrSame(weekStart));
         return new ComparisonWindow(WindowKind.WEEK, first, zone.getId(), weekStart,
                 first.atStartOfDay(zone).toInstant(), first.plusWeeks(1).atStartOfDay(zone).toInstant());
+    }
+
+    /**
+     * The explicit interval {@code [startedAt, endsAt)} a Study Match's two participants already
+     * agreed on (the challenger's chosen duration, fixed to an authoritative instant by the
+     * opponent's acceptance - see {@code MatchResponse}). Unlike {@link #day}/{@link #week}, this is
+     * never independently recomputed from a local date and zone: both participants construct this
+     * same window from the identical shared instants, so {@code localStartDate}/{@code zoneId} here
+     * are canonical display metadata only (this device's own UTC date, fixed regardless of either
+     * participant's real timezone) - never authoritative, exactly like every other window kind's own
+     * UTC start/end.
+     */
+    public static ComparisonWindow match(Instant startedAt, Instant endsAt) {
+        LocalDate canonicalDate = startedAt.atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        return new ComparisonWindow(WindowKind.MATCH, canonicalDate, "UTC", null, startedAt, endsAt);
     }
 
     public Duration length() {

@@ -24,7 +24,11 @@ public enum MessageType implements WireCode {
     /** Reserved for #186: private challenge/group manifest. */
     CHALLENGE_MANIFEST(7, false, SharingScope.CHALLENGE_PARTICIPATION),
     /** Reserved for #188: opaque ciphertext carried by a consenting forwarding peer. */
-    FORWARDED_CIPHERTEXT(8, false, null);
+    FORWARDED_CIPHERTEXT(8, false, null),
+    /** Challenger proposes a 1-v-1 Study Match of one predefined duration. Control (no scope). */
+    MATCH_INVITATION(9, true, null),
+    /** Opponent's one-shot accept/decline of a {@code MATCH_INVITATION}. Control (no scope). */
+    MATCH_RESPONSE(10, true, null);
 
     private final int code;
     private final boolean implementedInV1_0;

@@ -6,7 +6,8 @@ package com.codefit.peer.protocol;
  * this hierarchy (enforced by {@code PeerVisibleContractTest}).
  */
 public sealed interface MessageBody
-        permits IdentityBinding, SocialProfileCard, ProgressSummary, PreparationSnapshot, ConsentRevision, Tombstone {
+        permits IdentityBinding, SocialProfileCard, ProgressSummary, PreparationSnapshot, ConsentRevision, Tombstone,
+        MatchInvitation, MatchResponse {
 
     MessageType type();
 

@@ -521,7 +521,25 @@ public final class SnapshotComparisonEngine {
         return fallbackCapturedAt;
     }
 
+    /**
+     * A Study Match ({@code WindowKind.MATCH}) window is never independently computed by each side
+     * the way a {@code DAY}/{@code WEEK} window is from a local date and zone - both participants
+     * already converged on the identical {@code startedAt}/{@code endsAt} instants before either one
+     * ever captures a snapshot against it (see {@code ComparisonWindow#match}'s own javadoc), and
+     * {@link #compareProgress} has already rejected a UTC-interval mismatch before this method is
+     * even reached. The DAY/WEEK "equal elapsed time" requirement below exists specifically to make
+     * two <em>independently anchored</em> partial periods comparable; a match's two partial captures
+     * are already anchored to the exact same instant, so requiring their cutoffs to also be
+     * byte-identical would reject "my progress just now" against "your progress from your last
+     * refresh" merely because they were captured a few milliseconds (or minutes) apart - exactly the
+     * false "incompatible windows" PR B's own daily comparison already tolerates by design, but which
+     * this feature's own brief explicitly asks not to reproduce for an active match. A match is
+     * therefore always aligned once the window-kind/UTC-interval checks above already passed.
+     */
     private static Alignment alignment(ProgressSummary left, ProgressSummary right) {
+        if (left.window().kind() == WindowKind.MATCH) {
+            return new Alignment(true, Reason.NONE);
+        }
         boolean leftComplete = left.periodComplete();
         boolean rightComplete = right.periodComplete();
         if (leftComplete && rightComplete) {

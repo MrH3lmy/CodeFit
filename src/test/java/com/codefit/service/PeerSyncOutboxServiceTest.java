@@ -56,7 +56,8 @@ class PeerSyncOutboxServiceTest {
             new com.codefit.repository.PublicationOutboxRepository(), new com.codefit.repository.PublicationWireStateRepository(),
             contactService,
             new SnapshotPublicationService(contactService, new ProgressSnapshotService(), new PreparationSnapshotCaptureService(),
-                    new com.codefit.repository.PreparationSnapshotWireStateRepository(), Clock.fixed(NOW, ZoneOffset.UTC)));
+                    new com.codefit.repository.PreparationSnapshotWireStateRepository(), Clock.fixed(NOW, ZoneOffset.UTC)),
+            new com.codefit.repository.MatchRepository());
 
     private UnlockedIdentity identity;
     private long writerEpoch;
@@ -231,7 +232,8 @@ class PeerSyncOutboxServiceTest {
         return new PeerSyncOutboxService(new com.codefit.repository.PublicationOutboxRepository(),
                 new com.codefit.repository.PublicationWireStateRepository(), contactService,
                 new SnapshotPublicationService(contactService, new ProgressSnapshotService(), new PreparationSnapshotCaptureService(),
-                        new com.codefit.repository.PreparationSnapshotWireStateRepository(), Clock.fixed(now, ZoneOffset.UTC)));
+                        new com.codefit.repository.PreparationSnapshotWireStateRepository(), Clock.fixed(now, ZoneOffset.UTC)),
+                new com.codefit.repository.MatchRepository());
     }
 
     @Test
@@ -276,5 +278,82 @@ class PeerSyncOutboxServiceTest {
     private SignedEnvelope consentEnvelope(List<PeerSyncOutboxService.Batched> batch) {
         return batch.stream().filter(b -> b.envelope().body().type() == MessageType.CONSENT_REVISION)
                 .findFirst().orElseThrow().envelope();
+    }
+
+    // --- Study Match lifecycle envelopes (PR C) ---
+
+    private final com.codefit.repository.MatchRepository matchRepository = new com.codefit.repository.MatchRepository();
+
+    private Optional<SignedEnvelope> matchEnvelope(List<PeerSyncOutboxService.Batched> batch, MessageType type) {
+        return batch.stream().filter(b -> b.envelope().body().type() == type).findFirst().map(PeerSyncOutboxService.Batched::envelope);
+    }
+
+    @Test
+    void aPendingChallengerInvitationIsOfferedAsAMatchInvitationEnvelope() {
+        com.codefit.peer.protocol.ObjectId matchId = randomMatchId(100);
+        matchRepository.createChallengerInvitation(contactId, matchId, com.codefit.peer.protocol.MatchDuration.FIFTEEN_MINUTES, NOW);
+
+        List<PeerSyncOutboxService.Batched> batch = outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW);
+
+        SignedEnvelope envelope = matchEnvelope(batch, MessageType.MATCH_INVITATION).orElseThrow();
+        assertEquals(matchId, envelope.header().objectId());
+        assertEquals(com.codefit.peer.protocol.MatchDuration.FIFTEEN_MINUTES,
+                ((com.codefit.peer.protocol.MatchInvitation) envelope.body()).duration());
+    }
+
+    @Test
+    void aCancelledChallengerInvitationIsOfferedAsATombstoneNotAnInvitation() {
+        com.codefit.peer.protocol.ObjectId matchId = randomMatchId(101);
+        matchRepository.createChallengerInvitation(contactId, matchId, com.codefit.peer.protocol.MatchDuration.FIFTEEN_MINUTES, NOW);
+        matchRepository.recordLocalCancellation(matchId, NOW);
+
+        List<PeerSyncOutboxService.Batched> batch = outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW);
+
+        assertTrue(matchEnvelope(batch, MessageType.MATCH_INVITATION).isEmpty());
+        SignedEnvelope tombstone = matchEnvelope(batch, MessageType.TOMBSTONE).orElseThrow();
+        assertEquals(matchId, tombstone.header().objectId());
+        assertEquals(MessageType.MATCH_INVITATION, ((Tombstone) tombstone.body()).targetType());
+    }
+
+    @Test
+    void anActiveOpponentMatchIsOfferedAsAnAcceptedMatchResponse() throws Exception {
+        com.codefit.peer.protocol.ObjectId matchId = randomMatchId(102);
+        createOpponentRow(matchId, com.codefit.peer.protocol.MatchDuration.FIFTEEN_MINUTES);
+        matchRepository.recordLocalResponse(matchId, true, NOW, NOW);
+
+        List<PeerSyncOutboxService.Batched> batch = outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW);
+
+        SignedEnvelope envelope = matchEnvelope(batch, MessageType.MATCH_RESPONSE).orElseThrow();
+        var response = (com.codefit.peer.protocol.MatchResponse) envelope.body();
+        assertTrue(response.accepted());
+        assertEquals(NOW, response.startedAt());
+    }
+
+    @Test
+    void aCompletedMatchIsNoLongerOfferedAtAll() throws Exception {
+        com.codefit.peer.protocol.ObjectId matchId = randomMatchId(103);
+        createOpponentRow(matchId, com.codefit.peer.protocol.MatchDuration.FIFTEEN_MINUTES);
+        matchRepository.recordLocalResponse(matchId, true, NOW, NOW);
+        matchRepository.completeIfPastEndsAt(matchId, NOW.plus(Duration.ofHours(1)));
+
+        List<PeerSyncOutboxService.Batched> batch = outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW);
+
+        assertTrue(matchEnvelope(batch, MessageType.MATCH_RESPONSE).isEmpty());
+        assertTrue(matchEnvelope(batch, MessageType.MATCH_INVITATION).isEmpty());
+    }
+
+    /** Creates a local OPPONENT row directly - the test-side equivalent of "I just received an invitation". */
+    private void createOpponentRow(com.codefit.peer.protocol.ObjectId matchId, com.codefit.peer.protocol.MatchDuration duration)
+            throws Exception {
+        try (var connection = com.codefit.config.DatabaseConfig.getConnection()) {
+            matchRepository.applyReceivedInvitation(connection, contactId, matchId, duration, NOW);
+        }
+    }
+
+    private static com.codefit.peer.protocol.ObjectId randomMatchId(int seed) {
+        byte[] bytes = new byte[com.codefit.peer.protocol.ObjectId.LENGTH];
+        bytes[0] = (byte) seed;
+        bytes[com.codefit.peer.protocol.ObjectId.LENGTH - 1] = (byte) (seed >>> 8);
+        return new com.codefit.peer.protocol.ObjectId(bytes);
     }
 }

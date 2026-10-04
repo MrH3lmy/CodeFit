@@ -47,7 +47,21 @@ public record ProgressSummary(ComparisonWindow window, Instant cutoff, List<Metr
 
     @Override
     public SharingScope requiredScope() {
-        return window.kind() == WindowKind.DAY ? SharingScope.DAILY_SUMMARY : SharingScope.WEEKLY_SUMMARY;
+        return requiredScopeFor(window.kind());
+    }
+
+    /**
+     * Shared with {@code SnapshotPublicationService}'s own pre-aggregation fail-fast check, so the
+     * two can never drift: {@code DAY}/{@code WEEK} share the pre-#187 scopes, and {@code MATCH}
+     * (1-v-1 Study Match) uses its own scope, granted automatically on match acceptance rather than
+     * through a separate manual toggle.
+     */
+    public static SharingScope requiredScopeFor(WindowKind kind) {
+        return switch (kind) {
+            case DAY -> SharingScope.DAILY_SUMMARY;
+            case WEEK -> SharingScope.WEEKLY_SUMMARY;
+            case MATCH -> SharingScope.MATCH_PARTICIPATION;
+        };
     }
 
     @Override

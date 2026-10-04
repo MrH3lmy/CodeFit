@@ -1,17 +1,24 @@
 package com.codefit.controller;
 
+import com.codefit.peer.comparison.SnapshotComparisonEngine;
 import com.codefit.peer.identity.Contact;
 import com.codefit.peer.identity.ContactAddress;
+import com.codefit.peer.identity.ContactPermission;
 import com.codefit.peer.identity.LocalIdentitySummary;
+import com.codefit.peer.identity.PermissionGrant;
 import com.codefit.peer.invitation.InvitationCodec;
 import com.codefit.peer.invitation.SignedInvitation;
 import com.codefit.peer.identity.IdentityFingerprint;
+import com.codefit.peer.protocol.ComparisonWindow;
+import com.codefit.peer.protocol.SharingScope;
 import com.codefit.peer.transport.ConnectionOutcome;
 import com.codefit.peer.transport.PeerAddress;
 import com.codefit.peer.transport.RetryPolicy;
 import com.codefit.service.ContactService;
 import com.codefit.service.IdentityService;
 import com.codefit.service.NetworkingService;
+import com.codefit.service.PeerComparisonService;
+import com.codefit.service.PeerSyncOutboxService;
 import com.codefit.ui.PeerConnectionPresenter;
 import com.codefit.ui.PeerDialGate;
 import com.codefit.ui.PeerSessionHolder;
@@ -30,8 +37,12 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -113,6 +124,12 @@ public class PeerController {
     private final NetworkingService networkingService;
     private final ContactService contactService;
     private final PeerConnectionPresenter presenter;
+    /** Orchestrates the read-only "compare today's progress" side only - never touches sync
+     *  internals, {@code PeerConnection}, or {@code UnlockedIdentity} (see its own javadoc). */
+    private final PeerComparisonService comparisonService;
+    /** The existing #184 outbox model "Share Today's Progress" approves today's window into -
+     *  never a new publication mechanism. */
+    private final PeerSyncOutboxService outboxService;
 
     /**
      * Ensures at most one manual dial per contact is ever in flight from this UI at a time - see
@@ -127,16 +144,25 @@ public class PeerController {
 
     public PeerController() {
         this(new IdentityService(), PeerSessionHolder.networkingService(), new ContactService(), PeerSessionHolder.presenter(),
-                PeerSessionHolder.dialGate());
+                PeerSessionHolder.dialGate(), new PeerComparisonService(), new PeerSyncOutboxService());
     }
 
     PeerController(IdentityService identityService, NetworkingService networkingService, ContactService contactService,
                     PeerConnectionPresenter presenter, PeerDialGate dialGate) {
+        this(identityService, networkingService, contactService, presenter, dialGate,
+                new PeerComparisonService(), new PeerSyncOutboxService());
+    }
+
+    PeerController(IdentityService identityService, NetworkingService networkingService, ContactService contactService,
+                    PeerConnectionPresenter presenter, PeerDialGate dialGate, PeerComparisonService comparisonService,
+                    PeerSyncOutboxService outboxService) {
         this.identityService = identityService;
         this.networkingService = networkingService;
         this.contactService = contactService;
         this.presenter = presenter;
         this.dialGate = dialGate;
+        this.comparisonService = comparisonService;
+        this.outboxService = outboxService;
     }
 
     @FXML
@@ -382,7 +408,14 @@ public class PeerController {
         Label statusLabel = new Label(status);
         statusLabel.getStyleClass().add("problem-row-subtitle");
         statusLabel.setWrapText(true);
-        VBox textColumn = new VBox(2, nameLabel, statusLabel);
+        // Appended after statusLabel (index 1), never replacing it - PeerControllerTest's own
+        // rowStatusLabel helper reads index 1 directly and must keep working unchanged.
+        Label comparisonResultLabel = new Label();
+        comparisonResultLabel.getStyleClass().add("dashboard-card-helper");
+        comparisonResultLabel.setWrapText(true);
+        comparisonResultLabel.setVisible(false);
+        comparisonResultLabel.setManaged(false);
+        VBox textColumn = new VBox(2, nameLabel, statusLabel, comparisonResultLabel);
         textColumn.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(textColumn, Priority.ALWAYS);
 
@@ -401,10 +434,127 @@ public class PeerController {
             actionButton.setOnAction(event -> connectTo(contact));
         }
 
-        HBox row = new HBox(10, textColumn, actionButton);
+        // Appended after actionButton (index 1), never before it - PeerControllerTest's own
+        // fireConnectButton helper fires index 1 directly and must keep firing the same button.
+        Button shareButton = new Button("Share Today's Progress");
+        shareButton.setOnAction(event -> shareTodaysProgress(contact));
+        Button compareButton = new Button("Compare Today's Progress");
+        compareButton.setOnAction(event -> compareTodaysProgress(contact, comparisonResultLabel));
+
+        HBox row = new HBox(10, textColumn, actionButton, shareButton, compareButton);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setMaxWidth(Double.MAX_VALUE);
         return row;
+    }
+
+    /**
+     * Grants {@link SharingScope#DAILY_SUMMARY} (merging into, never replacing, any scopes already
+     * granted - {@code ContactService.updatePermissions} itself always replaces the complete grant,
+     * mirroring {@code ConsentRevision}) and approves today's real {@link ComparisonWindow} into the
+     * existing #184 outbox model. {@code historicalWindowDays} is raised to at least 1 only if it
+     * was not already enough: a default/{@code null} grant otherwise anchors history at {@code
+     * ContactPermission.updatedAt()}, which would exclude today's own window start whenever this
+     * grant happens after local midnight. If a connection to this contact is already live, also
+     * triggers {@link NetworkingService#syncOutboxNow} so the peer receives it immediately rather
+     * than waiting for a future reconnect - best-effort: a failure here (the connection drops mid-
+     * send, say) never fails this action, since the approval itself is already durable and the next
+     * automatic connection-established send will simply resend it.
+     */
+    private void shareTodaysProgress(Contact contact) {
+        runPeerAction(() -> {
+            Instant now = now();
+            Optional<ContactPermission> existing = contactService.permissionsFor(contact.id());
+            List<SharingScope> scopes = existing.map(ContactPermission::scopes).orElse(List.of());
+            List<SharingScope> mergedScopes;
+            if (scopes.contains(SharingScope.DAILY_SUMMARY)) {
+                mergedScopes = scopes;
+            } else {
+                mergedScopes = new ArrayList<>(scopes);
+                mergedScopes.add(SharingScope.DAILY_SUMMARY);
+            }
+            Integer historicalWindowDays = existing.map(ContactPermission::historicalWindowDays).orElse(null);
+            if (historicalWindowDays == null || historicalWindowDays < 1) {
+                historicalWindowDays = 1;
+            }
+            Instant expiresAt = existing.map(ContactPermission::expiresAt).orElse(null);
+            boolean allowForwarding = existing.map(ContactPermission::allowForwarding).orElse(false);
+            contactService.updatePermissions(contact.id(),
+                    new PermissionGrant(mergedScopes, historicalWindowDays, expiresAt, allowForwarding), now);
+
+            ZoneId zone = ZoneId.systemDefault();
+            ComparisonWindow todayWindow = ComparisonWindow.day(LocalDate.now(zone), zone);
+            outboxService.approveProgressSummary(contact.id(), todayWindow, now);
+
+            if (networkingService.activeConnection(contact.identityId()).isPresent()) {
+                try {
+                    networkingService.syncOutboxNow(contact.id());
+                } catch (IOException | RuntimeException alreadyApprovedWillRetryAutomatically) {
+                    // Best-effort - see this method's own javadoc.
+                }
+            }
+            return null;
+        }, (Void ignored) -> setStatus("Sharing today's progress with " + displayNameFor(contact) + "."));
+    }
+
+    /**
+     * Reads this device's own real today's progress and the named peer's already-synced/cached one
+     * (never manufactured here), delegating every actual decision to {@link PeerComparisonService}/
+     * {@code SnapshotComparisonEngine}. Never touches {@code PeerSyncSessionService}, {@code
+     * PeerConnection}, or {@code UnlockedIdentity} - this screen only ever calls the one narrow,
+     * already-reviewed comparison entry point.
+     */
+    private void compareTodaysProgress(Contact contact, Label resultLabel) {
+        runPeerAction(() -> comparisonService.compareTodayWith(contact.id()), comparison -> {
+            resultLabel.setText(describeComparison(comparison));
+            resultLabel.setVisible(true);
+            resultLabel.setManaged(true);
+        }, error -> {
+            resultLabel.setText("Comparison failed: " + messageOf(error));
+            resultLabel.setVisible(true);
+            resultLabel.setManaged(true);
+        });
+    }
+
+    /**
+     * Renders {@code SnapshotComparisonEngine}'s own real result as plain text - never a new scoring
+     * or "winner" computation, per this feature's own scope. The comparable/descriptive-only branch
+     * lists the engine's own {@code MetricComparison} rows as-is.
+     */
+    private static String describeComparison(SnapshotComparisonEngine.ProgressComparison comparison) {
+        return switch (comparison.state()) {
+            case UNAVAILABLE -> switch (comparison.reason()) {
+                case RIGHT_NOT_SHARED -> "Not shared by peer.";
+                case RIGHT_MISSING -> "Waiting for peer progress to sync.";
+                case RIGHT_STALE -> "Peer progress is stale.";
+                // A live "today" comparison's two independent captures only align when their elapsed-
+                // since-midnight durations are exactly equal (SnapshotComparisonEngine's own alignment
+                // rule - see its own test for why this is deliberate, not a bug); in practice this, not
+                // the top-level INCOMPATIBLE state below, is the common real shape of "incompatible
+                // windows" for two people studying at different moments of their day.
+                case CUTOFF_MISMATCH, COMPLETE_PARTIAL_MISMATCH ->
+                        "Today's windows are incompatible (" + comparison.reason() + ").";
+                default -> "Comparison unavailable (" + comparison.reason() + ").";
+            };
+            case INCOMPATIBLE -> "Today's windows are incompatible (" + comparison.reason() + ").";
+            case COMPARABLE, DESCRIPTIVE_ONLY -> describeMetrics(comparison);
+        };
+    }
+
+    private static String describeMetrics(SnapshotComparisonEngine.ProgressComparison comparison) {
+        StringBuilder text = new StringBuilder("Comparison available");
+        if (comparison.state() == SnapshotComparisonEngine.ComparisonState.DESCRIPTIVE_ONLY) {
+            text.append(" (descriptive only)");
+        }
+        text.append(':');
+        for (SnapshotComparisonEngine.MetricComparison metric : comparison.metrics()) {
+            text.append("\n - ").append(metric.metricId()).append(": ");
+            if (metric.left().isPresent() && metric.right().isPresent()) {
+                text.append(metric.left().get().value()).append(" vs ").append(metric.right().get().value());
+            } else {
+                text.append(metric.state()).append(" (").append(metric.reason()).append(')');
+            }
+        }
+        return text.toString();
     }
 
     private static String displayNameFor(Contact contact) {

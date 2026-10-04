@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -452,6 +453,82 @@ class NetworkingServiceSyncLifecycleTest {
             assertFalse(networkingService.isNetworkingEnabled());
             waitUntil(() -> aliveDaemonThreadsNamed("codefit-peer-sync-") == 0, "close() must leave no codefit-peer-sync-* thread alive");
             waitUntil(() -> aliveDaemonThreadsNamed("codefit-peer-dial-") == 0, "close() must leave no codefit-peer-dial-* thread alive");
+        }
+    }
+
+    @Test
+    @Timeout(10)
+    void syncOutboxNowRequiresNetworkingEnabled() throws Exception {
+        IdentityService identityService = new IdentityService();
+        identityService.createIdentity(PASSPHRASE, nowMillis());
+        ContactService contactService = new ContactService();
+        FakePeer fakePeer = FakePeer.create();
+        long contactId = pairWithFakePeer(contactService, fakePeer);
+
+        NetworkingService networkingService = new NetworkingService();
+        assertThrows(IllegalStateException.class, () -> networkingService.syncOutboxNow(contactId),
+                "syncOutboxNow must require networking to be enabled");
+    }
+
+    @Test
+    @Timeout(30)
+    void syncOutboxNowRequiresAnActiveConnection() throws Exception {
+        IdentityService identityService = new IdentityService();
+        identityService.createIdentity(PASSPHRASE, nowMillis());
+        Thread.sleep(1_100);
+        ContactService contactService = new ContactService();
+        FakePeer fakePeer = FakePeer.create();
+        long contactId = pairWithFakePeer(contactService, fakePeer);
+
+        NetworkingService networkingService = new NetworkingService();
+        try {
+            networkingService.enableNetworking(PASSPHRASE, 0, nowMillis());
+            assertThrows(IllegalStateException.class, () -> networkingService.syncOutboxNow(contactId),
+                    "syncOutboxNow must require an active authenticated connection to this contact");
+        } finally {
+            networkingService.close();
+        }
+    }
+
+    /**
+     * The scenario {@code syncOutboxNow} exists for: a connection already established with nothing
+     * new to send (the automatic establishment send has nothing eligible yet), new data approved
+     * afterward, and {@code syncOutboxNow} - not a reconnect, not a second receive loop - delivering
+     * it over that same still-live connection.
+     */
+    @Test
+    @Timeout(30)
+    void syncOutboxNowSendsDataApprovedAfterTheConnectionWasAlreadyEstablished() throws Exception {
+        IdentityService identityService = new IdentityService();
+        identityService.createIdentity(PASSPHRASE, nowMillis());
+        Thread.sleep(1_100);
+
+        ContactService contactService = new ContactService();
+        FakePeer fakePeer = FakePeer.create();
+        long contactId = pairWithFakePeer(contactService, fakePeer);
+        // Deliberately no permission grant yet - the automatic establishment send below must have
+        // nothing eligible to send, so any later consent frame can only have arrived via syncOutboxNow.
+
+        List<PeerConnection> accepted = new CopyOnWriteArrayList<>();
+        NetworkingService networkingService = new NetworkingService();
+        try (PeerListener fakePeerListener = new PeerListener(fakePeer.transport(), fakePeer.context(id -> KnownContactLookup.Status.PAIRED),
+                0, 5, 4, 4, 8, accepted::add, event -> { })) {
+            networkingService.enableNetworking(PASSPHRASE, 0, nowMillis());
+            DialOutcome outcome = networkingService.connectToContact(contactId, new PeerAddress("127.0.0.1", fakePeerListener.localPort()),
+                    RetryPolicy.standard(), new AtomicBoolean(false)).get(10, TimeUnit.SECONDS);
+            assertTrue(outcome.result().authenticated());
+            waitUntil(() -> accepted.size() >= 1, "fake peer never accepted");
+            PeerConnection fakePeerSideConnection = accepted.get(0);
+
+            // Now approve sharing, after the connection is already live.
+            contactService.updatePermissions(contactId, new PermissionGrant(List.of(SharingScope.SOCIAL_PROFILE), 1, null, false), nowMillis());
+            networkingService.syncOutboxNow(contactId);
+
+            SignedEnvelope received = receiveWithin(fakePeerSideConnection, Duration.ofSeconds(10));
+            assertTrue(received.body() instanceof ConsentRevision,
+                    "syncOutboxNow must deliver the newly-approved consent over the already-live connection");
+        } finally {
+            networkingService.close();
         }
     }
 }

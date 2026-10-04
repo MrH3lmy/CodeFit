@@ -250,21 +250,29 @@ public class ContactService {
      * {@code ConsentRevision}), recording a {@link ConsentChangeReason#GRANTED} or
      * {@link ConsentChangeReason#REVOKED} outbox event depending on whether the new scope set is empty.
      *
+     * <p>Synchronized on {@link PeerLocalWriteLock#MONITOR} (outer) around the pre-existing {@code
+     * PERMISSION_LOCK} (inner): "Share Today's Progress" (PR B) can call this while a contact's
+     * connection is already live, so this write can now run concurrently with that same connection's
+     * automatic receive loop - exactly the class of race {@link PeerLocalWriteLock} exists to close,
+     * now reached from a second, user-driven caller rather than only the automatic lifecycle.
+     *
      * @throws IllegalContactStateException the contact is not {@link TrustState#PAIRED}
      */
     public ContactPermission updatePermissions(long contactId, PermissionGrant grant, Instant now) {
-        synchronized (PERMISSION_LOCK) {
-            Contact contact = requireContact(contactId);
-            requireState(contact, TrustState.PAIRED);
-            long nextRevision = permissionRepository.find(contactId).map(p -> p.revision() + 1).orElse(1L);
-            ContactPermission updated = new ContactPermission(contactId, grant.scopes(), grant.historicalWindowDays(),
-                    grant.expiresAt(), grant.allowForwarding(), nextRevision, now);
-            ConsentChangeReason reason = updated.scopes().isEmpty() ? ConsentChangeReason.REVOKED : ConsentChangeReason.GRANTED;
-            Transactions.run(connection -> {
-                permissionRepository.save(connection, updated);
-                outboxRepository.record(connection, contactId, updated.scopes(), false, reason, now);
-            });
-            return updated;
+        synchronized (PeerLocalWriteLock.MONITOR) {
+            synchronized (PERMISSION_LOCK) {
+                Contact contact = requireContact(contactId);
+                requireState(contact, TrustState.PAIRED);
+                long nextRevision = permissionRepository.find(contactId).map(p -> p.revision() + 1).orElse(1L);
+                ContactPermission updated = new ContactPermission(contactId, grant.scopes(), grant.historicalWindowDays(),
+                        grant.expiresAt(), grant.allowForwarding(), nextRevision, now);
+                ConsentChangeReason reason = updated.scopes().isEmpty() ? ConsentChangeReason.REVOKED : ConsentChangeReason.GRANTED;
+                Transactions.run(connection -> {
+                    permissionRepository.save(connection, updated);
+                    outboxRepository.record(connection, contactId, updated.scopes(), false, reason, now);
+                });
+                return updated;
+            }
         }
     }
 

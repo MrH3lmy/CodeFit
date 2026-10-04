@@ -86,9 +86,19 @@ public class PeerSyncOutboxService {
         this.publicationService = publicationService;
     }
 
-    /** Approves one window for ongoing sharing with this contact. Idempotent. */
+    /**
+     * Approves one window for ongoing sharing with this contact. Idempotent.
+     *
+     * <p>Synchronized on {@link PeerLocalWriteLock#MONITOR}: "Share Today's Progress" (PR B) can call
+     * this while the contact's connection is already live, so this write can now run concurrently with
+     * that same connection's automatic outbox send ({@link PeerSyncSessionService#sendOutboxTo}, which
+     * reads this same table while already holding this monitor) and its automatic receive loop -
+     * exactly the class of race {@link PeerLocalWriteLock} exists to close.
+     */
     public PublicationOutboxEntry approveProgressSummary(long contactId, ComparisonWindow window, Instant now) {
-        return outboxRepository.approve(contactId, MessageType.PROGRESS_SUMMARY, encodeWindow(window), now);
+        synchronized (PeerLocalWriteLock.MONITOR) {
+            return outboxRepository.approve(contactId, MessageType.PROGRESS_SUMMARY, encodeWindow(window), now);
+        }
     }
 
     /** Approves one preparation profile for ongoing sharing with this contact. Idempotent. */

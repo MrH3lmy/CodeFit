@@ -353,6 +353,53 @@ class PeerControllerTest {
                 text -> text.contains("could not reach"));
     }
 
+    @Test
+    @Timeout(15)
+    void shareTodaysProgressGrantsDailySummaryAndApprovesTodaysOutboxEntry() throws Exception {
+        KeyPair strangerIdentity = KeyPairs.generate();
+        IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
+        Contact contact = contactService.registerPendingContact(strangerKey, "", now());
+        contact = contactService.acceptInvitation(contact.id(), now());
+        long contactId = contact.id();
+
+        runOnFxThreadAndWait(controller::initialize);
+        waitUntil(() -> fxRead(() -> controller.contactsBox.getChildren().size()), size -> size == 1);
+
+        runOnFxThreadAndWait(() -> shareButtonOf(controller.contactsBox.getChildren().get(0)).fire());
+
+        waitUntil(() -> contactService.permissionsFor(contactId)
+                .map(p -> p.scopes().contains(com.codefit.peer.protocol.SharingScope.DAILY_SUMMARY)).orElse(false),
+                granted -> granted);
+        com.codefit.peer.identity.ContactPermission permission = contactService.permissionsFor(contactId).orElseThrow();
+        assertTrue(permission.historicalWindowDays() != null && permission.historicalWindowDays() >= 1,
+                "historicalWindowDays must cover today's own window start regardless of what time of day the grant happens");
+
+        List<com.codefit.peer.sync.PublicationOutboxEntry> approved = new com.codefit.service.PeerSyncOutboxService().approvedFor(contactId);
+        assertTrue(approved.stream().anyMatch(entry -> entry.messageType() == com.codefit.peer.protocol.MessageType.PROGRESS_SUMMARY),
+                "Share Today's Progress must approve today's real progress summary into the existing outbox model");
+    }
+
+    @Test
+    @Timeout(15)
+    void compareTodaysProgressShowsNotSharedWhenThePeerNeverGrantedConsent() throws Exception {
+        identityService.createIdentity(PASSPHRASE.clone(), now());
+        KeyPair strangerIdentity = KeyPairs.generate();
+        IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
+        Contact contact = contactService.registerPendingContact(strangerKey, "", now());
+        contact = contactService.acceptInvitation(contact.id(), now());
+
+        runOnFxThreadAndWait(controller::initialize);
+        waitUntil(() -> fxRead(() -> controller.contactsBox.getChildren().size()), size -> size == 1);
+
+        runOnFxThreadAndWait(() -> compareButtonOf(controller.contactsBox.getChildren().get(0)).fire());
+
+        waitUntil(() -> fxRead(() -> comparisonResultLabel(controller.contactsBox.getChildren().get(0)).isVisible()), visible -> visible);
+        runOnFxThreadAndWait(() -> {
+            String text = comparisonResultLabel(controller.contactsBox.getChildren().get(0)).getText();
+            assertTrue(text.contains("Not shared"), "no consent was ever received from this peer: " + text);
+        });
+    }
+
     // --- helpers -------------------------------------------------------------------------------
 
     private void enableIdentityAndNetworking() throws Exception {
@@ -393,8 +440,23 @@ class PeerControllerTest {
         return (Label) ((javafx.scene.layout.VBox) ((HBox) row).getChildren().get(0)).getChildren().get(1);
     }
 
+    /** Appended after nameLabel/statusLabel (index 2) - see {@code PeerController.buildContactRow}. */
+    private static Label comparisonResultLabel(Node row) {
+        return (Label) ((javafx.scene.layout.VBox) ((HBox) row).getChildren().get(0)).getChildren().get(2);
+    }
+
     private static void fireConnectButton(Node row) {
         ((Button) ((HBox) row).getChildren().get(1)).fire();
+    }
+
+    /** Appended after the connect/disconnect button (index 2) - see {@code PeerController.buildContactRow}. */
+    private static Button shareButtonOf(Node row) {
+        return (Button) ((HBox) row).getChildren().get(2);
+    }
+
+    /** Appended after the share button (index 3) - see {@code PeerController.buildContactRow}. */
+    private static Button compareButtonOf(Node row) {
+        return (Button) ((HBox) row).getChildren().get(3);
     }
 
     private PeerController loadController(IdentityService identityService, NetworkingService networkingService,

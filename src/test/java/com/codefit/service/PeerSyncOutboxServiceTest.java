@@ -330,7 +330,7 @@ class PeerSyncOutboxServiceTest {
     }
 
     @Test
-    void aCompletedMatchIsNoLongerOfferedAtAll() throws Exception {
+    void aCompletedOpponentMatchStillResendsTheOriginalAcceptedResponseNotADecline() throws Exception {
         com.codefit.peer.protocol.ObjectId matchId = randomMatchId(103);
         createOpponentRow(matchId, com.codefit.peer.protocol.MatchDuration.FIFTEEN_MINUTES);
         matchRepository.recordLocalResponse(matchId, true, NOW, NOW);
@@ -338,7 +338,14 @@ class PeerSyncOutboxServiceTest {
 
         List<PeerSyncOutboxService.Batched> batch = outboxService.eligibleEnvelopesFor(contactId, identity, writerEpoch, NOW);
 
-        assertTrue(matchEnvelope(batch, MessageType.MATCH_RESPONSE).isEmpty());
+        // A challenger who never received the original acceptance must still be able to recover it
+        // after the opponent's own match has lazily completed - see MatchRepository#pendingOutboundFor
+        // and PeerSyncOutboxService#buildMatchEnvelope for exactly why COMPLETED must never collapse
+        // into a decline.
+        SignedEnvelope envelope = matchEnvelope(batch, MessageType.MATCH_RESPONSE).orElseThrow();
+        var response = (com.codefit.peer.protocol.MatchResponse) envelope.body();
+        assertTrue(response.accepted());
+        assertEquals(NOW, response.startedAt());
         assertTrue(matchEnvelope(batch, MessageType.MATCH_INVITATION).isEmpty());
     }
 

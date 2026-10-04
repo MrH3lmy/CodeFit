@@ -127,10 +127,16 @@ public class MatchRepository {
     }
 
     /**
-     * The challenger's own inbox effect of receiving the opponent's {@code MatchResponse}. Applied
-     * only while the local row is still {@code PENDING} - a response arriving after this device's
-     * own cancellation (a narrow, legitimate race between two in-flight messages) must never regress
-     * an already-{@code CANCELLED} match back to {@code ACTIVE}/{@code DECLINED}.
+     * The challenger's own inbox effect of receiving the opponent's {@code MatchResponse} (including
+     * an opponent's resend of an already-accepted response, e.g. after the opponent's own match has
+     * reached {@code COMPLETED} - see {@code PeerSyncOutboxService#buildMatchEnvelope}). Applied only
+     * while the local row is still {@code PENDING}: once this device has itself applied a response
+     * (now {@code ACTIVE}/{@code DECLINED}) a resend is simply the ordinary idempotent replay case, and
+     * once this device has independently cancelled ({@code CANCELLED}) a later/replayed response must
+     * never resurrect it. This is the challenger-side half of the same "cancellation always wins" rule
+     * {@link #applyReceivedCancellation} documents in full; together they guarantee both devices
+     * converge on {@code CANCELLED} regardless of which of the two in-flight messages each side
+     * happens to see first.
      */
     public void applyReceivedResponse(Connection connection, ObjectId matchId, boolean accepted, Instant startedAt,
                                        Instant now) throws SQLException {
@@ -156,15 +162,31 @@ public class MatchRepository {
 
     /**
      * The opponent's own inbox effect of receiving the challenger's cancellation ({@code Tombstone}
-     * targeting {@code MATCH_INVITATION}). Applied only while still {@code PENDING} - the same
-     * terminal-state-must-not-regress protection as {@link #applyReceivedResponse}.
+     * targeting {@code MATCH_INVITATION}).
+     *
+     * <p><b>Conflict rule: a challenger cancellation always wins a response race.</b> {@code
+     * recordLocalCancellation} only ever generates this message atomically from the challenger's own
+     * still-{@code PENDING} state - there is no code path that produces a cancellation any later than
+     * that. So by the time this device receives one, it is - by construction - a legitimate decision
+     * made while the challenger still believed the match was PENDING, even if this device had already
+     * raced ahead to {@code ACTIVE}/{@code DECLINED}/{@code COMPLETED} (e.g. accepted and even finished
+     * studying) before the message arrived over a slow or reconnecting link. Applying it unconditionally
+     * - over any current status, not just {@code PENDING} - is what makes both devices converge on the
+     * same terminal outcome regardless of which order the acceptance/decline and the cancellation
+     * happen to arrive in; see {@code applyReceivedResponse}'s own guard for the matching half of this
+     * rule (a response can never resurrect an already-{@code CANCELLED} row on the challenger's own
+     * side, since cancellation is exactly as terminal there).
+     *
+     * <p>The only no-op case is already-{@code CANCELLED} (or no such row at all): cancellation can only
+     * be sent once per match, so re-applying it to itself is simply the ordinary idempotent replay case,
+     * not a second, independent race.
      */
     public void applyReceivedCancellation(Connection connection, ObjectId matchId, Instant now) throws SQLException {
         Optional<StudyMatch> existing = findWithin(connection, matchId);
-        if (existing.isEmpty() || existing.get().status() != MatchStatus.PENDING) {
+        if (existing.isEmpty() || existing.get().status() == MatchStatus.CANCELLED) {
             return;
         }
-        setStatus(connection, matchId, MatchStatus.CANCELLED, now);
+        setCancelled(connection, matchId, now);
     }
 
     /** Lazily moves an {@code ACTIVE} match whose {@code endsAt} has passed to {@code COMPLETED}. */
@@ -210,7 +232,16 @@ public class MatchRepository {
      * The lifecycle messages still worth sending {@code contactId}: a challenger's own still-live
      * proposal or withdrawal, and an opponent's own still-fresh response - see {@code
      * PeerSyncOutboxService}'s own javadoc for exactly which body each (role, status) pair becomes.
-     * Deliberately not gated by any "already delivered" hint (#184's own established "resend is
+     * {@code COMPLETED} is included for the {@code OPPONENT} role alongside {@code ACTIVE}: a match
+     * reaching its own {@code endsAt} is purely a lazy local transition ({@code
+     * completeIfPastEndsAt}) and must never stop the opponent from resending the very same accepted
+     * {@code MatchResponse} the challenger may never have received before disconnecting - otherwise a
+     * challenger who misses the original acceptance can be stranded in {@code PENDING} forever once
+     * the opponent's own row has moved on. See {@code PeerSyncOutboxService#buildMatchEnvelope} for
+     * the matching fix on the serialization side (COMPLETED must still encode {@code accepted=true}
+     * with the original {@code startedAt}, never a decline).
+     *
+     * <p>Deliberately not gated by any "already delivered" hint (#184's own established "resend is
      * always harmless" design, which {@code publication_outbox} itself already relies on) - a
      * resend is idempotent at the receiver via the generic replay-state check, and matches are few
      * enough per contact that resending a handful of tiny control envelopes on every reconnect is
@@ -221,7 +252,7 @@ public class MatchRepository {
              PreparedStatement statement = connection.prepareStatement(
                      "SELECT * FROM study_matches WHERE contact_id = ? AND ("
                              + "(role = 'CHALLENGER' AND status IN ('PENDING', 'CANCELLED')) OR "
-                             + "(role = 'OPPONENT' AND status IN ('ACTIVE', 'DECLINED'))) ORDER BY created_at")) {
+                             + "(role = 'OPPONENT' AND status IN ('ACTIVE', 'DECLINED', 'COMPLETED'))) ORDER BY created_at")) {
             statement.setLong(1, contactId);
             try (ResultSet resultSet = statement.executeQuery()) {
                 List<StudyMatch> matches = new ArrayList<>();
@@ -239,6 +270,24 @@ public class MatchRepository {
         try (PreparedStatement statement = connection.prepareStatement(
                 "UPDATE study_matches SET status = ?, updated_at = ? WHERE match_id = ?")) {
             statement.setString(1, status.name());
+            statement.setString(2, now.toString());
+            statement.setBytes(3, matchId.bytes());
+            statement.executeUpdate();
+        }
+    }
+
+    /**
+     * Moves to {@code CANCELLED} from any current status, clearing {@code accepted_at}/{@code
+     * started_at}/{@code ends_at} so the row still satisfies {@link StudyMatch}'s own invariant
+     * ("timed" fields set iff {@code ACTIVE}/{@code COMPLETED") even when cancelling a row that had
+     * already progressed to {@code ACTIVE}/{@code DECLINED}/{@code COMPLETED}. Unlike {@link
+     * #setStatus}, which is only ever used for a transition out of a state with no timing fields set.
+     */
+    private void setCancelled(Connection connection, ObjectId matchId, Instant now) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "UPDATE study_matches SET status = ?, accepted_at = NULL, started_at = NULL, ends_at = NULL, updated_at = ? "
+                        + "WHERE match_id = ?")) {
+            statement.setString(1, MatchStatus.CANCELLED.name());
             statement.setString(2, now.toString());
             statement.setBytes(3, matchId.bytes());
             statement.executeUpdate();

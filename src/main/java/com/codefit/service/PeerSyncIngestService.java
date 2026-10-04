@@ -191,8 +191,9 @@ public class PeerSyncIngestService {
             case ConsentRevision consent -> consentRepository.save(connection, author, consent.scopes(), epoch, revision, now);
             case Tombstone tombstone -> {
                 if (tombstone.targetType() == MessageType.MATCH_INVITATION) {
-                    // The challenger withdrawing their own still-PENDING invitation - see
-                    // MatchRepository#applyReceivedCancellation for the terminal-state protection.
+                    // The challenger withdrawing their own invitation - always wins a race against a
+                    // response the opponent generated before this arrived; see
+                    // MatchRepository#applyReceivedCancellation for exactly why that is safe.
                     matchRepository.applyReceivedCancellation(connection, objectId, now);
                 }
                 if (tombstone.requestCacheDeletion()) {

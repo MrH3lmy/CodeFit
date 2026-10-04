@@ -262,17 +262,21 @@ class PeerMatchServiceTest {
     }
 
     @Test
-    void aLateCancellationNeverRegressesAnAlreadyActiveOpponentRow() {
+    void aLateCancellationThatCrossedAnAcceptanceInFlightConvergesTheOpponentToCancelled() {
         ObjectId matchId = randomMatchId(7);
         ingestService.ingest(peerId, myId, invitationEnvelope(matchId, MatchDuration.FIFTEEN_MINUTES, 1, 1, 1, nowMillis()), nowMillis());
         matchService.accept(matchId, nowMillis());
 
-        // A cancellation that crossed the acceptance in flight must never regress an already-ACTIVE match.
+        // The challenger's cancellation can only ever be generated once, atomically, from THEIR own
+        // still-PENDING state - concurrently with my own independent decision to accept. Per the
+        // documented "a challenger cancellation always wins a response race" policy, this device must
+        // converge to CANCELLED even though it had already raced ahead to ACTIVE (see
+        // MatchRepository#applyReceivedCancellation for the full rationale).
         SyncOutcome outcome = ingestService.ingest(peerId, myId, cancellationEnvelope(matchId, 1, 2, 2, nowMillis()), nowMillis());
 
         assertEquals(SyncOutcome.ACCEPTED, outcome, "the tombstone envelope itself is still validly accepted at the protocol level");
-        assertEquals(MatchStatus.ACTIVE, matchRepository.find(matchId).orElseThrow().status(),
-                "but it must never regress this device's own already-ACTIVE match back to CANCELLED");
+        assertEquals(MatchStatus.CANCELLED, matchRepository.find(matchId).orElseThrow().status(),
+                "a legitimately delayed cancellation must converge this device's own ACTIVE match to CANCELLED, matching the challenger");
     }
 
     @Test
@@ -414,6 +418,131 @@ class PeerMatchServiceTest {
 
         assertEquals(MatchStatus.COMPLETED, restarted.find(invitation.matchId()).orElseThrow().status());
         assertNotNull(view.comparison());
+    }
+
+    // --- PR #202 review round: P1 regression tests ---
+    // P1-1: an opponent's accepted MatchResponse must remain resendable even after their own match
+    //       has lazily completed, so a challenger who never received the original acceptance can
+    //       still recover it.
+    // P1-2: a challenger's cancellation - generated atomically from their own PENDING state - must
+    //       always win a race against an opponent's independently-made accept/decline decision,
+    //       however the two in-flight messages happen to cross, so both devices deterministically
+    //       converge on CANCELLED.
+
+    @Test
+    void acceptanceIsRecoverableByTheChallengerEvenAfterTheOpponentsOwnMatchHasAlreadyCompleted() {
+        // I am the challenger; the opponent accepted but I never received that original MatchResponse.
+        // My own row is still PENDING even though, on the opponent's own device, the shared window has
+        // long since elapsed and their own row has already lazily completed - see
+        // PeerSyncOutboxServiceTest#aCompletedOpponentMatchStillResendsTheOriginalAcceptedResponseNotADecline
+        // for the proof that a COMPLETED opponent row still serializes identically to the original
+        // acceptance, never as a decline. This is that same resend, as the challenger receives it.
+        StudyMatch invitation = matchService.startMatch(contactId, MatchDuration.FIFTEEN_MINUTES, nowMillis());
+        Instant originalStartedAt = nowMillis().minus(Duration.ofMinutes(20));
+
+        SyncOutcome outcome = ingestService.ingest(peerId, myId,
+                responseEnvelope(invitation.matchId(), true, originalStartedAt, 1, 1, 1, nowMillis()), nowMillis());
+
+        assertEquals(SyncOutcome.ACCEPTED, outcome);
+        StudyMatch mine = matchRepository.find(invitation.matchId()).orElseThrow();
+        assertEquals(MatchStatus.ACTIVE, mine.status(),
+                "the challenger converges to ACTIVE even though the opponent's own match already completed");
+        assertEquals(originalStartedAt, mine.startedAt());
+        assertEquals(originalStartedAt.plusSeconds(15 * 60), mine.endsAt());
+
+        // My own row now independently reaches COMPLETED too, since the shared window has already elapsed.
+        StudyMatch mineCompleted = matchRepository.completeIfPastEndsAt(invitation.matchId(), nowMillis());
+        assertEquals(MatchStatus.COMPLETED, mineCompleted.status());
+    }
+
+    @Test
+    void aLateCancellationThatCrossedADeclineInFlightConvergesTheOpponentToCancelled() {
+        ObjectId matchId = randomMatchId(20);
+        ingestService.ingest(peerId, myId, invitationEnvelope(matchId, MatchDuration.FIFTEEN_MINUTES, 1, 1, 1, nowMillis()), nowMillis());
+        matchService.decline(matchId, nowMillis());
+
+        SyncOutcome outcome = ingestService.ingest(peerId, myId, cancellationEnvelope(matchId, 1, 2, 2, nowMillis()), nowMillis());
+
+        assertEquals(SyncOutcome.ACCEPTED, outcome);
+        assertEquals(MatchStatus.CANCELLED, matchRepository.find(matchId).orElseThrow().status(),
+                "a legitimately delayed cancellation must converge this device's own DECLINED match to CANCELLED too");
+    }
+
+    @Test
+    void aLateCancellationThatCrossedAnAcceptanceConvergesEvenAnAlreadyCompletedOpponentToCancelled() {
+        ObjectId matchId = randomMatchId(21);
+        Instant startedAt = nowMillis().minus(Duration.ofMinutes(20));
+        ingestService.ingest(peerId, myId, invitationEnvelope(matchId, MatchDuration.FIFTEEN_MINUTES, 1, 1, 1, startedAt), startedAt);
+        matchService.accept(matchId, startedAt);
+        matchRepository.completeIfPastEndsAt(matchId, nowMillis());
+        assertEquals(MatchStatus.COMPLETED, matchRepository.find(matchId).orElseThrow().status());
+
+        // Even a cancellation this delayed is still a legitimate artifact of the original PENDING-state
+        // race (cancellation can only ever be generated once, from PENDING) - it must still win.
+        SyncOutcome outcome = ingestService.ingest(peerId, myId, cancellationEnvelope(matchId, 1, 2, 2, nowMillis()), nowMillis());
+
+        assertEquals(SyncOutcome.ACCEPTED, outcome);
+        assertEquals(MatchStatus.CANCELLED, matchRepository.find(matchId).orElseThrow().status());
+    }
+
+    @Test
+    void aLateDeclineNeverRegressesAnAlreadyCancelledChallengerRow() {
+        // The other effective arrival order of the decline/cancel race, from the challenger's side:
+        // I cancelled locally first (from PENDING), and only afterward does the opponent's own
+        // (independently decided) decline arrive.
+        StudyMatch invitation = matchService.startMatch(contactId, MatchDuration.FIFTEEN_MINUTES, nowMillis());
+        matchService.cancel(invitation.matchId(), nowMillis());
+
+        SyncOutcome outcome = ingestService.ingest(peerId, myId,
+                responseEnvelope(invitation.matchId(), false, null, 1, 1, 1, nowMillis()), nowMillis());
+
+        assertEquals(SyncOutcome.ACCEPTED, outcome);
+        assertEquals(MatchStatus.CANCELLED, matchRepository.find(invitation.matchId()).orElseThrow().status());
+    }
+
+    @Test
+    void ifTheResponseArrivesFirstALaterLocalCancellationAttemptIsRejectedAndTheActiveStateHolds() {
+        // The other effective arrival order of the accept/cancel race, from the challenger's side: the
+        // opponent's acceptance arrives and activates my row BEFORE I ever attempt to cancel locally.
+        // A local cancellation is only ever generated from PENDING, so this is deterministically
+        // rejected rather than racing - the two devices still converge, on ACTIVE, not on a conflict.
+        StudyMatch invitation = matchService.startMatch(contactId, MatchDuration.FIFTEEN_MINUTES, nowMillis());
+        ingestService.ingest(peerId, myId,
+                responseEnvelope(invitation.matchId(), true, nowMillis(), 1, 1, 1, nowMillis()), nowMillis());
+
+        assertThrows(IllegalStateException.class, () -> matchService.cancel(invitation.matchId(), nowMillis()));
+        assertEquals(MatchStatus.ACTIVE, matchRepository.find(invitation.matchId()).orElseThrow().status());
+    }
+
+    @Test
+    void replayingTheOlderAcceptedResponseAfterCancellationConvergenceNeverRegressesTheChallengersCancelledState() {
+        StudyMatch invitation = matchService.startMatch(contactId, MatchDuration.FIFTEEN_MINUTES, nowMillis());
+        matchService.cancel(invitation.matchId(), nowMillis());
+        SignedEnvelope staleResponse = responseEnvelope(invitation.matchId(), true, nowMillis(), 1, 1, 1, nowMillis());
+
+        SyncOutcome first = ingestService.ingest(peerId, myId, staleResponse, nowMillis());
+        SyncOutcome replay = ingestService.ingest(peerId, myId, staleResponse, nowMillis());
+
+        assertEquals(SyncOutcome.ACCEPTED, first);
+        assertEquals(SyncOutcome.DUPLICATE, replay);
+        assertEquals(MatchStatus.CANCELLED, matchRepository.find(invitation.matchId()).orElseThrow().status(),
+                "replaying the same stale response after convergence to CANCELLED must never regress it");
+    }
+
+    @Test
+    void replayingTheOriginalInvitationAfterTheOpponentConvergesToCancelledNeverRegressesIt() {
+        ObjectId matchId = randomMatchId(22);
+        SignedEnvelope invitation = invitationEnvelope(matchId, MatchDuration.FIFTEEN_MINUTES, 1, 1, 1, nowMillis());
+        ingestService.ingest(peerId, myId, invitation, nowMillis());
+        matchService.accept(matchId, nowMillis());
+        ingestService.ingest(peerId, myId, cancellationEnvelope(matchId, 1, 2, 2, nowMillis()), nowMillis());
+        assertEquals(MatchStatus.CANCELLED, matchRepository.find(matchId).orElseThrow().status());
+
+        SyncOutcome replay = ingestService.ingest(peerId, myId, invitation, nowMillis());
+
+        assertEquals(SyncOutcome.DUPLICATE, replay);
+        assertEquals(MatchStatus.CANCELLED, matchRepository.find(matchId).orElseThrow().status(),
+                "replaying the original invitation after convergence to CANCELLED must never regress it");
     }
 
     // --- helpers ---

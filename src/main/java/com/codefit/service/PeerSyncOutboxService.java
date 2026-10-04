@@ -171,6 +171,14 @@ public class PeerSyncOutboxService {
      * javadoc for why no separate approval/delivery-tracking state exists for these. {@code
      * CANCELLED} (challenger) reuses the existing generic {@code Tombstone} machinery exactly like
      * revocation already does - no dedicated "match cancelled" message type exists.
+     *
+     * <p>For the {@code OPPONENT} role, {@code ACTIVE} and {@code COMPLETED} both represent the exact
+     * same authoritative accepted response and must serialize identically: {@code COMPLETED} is only
+     * ever reached FROM {@code ACTIVE} by the match's own {@code endsAt} passing (never from a second,
+     * different user decision), so it is never a decline. Collapsing it into the "otherwise decline"
+     * branch would resend an already-accepted match as {@code MatchResponse(accepted=false)} the
+     * moment it finishes - exactly the stranding bug this fix closes. Only {@code DECLINED} means
+     * {@code accepted=false}.
      */
     private Optional<Batched> buildMatchEnvelope(StudyMatch match, Contact contact, UnlockedIdentity identity,
                                                   long writerEpoch, Instant now) {
@@ -179,7 +187,7 @@ public class PeerSyncOutboxService {
             case CHALLENGER -> match.status() == MatchStatus.CANCELLED
                     ? new Tombstone(MessageType.MATCH_INVITATION, TombstoneReason.REVOKED, false)
                     : new MatchInvitation(match.duration());
-            case OPPONENT -> match.status() == MatchStatus.ACTIVE
+            case OPPONENT -> (match.status() == MatchStatus.ACTIVE || match.status() == MatchStatus.COMPLETED)
                     ? new MatchResponse(true, match.startedAt())
                     : new MatchResponse(false, null);
         };

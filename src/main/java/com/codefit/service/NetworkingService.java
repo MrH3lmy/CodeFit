@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 /**
@@ -341,6 +342,53 @@ public class NetworkingService implements AutoCloseable {
             }));
         } catch (RuntimeException unexpected) {
             // Never let a sync-layer failure propagate out of connection establishment.
+        }
+    }
+
+    /**
+     * Sends a fresh outbox pass to {@code contactId} right now, over its existing live connection -
+     * for exactly one case the automatic, connection-established send does not cover: data approved
+     * for sharing <em>after</em> the connection was already established (PR A's own automatic send
+     * fires once, at establishment; it is never repeated just because local state later changed).
+     * Reuses the exact same {@link PeerSyncSessionService#sendOutboxTo}/{@link
+     * PeerNetworkService#withLiveIdentity} machinery {@link #onConnectionEstablished} itself calls -
+     * {@code UnlockedIdentity} is never exposed here either. Never starts a second receive loop,
+     * never dials, never touches transport lifecycle: the connection and its receive loop are both
+     * already live and untouched by this call; this only sends.
+     *
+     * @throws IllegalStateException networking is disabled, or there is no active authenticated
+     *                                connection to {@code contactId} right now
+     * @throws IOException           the send itself failed (the connection died mid-send, say) -
+     *                                unlike the automatic path, this is a user-initiated action, so
+     *                                the failure is reported rather than silently swallowed; it is
+     *                                always safe to simply try again once reconnected.
+     */
+    public void syncOutboxNow(long contactId) throws IOException {
+        Contact contact = contactService.requireContact(contactId);
+        PeerSyncSessionService session = this.syncSession;
+        if (session == null) {
+            throw new IllegalStateException("Enable networking before syncing.");
+        }
+        PeerConnection connection = peerNetworkService.activeConnection(contact.identityId())
+                .orElseThrow(() -> new IllegalStateException("No active connection to contact " + contactId + "."));
+        Optional<IdentityId> myIdentityId = identityService.currentIdentity().map(LocalIdentitySummary::id);
+        if (myIdentityId.isEmpty()) {
+            throw new IllegalStateException("No local identity exists yet.");
+        }
+
+        AtomicReference<IOException> sendFailure = new AtomicReference<>();
+        boolean ran = peerNetworkService.withLiveIdentity(identity -> identityService.currentIdentity().ifPresent(summary -> {
+            try {
+                session.sendOutboxTo(connection, identity, summary.currentWriterEpoch(), Instant.now());
+            } catch (IOException sendIoFailure) {
+                sendFailure.set(sendIoFailure);
+            }
+        }));
+        if (!ran) {
+            throw new IllegalStateException("Networking was disabled concurrently.");
+        }
+        if (sendFailure.get() != null) {
+            throw sendFailure.get();
         }
     }
 

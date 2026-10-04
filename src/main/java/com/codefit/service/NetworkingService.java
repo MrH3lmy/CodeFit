@@ -293,43 +293,32 @@ public class NetworkingService implements AutoCloseable {
      * connection becomes the current one for its remote identity (see {@code
      * ConnectionEstablishedListener}'s own javadoc for the exact ordering guarantee this relies on).
      *
-     * <p>Sends this connection's one outbox pass <em>before</em> starting its receive loop, and does so
-     * synchronously, on this calling thread (the transport's own dial/handshake pool) rather than
-     * dispatching it elsewhere - deliberately, not for simplicity. {@code PeerSyncIngestService}'s own
-     * ingest path and this send path each open and commit their own short SQLite transaction with no
-     * lock shared between them; running them from two different threads at once - which an async
-     * dispatch would do, since {@link PeerSyncSessionService#startReceiving} already submits its loop
-     * to its own background thread immediately - let this device's own automatic send and its own
-     * automatic receive genuinely race each other's writes to the same local database file, confirmed
-     * directly to intermittently throw {@code SQLITE_BUSY} under this exact two-process test's real
-     * load even with a generous {@code busy_timeout} configured (see {@code DatabaseConfig}). Sending
-     * first and only then starting the receive loop removes the race entirely for the one-shot send
-     * this PR performs: the send's transaction has already committed and released before any local
-     * receive-side write for this identity could possibly begin. A future change that needs to
-     * dispatch a <em>slower or repeated</em> send asynchronously will need to give the send and ingest
-     * paths a real shared write lock at the #184 architecture level - this ordering trick alone would
-     * no longer be sufficient once sends and receives can genuinely overlap over the life of a
-     * long-lived connection, not just at the single moment this method runs.
+     * <p>This method itself does nothing but enqueue: {@code ConnectionEstablishedListener}'s own
+     * contract requires the callback to return quickly and never perform blocking I/O directly (it
+     * runs on the transport's own dial/handshake pool, and a slow implementation would hold up
+     * tracking for other connections to the same remote identity). All of the real work - resolving
+     * this device's own identity, sending the one-shot outbox pass, and starting the receive loop - is
+     * therefore handed to {@link PeerSyncSessionService#establishConnection}, which runs it on that
+     * class's own dedicated background thread, never this one. Ordering (send completes before the
+     * receive loop starts, for the SQLite-write-race reason documented on {@code sendOutboxTo} and
+     * {@link PeerLocalWriteLock}) and staleness protection (a connection already superseded by a
+     * reconnect must not send or start a loop that could clobber the newer one's) are both {@code
+     * establishConnection}'s own responsibility now - see its javadoc.
      *
-     * <p>Never lets anything it does here tear down the connection itself: every exception from the
-     * sync layer is caught and swallowed, since a sync-layer failure must never be mistaken for a
-     * reason to distrust an already-authenticated transport connection.
+     * <p>{@code stillCurrent} re-reads {@link PeerNetworkService#activeConnection} fresh every time
+     * it is called (never a value captured once here), which is exactly what lets the dispatched task
+     * notice a supersession that happens after this method already returned.
      */
     private void onConnectionEstablished(IdentityId remoteIdentityId, PeerConnection connection) {
-        try {
-            PeerSyncSessionService session = this.syncSession;
-            if (session == null) {
-                return; // raced with disableNetworking(); the connection is already being torn down too
-            }
-            Optional<IdentityId> myIdentityId = identityService.currentIdentity().map(LocalIdentitySummary::id);
-            if (myIdentityId.isEmpty()) {
-                return; // should not happen once networking is enabled, but never worth risking the connection over
-            }
-            sendOutboxQuietly(connection, session);
-            session.startReceiving(connection, myIdentityId.get(), syncOutcomeListener);
-        } catch (RuntimeException unexpected) {
-            // A sync-layer failure must never tear down an otherwise valid authenticated connection.
+        PeerSyncSessionService session = this.syncSession;
+        if (session == null) {
+            return; // raced with disableNetworking(); the connection is already being torn down too
         }
+        session.establishConnection(connection,
+                () -> peerNetworkService.activeConnection(remoteIdentityId).map(current -> current == connection).orElse(false),
+                () -> identityService.currentIdentity().map(LocalIdentitySummary::id),
+                () -> sendOutboxQuietly(connection, session),
+                syncOutcomeListener);
     }
 
     /**

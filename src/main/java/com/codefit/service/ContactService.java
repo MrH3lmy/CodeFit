@@ -321,9 +321,8 @@ public class ContactService {
      * manual entry, or an opt-in LAN discovery match) and enforces the bounded cache size, evicting the
      * least-recently-seen address first. A repeat sighting of an address already cached only refreshes
      * its recency; it never grows the cache.
-     */
-    /**
-     * Synchronized on {@link PeerLocalWriteLock#MONITOR}: a caller of this method ({@code
+     *
+     * <p>Synchronized on {@link PeerLocalWriteLock#MONITOR}: a caller of this method ({@code
      * NetworkingService#connectToContact}'s own completion, or LAN discovery) can now run genuinely
      * concurrently, in the same process, with that same connection's automatic receive loop - see that
      * lock class's own javadoc for the exact {@code SQLITE_BUSY} race this closes.
@@ -377,23 +376,34 @@ public class ContactService {
      * ignored. Callers must pass only bindings the transport has already verified; this method enforces
      * monotonicity, not authenticity.
      */
+    /**
+     * Synchronized on {@link PeerLocalWriteLock#MONITOR} (outer) around the pre-existing {@code
+     * TRANSPORT_BINDING_LOCK} (inner): on the outbound completion path ({@code
+     * NetworkingService#connectToContact}'s own dial-pool thread) this write now runs immediately
+     * after {@code ConnectionEstablishedListener} fires, and once that listener's own work is
+     * dispatched asynchronously so the listener itself never blocks on I/O, this write is no longer
+     * naturally sequenced after it - see {@link PeerLocalWriteLock}'s own javadoc for why that makes
+     * this a member of the same write-serialization boundary as the automatic receive loop.
+     */
     public TransportBindingUpdate recordAuthenticatedTransportBinding(long contactId, IdentityKey transportKey,
                                                                        Instant validFrom, Instant validUntil, Instant now) {
         requireContact(contactId);
-        synchronized (TRANSPORT_BINDING_LOCK) {
-            Optional<ObservedTransportBinding> pinned = transportBindingRepository.find(contactId);
-            TransportBindingUpdate outcome;
-            if (pinned.isEmpty()) {
-                outcome = TransportBindingUpdate.RECORDED_FIRST;
-            } else if (pinned.get().transportKey().equals(transportKey)) {
-                outcome = TransportBindingUpdate.REFRESHED;
-            } else if (validFrom.isAfter(pinned.get().validFrom())) {
-                outcome = TransportBindingUpdate.ROTATED;
-            } else {
-                return TransportBindingUpdate.IGNORED_STALE;
+        synchronized (PeerLocalWriteLock.MONITOR) {
+            synchronized (TRANSPORT_BINDING_LOCK) {
+                Optional<ObservedTransportBinding> pinned = transportBindingRepository.find(contactId);
+                TransportBindingUpdate outcome;
+                if (pinned.isEmpty()) {
+                    outcome = TransportBindingUpdate.RECORDED_FIRST;
+                } else if (pinned.get().transportKey().equals(transportKey)) {
+                    outcome = TransportBindingUpdate.REFRESHED;
+                } else if (validFrom.isAfter(pinned.get().validFrom())) {
+                    outcome = TransportBindingUpdate.ROTATED;
+                } else {
+                    return TransportBindingUpdate.IGNORED_STALE;
+                }
+                transportBindingRepository.save(new ObservedTransportBinding(contactId, transportKey, validFrom, validUntil, now));
+                return outcome;
             }
-            transportBindingRepository.save(new ObservedTransportBinding(contactId, transportKey, validFrom, validUntil, now));
-            return outcome;
         }
     }
 

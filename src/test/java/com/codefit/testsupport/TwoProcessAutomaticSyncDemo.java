@@ -160,7 +160,20 @@ public final class TwoProcessAutomaticSyncDemo {
         // result file first (the same real, file-based signal this whole demo already uses for the
         // invitation exchange), so a slower peer's own automatic send/receive still gets to finish
         // before either side's connection goes away.
-        waitForFileContent(peerResultFile, WAIT_TIMEOUT);
+        //
+        // Deliberately best-effort and never fatal to the SUCCESS already written above: this is a
+        // courtesy wait for the OTHER process, not a condition of THIS process's own correctness. A
+        // review of an earlier version of this file correctly flagged the previous shape (this call
+        // unguarded, so main()'s own outer catch would overwrite an already-true SUCCESS with FAILURE
+        // on nothing more than the peer taking a little longer) as a circular/cascading shutdown
+        // dependency - one slow-but-eventually-successful side corrupting the other's own already-
+        // correct result. Catching and logging here, rather than letting it propagate, is the fix.
+        try {
+            waitForFileContent(peerResultFile, WAIT_TIMEOUT);
+        } catch (IllegalStateException peerStillFinishing) {
+            System.err.println("[" + role + "] courtesy wait for the peer's own result file timed out after this "
+                    + "process's own SUCCESS was already recorded - exiting anyway: " + peerStillFinishing.getMessage());
+        }
     }
 
     private static boolean waitForConsentFrom(IdentityId authorId, Duration timeout) throws Exception {

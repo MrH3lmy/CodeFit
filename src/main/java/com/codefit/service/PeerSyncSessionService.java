@@ -14,13 +14,17 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * Drives #184's actual peer-to-peer exchange over one authenticated {@link PeerConnection} (#182).
@@ -46,6 +50,15 @@ public class PeerSyncSessionService implements AutoCloseable {
     private final PeerSyncOutboxService outboxService;
     private final ContactService contactService;
     private final ExecutorService receiveLoopExecutor;
+    /**
+     * One dedicated, bounded (single) background thread this class owns for everything a {@code
+     * ConnectionEstablishedListener} callback must never do on its own calling thread - see {@link
+     * #establishConnection}. Deliberately a single thread, not a general-purpose or unbounded pool:
+     * ordering among establishment tasks is never relied upon for correctness (each re-checks
+     * staleness for itself), this just keeps one connection's worth of dispatch work from needing its
+     * own throwaway thread per establishment.
+     */
+    private final ExecutorService establishmentExecutor;
     private final Map<IdentityId, Registration> activeReceiveLoops = new ConcurrentHashMap<>();
 
     /** Which {@link PeerConnection} a registered receive loop is actually reading from, so a stale
@@ -67,6 +80,73 @@ public class PeerSyncSessionService implements AutoCloseable {
             return thread;
         };
         this.receiveLoopExecutor = Executors.newCachedThreadPool(daemonFactory);
+        ThreadFactory establishFactory = runnable -> {
+            Thread thread = new Thread(runnable, "codefit-peer-sync-establish");
+            thread.setDaemon(true);
+            return thread;
+        };
+        this.establishmentExecutor = Executors.newSingleThreadExecutor(establishFactory);
+    }
+
+    /**
+     * The lightweight-callback-to-off-thread-work seam {@code ConnectionEstablishedListener}'s own
+     * contract requires: queues {@code sendOutbox} followed by starting {@code connection}'s receive
+     * loop onto this class's own dedicated {@link #establishmentExecutor} thread - never the
+     * transport's own establishment thread (the dial pool or the handshake pool), which must return
+     * immediately. Neither step runs at all once {@code stillCurrent} reports {@code false}: checked
+     * once before {@code sendOutbox} runs (this connection may already have been superseded by a
+     * reconnect that raced this very dispatch before the task even started) and again before the
+     * receive loop starts (superseded <em>while</em> {@code sendOutbox} was running) - a stale task
+     * that loses either check does nothing further, in particular never calling {@link #startReceiving}
+     * for a connection {@code PeerNetworkService} no longer considers current, which would otherwise
+     * risk tearing down a newer, genuinely-current connection's own just-registered receive loop (see
+     * {@code startReceiving}'s own javadoc for exactly that clobber risk). Ordering between
+     * {@code sendOutbox} and starting the receive loop is preserved exactly as before - see {@code
+     * NetworkingService#onConnectionEstablished}'s own javadoc for why that specific order avoids a
+     * real SQLite write race between this device's own send and receive.
+     *
+     * @param myIdentityIdSupplier resolved lazily, inside this task, never on the caller's thread -
+     *                             reading it is itself not guaranteed instant (today, a plain field
+     *                             read, but the contract here never assumes that of a caller)
+     * @param sendOutbox           already closed over everything it needs (the connection, the live
+     *                             identity, the writer epoch); any exception it throws is caught here
+     *                             so one failed send can never kill this executor's one thread for
+     *                             every later connection
+     * @param onOutcome            forwarded as-is to {@link #startReceiving}; observation only
+     */
+    public void establishConnection(PeerConnection connection, BooleanSupplier stillCurrent,
+                                     Supplier<Optional<IdentityId>> myIdentityIdSupplier, Runnable sendOutbox,
+                                     BiConsumer<SignedEnvelope, SyncOutcome> onOutcome) {
+        try {
+            establishmentExecutor.submit(() -> {
+                try {
+                    if (!stillCurrent.getAsBoolean()) {
+                        return; // superseded before this task even started running
+                    }
+                    Optional<IdentityId> myIdentityId = myIdentityIdSupplier.get();
+                    if (myIdentityId.isEmpty()) {
+                        return; // should not happen once networking is enabled, but never worth risking the connection over
+                    }
+                    sendOutbox.run();
+                    if (!stillCurrent.getAsBoolean()) {
+                        return; // superseded while sending; must not start a stale receive loop over a now-replaced connection
+                    }
+                    startReceiving(connection, myIdentityId.get(), onOutcome);
+                } catch (RuntimeException unexpected) {
+                    // Never let a sync-layer failure propagate out of this dedicated executor, or be
+                    // mistaken for a reason to distrust an already-authenticated transport connection.
+                }
+            });
+        } catch (RejectedExecutionException alreadyClosing) {
+            // This session is already being closed (disableNetworking() raced this establishment);
+            // the connection itself is already being torn down too, so there is nothing left to do.
+        }
+    }
+
+    /** Convenience overload with a no-op outcome listener. */
+    public void establishConnection(PeerConnection connection, BooleanSupplier stillCurrent,
+                                     Supplier<Optional<IdentityId>> myIdentityIdSupplier, Runnable sendOutbox) {
+        establishConnection(connection, stillCurrent, myIdentityIdSupplier, sendOutbox, (envelope, outcome) -> { });
     }
 
     /**
@@ -140,20 +220,34 @@ public class PeerSyncSessionService implements AutoCloseable {
      * durably persisted anything - that proof does not exist in this protocol, by design (see the PR
      * description's privacy/limitations notes).
      *
+     * <p>Computing the eligible batch (which signs new control envelopes and can capture a fresh
+     * snapshot - real SQLite writes) and marking entries synced afterward (another write) both run
+     * under {@link PeerLocalWriteLock#MONITOR} - see that lock's own javadoc for the full, named
+     * boundary this is part of. The actual {@link PeerConnection#send} socket writes in between
+     * deliberately run <em>outside</em> the lock: holding a lock across blocking socket I/O would let
+     * one slow or stalled peer connection stall every other connection's own sync writes for no
+     * correctness reason - nothing about the race this lock closes requires the socket writes
+     * themselves to be serialized, only the local database writes around them.
+     *
      * @throws ContactNotFoundException the connection's authenticated peer is not a locally known contact
      */
     public SendResult sendOutboxTo(PeerConnection connection, UnlockedIdentity identity, long writerEpoch, Instant now) throws IOException {
-        Contact contact = contactService.findByIdentityId(connection.remoteIdentityId())
-                .orElseThrow(() -> new ContactNotFoundException("No contact for authenticated peer " + connection.remoteIdentityId()));
-        List<PeerSyncOutboxService.Batched> batch = outboxService.eligibleEnvelopesFor(contact.id(), identity, writerEpoch, now);
+        List<PeerSyncOutboxService.Batched> batch;
+        synchronized (PeerLocalWriteLock.MONITOR) {
+            Contact contact = contactService.findByIdentityId(connection.remoteIdentityId())
+                    .orElseThrow(() -> new ContactNotFoundException("No contact for authenticated peer " + connection.remoteIdentityId()));
+            batch = outboxService.eligibleEnvelopesFor(contact.id(), identity, writerEpoch, now);
+        }
 
         List<PeerSyncOutboxService.Batched> sent = new ArrayList<>();
         for (PeerSyncOutboxService.Batched item : batch) {
             connection.send(item.envelope());
             sent.add(item);
         }
-        for (PeerSyncOutboxService.Batched item : sent) {
-            item.outboxEntryId().ifPresent(id -> outboxService.markSynced(id, item.envelope().header().revision(), now));
+        synchronized (PeerLocalWriteLock.MONITOR) {
+            for (PeerSyncOutboxService.Batched item : sent) {
+                item.outboxEntryId().ifPresent(id -> outboxService.markSynced(id, item.envelope().header().revision(), now));
+            }
         }
         return new SendResult(sent.size(), batch.size());
     }
@@ -161,11 +255,14 @@ public class PeerSyncSessionService implements AutoCloseable {
     public record SendResult(int sentCount, int eligibleCount) {
     }
 
-    /** Stops every background receive loop, waiting briefly for each to notice its connection is closed. */
+    /** Stops every background receive loop and the establishment-dispatch thread, waiting briefly
+     *  for each to notice its connection is closed / finish its current task. */
     @Override
     public void close() {
+        establishmentExecutor.shutdownNow();
         receiveLoopExecutor.shutdownNow();
         try {
+            establishmentExecutor.awaitTermination(5, TimeUnit.SECONDS);
             receiveLoopExecutor.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

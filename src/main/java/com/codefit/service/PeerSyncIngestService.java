@@ -226,12 +226,14 @@ public class PeerSyncIngestService {
      */
     public void pruneExpiredReplayState(Instant now) {
         Instant retentionCutoff = now.minusMillis(ProtocolVersion.MAX_LIFETIME_MILLIS + ProtocolVersion.MAX_CLOCK_SKEW_MILLIS);
-        Transactions.run(connection -> {
-            try {
-                authorStateRepository.pruneExpired(connection, now, retentionCutoff);
-            } catch (SQLException exception) {
-                throw new IllegalStateException("Unable to prune expired peer sync replay state", exception);
-            }
-        });
+        synchronized (PeerLocalWriteLock.MONITOR) {
+            Transactions.run(connection -> {
+                try {
+                    authorStateRepository.pruneExpired(connection, now, retentionCutoff);
+                } catch (SQLException exception) {
+                    throw new IllegalStateException("Unable to prune expired peer sync replay state", exception);
+                }
+            });
+        }
     }
 }

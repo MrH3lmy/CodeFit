@@ -545,6 +545,24 @@ class PeerMatchServiceTest {
                 "replaying the original invitation after convergence to CANCELLED must never regress it");
     }
 
+    @Test
+    void duplicateCancellationRemainsIdempotent() {
+        // The exact same cancellation Tombstone resent (reconnect/resend, or a genuine wire replay)
+        // must apply once and then no-op forever after - never a second, independent transition.
+        ObjectId matchId = randomMatchId(23);
+        ingestService.ingest(peerId, myId, invitationEnvelope(matchId, MatchDuration.FIFTEEN_MINUTES, 1, 1, 1, nowMillis()), nowMillis());
+        matchService.accept(matchId, nowMillis());
+        SignedEnvelope cancellation = cancellationEnvelope(matchId, 1, 2, 2, nowMillis());
+
+        SyncOutcome first = ingestService.ingest(peerId, myId, cancellation, nowMillis());
+        SyncOutcome resend = ingestService.ingest(peerId, myId, cancellation, nowMillis());
+
+        assertEquals(SyncOutcome.ACCEPTED, first);
+        assertEquals(SyncOutcome.DUPLICATE, resend, "the generic replay-state check must treat the exact same envelope resent as a duplicate");
+        assertEquals(MatchStatus.CANCELLED, matchRepository.find(matchId).orElseThrow().status(),
+                "repeated application of the same cancellation must never regress or re-fire any side effect");
+    }
+
     // --- helpers ---
 
     private void grantMatchParticipationFromPeer() throws Exception {

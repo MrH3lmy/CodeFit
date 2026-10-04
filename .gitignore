@@ -1,4 +1,5 @@
 target/
+.build/dev-peers/
 *.class
 codefit.db
 .idea/

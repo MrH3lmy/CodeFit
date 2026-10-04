@@ -6,7 +6,6 @@ import com.codefit.model.ReviewRating;
 import com.codefit.peer.identity.Contact;
 import com.codefit.peer.identity.PermissionGrant;
 import com.codefit.peer.identity.TrustState;
-import com.codefit.peer.identity.UnlockedIdentity;
 import com.codefit.peer.invitation.InvitationCodec;
 import com.codefit.peer.invitation.SignedInvitation;
 import com.codefit.peer.protocol.ComparisonWindow;
@@ -23,7 +22,6 @@ import com.codefit.service.IdentityService;
 import com.codefit.service.NetworkingService;
 import com.codefit.service.PeerSyncIngestService;
 import com.codefit.service.PeerSyncOutboxService;
-import com.codefit.service.PeerSyncSessionService;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -42,12 +40,20 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Not a test itself: a standalone entry point {@code TwoProcessSyncDemoTest} launches as a real,
  * separate OS process per step, following exactly the same "two independent processes, separate
  * SQLite files, separate identities, real sockets" pattern {@code TwoProcessPeerDemo} established for
  * #182 - extended here to drive #184's actual sync engine ({@code PeerSyncSessionService}) end to end.
+ *
+ * <p>The {@code SYNC} action no longer drives that engine directly: once connection establishment is
+ * automatically wired to send-then-receive (the PR this class's own javadoc is being updated for), a
+ * second, independent {@code PeerSyncSessionService} manually started on the very same connection would
+ * race the automatic one to read it, nondeterministically splitting received frames between the two.
+ * Instead, {@code SYNC} observes the automatic receive loop's own outcomes through an optional listener
+ * {@code NetworkingService} exposes for exactly this - see its constructor and field javadoc.
  *
  * <p>Every invocation is deliberately short-lived: it opens its own database file, re-establishes
  * networking fresh (a brand-new writer-session epoch - proving restart survival structurally, not by
@@ -70,9 +76,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       ongoing sharing. {@code peerPortFile} is unused here but kept for argument-position symmetry.</li>
  *   <li>{@code SYNC LISTENER|DIALER ownPortFile peerPortFile captureFile} - publish this launch's own
  *       (freshly re-bound) port to {@code ownPortFile}, then connect (dial the port published in
- *       {@code peerPortFile}, or wait to be dialed), send this device's current eligible batch, and
- *       run the receive loop for a bounded window, appending every accepted {@code PROGRESS_SUMMARY}
- *       frame to {@code captureFile} as {@code revision:hexFrame}, before disconnecting.</li>
+ *       {@code peerPortFile}, or wait to be dialed). Connection establishment alone already triggers an
+ *       automatic outbox send and starts an automatic receive loop (this PR's own subject); this action
+ *       just gives that loop a bounded window to run, appending every accepted {@code PROGRESS_SUMMARY}
+ *       frame it reports to {@code captureFile} as {@code revision:hexFrame}, before disconnecting.</li>
  *   <li>{@code REVOKE} - revoke every scope from the (sole) paired contact.</li>
  *   <li>{@code REPLAY captureFile revision} - decode the frame captured for {@code revision} and feed
  *       it directly to this device's own {@code PeerSyncIngestService} (no network involved) -
@@ -123,7 +130,18 @@ public final class TwoProcessSyncDemo {
             Thread.sleep(1_100);
         }
 
-        NetworkingService networkingService = new NetworkingService();
+        // SYNC is the only action that needs to observe received frames; this reference is set just
+        // before doSync runs so the listener below (installed once, up front, since PR A's own
+        // automatic receive loop - not this class - now owns every established connection) knows where
+        // to append them. See this class's own javadoc for why a second, independent
+        // PeerSyncSessionService can no longer be created here to drive sync manually.
+        AtomicReference<Path> activeCaptureFile = new AtomicReference<>();
+        NetworkingService networkingService = new NetworkingService(event -> { }, (envelope, outcome) -> {
+            Path captureFile = activeCaptureFile.get();
+            if (captureFile != null && envelope != null && outcome.accepted() && envelope.body() instanceof ProgressSummary) {
+                appendCapture(captureFile, envelope);
+            }
+        });
         networkingService.enableNetworking(VAULT_PASSPHRASE, 0, nowMillis());
         int ownPort = networkingService.listeningPort().orElseThrow();
 
@@ -132,7 +150,7 @@ public final class TwoProcessSyncDemo {
             case "PAIR" -> doPair(networkingService, Path.of(args[4]));
             case "GRANT" -> doGrant(LocalDate.parse(args[4]), now);
             case "ADD_EVIDENCE" -> doAddEvidence(LocalDate.parse(args[4]));
-            case "SYNC" -> doSync(networkingService, args[4], ownPort, Path.of(args[5]), Path.of(args[6]), Path.of(args[7]));
+            case "SYNC" -> doSync(networkingService, args[4], ownPort, Path.of(args[5]), Path.of(args[6]), Path.of(args[7]), activeCaptureFile);
             case "REVOKE" -> doRevoke();
             case "REPLAY" -> doReplay(identityService, Path.of(args[4]), Long.parseLong(args[5]));
             default -> throw new IllegalArgumentException("Unknown action " + action);
@@ -207,12 +225,13 @@ public final class TwoProcessSyncDemo {
     }
 
     private static void doSync(NetworkingService networkingService, String role, int ownPort, Path ownPortFile,
-                                Path peerPortFile, Path captureFile) throws Exception {
+                                Path peerPortFile, Path captureFile, AtomicReference<Path> activeCaptureFile) throws Exception {
         // Every SYNC launch is a fresh process that re-enabled networking on a new ephemeral port
         // (port 0), so the port recorded by an earlier INIT (or an earlier SYNC) is already stale -
         // publish this launch's own current port before the peer (running concurrently) might try to
         // dial it.
         Files.writeString(ownPortFile, String.valueOf(ownPort), StandardCharsets.US_ASCII);
+        activeCaptureFile.set(captureFile);
 
         ContactService contactService = new ContactService();
         Contact contact = contactService.listContacts().stream().filter(c -> c.trustState() == TrustState.PAIRED)
@@ -240,21 +259,13 @@ public final class TwoProcessSyncDemo {
             connection = found.orElseThrow(() -> new IllegalStateException("Timed out waiting for the dialer to connect."));
         }
 
-        IdentityService identityService = new IdentityService();
-        UnlockedIdentity identity = identityService.unlock(VAULT_PASSPHRASE);
-        long writerEpoch = identityService.currentIdentity().orElseThrow().currentWriterEpoch();
-
-        try (PeerSyncSessionService sessionService = new PeerSyncSessionService()) {
-            sessionService.startReceiving(connection, identityService.currentIdentity().orElseThrow().id(), (envelope, outcome) -> {
-                if (envelope != null && outcome.accepted() && envelope.body() instanceof ProgressSummary) {
-                    appendCapture(captureFile, envelope);
-                }
-            });
-            sessionService.sendOutboxTo(connection, identity, writerEpoch, nowMillis());
-            Thread.sleep(SYNC_WINDOW.toMillis());
-        } finally {
-            connection.close();
-        }
+        // Nothing here drives sync directly any more: by the time either branch above hands back
+        // `connection`, PR A's own automatic establishment hook (NetworkingService.onConnectionEstablished)
+        // has already synchronously sent this device's outbox and started the automatic receive loop on
+        // this exact connection - whose outcomes feed the capture-file listener wired in at construction
+        // (see activeCaptureFile above). This just gives that loop a bounded window to finish, then disconnects.
+        Thread.sleep(SYNC_WINDOW.toMillis());
+        connection.close();
     }
 
     private static void doRevoke() {

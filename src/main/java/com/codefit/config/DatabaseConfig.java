@@ -8,6 +8,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 
+import org.sqlite.SQLiteConfig;
+
 import com.codefit.model.CardType;
 import com.codefit.model.ValidationMode;
 import com.codefit.service.AcceptedAnswerCodec;
@@ -47,8 +49,30 @@ public final class DatabaseConfig {
     private DatabaseConfig() {
     }
 
+    /** Every connection opened through {@link #getConnection()} gets the same busy timeout - see that
+     *  method's own javadoc for why. */
+    private static final SQLiteConfig CONNECTION_CONFIG = new SQLiteConfig();
+    static {
+        CONNECTION_CONFIG.setBusyTimeout(5000);
+    }
+
+    /**
+     * {@code busy_timeout} is per-connection, not persisted in the database file, so it must be set
+     * here - the one choke point every caller's connection already comes through - rather than once at
+     * {@link #initialize()} time. This is defensive hardening, not the fix for any one specific race:
+     * discovered and confirmed directly while building automatic peer-sync orchestration (two genuinely
+     * concurrent writers against this same SQLite file, from two different threads in one process, can
+     * throw {@code SQLITE_BUSY} immediately rather than one simply waiting the few milliseconds for the
+     * other's small, fast transaction to commit - that specific case is avoided by ordering, not by
+     * this timeout, which empirically did not resolve it alone; see {@code
+     * NetworkingService#onConnectionEstablished}). Still worth keeping as a general safety margin
+     * against any other transient overlap this codebase doesn't yet have a specific ordering guarantee
+     * for. 5 seconds is generously larger than any single transaction in this codebase takes, so this
+     * never masks a real hang (a connection genuinely stuck for 5s would still surface as a real,
+     * visible failure).
+     */
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(databaseUrl);
+        return DriverManager.getConnection(databaseUrl, CONNECTION_CONFIG.toProperties());
     }
 
     /**

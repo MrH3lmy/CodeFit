@@ -322,10 +322,18 @@ public class ContactService {
      * least-recently-seen address first. A repeat sighting of an address already cached only refreshes
      * its recency; it never grows the cache.
      */
+    /**
+     * Synchronized on {@link PeerLocalWriteLock#MONITOR}: a caller of this method ({@code
+     * NetworkingService#connectToContact}'s own completion, or LAN discovery) can now run genuinely
+     * concurrently, in the same process, with that same connection's automatic receive loop - see that
+     * lock class's own javadoc for the exact {@code SQLITE_BUSY} race this closes.
+     */
     public void recordAddressSighting(long contactId, PeerAddress address, ContactAddressSource source, Instant now) {
-        requireContact(contactId);
-        addressRepository.recordSighting(contactId, address, source, now);
-        addressRepository.evictOldestBeyond(contactId, ContactAddress.MAX_ADDRESSES_PER_CONTACT);
+        synchronized (PeerLocalWriteLock.MONITOR) {
+            requireContact(contactId);
+            addressRepository.recordSighting(contactId, address, source, now);
+            addressRepository.evictOldestBeyond(contactId, ContactAddress.MAX_ADDRESSES_PER_CONTACT);
+        }
     }
 
     /**

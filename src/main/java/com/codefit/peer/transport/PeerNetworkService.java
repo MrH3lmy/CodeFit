@@ -18,6 +18,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * The single public entry point into #182's transport (every other class in this package is an
@@ -38,6 +39,7 @@ public final class PeerNetworkService implements AutoCloseable {
     private final KnownContactLookup contactLookup;
     private final ConnectionEventListener eventListener;
     private final VerifiedBindingListener bindingListener;
+    private final ConnectionEstablishedListener connectionEstablishedListener;
     private final LocalBindingEnvelopeCache bindingCache = new LocalBindingEnvelopeCache();
     private final PeerSession.ReplayStates replayStates = new PeerSession.ReplayStates();
     private final Map<IdentityId, PeerConnection> connections = new ConcurrentHashMap<>();
@@ -61,9 +63,21 @@ public final class PeerNetworkService implements AutoCloseable {
      */
     public PeerNetworkService(KnownContactLookup contactLookup, ConnectionEventListener eventListener,
                               VerifiedBindingListener bindingListener) {
+        this(contactLookup, eventListener, bindingListener, (remoteIdentityId, connection) -> { });
+    }
+
+    /**
+     * @param connectionEstablishedListener told, after {@code bindingListener}, that a connection is now
+     *                                      this service's current tracked connection for its remote
+     *                                      identity - see that interface's own javadoc for the exact
+     *                                      ordering guarantee
+     */
+    public PeerNetworkService(KnownContactLookup contactLookup, ConnectionEventListener eventListener,
+                              VerifiedBindingListener bindingListener, ConnectionEstablishedListener connectionEstablishedListener) {
         this.contactLookup = contactLookup;
         this.eventListener = eventListener;
         this.bindingListener = bindingListener;
+        this.connectionEstablishedListener = connectionEstablishedListener;
     }
 
     public synchronized boolean isEnabled() {
@@ -269,23 +283,77 @@ public final class PeerNetworkService implements AutoCloseable {
         }
     }
 
+    /**
+     * Installs {@code connection} as the current tracked connection for its own remote identity, then
+     * - only if it is <em>still</em> the current one by the time the install itself has finished (see
+     * {@link #notifyEstablishedIfStillCurrent}) - tells {@link #connectionEstablishedListener}.
+     *
+     * <p>The notification deliberately happens as a separate step <em>after</em> {@code compute}
+     * returns, never from inside its remapping function: the function's return value is not actually
+     * installed into the map until after it returns, so a listener call made from inside it would see
+     * {@code activeConnection} still reporting the <em>previous</em> value (or nothing) - exactly
+     * backwards from the one invariant this whole mechanism exists to guarantee. Re-checking with a
+     * plain {@code get} right after is also safe against a concurrent reconnect racing this one for
+     * the same identity: whichever of two racing installs is still current at the moment its own
+     * re-check runs is the one (and only one) that ever gets notified - a superseded install that lost
+     * the race before its own check could run is simply never announced at all, which is correct (there
+     * is nothing useful to do with a connection already closed by a newer one anyway), while the
+     * genuinely-latest connection at any point of quiescence is always eventually announced.
+     */
     private void trackInboundConnection(PeerConnection connection) {
-        connections.merge(connection.remoteIdentityId(), connection, (oldConn, newConn) -> {
-            oldConn.close();
-            return newConn;
+        IdentityId remoteIdentityId = connection.remoteIdentityId();
+        connections.compute(remoteIdentityId, (id, existing) -> {
+            if (existing != null) {
+                existing.close();
+            }
+            return connection;
         });
+        notifyEstablishedIfStillCurrent(remoteIdentityId, connection);
     }
 
     private void trackOutboundConnection(IdentityId contactId, PeerConnection connection) {
-        connections.merge(contactId, connection, (oldConn, newConn) -> {
-            oldConn.close();
-            return newConn;
+        connections.compute(contactId, (id, existing) -> {
+            if (existing != null) {
+                existing.close();
+            }
+            return connection;
         });
+        notifyEstablishedIfStillCurrent(contactId, connection);
+    }
+
+    private void notifyEstablishedIfStillCurrent(IdentityId remoteIdentityId, PeerConnection connection) {
+        if (connectionEstablishedListener != null && connections.get(remoteIdentityId) == connection) {
+            connectionEstablishedListener.onConnectionEstablished(remoteIdentityId, connection);
+        }
     }
 
     private void notifyEvent(ConnectionEvent event) {
         if (eventListener != null) {
             eventListener.onConnectionEvent(event);
         }
+    }
+
+    /**
+     * Hands this service's own live, already-unlocked identity to {@code action}, exactly once,
+     * synchronously, only while networking is enabled. This is the narrowest mechanism this service
+     * exposes for the one case that genuinely needs to sign something after a connection is already
+     * live (today, only {@code NetworkingService}'s own post-connect outbox-sync dispatch): the
+     * identity is handed to the lambda and never returned, so it never becomes a value some other
+     * caller could retain, log, or pass further outward. {@code action} must be fast and must not call
+     * back into this service.
+     *
+     * @return whether {@code action} actually ran ({@code false} while disabled - {@code action} is
+     *         never called then)
+     */
+    public boolean withLiveIdentity(Consumer<UnlockedIdentity> action) {
+        UnlockedIdentity identity;
+        synchronized (this) {
+            if (listener == null) {
+                return false;
+            }
+            identity = this.localIdentity;
+        }
+        action.accept(identity);
+        return true;
     }
 }

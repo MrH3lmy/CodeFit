@@ -60,8 +60,11 @@ public class PeerSyncIngestService {
      * MVP limitation (protocol-v1.md §10.1) makes two genuinely concurrent connections from one
      * identity an edge case, not the common path, so serializing globally (not per-author) is a safe,
      * simple trade: ingest is not a high-throughput hot path.
+     *
+     * <p>Shares {@link PeerLocalWriteLock#MONITOR} rather than a lock of its own: this also serializes
+     * ingest against the other local SQLite write it is now genuinely concurrent with for the first
+     * time - see that class's own javadoc for the exact race this closes.
      */
-    private static final Object INGEST_LOCK = new Object();
 
     private final ContactService contactService;
     private final PeerSyncAuthorStateRepository authorStateRepository;
@@ -120,7 +123,7 @@ public class PeerSyncIngestService {
         }
 
         SyncOutcome[] result = new SyncOutcome[1];
-        synchronized (INGEST_LOCK) {
+        synchronized (PeerLocalWriteLock.MONITOR) {
             Transactions.run(connection -> {
                 try {
                     result[0] = ingestWithinTransaction(connection, claimedAuthor, envelope, now);

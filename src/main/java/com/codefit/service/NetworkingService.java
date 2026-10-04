@@ -20,12 +20,15 @@ import com.codefit.peer.invitation.SignedInvitation;
 import com.codefit.peer.protocol.IdentityBinding;
 import com.codefit.peer.protocol.IdentityId;
 import com.codefit.peer.protocol.IdentityKey;
+import com.codefit.peer.protocol.SignedEnvelope;
+import com.codefit.peer.sync.SyncOutcome;
 import com.codefit.peer.transport.ConnectionEventListener;
 import com.codefit.peer.transport.DialOutcome;
 import com.codefit.peer.transport.KnownContactLookup;
 import com.codefit.peer.transport.ListenerBindAddress;
 import com.codefit.peer.transport.LocalAddresses;
 import com.codefit.peer.transport.PeerAddress;
+import com.codefit.peer.transport.PeerConnection;
 import com.codefit.peer.transport.PeerNetworkService;
 import com.codefit.peer.transport.PinnedBinding;
 import com.codefit.peer.transport.RetryPolicy;
@@ -39,6 +42,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
 /**
  * The public façade for #182: wires the identity/contact services (#181) to the transport engine
@@ -66,6 +70,28 @@ public class NetworkingService implements AutoCloseable {
     /** Serializes everything that reads, changes or advertises the local transport key or the listener's lifecycle. */
     private final Object lifecycleLock = new Object();
     private volatile LanDiscoveryService lanDiscoveryService;
+    /**
+     * This networking-enabled lifecycle's own sync session, exactly one per {@link #enableNetworking}
+     * call that actually turns the listener on - never reused across a {@link #disableNetworking}: a
+     * fresh one is created every time networking comes back up (see {@link #startSyncLifecycle}),
+     * since {@link PeerSyncSessionService#close()} permanently shuts down the executor it owns and
+     * cannot be un-shut-down. {@code null} while networking is disabled.
+     */
+    private volatile PeerSyncSessionService syncSession;
+    /**
+     * Told, off the caller's thread, the classification of every frame the automatic receive loop
+     * processes for the life of this service - observation only, exactly like {@code
+     * ConnectionEventListener}, never required for correctness and never a way to drive sync manually
+     * (there is no equivalent hook for sends: {@link #onConnectionEstablished} already sends this
+     * device's outbox automatically, unconditionally, for every established connection). Defaults to a
+     * no-op for every existing caller; the one caller that needs it today is test-support code proving
+     * #184's revocation/replay semantics still hold when sync is driven automatically rather than by
+     * directly calling {@code PeerSyncSessionService} itself (see {@code TwoProcessSyncDemoTest}) -
+     * before this existed, that test's own second, independent {@code PeerSyncSessionService} raced
+     * this class's automatic one to read the very same connection, nondeterministically splitting
+     * received frames between the two.
+     */
+    private final BiConsumer<SignedEnvelope, SyncOutcome> syncOutcomeListener;
 
     public NetworkingService() {
         this(event -> { });
@@ -81,7 +107,16 @@ public class NetworkingService implements AutoCloseable {
      *                                caller's behavior unchanged by defaulting it to a no-op.
      */
     public NetworkingService(ConnectionEventListener connectionEventListener) {
-        this(new IdentityService(), new ContactService(), new TransportKeyService(), connectionEventListener);
+        this(connectionEventListener, (envelope, outcome) -> { });
+    }
+
+    /**
+     * @param syncOutcomeListener see this class's own field javadoc - defaults to a no-op via every
+     *                            other constructor.
+     */
+    public NetworkingService(ConnectionEventListener connectionEventListener,
+                              BiConsumer<SignedEnvelope, SyncOutcome> syncOutcomeListener) {
+        this(new IdentityService(), new ContactService(), new TransportKeyService(), connectionEventListener, syncOutcomeListener);
     }
 
     NetworkingService(IdentityService identityService, ContactService contactService, TransportKeyService transportKeyService) {
@@ -90,10 +125,17 @@ public class NetworkingService implements AutoCloseable {
 
     NetworkingService(IdentityService identityService, ContactService contactService, TransportKeyService transportKeyService,
                        ConnectionEventListener connectionEventListener) {
+        this(identityService, contactService, transportKeyService, connectionEventListener, (envelope, outcome) -> { });
+    }
+
+    NetworkingService(IdentityService identityService, ContactService contactService, TransportKeyService transportKeyService,
+                       ConnectionEventListener connectionEventListener, BiConsumer<SignedEnvelope, SyncOutcome> syncOutcomeListener) {
         this.identityService = identityService;
         this.contactService = contactService;
         this.transportKeyService = transportKeyService;
-        this.peerNetworkService = new PeerNetworkService(new ContactLookup(), connectionEventListener, this::onVerifiedBinding);
+        this.syncOutcomeListener = syncOutcomeListener;
+        this.peerNetworkService = new PeerNetworkService(new ContactLookup(), connectionEventListener, this::onVerifiedBinding,
+                this::onConnectionEstablished);
     }
 
     /** What the transport asks of local contact state; every answer is read fresh from the contact store. */
@@ -200,19 +242,117 @@ public class NetworkingService implements AutoCloseable {
             TransportKeyMaterial material = transportKeyService.ensureCurrent(vaultPassphrase, now);
             long epoch = identityService.beginWriterSession(now);
             peerNetworkService.enable(identity, material, epoch, listenPort, bind);
+            startSyncLifecycle();
         }
+    }
+
+    /**
+     * Creates this lifecycle's sync session. Caller must hold {@link #lifecycleLock} and must only
+     * call this right after {@link PeerNetworkService#enable} actually succeeded - never
+     * speculatively, and never while one from an earlier lifecycle is still live (see {@link
+     * #stopSyncLifecycle}, always called on the way out first).
+     */
+    private void startSyncLifecycle() {
+        syncSession = new PeerSyncSessionService();
     }
 
     public void disableNetworking() {
         synchronized (lifecycleLock) {
             disableLanDiscovery();
+            // Transport first: closing every tracked connection makes any still-blocked receive loop's
+            // own connection.receive() throw and unwind on its own, exactly the same connection-close-
+            // unblocks-the-reader mechanism PeerSyncSessionService's own reconnect-race handling already
+            // relies on - so by the time stopSyncLifecycle's own shutdownNow() runs, there is normally
+            // nothing left to even interrupt.
             peerNetworkService.disable();
+            stopSyncLifecycle();
+        }
+    }
+
+    /**
+     * Tears down this lifecycle's sync session completely and forgets it - the next {@link
+     * #enableNetworking} always builds a brand-new one (see {@link #startSyncLifecycle}), never
+     * reuses this one ({@link PeerSyncSessionService#close()} permanently shuts down the executor it
+     * owns). Caller must hold {@link #lifecycleLock}. Safe to call when nothing was ever started
+     * (networking was never enabled): the field is simply null then.
+     */
+    private void stopSyncLifecycle() {
+        if (syncSession != null) {
+            syncSession.close();
+            syncSession = null;
         }
     }
 
     @Override
     public void close() {
         disableNetworking();
+    }
+
+    /**
+     * Told by the transport, synchronously and for both inbound and outbound connections, the moment a
+     * connection becomes the current one for its remote identity (see {@code
+     * ConnectionEstablishedListener}'s own javadoc for the exact ordering guarantee this relies on).
+     *
+     * <p>Sends this connection's one outbox pass <em>before</em> starting its receive loop, and does so
+     * synchronously, on this calling thread (the transport's own dial/handshake pool) rather than
+     * dispatching it elsewhere - deliberately, not for simplicity. {@code PeerSyncIngestService}'s own
+     * ingest path and this send path each open and commit their own short SQLite transaction with no
+     * lock shared between them; running them from two different threads at once - which an async
+     * dispatch would do, since {@link PeerSyncSessionService#startReceiving} already submits its loop
+     * to its own background thread immediately - let this device's own automatic send and its own
+     * automatic receive genuinely race each other's writes to the same local database file, confirmed
+     * directly to intermittently throw {@code SQLITE_BUSY} under this exact two-process test's real
+     * load even with a generous {@code busy_timeout} configured (see {@code DatabaseConfig}). Sending
+     * first and only then starting the receive loop removes the race entirely for the one-shot send
+     * this PR performs: the send's transaction has already committed and released before any local
+     * receive-side write for this identity could possibly begin. A future change that needs to
+     * dispatch a <em>slower or repeated</em> send asynchronously will need to give the send and ingest
+     * paths a real shared write lock at the #184 architecture level - this ordering trick alone would
+     * no longer be sufficient once sends and receives can genuinely overlap over the life of a
+     * long-lived connection, not just at the single moment this method runs.
+     *
+     * <p>Never lets anything it does here tear down the connection itself: every exception from the
+     * sync layer is caught and swallowed, since a sync-layer failure must never be mistaken for a
+     * reason to distrust an already-authenticated transport connection.
+     */
+    private void onConnectionEstablished(IdentityId remoteIdentityId, PeerConnection connection) {
+        try {
+            PeerSyncSessionService session = this.syncSession;
+            if (session == null) {
+                return; // raced with disableNetworking(); the connection is already being torn down too
+            }
+            Optional<IdentityId> myIdentityId = identityService.currentIdentity().map(LocalIdentitySummary::id);
+            if (myIdentityId.isEmpty()) {
+                return; // should not happen once networking is enabled, but never worth risking the connection over
+            }
+            sendOutboxQuietly(connection, session);
+            session.startReceiving(connection, myIdentityId.get(), syncOutcomeListener);
+        } catch (RuntimeException unexpected) {
+            // A sync-layer failure must never tear down an otherwise valid authenticated connection.
+        }
+    }
+
+    /**
+     * Resolves the live identity through {@link PeerNetworkService#withLiveIdentity} - never a field
+     * on this class - so the {@code UnlockedIdentity} is only ever touched for the one call that
+     * needs it and never retained here. Any failure (the connection died mid-send, networking was
+     * disabled concurrently) is swallowed: a failed send attempt is always safe to simply retry on the
+     * next established connection (see {@code PeerSyncOutboxService}'s own "resending is always
+     * harmless" design), and this connection's receive loop (started right after this call returns)
+     * notices a dead connection independently through its own read path either way.
+     */
+    private void sendOutboxQuietly(PeerConnection connection, PeerSyncSessionService session) {
+        try {
+            peerNetworkService.withLiveIdentity(identity -> identityService.currentIdentity().ifPresent(summary -> {
+                try {
+                    session.sendOutboxTo(connection, identity, summary.currentWriterEpoch(), Instant.now());
+                } catch (IOException | RuntimeException sendFailed) {
+                    // Swallowed deliberately - see this method's own javadoc.
+                }
+            }));
+        } catch (RuntimeException unexpected) {
+            // Never let a sync-layer failure propagate out of connection establishment.
+        }
     }
 
     /**

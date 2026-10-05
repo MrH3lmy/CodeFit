@@ -154,6 +154,26 @@ class PeerComparisonServiceTest {
         assertTrue(comparison.right().snapshotOptional().isPresent());
     }
 
+    @Test
+    void aFreshEarlierPeerCutoffIsRecomputedLocallyAtTheSameElapsedPoint() throws Exception {
+        LocalDate today = LocalDate.now(ZONE);
+        Instant now = today.atTime(15, 0).atZone(ZONE).toInstant();
+        Instant peerCutoff = now.minus(Duration.ofMinutes(7));
+        saveConsent(List.of(SharingScope.DAILY_SUMMARY), 1);
+        ComparisonWindow myWindow = ComparisonWindow.day(today, ZONE);
+        savePeerSummaryExactWithCutoff(myWindow, peerCutoff, now);
+
+        ProgressComparison comparison = serviceAt(now).compareTodayWith(contactId);
+
+        assertEquals(ComparisonState.COMPARABLE, comparison.state(),
+                "a normal few-minutes-old peer summary must not fail with CUTOFF_MISMATCH");
+        assertEquals(peerCutoff, comparison.left().snapshot().cutoff(),
+                "my real evidence must be recomputed through the peer's elapsed cutoff");
+        assertEquals(peerCutoff, comparison.right().snapshot().cutoff());
+        assertEquals(now, comparison.left().capturedAt(),
+                "capturedAt stays truthful: the historical-cutoff computation happened now");
+    }
+
     // --- stale snapshot ---
 
     @Test

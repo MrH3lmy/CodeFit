@@ -76,6 +76,36 @@ class PeerComparisonPresentationTest {
     }
 
     @Test
+    void measuredZeroRatesAndScoresWithRealSamplesStayVisible() {
+        List<MetricComparison> metrics = List.of(
+                comparable("review.verified_correct_rate", MetricUnit.BASIS_POINTS, 0L, 0L, 10),
+                comparable("mock.overall_score", MetricUnit.PERCENT, 0L, 0L, 1),
+                comparable("problem.solving_seconds", MetricUnit.SECONDS, 0L, 0L, 1));
+
+        PeerComparisonPresentation.Rendered rendered = PeerComparisonPresentation.present(
+                comparableResult(metrics), "No activity.");
+
+        assertEquals(PeerComparisonPresentation.Kind.ROWS, rendered.kind(),
+                "real measured zero outcomes with samples must not collapse to the no-activity state");
+        assertEquals("0%", rowFor(rendered, "Review accuracy").you());
+        assertEquals("0%", rowFor(rendered, "Mock interview score").peer());
+        assertEquals("0 sec", rowFor(rendered, "Problem-solving time").you());
+    }
+
+    @Test
+    void trueZeroWithoutSamplesRemainsSuppressible() {
+        List<MetricComparison> metrics = List.of(
+                comparable("review.attempts", MetricUnit.COUNT, 0L, 0L, 0),
+                comparable("problem.attempts", MetricUnit.COUNT, 0L, 0L, 0));
+
+        PeerComparisonPresentation.Rendered rendered = PeerComparisonPresentation.present(
+                comparableResult(metrics), "No activity.");
+
+        assertEquals(PeerComparisonPresentation.Kind.EMPTY, rendered.kind());
+        assertEquals("No activity.", rendered.message());
+    }
+
+    @Test
     void aMeaningfulZeroVersusPositiveRowIsNeverSuppressedEvenAmongAllZeroRows() {
         List<MetricComparison> metrics = List.of(
                 comparable("review.attempts", MetricUnit.COUNT, 0L, 0L, 0),      // both-zero: suppressed

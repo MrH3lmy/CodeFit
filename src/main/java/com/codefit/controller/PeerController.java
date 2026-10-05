@@ -3,13 +3,16 @@ package com.codefit.controller;
 import com.codefit.peer.comparison.SnapshotComparisonEngine;
 import com.codefit.peer.identity.Contact;
 import com.codefit.peer.identity.ContactAddress;
-import com.codefit.peer.identity.ContactPermission;
 import com.codefit.peer.identity.LocalIdentitySummary;
-import com.codefit.peer.identity.PermissionGrant;
 import com.codefit.peer.invitation.InvitationCodec;
 import com.codefit.peer.invitation.SignedInvitation;
 import com.codefit.peer.identity.IdentityFingerprint;
+import com.codefit.peer.match.MatchRole;
+import com.codefit.peer.match.MatchStatus;
+import com.codefit.peer.match.StudyMatch;
 import com.codefit.peer.protocol.ComparisonWindow;
+import com.codefit.peer.protocol.MatchDuration;
+import com.codefit.peer.protocol.ObjectId;
 import com.codefit.peer.protocol.SharingScope;
 import com.codefit.peer.transport.ConnectionOutcome;
 import com.codefit.peer.transport.PeerAddress;
@@ -18,6 +21,7 @@ import com.codefit.service.ContactService;
 import com.codefit.service.IdentityService;
 import com.codefit.service.NetworkingService;
 import com.codefit.service.PeerComparisonService;
+import com.codefit.service.PeerMatchService;
 import com.codefit.service.PeerSyncOutboxService;
 import com.codefit.ui.PeerConnectionPresenter;
 import com.codefit.ui.PeerDialGate;
@@ -42,7 +46,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -130,6 +133,10 @@ public class PeerController {
     /** The existing #184 outbox model "Share Today's Progress" approves today's window into -
      *  never a new publication mechanism. */
     private final PeerSyncOutboxService outboxService;
+    /** Owns the Study Match lifecycle/persistence and match-window progress comparison - never
+     *  touches {@code PeerSyncSessionService}/{@code PeerConnection}/{@code UnlockedIdentity} (see
+     *  its own javadoc). */
+    private final PeerMatchService matchService;
 
     /**
      * Ensures at most one manual dial per contact is ever in flight from this UI at a time - see
@@ -144,18 +151,25 @@ public class PeerController {
 
     public PeerController() {
         this(new IdentityService(), PeerSessionHolder.networkingService(), new ContactService(), PeerSessionHolder.presenter(),
-                PeerSessionHolder.dialGate(), new PeerComparisonService(), new PeerSyncOutboxService());
+                PeerSessionHolder.dialGate(), new PeerComparisonService(), new PeerSyncOutboxService(), new PeerMatchService());
     }
 
     PeerController(IdentityService identityService, NetworkingService networkingService, ContactService contactService,
                     PeerConnectionPresenter presenter, PeerDialGate dialGate) {
         this(identityService, networkingService, contactService, presenter, dialGate,
-                new PeerComparisonService(), new PeerSyncOutboxService());
+                new PeerComparisonService(), new PeerSyncOutboxService(), new PeerMatchService());
     }
 
     PeerController(IdentityService identityService, NetworkingService networkingService, ContactService contactService,
                     PeerConnectionPresenter presenter, PeerDialGate dialGate, PeerComparisonService comparisonService,
                     PeerSyncOutboxService outboxService) {
+        this(identityService, networkingService, contactService, presenter, dialGate, comparisonService, outboxService,
+                new PeerMatchService());
+    }
+
+    PeerController(IdentityService identityService, NetworkingService networkingService, ContactService contactService,
+                    PeerConnectionPresenter presenter, PeerDialGate dialGate, PeerComparisonService comparisonService,
+                    PeerSyncOutboxService outboxService, PeerMatchService matchService) {
         this.identityService = identityService;
         this.networkingService = networkingService;
         this.contactService = contactService;
@@ -163,6 +177,7 @@ public class PeerController {
         this.dialGate = dialGate;
         this.comparisonService = comparisonService;
         this.outboxService = outboxService;
+        this.matchService = matchService;
     }
 
     @FXML
@@ -415,7 +430,15 @@ public class PeerController {
         comparisonResultLabel.setWrapText(true);
         comparisonResultLabel.setVisible(false);
         comparisonResultLabel.setManaged(false);
-        VBox textColumn = new VBox(2, nameLabel, statusLabel, comparisonResultLabel);
+        // Appended after comparisonResultLabel (index 2), same reason as above.
+        Optional<StudyMatch> latestMatch = matchService.matchesFor(contact.id()).stream().findFirst();
+        Label matchStatusLabel = new Label();
+        matchStatusLabel.getStyleClass().add("dashboard-card-helper");
+        matchStatusLabel.setWrapText(true);
+        matchStatusLabel.setText(latestMatch.map(match -> describeMatchStatus(match, connected, now())).orElse(""));
+        matchStatusLabel.setVisible(latestMatch.isPresent());
+        matchStatusLabel.setManaged(latestMatch.isPresent());
+        VBox textColumn = new VBox(2, nameLabel, statusLabel, comparisonResultLabel, matchStatusLabel);
         textColumn.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(textColumn, Priority.ALWAYS);
 
@@ -441,10 +464,45 @@ public class PeerController {
         Button compareButton = new Button("Compare Today's Progress");
         compareButton.setOnAction(event -> compareTodaysProgress(contact, comparisonResultLabel));
 
-        HBox row = new HBox(10, textColumn, actionButton, shareButton, compareButton);
+        // Appended after compareButton (index 3) - never before it, same "fixed index" discipline as
+        // every button above. Visibility (never mere disabling - a hidden-and-disabled control is
+        // never a surprise click target) is computed once from latestMatch, captured for these
+        // handlers; a handler that somehow fires while not applicable is still safe (Optional#ifPresent).
+        boolean showStart = latestMatch.isEmpty() || isMatchTerminal(latestMatch.get().status());
+        boolean showAcceptDecline = latestMatch.filter(m -> m.role() == MatchRole.OPPONENT && m.status() == MatchStatus.PENDING).isPresent();
+        boolean showCancel = latestMatch.filter(m -> m.role() == MatchRole.CHALLENGER && m.status() == MatchStatus.PENDING).isPresent();
+        boolean showRefresh = latestMatch.filter(m -> m.status() == MatchStatus.ACTIVE || m.status() == MatchStatus.COMPLETED).isPresent();
+
+        Button startMatch15Button = visibleButton("Start 15m Match", showStart, e -> startStudyMatch(contact, MatchDuration.FIFTEEN_MINUTES));
+        Button startMatch30Button = visibleButton("Start 30m Match", showStart, e -> startStudyMatch(contact, MatchDuration.THIRTY_MINUTES));
+        Button startMatch60Button = visibleButton("Start 60m Match", showStart, e -> startStudyMatch(contact, MatchDuration.SIXTY_MINUTES));
+        Button acceptMatchButton = visibleButton("Accept Match", showAcceptDecline,
+                e -> latestMatch.ifPresent(m -> respondToMatch(contact, m.matchId(), true)));
+        Button declineMatchButton = visibleButton("Decline Match", showAcceptDecline,
+                e -> latestMatch.ifPresent(m -> respondToMatch(contact, m.matchId(), false)));
+        Button cancelMatchButton = visibleButton("Cancel Match", showCancel,
+                e -> latestMatch.ifPresent(m -> cancelMatch(contact, m.matchId())));
+        Button refreshMatchButton = visibleButton(
+                latestMatch.filter(m -> m.status() == MatchStatus.COMPLETED).isPresent() ? "View Final Result" : "Refresh Match Progress",
+                showRefresh, e -> latestMatch.ifPresent(m -> refreshMatchProgress(contact, m.matchId(), matchStatusLabel)));
+
+        HBox row = new HBox(10, textColumn, actionButton, shareButton, compareButton, startMatch15Button, startMatch30Button,
+                startMatch60Button, acceptMatchButton, declineMatchButton, cancelMatchButton, refreshMatchButton);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setMaxWidth(Double.MAX_VALUE);
         return row;
+    }
+
+    private static Button visibleButton(String text, boolean visible, javafx.event.EventHandler<javafx.event.ActionEvent> onAction) {
+        Button button = new Button(text);
+        button.setOnAction(onAction);
+        button.setVisible(visible);
+        button.setManaged(visible);
+        return button;
+    }
+
+    private static boolean isMatchTerminal(MatchStatus status) {
+        return status == MatchStatus.COMPLETED || status == MatchStatus.DECLINED || status == MatchStatus.CANCELLED;
     }
 
     /**
@@ -463,35 +521,13 @@ public class PeerController {
     private void shareTodaysProgress(Contact contact) {
         runPeerAction(() -> {
             Instant now = now();
-            Optional<ContactPermission> existing = contactService.permissionsFor(contact.id());
-            List<SharingScope> scopes = existing.map(ContactPermission::scopes).orElse(List.of());
-            List<SharingScope> mergedScopes;
-            if (scopes.contains(SharingScope.DAILY_SUMMARY)) {
-                mergedScopes = scopes;
-            } else {
-                mergedScopes = new ArrayList<>(scopes);
-                mergedScopes.add(SharingScope.DAILY_SUMMARY);
-            }
-            Integer historicalWindowDays = existing.map(ContactPermission::historicalWindowDays).orElse(null);
-            if (historicalWindowDays == null || historicalWindowDays < 1) {
-                historicalWindowDays = 1;
-            }
-            Instant expiresAt = existing.map(ContactPermission::expiresAt).orElse(null);
-            boolean allowForwarding = existing.map(ContactPermission::allowForwarding).orElse(false);
-            contactService.updatePermissions(contact.id(),
-                    new PermissionGrant(mergedScopes, historicalWindowDays, expiresAt, allowForwarding), now);
+            contactService.grantAdditionalScope(contact.id(), SharingScope.DAILY_SUMMARY, 1, now);
 
             ZoneId zone = ZoneId.systemDefault();
             ComparisonWindow todayWindow = ComparisonWindow.day(LocalDate.now(zone), zone);
             outboxService.approveProgressSummary(contact.id(), todayWindow, now);
 
-            if (networkingService.activeConnection(contact.identityId()).isPresent()) {
-                try {
-                    networkingService.syncOutboxNow(contact.id());
-                } catch (IOException | RuntimeException alreadyApprovedWillRetryAutomatically) {
-                    // Best-effort - see this method's own javadoc.
-                }
-            }
+            syncNowIfConnected(contact);
             return null;
         }, (Void ignored) -> setStatus("Sharing today's progress with " + displayNameFor(contact) + "."));
     }
@@ -555,6 +591,126 @@ public class PeerController {
             }
         }
         return text.toString();
+    }
+
+    /** The challenger's own action: proposes {@code duration}, granting {@code MATCH_PARTICIPATION} up front. */
+    private void startStudyMatch(Contact contact, MatchDuration duration) {
+        runPeerAction(() -> {
+            matchService.startMatch(contact.id(), duration, now());
+            syncNowIfConnected(contact);
+            return null;
+        }, (Void ignored) -> setStatus("Study match invitation (" + duration.minutes() + " min) sent to "
+                + displayNameFor(contact) + "."));
+    }
+
+    /** The opponent's own accept/decline action. */
+    private void respondToMatch(Contact contact, ObjectId matchId, boolean accept) {
+        runPeerAction(() -> {
+            Instant now = now();
+            if (accept) {
+                matchService.accept(matchId, now);
+            } else {
+                matchService.decline(matchId, now);
+            }
+            syncNowIfConnected(contact);
+            return null;
+        }, (Void ignored) -> setStatus((accept ? "Accepted" : "Declined") + " the study match with " + displayNameFor(contact) + "."));
+    }
+
+    /** The challenger's own withdrawal of a still-{@code PENDING} invitation. */
+    private void cancelMatch(Contact contact, ObjectId matchId) {
+        runPeerAction(() -> {
+            matchService.cancel(matchId, now());
+            syncNowIfConnected(contact);
+            return null;
+        }, (Void ignored) -> setStatus("Cancelled the study match with " + displayNameFor(contact) + "."));
+    }
+
+    /**
+     * "Refresh Match Progress" / "View Final Result": while still {@code ACTIVE}, first captures and
+     * approves this device's own real match-window progress (exactly {@link #shareTodaysProgress}'s
+     * own pattern, reused for a match window instead of today's calendar day) and syncs it now if
+     * already connected; either way, then reads and renders the real comparison. Never touches
+     * {@code PeerSyncSessionService}/{@code PeerConnection}/{@code UnlockedIdentity}.
+     */
+    private void refreshMatchProgress(Contact contact, ObjectId matchId, Label matchStatusLabel) {
+        runPeerAction(() -> {
+            Instant now = now();
+            Optional<StudyMatch> current = matchService.find(matchId);
+            if (current.isPresent() && current.get().status() == MatchStatus.ACTIVE) {
+                matchService.refreshProgress(matchId, now);
+                syncNowIfConnected(contact);
+            }
+            return matchService.compareProgress(matchId, now);
+        }, (PeerMatchService.MatchProgressView view) -> {
+            matchStatusLabel.setText(describeMatchProgress(view));
+            matchStatusLabel.setVisible(true);
+            matchStatusLabel.setManaged(true);
+        }, error -> {
+            matchStatusLabel.setText("Match progress refresh failed: " + messageOf(error));
+            matchStatusLabel.setVisible(true);
+            matchStatusLabel.setManaged(true);
+        });
+    }
+
+    /** Best-effort immediate sync, shared by every Study Match action - see {@link #shareTodaysProgress}'s own javadoc for why. */
+    private void syncNowIfConnected(Contact contact) {
+        if (networkingService.activeConnection(contact.identityId()).isPresent()) {
+            try {
+                networkingService.syncOutboxNow(contact.id());
+            } catch (IOException | RuntimeException bestEffort) {
+                // Best-effort - the next automatic connection-established send will resend it.
+            }
+        }
+    }
+
+    /**
+     * The initial, cheap, no-I/O status line shown for a contact's most recent match as soon as the
+     * row is built - never the full progress comparison, which requires a real local capture and so
+     * is only ever computed inside {@link #refreshMatchProgress}'s own background task.
+     */
+    private static String describeMatchStatus(StudyMatch match, boolean connected, Instant now) {
+        return switch (match.status()) {
+            case PENDING -> match.role() == MatchRole.CHALLENGER
+                    ? "Study match invitation sent (" + match.duration().minutes() + " min) - waiting for a response."
+                    : "Incoming study match invitation (" + match.duration().minutes() + " min).";
+            case ACTIVE -> {
+                Duration remaining = Duration.between(now, match.endsAt());
+                String base = "Study match active - " + formatRemaining(remaining) + " remaining.";
+                yield connected ? base : base + " Peer offline - showing last synced progress.";
+            }
+            case COMPLETED -> "Study match completed.";
+            case DECLINED -> "Study match declined.";
+            case CANCELLED -> "Study match cancelled.";
+        };
+    }
+
+    private static String formatRemaining(Duration remaining) {
+        if (remaining.isNegative()) {
+            remaining = Duration.ZERO;
+        }
+        long totalSeconds = remaining.toSeconds();
+        return String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60);
+    }
+
+    /**
+     * Renders the real {@link SnapshotComparisonEngine} result exactly like {@link
+     * #describeComparison} (reused as-is - a match's comparable/incompatible branches mean exactly
+     * the same thing), plus the one small, documented "who is ahead" verdict {@link
+     * PeerMatchService#deriveLeaderVerdict} derives - never a new scoring/winner computation here.
+     */
+    private static String describeMatchProgress(PeerMatchService.MatchProgressView view) {
+        String base = describeComparison(view.comparison());
+        if (view.verdict().isEmpty()) {
+            return base;
+        }
+        String verdictText = switch (view.verdict().get()) {
+            case AHEAD -> "You are AHEAD.";
+            case BEHIND -> "You are BEHIND.";
+            case TIED -> "You are TIED.";
+            case MIXED -> "MIXED - no consistent leader across comparable metrics.";
+        };
+        return base + "\n" + verdictText;
     }
 
     private static String displayNameFor(Contact contact) {

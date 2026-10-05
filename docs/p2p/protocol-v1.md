@@ -127,10 +127,13 @@ reached it by forwarding. A group id grants nothing by itself: membership is the
 | 6 | `TOMBSTONE` | implemented | none (control) |
 | 7 | `CHALLENGE_MANIFEST` | reserved → `UNSUPPORTED_MESSAGE_TYPE` | `CHALLENGE_PARTICIPATION` (#186) |
 | 8 | `FORWARDED_CIPHERTEXT` | reserved → `UNSUPPORTED_MESSAGE_TYPE` | none; outer carrier only (#188) |
+| 9 | `MATCH_INVITATION` | implemented | none (control) (#187) |
+| 10 | `MATCH_RESPONSE` | implemented | none (control) (#187) |
 
 Sharing scopes (`u8`): 1 `SOCIAL_PROFILE`, 2 `DAILY_SUMMARY`, 3 `WEEKLY_SUMMARY`,
-4 `PREPARATION_SNAPSHOT`, 5 `CHALLENGE_PARTICIPATION`. No scope exists for raw content, and none
-may be added (see section 11).
+4 `PREPARATION_SNAPSHOT`, 5 `CHALLENGE_PARTICIPATION`, 6 `MATCH_PARTICIPATION` (#187; distinct from
+`CHALLENGE_PARTICIPATION`, which stays reserved for #186's own later, separate group-challenge
+epic). No scope exists for raw content, and none may be added (see section 11).
 
 ### 6.1 `IDENTITY_BINDING` (schema 1)
 
@@ -314,6 +317,41 @@ frame from the original author. The forwarder learns only the outer fields, neve
 content. Forwarding requires explicit opt-in, a per-peer quota, a retention limit and a recipient
 allow-list.
 
+### 6.9 `MATCH_INVITATION` (schema 1, #187 "1-v-1 Study Match")
+
+```
+u8 duration   1 = 15 minutes, 2 = 30 minutes, 3 = 60 minutes
+```
+
+The challenger's proposal to start a timed study match with exactly one opponent. Control (no scope
+required - like `CONSENT_REVISION`, an invitation needs no pre-existing consent to be received).
+`objectId` is the match id itself: a challenger-chosen random 16 bytes (`ObjectId` already is
+exactly "an author-chosen random id of a logical object"), never derived from identities. The
+audience MUST be DIRECT with exactly one recipient (`INVALID_AUDIENCE`). Withdrawing a still-
+unanswered invitation is a `TOMBSTONE` of this same object (reason `REVOKED`) - there is no separate
+"cancelled" message type.
+
+### 6.10 `MATCH_RESPONSE` (schema 1, #187)
+
+```
+bool               accepted
+optional<instant>  startedAt   present iff accepted; <= envelope createdAt
+```
+
+The opponent's one-shot accept/decline, addressed back to the challenger under the same `objectId`
+(a different `(author, objectId)` replay stream from the invitation's own, since the opponent is a
+different author). Control (no scope required). `startedAt` is the authoritative instant both
+participants converge on - the challenger adopts it verbatim rather than computing its own, so both
+sides' local records always agree exactly. `endsAt` is never transmitted: both sides derive it
+identically as `startedAt + duration`, already known to both from the invitation. The audience MUST
+be DIRECT with exactly one recipient.
+
+Match-window study progress reuses the existing `PROGRESS_SUMMARY` type unchanged, with a third
+window kind (§7.1): `WindowKind.MATCH`'s `start`/`end` are the match's own agreed instants, identical
+on both devices by construction, so there is no independent per-device computation to disagree
+about. Its required scope is `SharingScope.MATCH_PARTICIPATION` (code 6), granted automatically and
+mutually the moment a match is proposed/accepted - never a separate manual toggle.
+
 ## 7. Time windows and legacy timestamps
 
 ### 7.1 Windows
@@ -332,6 +370,12 @@ allow-list.
 * **Partial periods.** `cutoff < end` means "so far". An in-progress period is compared only at
   equal elapsed time: `equalElapsedCutoff(elapsed) = start + min(elapsed, length)`. A comparison of
   a complete period with a partial one MUST be labelled as such or refused.
+* **MATCH** (#187) is not a calendar period at all: its `start`/`end` are a 1-v-1 Study Match's own
+  explicit, mutually-agreed `startedAt`/`endsAt` (§6.10), identical on both participants' devices by
+  construction rather than independently computed from a local date and zone. Because of that,
+  two `MATCH` observations for the same match are always treated as aligned regardless of each
+  side's own elapsed time - the "equal elapsed time" rule above exists specifically to make two
+  *independently anchored* partial periods comparable, which does not apply here.
 * The protocol has no rolling windows. They are computed locally from stored daily summaries.
 
 ### 7.2 Clock handling

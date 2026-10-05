@@ -5,8 +5,11 @@ import com.codefit.peer.identity.TrustState;
 import com.codefit.peer.protocol.ConsentRevision;
 import com.codefit.peer.protocol.IdentityBinding;
 import com.codefit.peer.protocol.IdentityId;
+import com.codefit.peer.protocol.MatchInvitation;
+import com.codefit.peer.protocol.MatchResponse;
 import com.codefit.peer.protocol.MessageBody;
 import com.codefit.peer.protocol.MessageId;
+import com.codefit.peer.protocol.MessageType;
 import com.codefit.peer.protocol.ObjectId;
 import com.codefit.peer.protocol.PreparationSnapshot;
 import com.codefit.peer.protocol.ProgressSummary;
@@ -16,6 +19,7 @@ import com.codefit.peer.protocol.SignedEnvelope;
 import com.codefit.peer.protocol.SocialProfileCard;
 import com.codefit.peer.protocol.Tombstone;
 import com.codefit.peer.sync.SyncOutcome;
+import com.codefit.repository.MatchRepository;
 import com.codefit.repository.PeerPreparationSnapshotRepository;
 import com.codefit.repository.PeerProgressSummaryRepository;
 import com.codefit.repository.PeerSocialProfileCardRepository;
@@ -72,22 +76,25 @@ public class PeerSyncIngestService {
     private final PeerProgressSummaryRepository progressSummaryRepository;
     private final PeerPreparationSnapshotRepository preparationSnapshotRepository;
     private final PeerSocialProfileCardRepository socialProfileCardRepository;
+    private final MatchRepository matchRepository;
 
     public PeerSyncIngestService() {
         this(new ContactService(), new PeerSyncAuthorStateRepository(), new PeerSyncConsentRepository(),
-                new PeerProgressSummaryRepository(), new PeerPreparationSnapshotRepository(), new PeerSocialProfileCardRepository());
+                new PeerProgressSummaryRepository(), new PeerPreparationSnapshotRepository(), new PeerSocialProfileCardRepository(),
+                new MatchRepository());
     }
 
     PeerSyncIngestService(ContactService contactService, PeerSyncAuthorStateRepository authorStateRepository,
                            PeerSyncConsentRepository consentRepository, PeerProgressSummaryRepository progressSummaryRepository,
                            PeerPreparationSnapshotRepository preparationSnapshotRepository,
-                           PeerSocialProfileCardRepository socialProfileCardRepository) {
+                           PeerSocialProfileCardRepository socialProfileCardRepository, MatchRepository matchRepository) {
         this.contactService = contactService;
         this.authorStateRepository = authorStateRepository;
         this.consentRepository = consentRepository;
         this.progressSummaryRepository = progressSummaryRepository;
         this.preparationSnapshotRepository = preparationSnapshotRepository;
         this.socialProfileCardRepository = socialProfileCardRepository;
+        this.matchRepository = matchRepository;
     }
 
     /**
@@ -122,11 +129,12 @@ public class PeerSyncIngestService {
             return SyncOutcome.EXPIRED;
         }
 
+        long senderContactId = contact.id();
         SyncOutcome[] result = new SyncOutcome[1];
         synchronized (PeerLocalWriteLock.MONITOR) {
             Transactions.run(connection -> {
                 try {
-                    result[0] = ingestWithinTransaction(connection, claimedAuthor, envelope, now);
+                    result[0] = ingestWithinTransaction(connection, claimedAuthor, senderContactId, envelope, now);
                 } catch (SQLException exception) {
                     throw new IllegalStateException("Unable to ingest peer sync envelope", exception);
                 }
@@ -135,8 +143,8 @@ public class PeerSyncIngestService {
         return result[0];
     }
 
-    private SyncOutcome ingestWithinTransaction(Connection connection, IdentityId author, SignedEnvelope envelope, Instant now)
-            throws SQLException {
+    private SyncOutcome ingestWithinTransaction(Connection connection, IdentityId author, long authorContactId,
+                                                 SignedEnvelope envelope, Instant now) throws SQLException {
         var header = envelope.header();
         MessageId messageId = envelope.messageId();
 
@@ -164,15 +172,15 @@ public class PeerSyncIngestService {
             }
         }
 
-        boolean tombstone = applyAccepted(connection, author, header.objectId(), header.epoch(), header.revision(), body, now);
+        boolean tombstone = applyAccepted(connection, author, authorContactId, header.objectId(), header.epoch(), header.revision(), body, now);
         authorStateRepository.recordAccepted(connection, author, messageId, header.epoch(), header.sequence(),
                 header.objectId(), header.revision(), tombstone, header.expiresAt(), now);
         return SyncOutcome.ACCEPTED;
     }
 
     /** @return whether the accepted body is itself a tombstone, for the replay-state's own bookkeeping */
-    private boolean applyAccepted(Connection connection, IdentityId author, ObjectId objectId, long epoch, long revision,
-                                   MessageBody body, Instant now) throws SQLException {
+    private boolean applyAccepted(Connection connection, IdentityId author, long authorContactId, ObjectId objectId,
+                                   long epoch, long revision, MessageBody body, Instant now) throws SQLException {
         switch (body) {
             case ProgressSummary summary -> progressSummaryRepository.upsert(connection, author, objectId, epoch, revision,
                     summary, now);
@@ -182,6 +190,12 @@ public class PeerSyncIngestService {
                     card, now);
             case ConsentRevision consent -> consentRepository.save(connection, author, consent.scopes(), epoch, revision, now);
             case Tombstone tombstone -> {
+                if (tombstone.targetType() == MessageType.MATCH_INVITATION) {
+                    // The challenger withdrawing their own invitation - always wins a race against a
+                    // response the opponent generated before this arrived; see
+                    // MatchRepository#applyReceivedCancellation for exactly why that is safe.
+                    matchRepository.applyReceivedCancellation(connection, objectId, now);
+                }
                 if (tombstone.requestCacheDeletion()) {
                     purgeCachedCopy(connection, author, objectId, tombstone.targetType());
                 }
@@ -191,6 +205,10 @@ public class PeerSyncIngestService {
                 // Transport-key pinning already happens at the #182 handshake layer; nothing further
                 // to cache here - only the replay-state bookkeeping (recorded by the caller) matters.
             }
+            case MatchInvitation invitation -> matchRepository.applyReceivedInvitation(connection, authorContactId, objectId,
+                    invitation.duration(), now);
+            case MatchResponse response -> matchRepository.applyReceivedResponse(connection, objectId, response.accepted(),
+                    response.startedAt(), now);
         }
         return false;
     }

@@ -277,6 +277,37 @@ public class ContactService {
     }
 
     /**
+     * Merges {@code scope} into this contact's existing grant - never replacing any other
+     * already-granted scope, unlike {@link #updatePermissions} itself - and raises {@code
+     * historicalWindowDays} to at least {@code minHistoricalWindowDays} if it was not already that
+     * high. Shared by every feature that only ever needs "also grant this one scope, keep
+     * everything else exactly as it was": a default/{@code null} {@code historicalWindowDays}
+     * anchors history at this grant's own {@code updatedAt} (see {@link #historicalWindowStart}),
+     * which would exclude evidence from just before the grant unless raised explicitly - the same
+     * risk "Share Today's Progress" (PR B) first had to account for.
+     *
+     * @throws IllegalContactStateException the contact is not {@link TrustState#PAIRED}
+     */
+    public ContactPermission grantAdditionalScope(long contactId, SharingScope scope, int minHistoricalWindowDays, Instant now) {
+        Optional<ContactPermission> existing = permissionsFor(contactId);
+        List<SharingScope> scopes = existing.map(ContactPermission::scopes).orElse(List.of());
+        List<SharingScope> merged;
+        if (scopes.contains(scope)) {
+            merged = scopes;
+        } else {
+            merged = new java.util.ArrayList<>(scopes);
+            merged.add(scope);
+        }
+        Integer historicalWindowDays = existing.map(ContactPermission::historicalWindowDays).orElse(null);
+        if (historicalWindowDays == null || historicalWindowDays < minHistoricalWindowDays) {
+            historicalWindowDays = minHistoricalWindowDays;
+        }
+        Instant expiresAt = existing.map(ContactPermission::expiresAt).orElse(null);
+        boolean allowForwarding = existing.map(ContactPermission::allowForwarding).orElse(false);
+        return updatePermissions(contactId, new PermissionGrant(merged, historicalWindowDays, expiresAt, allowForwarding), now);
+    }
+
+    /**
      * Whether this contact currently holds a valid, unexpired grant for {@code scope}, AND the local
      * identity is not paused. The single enforcement point every future publisher (#183/#184) and
      * every UI control must call before treating a contact as authorized — never inferred from the UI

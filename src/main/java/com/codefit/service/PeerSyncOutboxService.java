@@ -2,12 +2,17 @@ package com.codefit.service;
 
 import com.codefit.peer.identity.Contact;
 import com.codefit.peer.identity.UnlockedIdentity;
+import com.codefit.peer.match.MatchRole;
+import com.codefit.peer.match.MatchStatus;
+import com.codefit.peer.match.StudyMatch;
 import com.codefit.peer.protocol.Audience;
 import com.codefit.peer.protocol.ComparisonWindow;
 import com.codefit.peer.protocol.ConsentRevision;
 import com.codefit.peer.protocol.Envelope;
 import com.codefit.peer.protocol.EnvelopeHeader;
 import com.codefit.peer.protocol.IdentityId;
+import com.codefit.peer.protocol.MatchInvitation;
+import com.codefit.peer.protocol.MatchResponse;
 import com.codefit.peer.protocol.MessageBody;
 import com.codefit.peer.protocol.MessageType;
 import com.codefit.peer.protocol.ObjectId;
@@ -15,7 +20,9 @@ import com.codefit.peer.protocol.SharingScope;
 import com.codefit.peer.protocol.SignedEnvelope;
 import com.codefit.peer.protocol.Tombstone;
 import com.codefit.peer.protocol.TombstoneReason;
+import com.codefit.peer.protocol.WindowKind;
 import com.codefit.peer.sync.PublicationOutboxEntry;
+import com.codefit.repository.MatchRepository;
 import com.codefit.repository.PublicationOutboxRepository;
 import com.codefit.repository.PublicationWireStateRepository;
 
@@ -72,18 +79,21 @@ public class PeerSyncOutboxService {
     private final PublicationWireStateRepository wireStateRepository;
     private final ContactService contactService;
     private final SnapshotPublicationService publicationService;
+    private final MatchRepository matchRepository;
 
     public PeerSyncOutboxService() {
         this(new PublicationOutboxRepository(), new PublicationWireStateRepository(), new ContactService(),
-                new SnapshotPublicationService());
+                new SnapshotPublicationService(), new MatchRepository());
     }
 
     PeerSyncOutboxService(PublicationOutboxRepository outboxRepository, PublicationWireStateRepository wireStateRepository,
-                           ContactService contactService, SnapshotPublicationService publicationService) {
+                           ContactService contactService, SnapshotPublicationService publicationService,
+                           MatchRepository matchRepository) {
         this.outboxRepository = outboxRepository;
         this.wireStateRepository = wireStateRepository;
         this.contactService = contactService;
         this.publicationService = publicationService;
+        this.matchRepository = matchRepository;
     }
 
     /**
@@ -145,7 +155,44 @@ public class PeerSyncOutboxService {
             }
             buildEntry(contact, entry, identity, writerEpoch, now).ifPresent(batch::add);
         }
+
+        for (StudyMatch match : matchRepository.pendingOutboundFor(contactId)) {
+            if (batch.size() >= MAX_ENVELOPES_PER_BATCH) {
+                break;
+            }
+            buildMatchEnvelope(match, contact, identity, writerEpoch, now).ifPresent(batch::add);
+        }
         return batch;
+    }
+
+    /**
+     * The one lifecycle envelope still worth sending for {@code match}, derived purely from its
+     * current local {@code (role, status)} - see {@code MatchRepository#pendingOutboundFor}'s own
+     * javadoc for why no separate approval/delivery-tracking state exists for these. {@code
+     * CANCELLED} (challenger) reuses the existing generic {@code Tombstone} machinery exactly like
+     * revocation already does - no dedicated "match cancelled" message type exists.
+     *
+     * <p>For the {@code OPPONENT} role, {@code ACTIVE} and {@code COMPLETED} both represent the exact
+     * same authoritative accepted response and must serialize identically: {@code COMPLETED} is only
+     * ever reached FROM {@code ACTIVE} by the match's own {@code endsAt} passing (never from a second,
+     * different user decision), so it is never a decline. Collapsing it into the "otherwise decline"
+     * branch would resend an already-accepted match as {@code MatchResponse(accepted=false)} the
+     * moment it finishes - exactly the stranding bug this fix closes. Only {@code DECLINED} means
+     * {@code accepted=false}.
+     */
+    private Optional<Batched> buildMatchEnvelope(StudyMatch match, Contact contact, UnlockedIdentity identity,
+                                                  long writerEpoch, Instant now) {
+        ObjectId objectId = match.matchId();
+        MessageBody body = switch (match.role()) {
+            case CHALLENGER -> match.status() == MatchStatus.CANCELLED
+                    ? new Tombstone(MessageType.MATCH_INVITATION, TombstoneReason.REVOKED, false)
+                    : new MatchInvitation(match.duration());
+            case OPPONENT -> (match.status() == MatchStatus.ACTIVE || match.status() == MatchStatus.COMPLETED)
+                    ? new MatchResponse(true, match.startedAt())
+                    : new MatchResponse(false, null);
+        };
+        SignedEnvelope envelope = signControlEnvelope(identity, writerEpoch, contact.identityId(), objectId, body, now);
+        return Optional.of(new Batched(envelope, Optional.empty()));
     }
 
     private Optional<Batched> buildEntry(Contact contact, PublicationOutboxEntry entry, UnlockedIdentity identity,
@@ -220,13 +267,26 @@ public class PeerSyncOutboxService {
         }
     }
 
+    /**
+     * {@code MATCH} windows encode their own exact {@code start}/{@code end} instants rather than a
+     * local date/zone: unlike {@link ComparisonWindow#day}/{@link ComparisonWindow#week}, a match's
+     * window cannot be reconstructed from a calendar date alone (see {@code
+     * ComparisonWindow#match}'s own javadoc).
+     */
     static String encodeWindow(ComparisonWindow window) {
+        if (window.kind() == WindowKind.MATCH) {
+            return "MATCH|" + window.start().toEpochMilli() + "|" + window.end().toEpochMilli();
+        }
         return window.kind().name() + "|" + window.localStartDate().toEpochDay() + "|" + window.zoneId() + "|"
                 + (window.weekStart() == null ? "" : window.weekStart().getValue());
     }
 
     static ComparisonWindow decodeWindow(String logicalKey) {
         String[] parts = logicalKey.split("\\|", -1);
+        if ("MATCH".equals(parts[0])) {
+            return ComparisonWindow.match(java.time.Instant.ofEpochMilli(Long.parseLong(parts[1])),
+                    java.time.Instant.ofEpochMilli(Long.parseLong(parts[2])));
+        }
         LocalDate date = LocalDate.ofEpochDay(Long.parseLong(parts[1]));
         ZoneId zone = ZoneId.of(parts[2]);
         if ("DAY".equals(parts[0])) {

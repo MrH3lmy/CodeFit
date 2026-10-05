@@ -104,7 +104,7 @@ public class SnapshotPublicationService {
     public SignedEnvelope publishProgressSummary(long contactId, UnlockedIdentity identity, long writerEpoch,
                                                   ComparisonWindow window) {
         Contact contact = contactService.requireContact(contactId);
-        SharingScope scope = window.kind() == WindowKind.DAY ? SharingScope.DAILY_SUMMARY : SharingScope.WEEKLY_SUMMARY;
+        SharingScope scope = ProgressSummary.requiredScopeFor(window.kind());
 
         // A cheap fail-fast check before the expensive aggregation below - not the authoritative
         // decision (that happens again, freshly, inside the lock right before signing), just avoids
@@ -210,17 +210,36 @@ public class SnapshotPublicationService {
         return deriveObjectId("CodeFit-Preparation-Snapshot-v1", authorId, recipientId, profileId.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * A {@code MATCH} window's identity is its own exact {@code start}/{@code end} instants, never
+     * {@code localStartDate}/{@code zoneId} (both are only canonical display metadata for a match -
+     * see {@code ComparisonWindow#match}'s own javadoc): two distinct matches between the same two
+     * people that happen to start on the same UTC calendar date would otherwise derive the identical
+     * object id and silently collide in {@code peer_progress_summaries}. {@code start}/{@code end}
+     * are already unique per match by construction (no two matches share the identical start
+     * instant), so no separate match id needs to flow into this derivation.
+     */
     private static byte[] windowIdentityBytes(ComparisonWindow window) {
+        if (window.kind() == WindowKind.MATCH) {
+            byte[] out = new byte[1 + 8 + 8];
+            out[0] = (byte) window.kind().code();
+            writeLongBigEndian(out, 1, window.start().toEpochMilli());
+            writeLongBigEndian(out, 9, window.end().toEpochMilli());
+            return out;
+        }
         byte[] zoneBytes = window.zoneId().getBytes(StandardCharsets.UTF_8);
         byte[] out = new byte[1 + 8 + zoneBytes.length + 1];
         out[0] = (byte) window.kind().code();
-        long epochDay = window.localStartDate().toEpochDay();
-        for (int i = 0; i < 8; i++) {
-            out[1 + i] = (byte) (epochDay >>> (8 * (7 - i)));
-        }
+        writeLongBigEndian(out, 1, window.localStartDate().toEpochDay());
         System.arraycopy(zoneBytes, 0, out, 9, zoneBytes.length);
         out[out.length - 1] = window.weekStart() == null ? 0 : (byte) window.weekStart().getValue();
         return out;
+    }
+
+    private static void writeLongBigEndian(byte[] out, int offset, long value) {
+        for (int i = 0; i < 8; i++) {
+            out[offset + i] = (byte) (value >>> (8 * (7 - i)));
+        }
     }
 
     private static ObjectId deriveObjectId(String context, IdentityId authorId, IdentityId recipientId, byte[] extra) {

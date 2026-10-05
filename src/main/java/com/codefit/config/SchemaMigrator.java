@@ -67,7 +67,10 @@ final class SchemaMigrator {
             new VersionedMigration(11,
                     "Add #184 resumable peer sync: persisted per-author replay state, the validated "
                             + "peer inbox cache, and the publication outbox",
-                    SchemaMigrator::createPeerSyncTables)
+                    SchemaMigrator::createPeerSyncTables),
+            new VersionedMigration(12,
+                    "Add the local 1-v-1 Study Match lifecycle table",
+                    SchemaMigrator::createStudyMatchTable)
     );
 
     static void migrate(Connection connection) throws SQLException {
@@ -731,6 +734,36 @@ final class SchemaMigrator {
                     """);
             statement.execute("CREATE INDEX IF NOT EXISTS idx_publication_outbox_contact "
                     + "ON publication_outbox(contact_id)");
+        }
+    }
+
+    /**
+     * The local lifecycle record for a 1-v-1 Study Match, on both a challenger's and an opponent's
+     * own device - see {@code com.codefit.peer.match.StudyMatch}'s own javadoc. {@code match_id} is
+     * the same random, challenger-chosen id used as both {@code MatchInvitation}'s and
+     * {@code MatchResponse}'s wire {@code objectId}, so it is this table's primary key rather than an
+     * autoincrement surrogate - there is exactly one local row per match per device, regardless of
+     * role. {@code accepted_at}/{@code started_at}/{@code ends_at} are nullable because they are only
+     * ever set once a match leaves {@code PENDING} for {@code ACTIVE} (never for {@code DECLINED} or
+     * {@code CANCELLED}, which carry no agreed match window at all).
+     */
+    private static void createStudyMatchTable(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS study_matches (
+                        match_id BLOB PRIMARY KEY,
+                        contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+                        role TEXT NOT NULL,
+                        duration_minutes INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        accepted_at TEXT,
+                        started_at TEXT,
+                        ends_at TEXT,
+                        updated_at TEXT NOT NULL
+                    )
+                    """);
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_study_matches_contact ON study_matches(contact_id)");
         }
     }
 

@@ -12,7 +12,14 @@ public enum SharingScope implements WireCode {
     DAILY_SUMMARY(2),
     WEEKLY_SUMMARY(3),
     PREPARATION_SNAPSHOT(4),
-    CHALLENGE_PARTICIPATION(5);
+    CHALLENGE_PARTICIPATION(5),
+    /**
+     * Progress sharing for one accepted 1-v-1 Study Match ({@code MessageType#PROGRESS_SUMMARY} with
+     * a {@code WindowKind#MATCH} window). Distinct from {@link #CHALLENGE_PARTICIPATION}, which is
+     * reserved for #186's own, separate, later group-challenge epic - this scope is granted
+     * automatically, mutually, the moment a match is accepted (never a separate manual toggle).
+     */
+    MATCH_PARTICIPATION(6);
 
     private final int code;
 

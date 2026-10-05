@@ -44,7 +44,8 @@ class PeerVisibleContractTest {
             "DomainSnapshot.thresholdPercent", "DomainSnapshot.scorePercent", "DomainSnapshot.coveragePercent",
             "DomainSnapshot.measuredRequirementCount", "DomainSnapshot.totalRequirementCount", "DomainSnapshot.status",
             "ConsentRevision.scopes",
-            "Tombstone.targetType", "Tombstone.reason", "Tombstone.requestCacheDeletion");
+            "Tombstone.targetType", "Tombstone.reason", "Tombstone.requestCacheDeletion",
+            "MatchInvitation.duration", "MatchResponse.accepted", "MatchResponse.startedAt");
 
     /** Name fragments that describe content the source-attribution policy keeps local. */
     private static final Set<String> FORBIDDEN_FRAGMENTS = Set.of(

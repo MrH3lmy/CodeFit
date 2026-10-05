@@ -18,6 +18,8 @@ final class MessageBodies {
                 case PREPARATION_SNAPSHOT -> PreparationSnapshot.readFrom(reader);
                 case CONSENT_REVISION -> ConsentRevision.readFrom(reader);
                 case TOMBSTONE -> Tombstone.readFrom(reader);
+                case MATCH_INVITATION -> MatchInvitation.readFrom(reader);
+                case MATCH_RESPONSE -> MatchResponse.readFrom(reader);
                 case CHALLENGE_MANIFEST, FORWARDED_CIPHERTEXT ->
                         throw new ProtocolException(RejectionReason.UNSUPPORTED_MESSAGE_TYPE, type + " is reserved.");
             };

@@ -757,6 +757,24 @@ public class PeerController {
         return passphrase;
     }
 
+    private char[] takeNetworkingPassphrase() {
+        String text = vaultPassphraseField.getText();
+        if (text == null || text.isEmpty()) {
+            setNetworkingFeedback("Re-enter your vault passphrase above, then click Enable Networking.");
+            return null;
+        }
+        char[] passphrase = text.toCharArray();
+        vaultPassphraseField.clear();
+        return passphrase;
+    }
+
+    private void setNetworkingFeedback(String message) {
+        boolean hasMessage = message != null && !message.isBlank();
+        networkingFeedbackLabel.setText(hasMessage ? message : "");
+        networkingFeedbackLabel.setVisible(hasMessage);
+        networkingFeedbackLabel.setManaged(hasMessage);
+    }
+
     private void setStatus(String message) {
         boolean hasStatus = message != null && !message.isBlank();
         statusLabel.setText(hasStatus ? message : "");

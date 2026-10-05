@@ -15,6 +15,7 @@ import com.codefit.peer.protocol.MetricValue;
 import com.codefit.peer.protocol.ObjectId;
 import com.codefit.peer.protocol.ProgressSummary;
 import com.codefit.peer.protocol.SharingScope;
+import com.codefit.repository.LocalProgressSnapshotRepository;
 import com.codefit.repository.PeerProgressSummaryRepository;
 import com.codefit.repository.PeerSyncConsentRepository;
 import com.codefit.testsupport.IsolatedDatabaseExtension;
@@ -172,6 +173,9 @@ class PeerComparisonServiceTest {
         assertEquals(peerCutoff, comparison.right().snapshot().cutoff());
         assertEquals(now, comparison.left().capturedAt(),
                 "capturedAt stays truthful: the historical-cutoff computation happened now");
+
+        assertEquals(now, new LocalProgressSnapshotRepository().findByWindow(myWindow).orElseThrow().cutoff(),
+                "the normal persisted local snapshot stays current; only the comparison view is back-cut");
     }
 
     // --- stale snapshot ---

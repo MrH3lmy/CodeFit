@@ -122,6 +122,25 @@ class PeerControllerTest {
             assertTrue(controller.createIdentityButton.isDisabled());
             assertTrue(controller.identityStatusLabel.getText().startsWith("Identity:"));
             assertEquals("", controller.vaultPassphraseField.getText(), "the passphrase field must be cleared right after use");
+            assertTrue(controller.networkingFeedbackLabel.isVisible());
+            assertTrue(controller.networkingFeedbackLabel.getText().contains("Re-enter your vault passphrase"));
+        });
+    }
+
+    @Test
+    void enablingNetworkingWithoutReenteringThePassphraseShowsInlineGuidance() throws Exception {
+        runOnFxThreadAndWait(() -> {
+            controller.vaultPassphraseField.setText(new String(PASSPHRASE));
+            controller.createIdentity();
+        });
+        waitUntil(() -> fxRead(() -> controller.createIdentityButton.isDisabled()), disabled -> disabled);
+
+        runOnFxThreadAndWait(controller::enableNetworking);
+
+        runOnFxThreadAndWait(() -> {
+            assertFalse(networkingService.isNetworkingEnabled());
+            assertTrue(controller.networkingFeedbackLabel.isVisible());
+            assertTrue(controller.networkingFeedbackLabel.getText().contains("Re-enter your vault passphrase"));
         });
     }
 
@@ -148,6 +167,8 @@ class PeerControllerTest {
 
         runOnFxThreadAndWait(() -> {
             assertTrue(controller.networkingStatusLabel.getText().contains("enabled on port"));
+            assertTrue(controller.networkingFeedbackLabel.isVisible());
+            assertTrue(controller.networkingFeedbackLabel.getText().contains("Networking enabled"));
             assertTrue(controller.enableNetworkingButton.isDisabled());
             assertFalse(controller.disableNetworkingButton.isDisabled());
         });

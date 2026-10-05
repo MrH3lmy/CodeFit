@@ -20,6 +20,7 @@
                     <Button fx:id="disableNetworkingButton" text="Disable Networking" onAction="#disableNetworking" />
                 </HBox>
                 <Label fx:id="networkingStatusLabel" styleClass="dashboard-card-helper" wrapText="true" />
+                <Label fx:id="networkingFeedbackLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
             </VBox>
 
             <VBox spacing="8" styleClass="panel" maxWidth="Infinity">

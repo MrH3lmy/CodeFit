@@ -22,12 +22,11 @@ import java.util.Optional;
  * JavaFX dependency so it is unit-testable directly.
  *
  * <h2>Smart empty state</h2>
- * A metric row is "meaningful" - and therefore always shown, individually - the moment either side's
- * {@code MEASURED} value is greater than zero, even when the other side is zero or has no value at all
- * (an explicit product requirement: "You: 0, Peer: 4" and "You: 5, Peer: 0" must never be hidden). A row
- * where neither side has a positive measured value contributes nothing a learner can act on, so it is
- * suppressed; if suppressing leaves no rows at all, the whole section collapses to one short empty-state
- * sentence instead of a wall of "0 vs 0" rows.
+ * A metric row is "meaningful" - and therefore shown - when either side has a non-zero measured
+ * value <em>or</em> a measured zero backed by real samples. This preserves both "You: 0, Peer: 4" and
+ * genuine zero outcomes such as 0% accuracy over ten reviews. Only the truly empty shape
+ * ({@code MEASURED}, value 0, sample size 0 on both sides) is suppressible; if suppressing leaves no
+ * rows, the section collapses to one short empty-state sentence instead of a wall of "0 vs 0" rows.
  */
 public final class PeerComparisonPresentation {
 

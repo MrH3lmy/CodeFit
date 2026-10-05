@@ -40,13 +40,15 @@ import java.util.Optional;
  * By convention, {@code left} is always this device's own ("my") data and {@code right} is always the
  * named peer's.
  *
- * <h2>One logical evaluation time</h2>
- * {@link #clock} is read exactly once, as the very last thing before building the {@link
- * SnapshotComparisonEngine.EvaluationContext} - after capturing my own snapshot and reading the
- * peer's cached one - so {@code evaluationInstant} is guaranteed to be at or after both {@code
- * capturedAt}/{@code receivedAt} values the engine will gate against (both are always real past
- * events anyway, so this is a defensive ordering choice, not a load-bearing one for either input,
- * but it costs nothing and removes a class of "gate rejects as CAPTURED_IN_FUTURE" flake entirely).
+ * <h2>Fair partial-period cutoff</h2>
+ * A peer's latest accepted DAY summary may have been captured seconds or minutes before the user
+ * clicks Compare. Requiring two independently captured partial-day cutoffs to be byte-identical makes
+ * the feature practically unusable. When the peer summary is fresh and its elapsed point has already
+ * occurred in this device's own day, this service therefore recomputes <em>local</em> evidence through
+ * that same elapsed point using {@link ProgressSnapshotService#captureForComparison}. That capture is
+ * ephemeral and never replaces the normal persisted/publishable local snapshot. The pure comparison
+ * engine still owns every compatibility decision and keeps its strict equal-elapsed guard as a
+ * fail-safe.
  *
  * <h2>Peer observation states</h2>
  * The peer's own {@code SnapshotObservation} is built as exactly one of:
@@ -115,32 +117,64 @@ public class PeerComparisonService {
         IdentityId myId = identityService.currentIdentity().map(LocalIdentitySummary::id)
                 .orElseThrow(() -> new IllegalStateException("No local identity exists yet."));
 
-        // "Today" is derived from this same injected clock too - never a separate, real-wall-clock
-        // read - so the whole operation (what day "today" is, and the staleness evaluation instant
-        // below) is consistently anchored to one logical clock, exactly as a test fixes it.
+        // One logical "now" selects today's window, constrains the fallback candidate, and bounds any
+        // historical local comparison cutoff. A later read below becomes the engine evaluation time so
+        // it cannot predate the actual local comparison capture.
+        Instant comparisonNow = wireTime(clock.instant());
         ZoneId zone = ZoneId.systemDefault();
-        LocalDate today = clock.instant().atZone(zone).toLocalDate();
+        LocalDate today = comparisonNow.atZone(zone).toLocalDate();
         ComparisonWindow myWindow = ComparisonWindow.day(today, zone);
 
-        // Synchronized on PeerLocalWriteLock.MONITOR: "Compare Today's Progress" can be invoked while
-        // this contact's connection is already live, so this local write can now run concurrently with
-        // that same connection's automatic receive loop/outbox send - exactly the class of race
-        // PeerLocalWriteLock exists to close (see its own javadoc: an unguarded concurrent writer can
-        // throw SQLITE_BUSY in the receive loop's own write and silently, permanently kill it).
-        LocalProgressSnapshot myCapture;
+        SnapshotObservation<ProgressSummary> right =
+                resolveTodaysPeerSummary(peerId, myId, myWindow, comparisonNow);
+
+        // Preserve the established behavior: Compare also refreshes the normal persisted local
+        // snapshot at the real current cutoff. That state may later be published/reused normally and
+        // must never be replaced by the older fair-comparison cutoff below.
+        LocalProgressSnapshot freshCapture;
         synchronized (PeerLocalWriteLock.MONITOR) {
-            myCapture = progressSnapshotService.capture(myWindow).snapshot();
+            freshCapture = progressSnapshotService.capture(myWindow).snapshot();
         }
-        SnapshotObservation<ProgressSummary> left = SnapshotObservation.available(
-                myCapture.toProgressSummary(), myCapture.capturedAt());
 
-        SnapshotObservation<ProgressSummary> right = resolveTodaysPeerSummary(peerId, myId, myWindow);
+        Instant localCutoff = localComparisonCutoff(myWindow, right, freshCapture.capturedAt());
+        SnapshotObservation<ProgressSummary> left;
+        if (localCutoff.equals(freshCapture.cutoff())) {
+            left = SnapshotObservation.available(freshCapture.toProgressSummary(), freshCapture.capturedAt());
+        } else {
+            ProgressSnapshotService.ComparisonCapture alignedCapture =
+                    progressSnapshotService.captureForComparison(myWindow, localCutoff);
+            left = SnapshotObservation.available(alignedCapture.summary(), alignedCapture.capturedAt());
+        }
 
-        // Read last: see this class's own javadoc for why.
         Instant evaluationInstant = clock.instant();
         SnapshotComparisonEngine.EvaluationContext context =
                 new SnapshotComparisonEngine.EvaluationContext(evaluationInstant, TODAY_FRESHNESS_WINDOW);
         return SnapshotComparisonEngine.comparePeerProgress(left, right, context);
+    }
+
+    /**
+     * Selects only the local data cutoff; it never declares two snapshots compatible. For a fresh
+     * available peer summary, use the same elapsed duration from that peer window's start when that
+     * elapsed point has already occurred in my window. Otherwise capture through my current time and
+     * let {@link SnapshotComparisonEngine} report the real stale/future/complete-partial mismatch.
+     */
+    private Instant localComparisonCutoff(ComparisonWindow myWindow,
+                                          SnapshotObservation<ProgressSummary> right,
+                                          Instant now) {
+        Optional<ProgressSummary> peerSummary = right.snapshotOptional();
+        if (peerSummary.isEmpty()) {
+            return myWindow.cutoffAt(now);
+        }
+
+        ProgressSummary peer = peerSummary.get();
+        Duration age = Duration.between(peer.cutoff(), now);
+        if (age.isNegative() || age.compareTo(TODAY_FRESHNESS_WINDOW) > 0) {
+            return myWindow.cutoffAt(now);
+        }
+
+        Duration peerElapsed = Duration.between(peer.window().start(), peer.cutoff());
+        Instant alignedLocalCutoff = myWindow.equalElapsedCutoff(peerElapsed);
+        return alignedLocalCutoff.isAfter(now) ? myWindow.cutoffAt(now) : alignedLocalCutoff;
     }
 
     /**
@@ -155,7 +189,7 @@ public class PeerComparisonService {
      * on file. If no such candidate exists either, MISSING.
      */
     private SnapshotObservation<ProgressSummary> resolveTodaysPeerSummary(IdentityId peerId, IdentityId myId,
-                                                                            ComparisonWindow myWindow) {
+                                                                            ComparisonWindow myWindow, Instant now) {
         Optional<List<SharingScope>> peerConsent;
         try (Connection connection = DatabaseConfig.getConnection()) {
             peerConsent = peerSyncConsentRepository.scopesFor(connection, peerId);
@@ -169,7 +203,7 @@ public class PeerComparisonService {
         ObjectId exactObjectId = SnapshotPublicationService.progressSummaryObjectId(peerId, myId, myWindow);
         Optional<PeerProgressSummary> exact = peerProgressSummaryRepository.findByAuthorAndObjectId(peerId, exactObjectId);
         Optional<PeerProgressSummary> candidate = exact.isPresent() ? exact
-                : plausibleSameDayFallback(peerId, clock.instant());
+                : plausibleSameDayFallback(peerId, now);
 
         if (candidate.isEmpty()) {
             return SnapshotObservation.missing("No matching peer progress summary has arrived yet.");
@@ -192,5 +226,9 @@ public class PeerComparisonService {
                 .filter(summary -> summary.window().kind() == WindowKind.DAY)
                 .filter(summary -> summary.window().contains(now))
                 .max(Comparator.comparing(summary -> summary.window().start()));
+    }
+
+    private static Instant wireTime(Instant instant) {
+        return Instant.ofEpochMilli(instant.toEpochMilli());
     }
 }

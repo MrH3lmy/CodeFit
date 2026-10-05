@@ -15,6 +15,7 @@ import com.codefit.peer.protocol.MetricValue;
 import com.codefit.peer.protocol.ObjectId;
 import com.codefit.peer.protocol.ProgressSummary;
 import com.codefit.peer.protocol.SharingScope;
+import com.codefit.repository.LocalProgressSnapshotRepository;
 import com.codefit.repository.PeerProgressSummaryRepository;
 import com.codefit.repository.PeerSyncConsentRepository;
 import com.codefit.testsupport.IsolatedDatabaseExtension;
@@ -152,6 +153,29 @@ class PeerComparisonServiceTest {
         ProgressComparison comparison = serviceAt(now).compareTodayWith(contactId);
         assertEquals(ComparisonState.COMPARABLE, comparison.state());
         assertTrue(comparison.right().snapshotOptional().isPresent());
+    }
+
+    @Test
+    void aFreshEarlierPeerCutoffIsRecomputedLocallyAtTheSameElapsedPoint() throws Exception {
+        LocalDate today = LocalDate.now(ZONE);
+        Instant now = today.atTime(15, 0).atZone(ZONE).toInstant();
+        Instant peerCutoff = now.minus(Duration.ofMinutes(7));
+        saveConsent(List.of(SharingScope.DAILY_SUMMARY), 1);
+        ComparisonWindow myWindow = ComparisonWindow.day(today, ZONE);
+        savePeerSummaryExactWithCutoff(myWindow, peerCutoff, now);
+
+        ProgressComparison comparison = serviceAt(now).compareTodayWith(contactId);
+
+        assertEquals(ComparisonState.COMPARABLE, comparison.state(),
+                "a normal few-minutes-old peer summary must not fail with CUTOFF_MISMATCH");
+        assertEquals(peerCutoff, comparison.left().snapshot().cutoff(),
+                "my real evidence must be recomputed through the peer's elapsed cutoff");
+        assertEquals(peerCutoff, comparison.right().snapshot().cutoff());
+        assertEquals(now, comparison.left().capturedAt(),
+                "capturedAt stays truthful: the historical-cutoff computation happened now");
+
+        assertEquals(now, new LocalProgressSnapshotRepository().findByWindow(myWindow).orElseThrow().cutoff(),
+                "the normal persisted local snapshot stays current; only the comparison view is back-cut");
     }
 
     // --- stale snapshot ---

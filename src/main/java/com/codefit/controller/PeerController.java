@@ -98,6 +98,7 @@ public class PeerController {
     @FXML Button enableNetworkingButton;
     @FXML Button disableNetworkingButton;
     @FXML Label networkingStatusLabel;
+    @FXML Label networkingFeedbackLabel;
 
     @FXML Button createInvitationButton;
     @FXML TextArea myInvitationArea;
@@ -202,16 +203,18 @@ public class PeerController {
             }
         }, summary -> {
             refreshIdentityStatus();
+            setNetworkingFeedback("Identity created. Re-enter your vault passphrase above, then click Enable Networking.");
             setStatus("Identity created.");
         });
     }
 
     @FXML
     public void enableNetworking() {
-        char[] passphrase = takePassphrase();
+        char[] passphrase = takeNetworkingPassphrase();
         if (passphrase == null) {
             return;
         }
+        setNetworkingFeedback("Enabling networking…");
         runPeerAction(() -> {
             try {
                 networkingService.enableNetworking(passphrase, 0, now());
@@ -221,8 +224,9 @@ public class PeerController {
             }
         }, (Void ignored) -> {
             refreshNetworkingStatus();
-            setStatus("Networking enabled.");
-        });
+            setNetworkingFeedback("Networking enabled.");
+            setStatus(null);
+        }, error -> setNetworkingFeedback(messageOf(error)));
     }
 
     @FXML
@@ -236,7 +240,8 @@ public class PeerController {
             dialGate.clear();
             refreshNetworkingStatus();
             refreshContacts();
-            setStatus("Networking disabled.");
+            setNetworkingFeedback("Networking disabled.");
+            setStatus(null);
         });
     }
 

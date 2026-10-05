@@ -106,6 +106,18 @@ class PeerControllerTest {
         runOnFxThreadAndWait(() -> {
             assertTrue(controller.identityStatusLabel.getText().contains("No identity"));
             assertFalse(controller.createIdentityButton.isDisabled());
+            assertTrue(controller.copyInvitationButton.isDisabled(), "Copy must stay disabled until an invitation exists");
+        });
+    }
+
+    @Test
+    void creatingIdentityWithoutAPassphraseShowsGuidanceBesideTheIdentityControls() throws Exception {
+        runOnFxThreadAndWait(controller::createIdentity);
+
+        runOnFxThreadAndWait(() -> {
+            assertFalse(controller.createIdentityButton.isDisabled());
+            assertTrue(controller.networkingFeedbackLabel.isVisible());
+            assertTrue(controller.networkingFeedbackLabel.getText().contains("Create Identity"));
         });
     }
 
@@ -192,6 +204,34 @@ class PeerControllerTest {
             String text = controller.myInvitationArea.getText();
             // Must round-trip as a real, verifiable signed invitation - not just non-empty text.
             assertTrue(InvitationCodec.fromBase64(text).invitation().identityKey() != null);
+            assertFalse(controller.copyInvitationButton.isDisabled());
+            assertTrue(controller.invitationFeedbackLabel.isVisible());
+            assertTrue(controller.invitationFeedbackLabel.getText().contains("Invitation created"));
+        });
+    }
+
+    @Test
+    void creatingInvitationWithoutReenteringThePassphraseShowsLocalGuidance() throws Exception {
+        enableIdentityAndNetworking();
+
+        runOnFxThreadAndWait(controller::createInvitation);
+
+        runOnFxThreadAndWait(() -> {
+            assertTrue(controller.myInvitationArea.getText().isBlank());
+            assertTrue(controller.copyInvitationButton.isDisabled());
+            assertTrue(controller.invitationFeedbackLabel.isVisible());
+            assertTrue(controller.invitationFeedbackLabel.getText().contains("Re-enter your vault passphrase"));
+        });
+    }
+
+    @Test
+    void parsingAnEmptyInvitationShowsFeedbackInThePairingPanel() throws Exception {
+        runOnFxThreadAndWait(controller::parseInvitation);
+
+        runOnFxThreadAndWait(() -> {
+            assertTrue(controller.registerAndAcceptButton.isDisabled());
+            assertTrue(controller.pairingFeedbackLabel.isVisible());
+            assertTrue(controller.pairingFeedbackLabel.getText().contains("Paste the other person's invitation"));
         });
     }
 
@@ -201,11 +241,12 @@ class PeerControllerTest {
             controller.peerInvitationArea.setText("not a real invitation");
             controller.parseInvitation();
         });
-        waitUntil(() -> fxRead(() -> controller.statusLabel.getText()), text -> text != null && !text.isBlank());
+        waitUntil(() -> fxRead(() -> controller.pairingFeedbackLabel.getText()), text -> text != null && !text.isBlank());
 
         runOnFxThreadAndWait(() -> {
             assertTrue(controller.registerAndAcceptButton.isDisabled());
             assertFalse(controller.parsedFingerprintLabel.isVisible());
+            assertTrue(controller.pairingFeedbackLabel.isVisible());
         });
     }
 
@@ -224,6 +265,8 @@ class PeerControllerTest {
             assertTrue(controller.parsedFingerprintLabel.isVisible());
             IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
             assertTrue(controller.parsedFingerprintLabel.getText().contains(IdentityFingerprint.format(strangerKey.id())));
+            assertTrue(controller.pairingFeedbackLabel.isVisible());
+            assertTrue(controller.pairingFeedbackLabel.getText().contains("Invitation parsed"));
         });
     }
 
@@ -245,6 +288,25 @@ class PeerControllerTest {
             assertFalse(controller.noContactsLabel.isVisible());
             Label statusLabel = rowStatusLabel(controller.contactsBox.getChildren().get(0));
             assertEquals("Offline", statusLabel.getText());
+            assertTrue(controller.pairingFeedbackLabel.isVisible());
+            assertTrue(controller.pairingFeedbackLabel.getText().contains("Paired with"));
+        });
+    }
+
+    @Test
+    void aPairedPeerShowsNetworkingMustBeEnabledInsteadOfOfferingADeadConnectButton() throws Exception {
+        KeyPair strangerIdentity = KeyPairs.generate();
+        IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
+        Contact contact = contactService.registerPendingContact(strangerKey, "", now());
+        contactService.acceptInvitation(contact.id(), now());
+
+        runOnFxThreadAndWait(controller::initialize);
+        waitUntil(() -> fxRead(() -> controller.contactsBox.getChildren().size()), size -> size == 1);
+
+        runOnFxThreadAndWait(() -> {
+            Button action = actionButtonOf(controller.contactsBox.getChildren().get(0));
+            assertTrue(action.isDisabled());
+            assertEquals("Enable networking", action.getText());
         });
     }
 
@@ -376,6 +438,39 @@ class PeerControllerTest {
 
     @Test
     @Timeout(15)
+    void startingAndCancellingAStudyMatchImmediatelyRefreshesThePeerRow() throws Exception {
+        KeyPair strangerIdentity = KeyPairs.generate();
+        IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
+        Contact contact = contactService.registerPendingContact(strangerKey, "", now());
+        contactService.acceptInvitation(contact.id(), now());
+
+        runOnFxThreadAndWait(controller::initialize);
+        waitUntil(() -> fxRead(() -> controller.contactsBox.getChildren().size()), size -> size == 1);
+
+        runOnFxThreadAndWait(() -> start15ButtonOf(controller.contactsBox.getChildren().get(0)).fire());
+        waitUntil(() -> fxRead(() -> matchStatusLabel(controller.contactsBox.getChildren().get(0)).getText()),
+                text -> text != null && text.contains("invitation sent"));
+
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertFalse(cancelMatchButtonOf(row).isDisabled());
+            assertTrue(cancelMatchButtonOf(row).isVisible());
+            assertFalse(start15ButtonOf(row).isVisible());
+        });
+
+        runOnFxThreadAndWait(() -> cancelMatchButtonOf(controller.contactsBox.getChildren().get(0)).fire());
+        waitUntil(() -> fxRead(() -> matchStatusLabel(controller.contactsBox.getChildren().get(0)).getText()),
+                text -> text != null && text.contains("cancelled"));
+
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertTrue(start15ButtonOf(row).isVisible(), "terminal cancellation should immediately expose a new match action");
+            assertFalse(cancelMatchButtonOf(row).isVisible());
+        });
+    }
+
+    @Test
+    @Timeout(15)
     void shareTodaysProgressGrantsDailySummaryAndApprovesTodaysOutboxEntry() throws Exception {
         KeyPair strangerIdentity = KeyPairs.generate();
         IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
@@ -466,8 +561,24 @@ class PeerControllerTest {
         return (Label) ((javafx.scene.layout.VBox) ((HBox) row).getChildren().get(0)).getChildren().get(2);
     }
 
+    private static Button actionButtonOf(Node row) {
+        return (Button) ((HBox) row).getChildren().get(1);
+    }
+
     private static void fireConnectButton(Node row) {
-        ((Button) ((HBox) row).getChildren().get(1)).fire();
+        actionButtonOf(row).fire();
+    }
+
+    private static Label matchStatusLabel(Node row) {
+        return (Label) ((javafx.scene.layout.VBox) ((HBox) row).getChildren().get(0)).getChildren().get(3);
+    }
+
+    private static Button start15ButtonOf(Node row) {
+        return (Button) ((HBox) row).getChildren().get(4);
+    }
+
+    private static Button cancelMatchButtonOf(Node row) {
+        return (Button) ((HBox) row).getChildren().get(9);
     }
 
     /** Appended after the connect/disconnect button (index 2) - see {@code PeerController.buildContactRow}. */

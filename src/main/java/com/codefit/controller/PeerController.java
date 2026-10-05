@@ -103,11 +103,13 @@ public class PeerController {
     @FXML Button createInvitationButton;
     @FXML TextArea myInvitationArea;
     @FXML Button copyInvitationButton;
+    @FXML Label invitationFeedbackLabel;
 
     @FXML TextArea peerInvitationArea;
     @FXML Button parseInvitationButton;
     @FXML Label parsedFingerprintLabel;
     @FXML Button registerAndAcceptButton;
+    @FXML Label pairingFeedbackLabel;
 
     @FXML Label noContactsLabel;
     @FXML VBox contactsBox;
@@ -186,15 +188,18 @@ public class PeerController {
         presenter.setOnChange(() -> Platform.runLater(this::refreshContacts));
         refreshIdentityStatus();
         refreshNetworkingStatus();
+        copyInvitationButton.setDisable(myInvitationArea.getText() == null || myInvitationArea.getText().isBlank());
         refreshContacts();
     }
 
     @FXML
     public void createIdentity() {
-        char[] passphrase = takePassphrase();
+        char[] passphrase = takePassphrase(this::setNetworkingFeedback,
+                "Enter a vault passphrase above, then click Create Identity.");
         if (passphrase == null) {
             return;
         }
+        setNetworkingFeedback("Creating identity…");
         runPeerAction(() -> {
             try {
                 return identityService.createIdentity(passphrase, now());
@@ -204,8 +209,8 @@ public class PeerController {
         }, summary -> {
             refreshIdentityStatus();
             setNetworkingFeedback("Identity created. Re-enter your vault passphrase above, then click Enable Networking.");
-            setStatus("Identity created.");
-        });
+            setStatus(null);
+        }, error -> setNetworkingFeedback(messageOf(error)));
     }
 
     @FXML
@@ -224,6 +229,7 @@ public class PeerController {
             }
         }, (Void ignored) -> {
             refreshNetworkingStatus();
+            refreshContacts();
             setNetworkingFeedback("Networking enabled.");
             setStatus(null);
         }, error -> setNetworkingFeedback(messageOf(error)));
@@ -242,15 +248,17 @@ public class PeerController {
             refreshContacts();
             setNetworkingFeedback("Networking disabled.");
             setStatus(null);
-        });
+        }, error -> setNetworkingFeedback(messageOf(error)));
     }
 
     @FXML
     public void createInvitation() {
-        char[] passphrase = takePassphrase();
+        char[] passphrase = takePassphrase(this::setInvitationFeedback,
+                "Re-enter your vault passphrase above, then click Create Invitation.");
         if (passphrase == null) {
             return;
         }
+        setInvitationFeedback("Creating invitation…");
         runPeerAction(() -> {
             try {
                 return networkingService.createInvitation(passphrase, Duration.ofDays(1), now());
@@ -259,30 +267,34 @@ public class PeerController {
             }
         }, signed -> {
             myInvitationArea.setText(InvitationCodec.toBase64(signed));
-            setStatus("Invitation created - copy it and send it to the other person.");
-        });
+            copyInvitationButton.setDisable(false);
+            setInvitationFeedback("Invitation created. Copy it and send it to the other person.");
+            setStatus(null);
+        }, error -> setInvitationFeedback(messageOf(error)));
     }
 
     @FXML
     public void copyInvitation() {
         String text = myInvitationArea.getText();
         if (text == null || text.isBlank()) {
-            setStatus("Create an invitation first.");
+            setInvitationFeedback("Create an invitation first.");
             return;
         }
         ClipboardContent content = new ClipboardContent();
         content.putString(text);
         Clipboard.getSystemClipboard().setContent(content);
-        setStatus("Copied to clipboard.");
+        setInvitationFeedback("Invitation copied to clipboard.");
+        setStatus(null);
     }
 
     @FXML
     public void parseInvitation() {
         String text = peerInvitationArea.getText();
         if (text == null || text.isBlank()) {
-            setStatus("Paste the other person's invitation first.");
+            setPairingFeedback("Paste the other person's invitation first.");
             return;
         }
+        setPairingFeedback("Parsing invitation…");
         runPeerAction(() -> networkingService.parseInvitationBase64(text), signed -> {
             parsedPeerInvitation = signed;
             parsedFingerprintLabel.setText("Their fingerprint: " + IdentityFingerprint.format(signed.invitation().identityKey().id())
@@ -290,10 +302,11 @@ public class PeerController {
             parsedFingerprintLabel.setVisible(true);
             parsedFingerprintLabel.setManaged(true);
             registerAndAcceptButton.setDisable(false);
+            setPairingFeedback("Invitation parsed. Verify the fingerprint, then click Register & Accept.");
             setStatus(null);
         }, error -> {
             resetParsedInvitation();
-            showError(error);
+            setPairingFeedback(messageOf(error));
         });
     }
 
@@ -301,8 +314,10 @@ public class PeerController {
     public void registerAndAccept() {
         SignedInvitation signed = parsedPeerInvitation;
         if (signed == null) {
+            setPairingFeedback("Parse and verify an invitation first.");
             return;
         }
+        setPairingFeedback("Registering peer…");
         runPeerAction(() -> {
             Contact pending = networkingService.registerPendingContactFromInvitation(signed, now());
             return contactService.acceptInvitation(pending.id(), now());
@@ -310,8 +325,9 @@ public class PeerController {
             resetParsedInvitation();
             peerInvitationArea.clear();
             refreshContacts();
-            setStatus("Paired with " + displayNameFor(contact) + ".");
-        });
+            setPairingFeedback("Paired with " + displayNameFor(contact) + ".");
+            setStatus(null);
+        }, error -> setPairingFeedback(messageOf(error)));
     }
 
     private void resetParsedInvitation() {
@@ -414,6 +430,7 @@ public class PeerController {
     }
 
     private Node buildContactRow(Contact contact) {
+        boolean networkingEnabled = networkingService.isNetworkingEnabled();
         boolean connected = networkingService.activeConnection(contact.identityId()).isPresent();
         // dialGate, not any transport event, is authoritative for "connecting" here: a manual dial
         // this UI just started may not yet have produced any ConnectionEvent at all (the attempt is
@@ -456,6 +473,9 @@ public class PeerController {
             // feedback that this contact already has a request in flight, per the review requirement
             // to prefer disabling/replacing the action over silently ignoring a click with no sign.
             actionButton = new Button("Connecting…");
+            actionButton.setDisable(true);
+        } else if (!networkingEnabled) {
+            actionButton = new Button("Enable networking");
             actionButton.setDisable(true);
         } else {
             actionButton = new Button("Connect");
@@ -604,8 +624,11 @@ public class PeerController {
             matchService.startMatch(contact.id(), duration, now());
             syncNowIfConnected(contact);
             return null;
-        }, (Void ignored) -> setStatus("Study match invitation (" + duration.minutes() + " min) sent to "
-                + displayNameFor(contact) + "."));
+        }, (Void ignored) -> {
+            refreshContacts();
+            setStatus("Study match invitation (" + duration.minutes() + " min) sent to "
+                    + displayNameFor(contact) + ".");
+        });
     }
 
     /** The opponent's own accept/decline action. */
@@ -619,7 +642,10 @@ public class PeerController {
             }
             syncNowIfConnected(contact);
             return null;
-        }, (Void ignored) -> setStatus((accept ? "Accepted" : "Declined") + " the study match with " + displayNameFor(contact) + "."));
+        }, (Void ignored) -> {
+            refreshContacts();
+            setStatus((accept ? "Accepted" : "Declined") + " the study match with " + displayNameFor(contact) + ".");
+        });
     }
 
     /** The challenger's own withdrawal of a still-{@code PENDING} invitation. */
@@ -628,7 +654,10 @@ public class PeerController {
             matchService.cancel(matchId, now());
             syncNowIfConnected(contact);
             return null;
-        }, (Void ignored) -> setStatus("Cancelled the study match with " + displayNameFor(contact) + "."));
+        }, (Void ignored) -> {
+            refreshContacts();
+            setStatus("Cancelled the study match with " + displayNameFor(contact) + ".");
+        });
     }
 
     /**
@@ -746,10 +775,10 @@ public class PeerController {
         return detail == null || detail.isBlank() ? reason : reason + " - " + detail;
     }
 
-    private char[] takePassphrase() {
+    private char[] takePassphrase(Consumer<String> feedback, String missingMessage) {
         String text = vaultPassphraseField.getText();
         if (text == null || text.isEmpty()) {
-            setStatus("Enter a vault passphrase first.");
+            feedback.accept(missingMessage);
             return null;
         }
         char[] passphrase = text.toCharArray();
@@ -769,10 +798,22 @@ public class PeerController {
     }
 
     private void setNetworkingFeedback(String message) {
+        setInlineFeedback(networkingFeedbackLabel, message);
+    }
+
+    private void setInvitationFeedback(String message) {
+        setInlineFeedback(invitationFeedbackLabel, message);
+    }
+
+    private void setPairingFeedback(String message) {
+        setInlineFeedback(pairingFeedbackLabel, message);
+    }
+
+    private static void setInlineFeedback(Label label, String message) {
         boolean hasMessage = message != null && !message.isBlank();
-        networkingFeedbackLabel.setText(hasMessage ? message : "");
-        networkingFeedbackLabel.setVisible(hasMessage);
-        networkingFeedbackLabel.setManaged(hasMessage);
+        label.setText(hasMessage ? message : "");
+        label.setVisible(hasMessage);
+        label.setManaged(hasMessage);
     }
 
     private void setStatus(String message) {

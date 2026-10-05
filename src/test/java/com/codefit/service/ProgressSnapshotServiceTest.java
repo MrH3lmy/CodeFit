@@ -692,6 +692,38 @@ class ProgressSnapshotServiceTest {
     }
 
     @Test
+    void comparisonCaptureUsesHistoricalCutoffWithoutReplacingPersistedSnapshot() {
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        ComparisonWindow window = ComparisonWindow.day(day, UTC);
+        long flashcardId = createFlashcard();
+        reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, day.atTime(9, 0));
+        reviews.insertReview(flashcardId, "EXACT", ReviewRating.GOOD, day.atTime(13, 0));
+
+        Instant persistedAt = day.atTime(14, 0).atZone(UTC).toInstant();
+        LocalProgressSnapshot persisted = serviceAt(persistedAt).capture(window).snapshot();
+        assertEquals(2, metric(persisted, "review.attempts").value());
+
+        Instant comparisonNow = day.atTime(15, 0).atZone(UTC).toInstant();
+        Instant sharedCutoff = day.atTime(12, 0).atZone(UTC).toInstant();
+        ProgressSnapshotService.ComparisonCapture comparison =
+                serviceAt(comparisonNow).captureForComparison(window, sharedCutoff);
+
+        assertEquals(sharedCutoff, comparison.summary().cutoff());
+        assertEquals(comparisonNow, comparison.capturedAt(),
+                "capturedAt is when the recomputation really happened, never backdated");
+        assertEquals(1, comparison.summary().metrics().stream()
+                .filter(metric -> metric.metricId().equals("review.attempts"))
+                .findFirst().orElseThrow().value(),
+                "evidence after the shared cutoff must not enter the fair comparison");
+
+        LocalProgressSnapshot reloaded = new LocalProgressSnapshotRepository().findByWindow(window).orElseThrow();
+        assertEquals(persisted.cutoff(), reloaded.cutoff(),
+                "comparison-only capture must not replace the normal persisted/publishable snapshot");
+        assertEquals(persisted.revision(), reloaded.revision());
+        assertEquals(2, metric(reloaded, "review.attempts").value());
+    }
+
+    @Test
     void unchangedResendWithinTheSameSecondIsIdempotentAndDoesNotBumpTheRevision() {
         LocalDate day = LocalDate.of(2026, 1, 15);
         ComparisonWindow window = ComparisonWindow.day(day, UTC);

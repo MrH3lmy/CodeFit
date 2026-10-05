@@ -13,7 +13,7 @@
             <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
                 <Label text="Your Identity" styleClass="section-title" />
                 <Label fx:id="identityStatusLabel" styleClass="dashboard-card-helper" wrapText="true" />
-                <PasswordField fx:id="vaultPassphraseField" promptText="Vault passphrase" maxWidth="Infinity" />
+                <PasswordField fx:id="vaultPassphraseField" promptText="Vault passphrase (re-enter for protected actions)" maxWidth="Infinity" />
                 <HBox spacing="8">
                     <Button fx:id="createIdentityButton" text="Create Identity" onAction="#createIdentity" />
                     <Button fx:id="enableNetworkingButton" text="Enable Networking" onAction="#enableNetworking" />
@@ -25,10 +25,11 @@
 
             <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
                 <Label text="Your Invitation" styleClass="section-title" />
-                <Label text="Create an invitation and send the text below to the other person through any channel you like (chat, email, read it aloud) - CodeFit never sends it anywhere itself." styleClass="muted" wrapText="true" />
+                <Label text="Create an invitation and send the text below to the other person through any channel you like (chat, email, read it aloud) - CodeFit never sends it anywhere itself. Re-enter your vault passphrase above before creating an invitation; it is cleared after every protected action." styleClass="muted" wrapText="true" />
                 <Button fx:id="createInvitationButton" text="Create Invitation" onAction="#createInvitation" />
                 <TextArea fx:id="myInvitationArea" editable="false" wrapText="true" prefRowCount="3" maxWidth="Infinity" />
-                <Button fx:id="copyInvitationButton" text="Copy" onAction="#copyInvitation" />
+                <Button fx:id="copyInvitationButton" text="Copy" onAction="#copyInvitation" disable="true" />
+                <Label fx:id="invitationFeedbackLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
             </VBox>
 
             <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
@@ -38,6 +39,7 @@
                 <Button fx:id="parseInvitationButton" text="Parse" onAction="#parseInvitation" />
                 <Label fx:id="parsedFingerprintLabel" styleClass="dashboard-card-helper" wrapText="true" managed="false" visible="false" />
                 <Button fx:id="registerAndAcceptButton" text="Register &amp; Accept" onAction="#registerAndAccept" disable="true" />
+                <Label fx:id="pairingFeedbackLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
             </VBox>
 
             <VBox spacing="8" styleClass="panel" maxWidth="Infinity">

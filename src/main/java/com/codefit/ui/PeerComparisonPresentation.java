@@ -91,7 +91,15 @@ public final class PeerComparisonPresentation {
     }
 
     private static boolean isMeaningful(Optional<MetricValue> value) {
-        return value.isPresent() && value.get().availability() == MetricAvailability.MEASURED && value.get().value() > 0;
+        if (value.isEmpty() || value.get().availability() != MetricAvailability.MEASURED) {
+            return false;
+        }
+        MetricValue measured = value.get();
+        // A measured zero can still be real evidence: 0% accuracy over 10 reviews, a 0% mock score,
+        // or 0 seconds over a recorded attempt are all meaningful outcomes and must never collapse
+        // into the "no activity" state. Count-style no-activity rows naturally carry both value=0 and
+        // sampleSize=0, so only that genuinely empty shape is suppressible.
+        return measured.value() != 0 || measured.sampleSize() > 0;
     }
 
     private static String describeSide(Optional<MetricValue> value) {

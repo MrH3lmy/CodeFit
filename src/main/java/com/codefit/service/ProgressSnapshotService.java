@@ -9,6 +9,7 @@ import com.codefit.peer.protocol.MetricAvailability;
 import com.codefit.peer.protocol.MetricProvenance;
 import com.codefit.peer.protocol.MetricUnit;
 import com.codefit.peer.protocol.MetricValue;
+import com.codefit.peer.protocol.ProgressSummary;
 import com.codefit.peer.protocol.TimestampBasis;
 import com.codefit.peer.snapshot.LocalProgressSnapshot;
 import com.codefit.repository.InterviewMockRepository;
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -88,16 +90,48 @@ public class ProgressSnapshotService {
      * @return the captured snapshot and how it relates to any snapshot previously captured for the same window
      */
     public Capture capture(ComparisonWindow window) {
-        // Truncated to millisecond precision: ProgressSummary/EnvelopeHeader require wire timestamps
-        // at millisecond precision, and Clock.systemUTC() reports nanoseconds on most JVMs.
-        Instant now = Instant.ofEpochMilli(clock.instant().toEpochMilli());
+        Instant now = wireNow();
         Instant cutoff = window.cutoffAt(now);
         List<MetricValue> metrics = computeMetrics(window, cutoff);
         LocalProgressSnapshotRepository.SaveResult result = snapshotRepository.save(window, cutoff, now, metrics);
         return new Capture(result.snapshot(), result.outcome());
     }
 
+    /**
+     * Computes a comparison-only summary through an explicit historical cutoff without mutating the
+     * persisted local snapshot/outbox source state. The cutoff is data time; {@code capturedAt}
+     * remains the real current time from this service's trusted clock.
+     *
+     * <p>This exists for fair peer comparisons of an in-progress DAY/WEEK: if the peer's latest
+     * accepted summary describes 14:57:31 elapsed today and I click Compare at 14:58:10, my side can
+     * truthfully recompute its own evidence through the same elapsed point while recording that the
+     * computation itself happened at 14:58:10. Persisting this historical view would be wrong because
+     * it could replace a newer normal local capture with an older cutoff under a higher revision.
+     */
+    ComparisonCapture captureForComparison(ComparisonWindow window, Instant cutoff) {
+        Instant capturedAt = wireNow();
+        if (cutoff.isBefore(window.start()) || cutoff.isAfter(window.end())) {
+            throw new IllegalArgumentException("Comparison cutoff must lie within [window.start, window.end].");
+        }
+        if (cutoff.isAfter(capturedAt)) {
+            throw new IllegalArgumentException("Comparison cutoff cannot be in the future.");
+        }
+
+        List<MetricValue> metrics = new ArrayList<>(computeMetrics(window, cutoff));
+        metrics.sort(Comparator.comparing(MetricValue::metricId).thenComparingInt(MetricValue::metricVersion));
+        return new ComparisonCapture(new ProgressSummary(window, cutoff, metrics), capturedAt);
+    }
+
     public record Capture(LocalProgressSnapshot snapshot, LocalProgressSnapshotRepository.SaveOutcome outcome) {
+    }
+
+    record ComparisonCapture(ProgressSummary summary, Instant capturedAt) {
+    }
+
+    private Instant wireNow() {
+        // ProgressSummary/EnvelopeHeader require wire timestamps at millisecond precision, while
+        // Clock.systemUTC() reports nanoseconds on most JVMs.
+        return Instant.ofEpochMilli(clock.instant().toEpochMilli());
     }
 
     private List<MetricValue> computeMetrics(ComparisonWindow window, Instant cutoff) {

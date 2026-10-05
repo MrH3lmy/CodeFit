@@ -12,6 +12,7 @@ import com.codefit.peer.protocol.ObjectId;
 import com.codefit.peer.protocol.ProgressSummary;
 import com.codefit.peer.protocol.SharingScope;
 import com.codefit.peer.protocol.WindowKind;
+import com.codefit.peer.snapshot.LocalProgressSnapshot;
 import com.codefit.peer.sync.PeerProgressSummary;
 import com.codefit.repository.PeerProgressSummaryRepository;
 import com.codefit.repository.PeerSyncConsentRepository;
@@ -127,11 +128,23 @@ public class PeerComparisonService {
         SnapshotObservation<ProgressSummary> right =
                 resolveTodaysPeerSummary(peerId, myId, myWindow, comparisonNow);
 
-        Instant localCutoff = localComparisonCutoff(myWindow, right, comparisonNow);
-        ProgressSnapshotService.ComparisonCapture myCapture =
-                progressSnapshotService.captureForComparison(myWindow, localCutoff);
-        SnapshotObservation<ProgressSummary> left =
-                SnapshotObservation.available(myCapture.summary(), myCapture.capturedAt());
+        // Preserve the established behavior: Compare also refreshes the normal persisted local
+        // snapshot at the real current cutoff. That state may later be published/reused normally and
+        // must never be replaced by the older fair-comparison cutoff below.
+        LocalProgressSnapshot freshCapture;
+        synchronized (PeerLocalWriteLock.MONITOR) {
+            freshCapture = progressSnapshotService.capture(myWindow).snapshot();
+        }
+
+        Instant localCutoff = localComparisonCutoff(myWindow, right, freshCapture.capturedAt());
+        SnapshotObservation<ProgressSummary> left;
+        if (localCutoff.equals(freshCapture.cutoff())) {
+            left = SnapshotObservation.available(freshCapture.toProgressSummary(), freshCapture.capturedAt());
+        } else {
+            ProgressSnapshotService.ComparisonCapture alignedCapture =
+                    progressSnapshotService.captureForComparison(myWindow, localCutoff);
+            left = SnapshotObservation.available(alignedCapture.summary(), alignedCapture.capturedAt());
+        }
 
         Instant evaluationInstant = clock.instant();
         SnapshotComparisonEngine.EvaluationContext context =

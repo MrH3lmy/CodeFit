@@ -43,7 +43,7 @@ the runtime classpath once, then starts two real JavaFX JVMs with absolute appli
 Application output goes to each profile's `logs/codefit.log`. Closing either application or pressing
 Ctrl+C terminates both children so the launcher does not leave an orphan process.
 
-Networking uses the application's normal **Enable Networking** action. Each instance asks the OS for an
+Networking uses the application's normal **Enable networking** action. Each instance asks the OS for an
 available listening port, so both can run on one host without configured or hard-coded port numbers.
 
 For fresh identities and data, run:
@@ -63,7 +63,7 @@ reset guards without launching JavaFX, run `./scripts/dev/test-dual-codefit-isol
 2. Create a different local identity in A and in B. Vault passphrases may be different and are never
    printed by the launcher.
 3. In each window, enable networking and note its independently OS-assigned port.
-4. Create an invitation in A and paste it into B; create an invitation in B and paste it into A.
+4. Open **Add a peer**. Create an invitation in A and paste it into B; create an invitation in B and paste it into A.
 5. Verify the displayed fingerprints out of band, then pair the contacts on both sides.
 6. Connect one installation to the other using the invitation/contact address and verify both show the
    real connection.
@@ -71,9 +71,9 @@ reset guards without launching JavaFX, run `./scripts/dev/test-dual-codefit-isol
 ## Current #199 acceptance flow
 
 1. Perform real study activity independently in both A and B.
-2. In each installation, use **Share Today's Progress**.
+2. In each installation, use **Share progress** on the other peer's card.
 3. Sync over the established P2P connection.
-4. In each installation, use **Compare Today's Progress**.
+4. In each installation, use **Compare today** on the other peer's card.
 5. Verify that each profile retains its own local study data and displays the other installation's shared
    summary. Restart the launcher without `--reset` and confirm identities, contacts, and summaries remain.
 

@@ -70,8 +70,16 @@ public final class PeerComparisonPresentation {
      *                          (callers vary this slightly between "Compare Today" and Study Match copy)
      */
     public static Rendered present(ProgressComparison comparison, String noActivityMessage) {
+        return present(comparison, noActivityMessage, null);
+    }
+
+    /**
+     * As {@link #present(ProgressComparison, String)}, but unavailable-state messages name the peer
+     * ("Waiting for Ahmed's progress…") instead of a generic "peer". {@code peerName} may be {@code null}.
+     */
+    public static Rendered present(ProgressComparison comparison, String noActivityMessage, String peerName) {
         return switch (comparison.state()) {
-            case UNAVAILABLE -> Rendered.message(unavailableMessage(comparison.reason()));
+            case UNAVAILABLE -> Rendered.message(unavailableMessage(comparison.reason(), peerName));
             case INCOMPATIBLE -> Rendered.message(incompatibleMessage());
             case COMPARABLE, DESCRIPTIVE_ONLY -> presentMetrics(comparison, noActivityMessage);
         };
@@ -115,11 +123,12 @@ public final class PeerComparisonPresentation {
      * the same generic message as any other reason not explicitly called out, since they are not
      * actionable guidance for the peer the way the {@code RIGHT_*} reasons are.
      */
-    private static String unavailableMessage(Reason reason) {
+    private static String unavailableMessage(Reason reason, String peerName) {
+        boolean named = peerName != null && !peerName.isBlank();
         return switch (reason) {
-            case RIGHT_NOT_SHARED -> "Peer hasn't shared their progress.";
-            case RIGHT_MISSING -> "Waiting for peer progress to sync.";
-            case RIGHT_STALE -> "Peer progress is too old. Ask them to share again.";
+            case RIGHT_NOT_SHARED -> PeerNamePresentation.capitalize(named ? peerName : "Peer") + " hasn't shared their progress.";
+            case RIGHT_MISSING -> named ? "Waiting for " + peerName + "'s progress…" : "Waiting for peer progress to sync.";
+            case RIGHT_STALE -> PeerNamePresentation.capitalize(named ? peerName + "'s" : "Peer") + " progress is too old. Ask them to share again.";
             case CUTOFF_MISMATCH, COMPLETE_PARTIAL_MISMATCH -> incompatibleMessage();
             default -> "Comparison isn't available right now.";
         };

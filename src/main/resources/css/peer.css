@@ -1,40 +1,113 @@
-/* Peers screen: one card per paired peer, restructured into clear vertical sections (identity +
- * connection state, main actions, Today's Comparison, Study Match) instead of one crowded row.
- * Reuses the shared panel/button/pill/typography tokens from base.css/controls.css - no new design
- * system, no new colors beyond the existing semantic success/warning/danger tokens. */
+/* Peers screen. Built only from the shared tokens (tokens.css) and the shared panel/button/typography
+ * styles (base.css/controls.css): one status strip, then a peers section whose cards are the primary
+ * surface. Hierarchy comes from type weight, spacing and one accent action per card - not from nesting
+ * more borders. Semantic colour is used sparingly: green = connected/active, amber = waiting/connecting,
+ * red = a genuine failure. Plain "offline" is neutral, never red. */
 
-.peer-card {
-    -fx-background-color: -color-surface-raised;
-    -fx-border-color: -color-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 12;
-    -fx-background-radius: 12;
-    -fx-padding: 16;
+/* ---------- Section typography ---------- */
+
+.section-heading {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
 }
 
-.peer-card-header {
-    -fx-alignment: center-left;
+.panel-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
 }
 
-.peer-fingerprint {
+/* ---------- Identity + network strip ---------- */
+
+.status-block {
+    -fx-min-width: 200;
+}
+
+.identity-value {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", "Consolas", monospace;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+}
+
+.identity-value-empty {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-weight: 500;
+}
+
+.network-dot {
+    -fx-font-size: 12px;
+}
+
+.network-dot-online { -fx-text-fill: -color-success; }
+.network-dot-offline { -fx-text-fill: -color-text-secondary; }
+
+.network-title {
     -fx-text-fill: -color-text-primary;
     -fx-font-size: 14px;
     -fx-font-weight: 700;
 }
 
-/* Small colored status dot, same idiom as the review screen's terminal-dot glyphs. */
-.connection-dot {
-    -fx-font-size: 13px;
+/* The first-time / go-online controls sit on a quiet inset so they read as one step, not a form. */
+.setup-box {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 10;
+    -fx-padding: 14;
 }
 
-.connection-dot-connected { -fx-text-fill: -color-success; }
-.connection-dot-connecting { -fx-text-fill: -color-warning; }
-.connection-dot-offline { -fx-text-fill: -color-danger; }
+/* ---------- Buttons (compact variants of the shared button styles) ---------- */
 
-.connection-status-label {
+.peer-button-primary, .peer-button-secondary {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+}
+
+.peer-button-primary {
+    -fx-background-color: -color-accent;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+}
+
+.peer-button-primary:hover {
+    -fx-background-color: -color-accent-hover;
+}
+
+.peer-button-primary:disabled {
+    -fx-background-color: -color-border;
+    -fx-text-fill: -color-text-secondary;
+    -fx-opacity: 1;
+}
+
+.peer-button-secondary {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-primary;
+}
+
+.peer-button-secondary:hover {
+    -fx-border-color: -color-accent;
+}
+
+/* Quiet text-only action: Hide / Done / Cancel / Disable networking. */
+.peer-link-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
     -fx-text-fill: -color-text-secondary;
     -fx-font-size: 12px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
+    -fx-padding: 4 8;
+    -fx-cursor: hand;
+}
+
+.peer-link-button:hover {
+    -fx-text-fill: -color-text-primary;
+    -fx-underline: true;
 }
 
 .peer-actions-row {
@@ -42,64 +115,269 @@
     -fx-vgap: 8;
 }
 
-.peer-section {
-    -fx-padding: 12 0 0 0;
-    -fx-spacing: 8;
+/* ---------- Add a peer ---------- */
+
+.step-badge {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-min-width: 24;
+    -fx-min-height: 24;
+    -fx-alignment: center;
 }
 
-/* A hairline divider above each subsection (Today's Comparison / Study Match) so the sections read
- * as clearly separate from the actions above them, without a nested bordered panel inside a panel. */
-.peer-section-divider {
-    -fx-border-color: transparent transparent -color-border transparent;
-    -fx-border-width: 1;
-    -fx-padding: 0 0 10 0;
+.step-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
 }
 
-.comparison-cutoff-label {
+/* The fingerprint a learner must compare with the other person: the one place it is shown in full. */
+.verify-box {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-warning;
+    -fx-border-width: 1 1 1 4;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 14;
+}
+
+.own-fingerprint-box {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 8;
+    -fx-padding: 12 14;
+}
+
+.verify-fingerprint {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-line-spacing: 4;
+}
+
+.verify-note {
     -fx-text-fill: -color-text-secondary;
     -fx-font-size: 12px;
     -fx-font-weight: 500;
 }
 
-.comparison-grid {
-    -fx-hgap: 18;
-    -fx-vgap: 6;
-    -fx-padding: 4 0 0 0;
+/* ---------- Feedback (one line, beside the action that caused it) ---------- */
+
+.peer-feedback {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
 }
 
-.comparison-header-cell {
+.feedback-error { -fx-text-fill: -color-danger; }
+.feedback-success { -fx-text-fill: -color-success; }
+
+/* ---------- Empty state ---------- */
+
+.empty-state {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-style: segments(6, 6);
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 32 24;
+}
+
+.empty-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-alignment: center;
+}
+
+/* ---------- Peer card ---------- */
+
+.peer-card {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 18;
+}
+
+.peer-card-header {
+    -fx-alignment: center-left;
+}
+
+.peer-avatar {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+}
+
+.peer-avatar-initial {
+    -fx-text-fill: -color-accent;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+}
+
+.peer-name {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-overrun: ellipsis;
+}
+
+.peer-fingerprint {
     -fx-text-fill: -color-text-secondary;
-    -fx-font-size: 11px;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-text-overrun: ellipsis;
+}
+
+.peer-status-detail {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+}
+
+/* Status pill: a coloured dot and a short label. Colour is the dot only; the text stays readable. */
+.status-pill {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-padding: 4 10;
+}
+
+.status-pill-text {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+.status-dot { -fx-font-size: 9px; }
+.status-success .status-dot { -fx-text-fill: -color-success; }
+.status-warning .status-dot { -fx-text-fill: -color-warning; }
+.status-neutral .status-dot { -fx-text-fill: -color-text-secondary; }
+
+/* Overflow ("···") menu: deliberately quiet. */
+.peer-overflow-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+    -fx-padding: 2 8;
+    -fx-cursor: hand;
+}
+
+.peer-overflow-button:hover, .peer-overflow-button:showing {
+    -fx-background-color: -color-surface;
+    -fx-text-fill: -color-text-primary;
+}
+
+.peer-overflow-button .arrow-button {
+    -fx-padding: 0;
+    -fx-pref-width: 0;
+    -fx-min-width: 0;
+    -fx-max-width: 0;
+}
+
+.peer-overflow-button .arrow {
+    -fx-padding: 0;
+    -fx-pref-width: 0;
+}
+
+.context-menu .menu-item.peer-menu-danger .label {
+    -fx-text-fill: -color-danger;
+}
+
+/* ---------- Card subsections (Today's progress / Study Match) ----------
+ * A hairline divider and spacing, never another bordered box inside the card. */
+
+.peer-subsection {
+    -fx-border-color: -color-border transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 14 0 0 0;
+}
+
+.peer-subsection-title {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
     -fx-font-weight: 800;
     -fx-letter-spacing: 0.06em;
 }
 
-.comparison-metric-cell {
+.peer-picker-prompt {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-padding: 0 4 0 0;
+}
+
+.match-detail {
     -fx-text-fill: -color-text-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+}
+
+.match-verdict {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+.inline-note {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+}
+
+/* ---------- Comparison table ---------- */
+
+.comparison-grid {
+    -fx-hgap: 0;
+    -fx-vgap: 0;
+}
+
+.comparison-header-cell {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-padding: 0 0 6 0;
+}
+
+.comparison-header-you {
+    -fx-text-fill: -color-accent;
+}
+
+.comparison-cell {
+    -fx-border-color: transparent transparent -color-border transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 9 0 9 0;
+}
+
+.comparison-cell-last {
+    -fx-border-color: transparent;
+}
+
+.comparison-metric-cell {
+    -fx-text-fill: -color-text-secondary;
     -fx-font-size: 13px;
     -fx-font-weight: 500;
 }
 
 .comparison-value-cell {
     -fx-text-fill: -color-text-primary;
-    -fx-font-size: 13px;
+    -fx-font-size: 14px;
     -fx-font-weight: 700;
 }
 
-.comparison-empty-state {
+.comparison-footnote {
     -fx-text-fill: -color-text-secondary;
-    -fx-font-size: 13px;
+    -fx-font-size: 12px;
     -fx-font-weight: 500;
-    -fx-font-style: italic;
-}
-
-.match-status-label {
-    -fx-text-fill: -color-text-primary;
-    -fx-font-size: 13px;
-    -fx-font-weight: 600;
-}
-
-.match-actions-row {
-    -fx-hgap: 8;
-    -fx-vgap: 8;
 }

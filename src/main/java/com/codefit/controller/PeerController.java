@@ -3,11 +3,10 @@ package com.codefit.controller;
 import com.codefit.peer.comparison.SnapshotComparisonEngine;
 import com.codefit.peer.identity.Contact;
 import com.codefit.peer.identity.ContactAddress;
+import com.codefit.peer.identity.IdentityFingerprint;
 import com.codefit.peer.identity.LocalIdentitySummary;
 import com.codefit.peer.invitation.InvitationCodec;
 import com.codefit.peer.invitation.SignedInvitation;
-import com.codefit.peer.identity.IdentityFingerprint;
-import com.codefit.peer.match.MatchRole;
 import com.codefit.peer.match.MatchStatus;
 import com.codefit.peer.match.StudyMatch;
 import com.codefit.peer.protocol.ComparisonWindow;
@@ -24,29 +23,30 @@ import com.codefit.service.NetworkingService;
 import com.codefit.service.PeerComparisonService;
 import com.codefit.service.PeerMatchService;
 import com.codefit.service.PeerSyncOutboxService;
+import com.codefit.ui.PeerCardPresentation;
+import com.codefit.ui.PeerCardView;
 import com.codefit.ui.PeerComparisonPresentation;
 import com.codefit.ui.PeerConnectionPresenter;
 import com.codefit.ui.PeerDialGate;
-import com.codefit.ui.PeerMetricPresentation;
+import com.codefit.ui.PeerErrorPresentation;
+import com.codefit.ui.PeerNamePresentation;
+import com.codefit.ui.PeerNetworkPresentation;
 import com.codefit.ui.PeerSessionHolder;
+import com.codefit.ui.StudyMatchPresentation;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.geometry.HPos;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
@@ -55,14 +55,19 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * The one screen this PR adds: lets two real CodeFit instances on the same LAN pair and establish a
+ * The Peers screen: lets two real CodeFit instances on the same LAN pair and establish a
  * real, authenticated P2P connection using only this UI. Every actual networking/identity/contact
  * operation is delegated to the existing, already-reviewed {@link NetworkingService}/
  * {@link ContactService}/{@link IdentityService} - nothing here reimplements any part of pairing,
@@ -73,8 +78,7 @@ import java.util.function.Consumer;
  * PENDING} or {@code PAIRED} contact row for ({@code KnownContactLookup}) - "parsing an invitation
  * alone" or "being dialed" never establishes trust by itself. So <strong>both</strong> people must
  * create their own invitation, send it to the other, and have the other register and accept it,
- * before either side's dial can succeed - this screen's copy and the "Paired Peers" panel's own
- * helper text say this explicitly, and a rejection caused by the other side simply not having done
+ * before either side's dial can succeed - the "Add a peer" panel's copy says this explicitly, and a rejection caused by the other side simply not having done
  * that yet ({@code UNKNOWN_IDENTITY}/{@code NOT_PAIRED}) is surfaced with that specific explanation
  * (see {@link PeerConnectionPresenter}), not a generic failure.
  *
@@ -100,25 +104,43 @@ public class PeerController {
 
     // Package-private (not private): PeerControllerTest, in this same package, reads these directly
     // to assert rendered state without reflection boilerplate - still inaccessible outside this package.
+    @FXML VBox statusSection;
     @FXML Label identityStatusLabel;
+    @FXML Label networkDot;
+    @FXML Label networkingStatusLabel;
+    @FXML Label networkingDetailLabel;
+    @FXML VBox setupBox;
+    @FXML Label setupHintLabel;
     @FXML PasswordField vaultPassphraseField;
     @FXML Button createIdentityButton;
     @FXML Button enableNetworkingButton;
     @FXML Button disableNetworkingButton;
-    @FXML Label networkingStatusLabel;
     @FXML Label networkingFeedbackLabel;
 
+    @FXML VBox peersSection;
+    @FXML Label peersSummaryLabel;
+    @FXML Button addPeerButton;
+    @FXML VBox addPeerPanel;
+
+    @FXML PasswordField invitationPassphraseField;
     @FXML Button createInvitationButton;
+    @FXML Label invitationHintLabel;
+    @FXML VBox ownFingerprintBox;
+    @FXML Label ownFingerprintLabel;
+    @FXML VBox invitationResultBox;
     @FXML TextArea myInvitationArea;
     @FXML Button copyInvitationButton;
     @FXML Label invitationFeedbackLabel;
 
     @FXML TextArea peerInvitationArea;
     @FXML Button parseInvitationButton;
+    @FXML VBox verifyBox;
     @FXML Label parsedFingerprintLabel;
     @FXML Button registerAndAcceptButton;
     @FXML Label pairingFeedbackLabel;
 
+    @FXML VBox emptyPeersBox;
+    @FXML Button emptyAddPeerButton;
     @FXML Label noContactsLabel;
     @FXML VBox contactsBox;
 
@@ -157,6 +179,8 @@ public class PeerController {
      */
     private final PeerDialGate dialGate;
 
+    private static final System.Logger LOG = System.getLogger(PeerController.class.getName());
+
     /** Staged between a successful {@link #parseInvitation()} and {@link #registerAndAccept()}. */
     SignedInvitation parsedPeerInvitation;
 
@@ -191,19 +215,81 @@ public class PeerController {
         this.matchService = matchService;
     }
 
+    // --- per-contact UI state that must survive a card repaint ---------------------------------
+    // Every card is rebuilt from scratch on each refresh (connection events, match actions, ...). These
+    // maps - touched on the JavaFX thread only - keep what the learner was looking at from vanishing
+    // each time: the last action's feedback line, an opened duration picker, and the last comparison.
+
+    private record CardFeedback(String message, PeerCardView.FeedbackTone tone) {
+    }
+
+    /** A shown result: either real rows/message ({@code rendered}) or an error line. */
+    private record CachedComparison(PeerComparisonPresentation.Rendered rendered, Optional<Instant> cutoff, String error) {
+    }
+
+    private record CachedMatchProgress(ObjectId matchId, CachedComparison comparison, Optional<String> verdict) {
+    }
+
+    private final Map<Long, CardFeedback> cardFeedback = new HashMap<>();
+    private final Set<Long> matchPickersOpen = new HashSet<>();
+    private final Map<Long, CachedComparison> comparisonCache = new HashMap<>();
+    private final Map<Long, CachedMatchProgress> matchProgressCache = new HashMap<>();
+    private final Map<Long, PeerCardView> liveCards = new HashMap<>();
+    private Timeline countdown;
+
     @FXML
     public void initialize() {
         presenter.setOnChange(() -> Platform.runLater(this::refreshContacts));
-        refreshIdentityStatus();
-        refreshNetworkingStatus();
+        refreshStatus();
         copyInvitationButton.setDisable(myInvitationArea.getText() == null || myInvitationArea.getText().isBlank());
+        resetParsedInvitation();
         refreshContacts();
+        installCountdown();
     }
+
+    /**
+     * Ticks the "08:42 remaining" line of any active match once a second, only while this screen is
+     * actually attached to a scene. When a match's clock reaches zero the whole list is repainted so
+     * the card moves to its completed state (the repaint itself asks {@code PeerMatchService}, which
+     * is what completes an expired match - nothing here decides that).
+     */
+    private void installCountdown() {
+        if (countdown != null) {
+            return;
+        }
+        countdown = new Timeline(new KeyFrame(javafx.util.Duration.seconds(1), event -> tickCountdown()));
+        countdown.setCycleCount(Animation.INDEFINITE);
+        contactsBox.sceneProperty().addListener((observable, previous, scene) -> {
+            if (scene == null) {
+                countdown.pause();
+            } else {
+                countdown.play();
+            }
+        });
+        if (contactsBox.getScene() != null) {
+            countdown.play();
+        }
+    }
+
+    private void tickCountdown() {
+        Instant now = Instant.now();
+        boolean expired = false;
+        for (Node card : contactsBox.getChildren()) {
+            if (card instanceof PeerCardView view && view.tick(now)) {
+                expired = true;
+            }
+        }
+        if (expired) {
+            refreshContacts();
+        }
+    }
+
+    // --- identity & network ----------------------------------------------------------------------
 
     @FXML
     public void createIdentity() {
-        char[] passphrase = takePassphrase(this::setNetworkingFeedback,
-                "Enter a vault passphrase above, then click Create Identity.");
+        char[] passphrase = takePassphrase(vaultPassphraseField, this::setNetworkingFeedback,
+                "Enter a vault passphrase, then click Create identity.");
         if (passphrase == null) {
             return;
         }
@@ -215,19 +301,21 @@ public class PeerController {
                 Arrays.fill(passphrase, '\0');
             }
         }, summary -> {
-            refreshIdentityStatus();
-            setNetworkingFeedback("Identity created. Re-enter your vault passphrase above, then click Enable Networking.");
+            refreshStatus();
+            setNetworkingFeedback("Identity created. Enter your passphrase again to go online.", PeerCardView.FeedbackTone.SUCCESS);
             setStatus(null);
-        }, error -> setNetworkingFeedback(messageOf(error)));
+        }, error -> setNetworkingFeedback(PeerErrorPresentation.message(error, "Couldn't create your identity. Please try again."),
+                PeerCardView.FeedbackTone.ERROR));
     }
 
     @FXML
     public void enableNetworking() {
-        char[] passphrase = takeNetworkingPassphrase();
+        char[] passphrase = takePassphrase(vaultPassphraseField, this::setNetworkingFeedback,
+                "Enter your vault passphrase, then click Enable networking.");
         if (passphrase == null) {
             return;
         }
-        setNetworkingFeedback("Enabling networking…");
+        setNetworkingFeedback("Going online…");
         runPeerAction(() -> {
             try {
                 networkingService.enableNetworking(passphrase, 0, now());
@@ -236,11 +324,12 @@ public class PeerController {
                 Arrays.fill(passphrase, '\0');
             }
         }, (Void ignored) -> {
-            refreshNetworkingStatus();
+            refreshStatus();
             refreshContacts();
-            setNetworkingFeedback("Networking enabled.");
+            setNetworkingFeedback(null);
             setStatus(null);
-        }, error -> setNetworkingFeedback(messageOf(error)));
+        }, error -> setNetworkingFeedback(PeerErrorPresentation.message(error, "Couldn't turn networking on. Please try again."),
+                PeerCardView.FeedbackTone.ERROR));
     }
 
     @FXML
@@ -252,17 +341,69 @@ public class PeerController {
             // No UI-owned dial state may outlive networking being disabled - whatever the torn-down
             // dial futures eventually report for themselves, this screen no longer owns any of them.
             dialGate.clear();
-            refreshNetworkingStatus();
+            refreshStatus();
             refreshContacts();
-            setNetworkingFeedback("Networking disabled.");
+            setNetworkingFeedback(null);
             setStatus(null);
-        }, error -> setNetworkingFeedback(messageOf(error)));
+        }, error -> setNetworkingFeedback(PeerErrorPresentation.message(error, "Couldn't turn networking off. Please try again."),
+                PeerCardView.FeedbackTone.ERROR));
+    }
+
+    /** Repaints the identity + network strip from the same {@code NetworkingService} reads as ever. */
+    private void refreshStatus() {
+        Optional<LocalIdentitySummary> identity = networkingService.currentIdentity();
+        boolean enabled = networkingService.isNetworkingEnabled();
+        PeerNetworkPresentation view = PeerNetworkPresentation.of(
+                identity.map(summary -> IdentityFingerprint.format(summary.id())).orElse(null),
+                enabled, networkingService.listeningPort());
+
+        identityStatusLabel.setText(view.identityText());
+        identityStatusLabel.setTooltip(view.identityFull() == null ? null : new Tooltip(view.identityFull()));
+        identityStatusLabel.getStyleClass().remove("identity-value-empty");
+        if (view.identityFull() == null) {
+            identityStatusLabel.getStyleClass().add("identity-value-empty");
+        }
+
+        networkingStatusLabel.setText(view.networkTitle());
+        networkingDetailLabel.setText(view.networkDetail());
+        networkDot.getStyleClass().removeAll("network-dot-online", "network-dot-offline");
+        networkDot.getStyleClass().add(view.online() ? "network-dot-online" : "network-dot-offline");
+
+        setupHintLabel.setText(view.setupHint() == null ? "" : view.setupHint());
+        show(setupBox, view.stage() != PeerNetworkPresentation.Stage.ONLINE);
+        show(createIdentityButton, view.stage() == PeerNetworkPresentation.Stage.NO_IDENTITY);
+        show(enableNetworkingButton, view.stage() == PeerNetworkPresentation.Stage.NETWORK_OFF);
+        show(disableNetworkingButton, view.stage() == PeerNetworkPresentation.Stage.ONLINE);
+
+        createIdentityButton.setDisable(identity.isPresent());
+        enableNetworkingButton.setDisable(enabled);
+        disableNetworkingButton.setDisable(!enabled);
+        createInvitationButton.setDisable(!enabled);
+        invitationPassphraseField.setDisable(!enabled);
+        ownFingerprintLabel.setText(view.identityFull() == null ? "" : view.identityFull());
+        show(ownFingerprintBox, view.identityFull() != null);
+        show(invitationHintLabel, !enabled);
+    }
+
+    // --- add a peer --------------------------------------------------------------------------------
+
+    @FXML
+    public void toggleAddPeer() {
+        boolean open = !addPeerPanel.isVisible();
+        show(addPeerPanel, open);
+        addPeerButton.setText(open ? "Close" : "Add a peer");
+        // The empty state's own "Add your first peer" call to action is redundant while the panel is open.
+        show(emptyPeersBox, !open && contactsBox.getChildren().isEmpty());
+        if (open) {
+            // Scroll position stays put; focus goes to the first thing the learner can act on.
+            (createInvitationButton.isDisabled() ? peerInvitationArea : invitationPassphraseField).requestFocus();
+        }
     }
 
     @FXML
     public void createInvitation() {
-        char[] passphrase = takePassphrase(this::setInvitationFeedback,
-                "Re-enter your vault passphrase above, then click Create Invitation.");
+        char[] passphrase = takePassphrase(invitationPassphraseField, this::setInvitationFeedback,
+                "Enter your vault passphrase, then click Create invitation.");
         if (passphrase == null) {
             return;
         }
@@ -276,9 +417,11 @@ public class PeerController {
         }, signed -> {
             myInvitationArea.setText(InvitationCodec.toBase64(signed));
             copyInvitationButton.setDisable(false);
-            setInvitationFeedback("Invitation created. Copy it and send it to the other person.");
+            show(invitationResultBox, true);
+            setInvitationFeedback("Invitation ready. Copy it and send it to them.", PeerCardView.FeedbackTone.SUCCESS);
             setStatus(null);
-        }, error -> setInvitationFeedback(messageOf(error)));
+        }, error -> setInvitationFeedback(PeerErrorPresentation.message(error, "Couldn't create an invitation. Please try again."),
+                PeerCardView.FeedbackTone.ERROR));
     }
 
     @FXML
@@ -291,7 +434,7 @@ public class PeerController {
         ClipboardContent content = new ClipboardContent();
         content.putString(text);
         Clipboard.getSystemClipboard().setContent(content);
-        setInvitationFeedback("Invitation copied to clipboard.");
+        setInvitationFeedback("Copied. Send it to them over chat or email.", PeerCardView.FeedbackTone.SUCCESS);
         setStatus(null);
     }
 
@@ -299,22 +442,23 @@ public class PeerController {
     public void parseInvitation() {
         String text = peerInvitationArea.getText();
         if (text == null || text.isBlank()) {
-            setPairingFeedback("Paste the other person's invitation first.");
+            setPairingFeedback("Paste their invitation first.");
             return;
         }
-        setPairingFeedback("Parsing invitation…");
+        setPairingFeedback("Checking invitation…");
         runPeerAction(() -> networkingService.parseInvitationBase64(text), signed -> {
             parsedPeerInvitation = signed;
-            parsedFingerprintLabel.setText("Their fingerprint: " + IdentityFingerprint.format(signed.invitation().identityKey().id())
-                    + " - verify this out of band with them before accepting.");
-            parsedFingerprintLabel.setVisible(true);
-            parsedFingerprintLabel.setManaged(true);
+            // The one place the FULL fingerprint is shown: verifying it out of band is the security step.
+            parsedFingerprintLabel.setText(IdentityFingerprint.format(signed.invitation().identityKey().id()));
+            show(parsedFingerprintLabel, true);
+            show(verifyBox, true);
             registerAndAcceptButton.setDisable(false);
-            setPairingFeedback("Invitation parsed. Verify the fingerprint, then click Register & Accept.");
+            setPairingFeedback(null);
             setStatus(null);
         }, error -> {
             resetParsedInvitation();
-            setPairingFeedback(messageOf(error));
+            setPairingFeedback(PeerErrorPresentation.message(error, "Couldn't read that invitation. Paste the whole text they sent you."),
+                    PeerCardView.FeedbackTone.ERROR);
         });
     }
 
@@ -322,10 +466,10 @@ public class PeerController {
     public void registerAndAccept() {
         SignedInvitation signed = parsedPeerInvitation;
         if (signed == null) {
-            setPairingFeedback("Parse and verify an invitation first.");
+            setPairingFeedback("Check their invitation first.");
             return;
         }
-        setPairingFeedback("Registering peer…");
+        setPairingFeedback("Pairing…");
         runPeerAction(() -> {
             Contact pending = networkingService.registerPendingContactFromInvitation(signed, now());
             return contactService.acceptInvitation(pending.id(), now());
@@ -333,17 +477,20 @@ public class PeerController {
             resetParsedInvitation();
             peerInvitationArea.clear();
             refreshContacts();
-            setPairingFeedback("Paired with " + displayNameFor(contact) + ".");
+            setPairingFeedback("Paired with " + displayNameFor(contact) + ".", PeerCardView.FeedbackTone.SUCCESS);
             setStatus(null);
-        }, error -> setPairingFeedback(messageOf(error)));
+        }, error -> setPairingFeedback(PeerErrorPresentation.message(error, "Couldn't pair with that invitation. Please try again."),
+                PeerCardView.FeedbackTone.ERROR));
     }
 
     private void resetParsedInvitation() {
         parsedPeerInvitation = null;
-        parsedFingerprintLabel.setVisible(false);
-        parsedFingerprintLabel.setManaged(false);
+        show(parsedFingerprintLabel, false);
+        show(verifyBox, false);
         registerAndAcceptButton.setDisable(true);
     }
+
+    // --- peers ---------------------------------------------------------------------------------------
 
     /**
      * Starts a manual dial for one contact, but only if nothing else from this UI is already dialing
@@ -358,12 +505,15 @@ public class PeerController {
      */
     private void connectTo(Contact contact) {
         if (!dialGate.tryAcquire(contact.id())) {
-            return; // already dialing this contact from this UI - the row already shows "Connecting…"
+            return; // already dialing this contact from this UI - the card already shows "Connecting…"
         }
+        clearCardFeedback(contact.id());
         List<ContactAddress> addresses = contactService.knownAddresses(contact.id());
         if (addresses.isEmpty()) {
             dialGate.release(contact.id());
-            setStatus("No known address for " + displayNameFor(contact) + " yet - ask them to resend their invitation.");
+            setCardFeedback(contact.id(), "No known address for " + displayNameFor(contact)
+                    + " yet. Ask them to send their invitation again.", PeerCardView.FeedbackTone.ERROR);
+            refreshContacts();
             return;
         }
         PeerAddress address = addresses.get(0).address();
@@ -374,54 +524,38 @@ public class PeerController {
             networkingService.connectToContact(contact.id(), address, MANUAL_CONNECT_RETRY_POLICY, new AtomicBoolean(false))
                     .whenComplete((outcome, throwable) -> Platform.runLater(() -> {
                         dialGate.release(contact.id());
-                        refreshContacts();
                         if (throwable != null) {
-                            setStatus("Connection attempt failed: " + messageOf(throwable));
+                            setCardFeedback(contact.id(), "Couldn't connect to " + displayNameFor(contact)
+                                    + ". Something went wrong, so try again.", PeerCardView.FeedbackTone.ERROR);
                         } else if (!outcome.result().authenticated()) {
-                            setStatus("Could not connect to " + displayNameFor(contact) + ": " + describeFailure(outcome.result()));
-                        } else {
-                            setStatus("Connected to " + displayNameFor(contact) + ".");
+                            setCardFeedback(contact.id(), "Couldn't connect. " + failureSentence(contact, outcome.result()),
+                                    PeerCardView.FeedbackTone.ERROR);
                         }
+                        refreshContacts();
                     }));
         } catch (IllegalStateException cannotDial) {
             dialGate.release(contact.id());
-            setStatus("Could not connect to " + displayNameFor(contact) + ": " + messageOf(cannotDial));
+            setCardFeedback(contact.id(), "Couldn't connect to " + displayNameFor(contact)
+                    + " yet. Ask them to send their invitation again.", PeerCardView.FeedbackTone.ERROR);
         }
         refreshContacts();
     }
 
+    private static String failureSentence(Contact contact, ConnectionOutcome outcome) {
+        return PeerNamePresentation.sentence(PeerConnectionPresenter.describeFailure(outcome.failureReason()),
+                displayNameFor(contact), PeerNamePresentation.isFingerprintFallback(contact.alias(), contact.displayName()));
+    }
+
     private void disconnectFrom(Contact contact) {
+        clearCardFeedback(contact.id());
         runPeerAction(() -> {
             networkingService.disconnect(contact.identityId());
             return null;
-        }, (Void ignored) -> {
-            refreshContacts();
-            setStatus("Disconnected from " + displayNameFor(contact) + ".");
-        });
+        }, (Void ignored) -> refreshContacts(),
+                error -> setCardFeedback(contact.id(), "Couldn't disconnect. Please try again.", PeerCardView.FeedbackTone.ERROR));
     }
 
-    private void refreshIdentityStatus() {
-        Optional<LocalIdentitySummary> identity = networkingService.currentIdentity();
-        if (identity.isPresent()) {
-            identityStatusLabel.setText("Identity: " + IdentityFingerprint.format(identity.get().id()));
-            createIdentityButton.setDisable(true);
-        } else {
-            identityStatusLabel.setText("No identity yet - enter a vault passphrase above and create one.");
-            createIdentityButton.setDisable(false);
-        }
-    }
-
-    private void refreshNetworkingStatus() {
-        boolean enabled = networkingService.isNetworkingEnabled();
-        enableNetworkingButton.setDisable(enabled);
-        disableNetworkingButton.setDisable(!enabled);
-        createInvitationButton.setDisable(!enabled);
-        networkingStatusLabel.setText(enabled
-                ? "Networking enabled on port " + networkingService.listeningPort().orElse(-1) + "."
-                : "Networking disabled.");
-    }
-
-    /** Rebuilds the paired-peer list from scratch: {@code ContactService} is the source of contacts,
+    /** Rebuilds the peer list from scratch: {@code ContactService} is the source of contacts,
      *  {@code NetworkingService.activeConnection} is the ground truth for "connected right now", and
      *  {@link PeerConnectionPresenter} only ever adds detail for why a contact that is NOT currently
      *  connected isn't - exactly the reconciliation {@link PeerConnectionPresenter}'s own javadoc
@@ -429,182 +563,127 @@ public class PeerController {
      *  caller either already is the JavaFX thread or got there via {@code Platform.runLater} first. */
     private void refreshContacts() {
         List<Contact> contacts = contactService.listContacts();
+        show(emptyPeersBox, contacts.isEmpty() && !addPeerPanel.isVisible());
         noContactsLabel.setVisible(contacts.isEmpty());
         noContactsLabel.setManaged(contacts.isEmpty());
         contactsBox.getChildren().clear();
+        liveCards.clear();
+        int connectedCount = 0;
         for (Contact contact : contacts) {
-            contactsBox.getChildren().add(buildContactRow(contact));
+            PeerCardView card = buildContactCard(contact);
+            if (card.presentation().connection() == PeerCardPresentation.Connection.CONNECTED) {
+                connectedCount++;
+            }
+            liveCards.put(contact.id(), card);
+            contactsBox.getChildren().add(card);
         }
+        peersSummaryLabel.setText(contacts.isEmpty() ? "" : contacts.size() + " paired · " + connectedCount + " connected");
     }
 
     /**
-     * One peer card, restructured (see this PR's own brief) into clear vertical sections instead of
-     * one crowded horizontal row: A) identity + connection state, B) main actions, C) Today's
-     * Comparison (hidden until a comparison has actually been run), D) Study Match (always present -
-     * it is itself the "start a match" entry point when none exists yet). Every actual decision -
-     * whether connected, what a comparison says, what a match's state is - is read from exactly the
-     * same backend calls as before; only how it is laid out and worded changes.
-     *
-     * <p>Every interactive/readable node gets a stable {@link Node#setId}, looked up by id from tests
-     * rather than by fixed child-index - far more robust to this section-based layout than the single
-     * flat {@code HBox} the previous row used.
+     * One peer card. Every actual decision - whether connected, what a comparison says, what a match's
+     * state is - is read from exactly the same backend calls as before, handed to the pure
+     * {@link PeerCardPresentation}/{@link StudyMatchPresentation} view-models; {@link PeerCardView}
+     * only lays the result out and reports button clicks back through the {@link PeerCardView.Actions}
+     * below, each of which makes exactly the service call the old per-peer button made.
      */
-    private Node buildContactRow(Contact contact) {
+    private PeerCardView buildContactCard(Contact contact) {
         boolean networkingEnabled = networkingService.isNetworkingEnabled();
         boolean connected = networkingService.activeConnection(contact.identityId()).isPresent();
         // dialGate, not any transport event, is authoritative for "connecting" here: a manual dial
         // this UI just started may not yet have produced any ConnectionEvent at all (the attempt is
-        // still queued behind the dial pool's own concurrency limit, say), but the row must still
+        // still queued behind the dial pool's own concurrency limit, say), but the card must still
         // reflect that this UI already owns an in-flight request for this contact.
         boolean dialing = !connected && dialGate.isInFlight(contact.id());
-        String status = dialing ? "Connecting…" : presenter.displayTextFor(contact.identityId(), connected);
 
-        VBox card = new VBox(10);
-        card.getStyleClass().add("peer-card");
-        card.setMaxWidth(Double.MAX_VALUE);
-
-        // --- A. Identity + connection state ---
-        Label fingerprintLabel = new Label(displayNameFor(contact));
-        fingerprintLabel.getStyleClass().add("peer-fingerprint");
-        fingerprintLabel.setWrapText(true);
-        fingerprintLabel.setId("peer-fingerprint-label");
-
-        Region headerSpacer = new Region();
-        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
-
-        Label connectionDot = new Label("●");
-        connectionDot.getStyleClass().add("connection-dot");
-        connectionDot.getStyleClass().add(dialing ? "connection-dot-connecting"
-                : connected ? "connection-dot-connected" : "connection-dot-offline");
-        Label connectionStatusLabel = new Label(status);
-        connectionStatusLabel.getStyleClass().add("connection-status-label");
-        connectionStatusLabel.setId("peer-connection-status-label");
-        connectionStatusLabel.setWrapText(true);
-        HBox statusBadge = new HBox(6, connectionDot, connectionStatusLabel);
-        statusBadge.setAlignment(Pos.CENTER_LEFT);
-
-        HBox header = new HBox(8, fingerprintLabel, headerSpacer, statusBadge);
-        header.getStyleClass().add("peer-card-header");
-        header.setMaxWidth(Double.MAX_VALUE);
-
-        // --- B. Main actions ---
-        Button actionButton;
-        if (connected) {
-            actionButton = new Button("Disconnect");
-            actionButton.setOnAction(event -> disconnectFrom(contact));
-        } else if (dialing) {
-            // Disabled, not merely left clickable-but-ignored: a disabled button is itself the
-            // feedback that this contact already has a request in flight, per the review requirement
-            // to prefer disabling/replacing the action over silently ignoring a click with no sign.
-            actionButton = new Button("Connecting…");
-            actionButton.setDisable(true);
-        } else if (!networkingEnabled) {
-            actionButton = new Button("Enable networking");
-            actionButton.setDisable(true);
-        } else {
-            actionButton = new Button("Connect");
-            actionButton.setOnAction(event -> connectTo(contact));
-        }
-        actionButton.setId("peer-connect-button");
-
-        Button shareButton = new Button("Share Progress");
-        shareButton.setId("peer-share-button");
-        shareButton.setOnAction(event -> shareTodaysProgress(contact));
-
-        Button compareButton = new Button("Compare Today");
-        compareButton.setId("peer-compare-button");
-
-        FlowPane mainActions = new FlowPane(8, 8, actionButton, shareButton, compareButton);
-        mainActions.getStyleClass().add("peer-actions-row");
-
-        // --- C. Today's Comparison - collapsed until Compare Today has actually been run once ---
-        Label comparisonTitle = new Label("TODAY'S COMPARISON");
-        comparisonTitle.getStyleClass().add("section-title");
-        Label comparisonCutoffLabel = new Label();
-        comparisonCutoffLabel.getStyleClass().add("comparison-cutoff-label");
-        comparisonCutoffLabel.setId("peer-comparison-cutoff-label");
-        comparisonCutoffLabel.setVisible(false);
-        comparisonCutoffLabel.setManaged(false);
-        VBox comparisonBody = new VBox(4);
-        comparisonBody.setId("peer-comparison-body");
-        VBox comparisonSection = new VBox(6, comparisonTitle, comparisonCutoffLabel, comparisonBody);
-        comparisonSection.getStyleClass().addAll("peer-section", "peer-section-divider");
-        comparisonSection.setId("peer-comparison-section");
-        comparisonSection.setVisible(false);
-        comparisonSection.setManaged(false);
-
-        compareButton.setOnAction(event -> compareTodaysProgress(contact, comparisonSection, comparisonCutoffLabel, comparisonBody));
-
-        // --- D. Study Match - always present; it is itself the "start a match" entry point ---
+        PeerCardPresentation card = PeerCardPresentation.of(contact.alias(), contact.displayName(), contact.fingerprint(),
+                networkingEnabled, connected, dialing, presenter.isConnectingFor(contact.identityId(), connected),
+                presenter.offlineReasonFor(contact.identityId(), connected));
         Optional<StudyMatch> latestMatch = matchService.matchesFor(contact.id()).stream().findFirst();
+        StudyMatchPresentation match = StudyMatchPresentation.of(latestMatch, connected, card.spokenName(), now());
 
-        Label matchTitle = new Label("STUDY MATCH");
-        matchTitle.getStyleClass().add("section-title");
-        Label matchStatusLabel = new Label(describeMatchStatus(latestMatch, connected, now()));
-        matchStatusLabel.getStyleClass().add("match-status-label");
-        matchStatusLabel.setId("peer-match-status-label");
-        matchStatusLabel.setWrapText(true);
+        PeerCardView view = new PeerCardView(card, match, matchPickersOpen.contains(contact.id()), new PeerCardView.Actions() {
+            @Override
+            public void connect(PeerCardView view) {
+                connectTo(contact);
+            }
 
-        // Visibility (never mere disabling - a hidden-and-disabled control is never a surprise click
-        // target) is computed once from latestMatch, captured for these handlers; a handler that
-        // somehow fires while not applicable is still safe (Optional#ifPresent).
-        boolean showStart = latestMatch.isEmpty() || isMatchTerminal(latestMatch.get().status());
-        boolean showAcceptDecline = latestMatch.filter(m -> m.role() == MatchRole.OPPONENT && m.status() == MatchStatus.PENDING).isPresent();
-        boolean showCancel = latestMatch.filter(m -> m.role() == MatchRole.CHALLENGER && m.status() == MatchStatus.PENDING).isPresent();
-        boolean showRefresh = latestMatch.filter(m -> m.status() == MatchStatus.ACTIVE || m.status() == MatchStatus.COMPLETED).isPresent();
+            @Override
+            public void disconnect(PeerCardView view) {
+                disconnectFrom(contact);
+            }
 
-        Button startMatch15Button = visibleButton("Start 15 min", showStart, e -> startStudyMatch(contact, MatchDuration.FIFTEEN_MINUTES));
-        startMatch15Button.setId("peer-match-start-15-button");
-        Button startMatch30Button = visibleButton("Start 30 min", showStart, e -> startStudyMatch(contact, MatchDuration.THIRTY_MINUTES));
-        startMatch30Button.setId("peer-match-start-30-button");
-        Button startMatch60Button = visibleButton("Start 60 min", showStart, e -> startStudyMatch(contact, MatchDuration.SIXTY_MINUTES));
-        startMatch60Button.setId("peer-match-start-60-button");
-        Button acceptMatchButton = visibleButton("Accept Match", showAcceptDecline,
-                e -> latestMatch.ifPresent(m -> respondToMatch(contact, m.matchId(), true)));
-        acceptMatchButton.setId("peer-match-accept-button");
-        Button declineMatchButton = visibleButton("Decline", showAcceptDecline,
-                e -> latestMatch.ifPresent(m -> respondToMatch(contact, m.matchId(), false)));
-        declineMatchButton.setId("peer-match-decline-button");
-        Button cancelMatchButton = visibleButton("Cancel Match", showCancel,
-                e -> latestMatch.ifPresent(m -> cancelMatch(contact, m.matchId())));
-        cancelMatchButton.setId("peer-match-cancel-button");
+            @Override
+            public void compare(PeerCardView view) {
+                compareTodaysProgress(contact, card.spokenName());
+            }
 
-        Label matchProgressCutoffLabel = new Label();
-        matchProgressCutoffLabel.getStyleClass().add("comparison-cutoff-label");
-        matchProgressCutoffLabel.setId("peer-match-progress-cutoff-label");
-        matchProgressCutoffLabel.setVisible(false);
-        matchProgressCutoffLabel.setManaged(false);
-        VBox matchProgressBody = new VBox(4);
-        matchProgressBody.setId("peer-match-progress-body");
+            @Override
+            public void share(PeerCardView view) {
+                shareTodaysProgress(contact);
+            }
 
-        Button refreshMatchButton = visibleButton(
-                latestMatch.filter(m -> m.status() == MatchStatus.COMPLETED).isPresent() ? "View Result" : "Refresh Progress",
-                showRefresh, e -> latestMatch.ifPresent(m ->
-                        refreshMatchProgress(contact, m.matchId(), matchStatusLabel, matchProgressCutoffLabel, matchProgressBody)));
-        refreshMatchButton.setId("peer-match-refresh-button");
+            @Override
+            public void startMatch(PeerCardView view, MatchDuration duration) {
+                matchPickersOpen.remove(contact.id());
+                startStudyMatch(contact, duration);
+            }
 
-        FlowPane matchActions = new FlowPane(8, 8, startMatch15Button, startMatch30Button, startMatch60Button,
-                acceptMatchButton, declineMatchButton, cancelMatchButton, refreshMatchButton);
-        matchActions.getStyleClass().add("match-actions-row");
+            @Override
+            public void acceptMatch(PeerCardView view) {
+                latestMatch.ifPresent(m -> respondToMatch(contact, m.matchId(), true));
+            }
 
-        VBox matchSection = new VBox(6, matchTitle, matchStatusLabel, matchActions, matchProgressCutoffLabel, matchProgressBody);
-        matchSection.getStyleClass().addAll("peer-section", "peer-section-divider");
-        matchSection.setId("peer-match-section");
+            @Override
+            public void declineMatch(PeerCardView view) {
+                latestMatch.ifPresent(m -> respondToMatch(contact, m.matchId(), false));
+            }
 
-        card.getChildren().addAll(header, mainActions, comparisonSection, matchSection);
-        return card;
+            @Override
+            public void cancelMatch(PeerCardView view) {
+                latestMatch.ifPresent(m -> PeerController.this.cancelMatch(contact, m.matchId()));
+            }
+
+            @Override
+            public void refreshMatch(PeerCardView view) {
+                latestMatch.ifPresent(m -> refreshMatchProgress(contact, m.matchId(), card.spokenName()));
+            }
+
+            @Override
+            public void matchPickerChanged(PeerCardView view, boolean open) {
+                if (open) {
+                    matchPickersOpen.add(contact.id());
+                } else {
+                    matchPickersOpen.remove(contact.id());
+                }
+            }
+        });
+
+        CardFeedback feedback = cardFeedback.get(contact.id());
+        if (feedback != null) {
+            view.setFeedback(feedback.message(), feedback.tone());
+        }
+        CachedComparison comparison = comparisonCache.get(contact.id());
+        if (comparison != null) {
+            applyComparison(view, comparison);
+        }
+        CachedMatchProgress progress = matchProgressCache.get(contact.id());
+        if (progress != null && latestMatch.isPresent() && progress.matchId().equals(latestMatch.get().matchId())) {
+            if (progress.comparison().error() != null) {
+                view.showMatchProgressError(progress.comparison().error());
+            } else {
+                view.showMatchProgress(progress.comparison().rendered(), progress.comparison().cutoff(), progress.verdict());
+            }
+        }
+        return view;
     }
 
-    private static Button visibleButton(String text, boolean visible, javafx.event.EventHandler<javafx.event.ActionEvent> onAction) {
-        Button button = new Button(text);
-        button.setOnAction(onAction);
-        button.setVisible(visible);
-        button.setManaged(visible);
-        return button;
-    }
-
-    private static boolean isMatchTerminal(MatchStatus status) {
-        return status == MatchStatus.COMPLETED || status == MatchStatus.DECLINED || status == MatchStatus.CANCELLED;
+    private static void applyComparison(PeerCardView view, CachedComparison comparison) {
+        if (comparison.error() != null) {
+            view.showComparisonError(comparison.error());
+        } else {
+            view.showComparison(comparison.rendered(), comparison.cutoff());
+        }
     }
 
     /**
@@ -621,6 +700,7 @@ public class PeerController {
      * automatic connection-established send will simply resend it.
      */
     private void shareTodaysProgress(Contact contact) {
+        clearCardFeedback(contact.id());
         runPeerAction(() -> {
             Instant now = now();
             contactService.grantAdditionalScope(contact.id(), SharingScope.DAILY_SUMMARY, 1, now);
@@ -631,7 +711,9 @@ public class PeerController {
 
             syncNowIfConnected(contact);
             return null;
-        }, (Void ignored) -> setStatus("Sharing today's progress with " + displayNameFor(contact) + "."));
+        }, (Void ignored) -> setCardFeedback(contact.id(), "Sharing today's progress with " + displayNameFor(contact) + ".",
+                PeerCardView.FeedbackTone.SUCCESS),
+                error -> setCardFeedback(contact.id(), "Couldn't share your progress. Please try again.", PeerCardView.FeedbackTone.ERROR));
     }
 
     /**
@@ -639,114 +721,52 @@ public class PeerController {
      * (never manufactured here), delegating every actual decision to {@link PeerComparisonService}/
      * {@code SnapshotComparisonEngine}. Never touches {@code PeerSyncSessionService}, {@code
      * PeerConnection}, or {@code UnlockedIdentity} - this screen only ever calls the one narrow,
-     * already-reviewed comparison entry point. Rendering is delegated to {@link #renderComparison}/
-     * {@link PeerComparisonPresentation} - this method's only job is the backend call and which
-     * section's nodes the result goes into.
+     * already-reviewed comparison entry point. Rendering is delegated to {@link PeerComparisonPresentation}
+     * and {@link PeerCardView}; this method's only job is the backend call and caching the result.
      */
-    private void compareTodaysProgress(Contact contact, VBox comparisonSection, Label cutoffLabel, VBox body) {
+    private void compareTodaysProgress(Contact contact, String peerName) {
         runPeerAction(() -> comparisonService.compareTodayWith(contact.id()), comparison -> {
-            renderComparison(comparison, cutoffLabel, body, "No study activity recorded by either person yet today.");
-            comparisonSection.setVisible(true);
-            comparisonSection.setManaged(true);
+            CachedComparison result = cacheComparison(comparison, "No study activity recorded by either person yet today.", peerName);
+            comparisonCache.put(contact.id(), result);
+            liveCard(contact.id()).ifPresent(card -> applyComparison(card, result));
         }, error -> {
-            renderComparisonError(cutoffLabel, body, "Comparison failed: " + messageOf(error));
-            comparisonSection.setVisible(true);
-            comparisonSection.setManaged(true);
+            CachedComparison result = new CachedComparison(null, Optional.empty(), "Couldn't load the comparison. Please try again.");
+            comparisonCache.put(contact.id(), result);
+            liveCard(contact.id()).ifPresent(card -> applyComparison(card, result));
         });
     }
 
     /**
-     * Renders one real {@link SnapshotComparisonEngine.ProgressComparison} - from either "Compare
-     * Today" or a Study Match's own progress - into human-readable rows, the polished empty state, or
-     * a short unavailable/incompatible message, plus the "Compared through …" cutoff line derived
-     * from the comparison's own real cutoff (never {@code Instant.now()}). Every actual rendering
-     * decision (which rows are meaningful, what each reason means in plain language) lives in {@link
-     * PeerComparisonPresentation}, kept deliberately free of any JavaFX dependency so it is directly
-     * unit-testable; this method only turns its result into {@code Node}s.
+     * Turns one real {@link SnapshotComparisonEngine.ProgressComparison} - from either "Compare today"
+     * or a Study Match's own progress - into the pure render model plus the "Compared through …" cutoff
+     * derived from the comparison's own real cutoff (never {@code Instant.now()}). Every actual
+     * rendering decision lives in {@link PeerComparisonPresentation}.
      */
-    private static void renderComparison(SnapshotComparisonEngine.ProgressComparison comparison, Label cutoffLabel,
-                                          VBox body, String noActivityMessage) {
-        body.getChildren().clear();
-        PeerComparisonPresentation.Rendered rendered = PeerComparisonPresentation.present(comparison, noActivityMessage);
-        if (rendered.kind() == PeerComparisonPresentation.Kind.ROWS) {
-            body.getChildren().add(buildComparisonGrid(rendered.rows()));
-        } else {
-            Label message = new Label(rendered.message());
-            message.getStyleClass().add("comparison-empty-state");
-            message.setWrapText(true);
-            body.getChildren().add(message);
-        }
-        Optional<Instant> cutoff = rendered.kind() == PeerComparisonPresentation.Kind.MESSAGE
-                ? Optional.empty() : comparison.left().snapshotOptional().map(ProgressSummary::cutoff);
-        if (cutoff.isPresent()) {
-            cutoffLabel.setText("Compared through " + PeerMetricPresentation.formatCutoff(cutoff.get(), ZoneId.systemDefault()));
-            cutoffLabel.setVisible(true);
-            cutoffLabel.setManaged(true);
-        } else {
-            cutoffLabel.setVisible(false);
-            cutoffLabel.setManaged(false);
-        }
+    private static CachedComparison cacheComparison(SnapshotComparisonEngine.ProgressComparison comparison,
+                                                    String noActivityMessage, String peerName) {
+        PeerComparisonPresentation.Rendered rendered = PeerComparisonPresentation.present(comparison, noActivityMessage, peerName);
+        return new CachedComparison(rendered, comparison.left().snapshotOptional().map(ProgressSummary::cutoff), null);
     }
 
-    private static void renderComparisonError(Label cutoffLabel, VBox body, String message) {
-        body.getChildren().clear();
-        Label errorLabel = new Label(message);
-        errorLabel.getStyleClass().add("comparison-empty-state");
-        errorLabel.setWrapText(true);
-        body.getChildren().add(errorLabel);
-        cutoffLabel.setVisible(false);
-        cutoffLabel.setManaged(false);
-    }
-
-    /** "Metric | You | Peer" - the one comparison table layout both "Compare Today" and Study Match progress share. */
-    private static GridPane buildComparisonGrid(List<PeerComparisonPresentation.Row> rows) {
-        GridPane grid = new GridPane();
-        grid.getStyleClass().add("comparison-grid");
-
-        ColumnConstraints metricColumn = new ColumnConstraints();
-        metricColumn.setHgrow(Priority.ALWAYS);
-        ColumnConstraints youColumn = new ColumnConstraints(64);
-        youColumn.setHalignment(HPos.RIGHT);
-        ColumnConstraints peerColumn = new ColumnConstraints(64);
-        peerColumn.setHalignment(HPos.RIGHT);
-        grid.getColumnConstraints().addAll(metricColumn, youColumn, peerColumn);
-
-        Label youHeader = new Label("You");
-        youHeader.getStyleClass().add("comparison-header-cell");
-        Label peerHeader = new Label("Peer");
-        peerHeader.getStyleClass().add("comparison-header-cell");
-        grid.addRow(0, new Label(), youHeader, peerHeader);
-
-        int rowIndex = 1;
-        for (PeerComparisonPresentation.Row row : rows) {
-            Label metricLabel = new Label(row.label());
-            metricLabel.getStyleClass().add("comparison-metric-cell");
-            metricLabel.setWrapText(true);
-            Label youValue = new Label(row.you());
-            youValue.getStyleClass().add("comparison-value-cell");
-            Label peerValue = new Label(row.peer());
-            peerValue.getStyleClass().add("comparison-value-cell");
-            grid.addRow(rowIndex, metricLabel, youValue, peerValue);
-            rowIndex++;
-        }
-        return grid;
+    private Optional<PeerCardView> liveCard(long contactId) {
+        return Optional.ofNullable(liveCards.get(contactId));
     }
 
     /** The challenger's own action: proposes {@code duration}, granting {@code MATCH_PARTICIPATION} up front. */
     private void startStudyMatch(Contact contact, MatchDuration duration) {
+        clearCardFeedback(contact.id());
         runPeerAction(() -> {
             matchService.startMatch(contact.id(), duration, now());
             syncNowIfConnected(contact);
             return null;
-        }, (Void ignored) -> {
-            refreshContacts();
-            setStatus("Study match invitation (" + duration.minutes() + " min) sent to "
-                    + displayNameFor(contact) + ".");
-        });
+        }, (Void ignored) -> refreshContacts(),
+                error -> setCardFeedback(contact.id(), "Couldn't send the Study Match invitation. Please try again.",
+                        PeerCardView.FeedbackTone.ERROR));
     }
 
     /** The opponent's own accept/decline action. */
     private void respondToMatch(Contact contact, ObjectId matchId, boolean accept) {
+        clearCardFeedback(contact.id());
         runPeerAction(() -> {
             Instant now = now();
             if (accept) {
@@ -756,26 +776,24 @@ public class PeerController {
             }
             syncNowIfConnected(contact);
             return null;
-        }, (Void ignored) -> {
-            refreshContacts();
-            setStatus((accept ? "Accepted" : "Declined") + " the study match with " + displayNameFor(contact) + ".");
-        });
+        }, (Void ignored) -> refreshContacts(),
+                error -> setCardFeedback(contact.id(), "Couldn't " + (accept ? "accept" : "decline") + " the Study Match. Please try again.",
+                        PeerCardView.FeedbackTone.ERROR));
     }
 
     /** The challenger's own withdrawal of a still-{@code PENDING} invitation. */
     private void cancelMatch(Contact contact, ObjectId matchId) {
+        clearCardFeedback(contact.id());
         runPeerAction(() -> {
             matchService.cancel(matchId, now());
             syncNowIfConnected(contact);
             return null;
-        }, (Void ignored) -> {
-            refreshContacts();
-            setStatus("Cancelled the study match with " + displayNameFor(contact) + ".");
-        });
+        }, (Void ignored) -> refreshContacts(),
+                error -> setCardFeedback(contact.id(), "Couldn't cancel the invitation. Please try again.", PeerCardView.FeedbackTone.ERROR));
     }
 
     /**
-     * "Refresh Progress" / "View Result": while still {@code ACTIVE}, first captures and approves
+     * "Refresh progress" / "View results": while still {@code ACTIVE}, first captures and approves
      * this device's own real match-window progress (exactly {@link #shareTodaysProgress}'s own
      * pattern, reused for a match window instead of today's calendar day) and syncs it now if already
      * connected; either way, then reads and renders the real comparison plus the one small,
@@ -783,7 +801,7 @@ public class PeerController {
      * new scoring/winner computation here. Never touches {@code PeerSyncSessionService}/{@code
      * PeerConnection}/{@code UnlockedIdentity}.
      */
-    private void refreshMatchProgress(Contact contact, ObjectId matchId, Label matchStatusLabel, Label cutoffLabel, VBox body) {
+    private void refreshMatchProgress(Contact contact, ObjectId matchId, String peerName) {
         runPeerAction(() -> {
             Instant now = now();
             Optional<StudyMatch> current = matchService.find(matchId);
@@ -793,23 +811,17 @@ public class PeerController {
             }
             return matchService.compareProgress(matchId, now);
         }, (PeerMatchService.MatchProgressView view) -> {
-            renderComparison(view.comparison(), cutoffLabel, body,
-                    "No study activity recorded by either person yet during this match.");
-            view.verdict().ifPresent(verdict -> body.getChildren().add(verdictLabel(verdict)));
-        }, error -> renderComparisonError(cutoffLabel, body, "Match progress refresh failed: " + messageOf(error)));
-    }
-
-    private static Label verdictLabel(PeerMatchService.LeaderVerdict verdict) {
-        String text = switch (verdict) {
-            case AHEAD -> "You are ahead.";
-            case BEHIND -> "You are behind.";
-            case TIED -> "You are tied.";
-            case MIXED -> "Mixed — no consistent leader across comparable metrics.";
-        };
-        Label label = new Label(text);
-        label.getStyleClass().add("match-status-label");
-        label.setWrapText(true);
-        return label;
+            CachedComparison comparison = cacheComparison(view.comparison(),
+                    "No study activity recorded by either person yet during this match.", peerName);
+            CachedMatchProgress progress = new CachedMatchProgress(matchId, comparison,
+                    view.verdict().map(verdict -> StudyMatchPresentation.verdictText(verdict, peerName)));
+            matchProgressCache.put(contact.id(), progress);
+            liveCard(contact.id()).ifPresent(card -> card.showMatchProgress(comparison.rendered(), comparison.cutoff(), progress.verdict()));
+        }, error -> {
+            CachedComparison comparison = new CachedComparison(null, Optional.empty(), "Couldn't refresh match progress. Please try again.");
+            matchProgressCache.put(contact.id(), new CachedMatchProgress(matchId, comparison, Optional.empty()));
+            liveCard(contact.id()).ifPresent(card -> card.showMatchProgressError(comparison.error()));
+        });
     }
 
     /** Best-effort immediate sync, shared by every Study Match action - see {@link #shareTodaysProgress}'s own javadoc for why. */
@@ -823,51 +835,8 @@ public class PeerController {
         }
     }
 
-    /**
-     * The initial, cheap, no-I/O status line shown for a contact's most recent match as soon as the
-     * row is built - never the full progress comparison, which requires a real local capture and so
-     * is only ever computed inside {@link #refreshMatchProgress}'s own background task. {@code
-     * latestMatch} empty means no match has ever existed with this contact - Study Match's own section
-     * stays visible regardless (it is itself the "start a match" entry point), just with this default
-     * status line instead of a real match's.
-     */
-    private static String describeMatchStatus(Optional<StudyMatch> latestMatch, boolean connected, Instant now) {
-        return latestMatch.map(match -> describeMatchStatus(match, connected, now)).orElse("No active study match.");
-    }
-
-    private static String describeMatchStatus(StudyMatch match, boolean connected, Instant now) {
-        String durationLabel = match.duration().minutes() + " min";
-        return switch (match.status()) {
-            case PENDING -> match.role() == MatchRole.CHALLENGER
-                    ? durationLabel + " · Waiting for peer"
-                    : "Incoming " + match.duration().minutes() + "-minute match";
-            case ACTIVE -> {
-                Duration remaining = Duration.between(now, match.endsAt());
-                String base = "Active · " + formatRemaining(remaining) + " remaining";
-                yield connected ? base : base + " — peer offline, showing last synced progress";
-            }
-            case COMPLETED -> durationLabel + " · Completed";
-            case DECLINED -> durationLabel + " · Declined";
-            case CANCELLED -> durationLabel + " · Cancelled";
-        };
-    }
-
-    private static String formatRemaining(Duration remaining) {
-        if (remaining.isNegative()) {
-            remaining = Duration.ZERO;
-        }
-        long totalSeconds = remaining.toSeconds();
-        return String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60);
-    }
-
     private static String displayNameFor(Contact contact) {
-        if (contact.alias() != null && !contact.alias().isBlank()) {
-            return contact.alias();
-        }
-        if (contact.displayName() != null && !contact.displayName().isBlank()) {
-            return contact.displayName();
-        }
-        return contact.fingerprint();
+        return PeerNamePresentation.displayName(contact.alias(), contact.displayName(), contact.fingerprint());
     }
 
     /**
@@ -882,77 +851,82 @@ public class PeerController {
         return Instant.ofEpochMilli(Instant.now().toEpochMilli());
     }
 
-    private static String describeFailure(ConnectionOutcome outcome) {
-        String reason = outcome.failureReason() == null ? "rejected" : outcome.failureReason().name();
-        String detail = outcome.detail();
-        return detail == null || detail.isBlank() ? reason : reason + " - " + detail;
-    }
-
-    private char[] takePassphrase(Consumer<String> feedback, String missingMessage) {
-        String text = vaultPassphraseField.getText();
+    private char[] takePassphrase(PasswordField field, BiConsumer<String, PeerCardView.FeedbackTone> feedback, String missingMessage) {
+        String text = field.getText();
         if (text == null || text.isEmpty()) {
-            feedback.accept(missingMessage);
+            feedback.accept(missingMessage, PeerCardView.FeedbackTone.INFO);
             return null;
         }
         char[] passphrase = text.toCharArray();
-        vaultPassphraseField.clear();
+        field.clear();
         return passphrase;
     }
 
-    private char[] takeNetworkingPassphrase() {
-        String text = vaultPassphraseField.getText();
-        if (text == null || text.isEmpty()) {
-            setNetworkingFeedback("Re-enter your vault passphrase above, then click Enable Networking.");
-            return null;
-        }
-        char[] passphrase = text.toCharArray();
-        vaultPassphraseField.clear();
-        return passphrase;
-    }
+    // --- feedback ----------------------------------------------------------------------------------
 
     private void setNetworkingFeedback(String message) {
-        setInlineFeedback(networkingFeedbackLabel, message);
+        setNetworkingFeedback(message, PeerCardView.FeedbackTone.INFO);
+    }
+
+    private void setNetworkingFeedback(String message, PeerCardView.FeedbackTone tone) {
+        setInlineFeedback(networkingFeedbackLabel, message, tone);
     }
 
     private void setInvitationFeedback(String message) {
-        setInlineFeedback(invitationFeedbackLabel, message);
+        setInvitationFeedback(message, PeerCardView.FeedbackTone.INFO);
+    }
+
+    private void setInvitationFeedback(String message, PeerCardView.FeedbackTone tone) {
+        setInlineFeedback(invitationFeedbackLabel, message, tone);
     }
 
     private void setPairingFeedback(String message) {
-        setInlineFeedback(pairingFeedbackLabel, message);
+        setPairingFeedback(message, PeerCardView.FeedbackTone.INFO);
     }
 
-    private static void setInlineFeedback(Label label, String message) {
+    private void setPairingFeedback(String message, PeerCardView.FeedbackTone tone) {
+        setInlineFeedback(pairingFeedbackLabel, message, tone);
+    }
+
+    private static void setInlineFeedback(Label label, String message, PeerCardView.FeedbackTone tone) {
         boolean hasMessage = message != null && !message.isBlank();
         label.setText(hasMessage ? message : "");
-        label.setVisible(hasMessage);
-        label.setManaged(hasMessage);
+        label.getStyleClass().removeAll("feedback-error", "feedback-success");
+        if (hasMessage && tone == PeerCardView.FeedbackTone.ERROR) {
+            label.getStyleClass().add("feedback-error");
+        } else if (hasMessage && tone == PeerCardView.FeedbackTone.SUCCESS) {
+            label.getStyleClass().add("feedback-success");
+        }
+        show(label, hasMessage);
     }
 
+    /** Remembers (and shows, if the card is on screen) the outcome of the last action on one contact's card. */
+    private void setCardFeedback(long contactId, String message, PeerCardView.FeedbackTone tone) {
+        cardFeedback.put(contactId, new CardFeedback(message, tone));
+        liveCard(contactId).ifPresent(card -> card.setFeedback(message, tone));
+    }
+
+    private void clearCardFeedback(long contactId) {
+        cardFeedback.remove(contactId);
+        liveCard(contactId).ifPresent(card -> card.setFeedback(null, PeerCardView.FeedbackTone.INFO));
+    }
+
+    /** A line not tied to any one peer or form (rare now that feedback sits beside the action that caused it). */
     private void setStatus(String message) {
         boolean hasStatus = message != null && !message.isBlank();
         statusLabel.setText(hasStatus ? message : "");
-        statusLabel.setVisible(hasStatus);
-        statusLabel.setManaged(hasStatus);
+        show(statusLabel, hasStatus);
     }
 
-    private void showError(Throwable error) {
-        setStatus(messageOf(error));
-    }
-
-    private static String messageOf(Throwable error) {
-        String message = error.getMessage();
-        return message == null || message.isBlank() ? error.getClass().getSimpleName() : message;
+    private static void show(Node node, boolean visible) {
+        node.setVisible(visible);
+        node.setManaged(visible);
     }
 
     /** Runs {@code work} on its own daemon thread, never the JavaFX application thread, and delivers
      *  the result back on the JavaFX thread via {@link Task}'s own guarantee for
      *  {@code setOnSucceeded}/{@code setOnFailed} - callbacks passed here may touch {@code Node}s
-     *  directly. On failure, shows the exception's message as the status line. */
-    private <T> void runPeerAction(Callable<T> work, Consumer<T> onSuccess) {
-        runPeerAction(work, onSuccess, this::showError);
-    }
-
+     *  directly. */
     private <T> void runPeerAction(Callable<T> work, Consumer<T> onSuccess, Consumer<Throwable> onFailure) {
         Task<T> task = new Task<>() {
             @Override
@@ -961,7 +935,11 @@ public class PeerController {
             }
         };
         task.setOnSucceeded(event -> onSuccess.accept(task.getValue()));
-        task.setOnFailed(event -> onFailure.accept(task.getException()));
+        task.setOnFailed(event -> {
+            // The raw exception is for developers only: it goes to the log, never to the screen.
+            LOG.log(System.Logger.Level.WARNING, "Peers screen action failed", task.getException());
+            onFailure.accept(task.getException());
+        });
         Thread thread = new Thread(task, "codefit-peer-ui-action");
         thread.setDaemon(true);
         thread.start();

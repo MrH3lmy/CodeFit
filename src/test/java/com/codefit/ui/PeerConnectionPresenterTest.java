@@ -162,4 +162,39 @@ class PeerConnectionPresenterTest {
             return new ConnectionEvent(remoteIdentityId, state, null, null, Instant.now());
         }
     }
+
+    @Test
+    void offlineReasonIsExposedSeparatelyFromTheShortStatus() {
+        PeerConnectionPresenter presenter = new PeerConnectionPresenter();
+        IdentityId contact = randomIdentityId();
+        presenter.onEvent(new ConnectionEvent(contact, ConnectionState.UNREACHABLE, null, null, Instant.now()));
+
+        assertEquals(java.util.Optional.of("could not reach the other device"), presenter.offlineReasonFor(contact, false));
+        assertEquals("Offline (could not reach the other device)", presenter.displayTextFor(contact, false),
+                "the existing combined text is unchanged");
+        assertEquals(java.util.Optional.empty(), presenter.offlineReasonFor(contact, true), "ground truth: connected means nothing to explain");
+        assertEquals(java.util.Optional.empty(), presenter.offlineReasonFor(randomIdentityId(), false));
+    }
+
+    @Test
+    void connectingStateComesFromTheLatestEventAndNeverOverridesAnActiveConnection() {
+        PeerConnectionPresenter presenter = new PeerConnectionPresenter();
+        IdentityId contact = randomIdentityId();
+        presenter.onEvent(ConnectionEventFixtures.of(contact, ConnectionState.AUTHENTICATING));
+
+        org.junit.jupiter.api.Assertions.assertTrue(presenter.isConnectingFor(contact, false));
+        org.junit.jupiter.api.Assertions.assertFalse(presenter.isConnectingFor(contact, true));
+        org.junit.jupiter.api.Assertions.assertFalse(presenter.isConnectingFor(randomIdentityId(), false));
+    }
+
+    @Test
+    void failureReasonsAreDescribedInPlainLanguageNeverByEnumName() {
+        for (ConnectionFailureReason reason : ConnectionFailureReason.values()) {
+            String text = PeerConnectionPresenter.describeFailure(reason);
+            org.junit.jupiter.api.Assertions.assertFalse(text.isBlank());
+            org.junit.jupiter.api.Assertions.assertFalse(text.matches(".*[A-Z]{3,}_[A-Z_]+.*"), reason + " leaked as: " + text);
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(PeerConnectionPresenter.describeFailure(ConnectionFailureReason.CONNECTION_REFUSED).contains("couldn't be reached"));
+        org.junit.jupiter.api.Assertions.assertTrue(PeerConnectionPresenter.describeFailure(null).length() > 0);
+    }
 }

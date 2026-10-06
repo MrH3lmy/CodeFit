@@ -13,6 +13,7 @@ import com.codefit.peer.match.StudyMatch;
 import com.codefit.peer.protocol.ComparisonWindow;
 import com.codefit.peer.protocol.MatchDuration;
 import com.codefit.peer.protocol.ObjectId;
+import com.codefit.peer.protocol.ProgressSummary;
 import com.codefit.peer.protocol.SharingScope;
 import com.codefit.peer.transport.ConnectionOutcome;
 import com.codefit.peer.transport.PeerAddress;
@@ -23,12 +24,15 @@ import com.codefit.service.NetworkingService;
 import com.codefit.service.PeerComparisonService;
 import com.codefit.service.PeerMatchService;
 import com.codefit.service.PeerSyncOutboxService;
+import com.codefit.ui.PeerComparisonPresentation;
 import com.codefit.ui.PeerConnectionPresenter;
 import com.codefit.ui.PeerDialGate;
+import com.codefit.ui.PeerMetricPresentation;
 import com.codefit.ui.PeerSessionHolder;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.geometry.HPos;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -37,8 +41,12 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
@@ -429,6 +437,18 @@ public class PeerController {
         }
     }
 
+    /**
+     * One peer card, restructured (see this PR's own brief) into clear vertical sections instead of
+     * one crowded horizontal row: A) identity + connection state, B) main actions, C) Today's
+     * Comparison (hidden until a comparison has actually been run), D) Study Match (always present -
+     * it is itself the "start a match" entry point when none exists yet). Every actual decision -
+     * whether connected, what a comparison says, what a match's state is - is read from exactly the
+     * same backend calls as before; only how it is laid out and worded changes.
+     *
+     * <p>Every interactive/readable node gets a stable {@link Node#setId}, looked up by id from tests
+     * rather than by fixed child-index - far more robust to this section-based layout than the single
+     * flat {@code HBox} the previous row used.
+     */
     private Node buildContactRow(Contact contact) {
         boolean networkingEnabled = networkingService.isNetworkingEnabled();
         boolean connected = networkingService.activeConnection(contact.identityId()).isPresent();
@@ -439,31 +459,35 @@ public class PeerController {
         boolean dialing = !connected && dialGate.isInFlight(contact.id());
         String status = dialing ? "Connecting…" : presenter.displayTextFor(contact.identityId(), connected);
 
-        Label nameLabel = new Label(displayNameFor(contact));
-        nameLabel.getStyleClass().add("problem-row-title");
-        nameLabel.setWrapText(true);
-        Label statusLabel = new Label(status);
-        statusLabel.getStyleClass().add("problem-row-subtitle");
-        statusLabel.setWrapText(true);
-        // Appended after statusLabel (index 1), never replacing it - PeerControllerTest's own
-        // rowStatusLabel helper reads index 1 directly and must keep working unchanged.
-        Label comparisonResultLabel = new Label();
-        comparisonResultLabel.getStyleClass().add("dashboard-card-helper");
-        comparisonResultLabel.setWrapText(true);
-        comparisonResultLabel.setVisible(false);
-        comparisonResultLabel.setManaged(false);
-        // Appended after comparisonResultLabel (index 2), same reason as above.
-        Optional<StudyMatch> latestMatch = matchService.matchesFor(contact.id()).stream().findFirst();
-        Label matchStatusLabel = new Label();
-        matchStatusLabel.getStyleClass().add("dashboard-card-helper");
-        matchStatusLabel.setWrapText(true);
-        matchStatusLabel.setText(latestMatch.map(match -> describeMatchStatus(match, connected, now())).orElse(""));
-        matchStatusLabel.setVisible(latestMatch.isPresent());
-        matchStatusLabel.setManaged(latestMatch.isPresent());
-        VBox textColumn = new VBox(2, nameLabel, statusLabel, comparisonResultLabel, matchStatusLabel);
-        textColumn.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(textColumn, Priority.ALWAYS);
+        VBox card = new VBox(10);
+        card.getStyleClass().add("peer-card");
+        card.setMaxWidth(Double.MAX_VALUE);
 
+        // --- A. Identity + connection state ---
+        Label fingerprintLabel = new Label(displayNameFor(contact));
+        fingerprintLabel.getStyleClass().add("peer-fingerprint");
+        fingerprintLabel.setWrapText(true);
+        fingerprintLabel.setId("peer-fingerprint-label");
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+
+        Label connectionDot = new Label("●");
+        connectionDot.getStyleClass().add("connection-dot");
+        connectionDot.getStyleClass().add(dialing ? "connection-dot-connecting"
+                : connected ? "connection-dot-connected" : "connection-dot-offline");
+        Label connectionStatusLabel = new Label(status);
+        connectionStatusLabel.getStyleClass().add("connection-status-label");
+        connectionStatusLabel.setId("peer-connection-status-label");
+        connectionStatusLabel.setWrapText(true);
+        HBox statusBadge = new HBox(6, connectionDot, connectionStatusLabel);
+        statusBadge.setAlignment(Pos.CENTER_LEFT);
+
+        HBox header = new HBox(8, fingerprintLabel, headerSpacer, statusBadge);
+        header.getStyleClass().add("peer-card-header");
+        header.setMaxWidth(Double.MAX_VALUE);
+
+        // --- B. Main actions ---
         Button actionButton;
         if (connected) {
             actionButton = new Button("Disconnect");
@@ -481,41 +505,94 @@ public class PeerController {
             actionButton = new Button("Connect");
             actionButton.setOnAction(event -> connectTo(contact));
         }
+        actionButton.setId("peer-connect-button");
 
-        // Appended after actionButton (index 1), never before it - PeerControllerTest's own
-        // fireConnectButton helper fires index 1 directly and must keep firing the same button.
-        Button shareButton = new Button("Share Today's Progress");
+        Button shareButton = new Button("Share Progress");
+        shareButton.setId("peer-share-button");
         shareButton.setOnAction(event -> shareTodaysProgress(contact));
-        Button compareButton = new Button("Compare Today's Progress");
-        compareButton.setOnAction(event -> compareTodaysProgress(contact, comparisonResultLabel));
 
-        // Appended after compareButton (index 3) - never before it, same "fixed index" discipline as
-        // every button above. Visibility (never mere disabling - a hidden-and-disabled control is
-        // never a surprise click target) is computed once from latestMatch, captured for these
-        // handlers; a handler that somehow fires while not applicable is still safe (Optional#ifPresent).
+        Button compareButton = new Button("Compare Today");
+        compareButton.setId("peer-compare-button");
+
+        FlowPane mainActions = new FlowPane(8, 8, actionButton, shareButton, compareButton);
+        mainActions.getStyleClass().add("peer-actions-row");
+
+        // --- C. Today's Comparison - collapsed until Compare Today has actually been run once ---
+        Label comparisonTitle = new Label("TODAY'S COMPARISON");
+        comparisonTitle.getStyleClass().add("section-title");
+        Label comparisonCutoffLabel = new Label();
+        comparisonCutoffLabel.getStyleClass().add("comparison-cutoff-label");
+        comparisonCutoffLabel.setId("peer-comparison-cutoff-label");
+        comparisonCutoffLabel.setVisible(false);
+        comparisonCutoffLabel.setManaged(false);
+        VBox comparisonBody = new VBox(4);
+        comparisonBody.setId("peer-comparison-body");
+        VBox comparisonSection = new VBox(6, comparisonTitle, comparisonCutoffLabel, comparisonBody);
+        comparisonSection.getStyleClass().addAll("peer-section", "peer-section-divider");
+        comparisonSection.setId("peer-comparison-section");
+        comparisonSection.setVisible(false);
+        comparisonSection.setManaged(false);
+
+        compareButton.setOnAction(event -> compareTodaysProgress(contact, comparisonSection, comparisonCutoffLabel, comparisonBody));
+
+        // --- D. Study Match - always present; it is itself the "start a match" entry point ---
+        Optional<StudyMatch> latestMatch = matchService.matchesFor(contact.id()).stream().findFirst();
+
+        Label matchTitle = new Label("STUDY MATCH");
+        matchTitle.getStyleClass().add("section-title");
+        Label matchStatusLabel = new Label(describeMatchStatus(latestMatch, connected, now()));
+        matchStatusLabel.getStyleClass().add("match-status-label");
+        matchStatusLabel.setId("peer-match-status-label");
+        matchStatusLabel.setWrapText(true);
+
+        // Visibility (never mere disabling - a hidden-and-disabled control is never a surprise click
+        // target) is computed once from latestMatch, captured for these handlers; a handler that
+        // somehow fires while not applicable is still safe (Optional#ifPresent).
         boolean showStart = latestMatch.isEmpty() || isMatchTerminal(latestMatch.get().status());
         boolean showAcceptDecline = latestMatch.filter(m -> m.role() == MatchRole.OPPONENT && m.status() == MatchStatus.PENDING).isPresent();
         boolean showCancel = latestMatch.filter(m -> m.role() == MatchRole.CHALLENGER && m.status() == MatchStatus.PENDING).isPresent();
         boolean showRefresh = latestMatch.filter(m -> m.status() == MatchStatus.ACTIVE || m.status() == MatchStatus.COMPLETED).isPresent();
 
-        Button startMatch15Button = visibleButton("Start 15m Match", showStart, e -> startStudyMatch(contact, MatchDuration.FIFTEEN_MINUTES));
-        Button startMatch30Button = visibleButton("Start 30m Match", showStart, e -> startStudyMatch(contact, MatchDuration.THIRTY_MINUTES));
-        Button startMatch60Button = visibleButton("Start 60m Match", showStart, e -> startStudyMatch(contact, MatchDuration.SIXTY_MINUTES));
+        Button startMatch15Button = visibleButton("Start 15 min", showStart, e -> startStudyMatch(contact, MatchDuration.FIFTEEN_MINUTES));
+        startMatch15Button.setId("peer-match-start-15-button");
+        Button startMatch30Button = visibleButton("Start 30 min", showStart, e -> startStudyMatch(contact, MatchDuration.THIRTY_MINUTES));
+        startMatch30Button.setId("peer-match-start-30-button");
+        Button startMatch60Button = visibleButton("Start 60 min", showStart, e -> startStudyMatch(contact, MatchDuration.SIXTY_MINUTES));
+        startMatch60Button.setId("peer-match-start-60-button");
         Button acceptMatchButton = visibleButton("Accept Match", showAcceptDecline,
                 e -> latestMatch.ifPresent(m -> respondToMatch(contact, m.matchId(), true)));
-        Button declineMatchButton = visibleButton("Decline Match", showAcceptDecline,
+        acceptMatchButton.setId("peer-match-accept-button");
+        Button declineMatchButton = visibleButton("Decline", showAcceptDecline,
                 e -> latestMatch.ifPresent(m -> respondToMatch(contact, m.matchId(), false)));
+        declineMatchButton.setId("peer-match-decline-button");
         Button cancelMatchButton = visibleButton("Cancel Match", showCancel,
                 e -> latestMatch.ifPresent(m -> cancelMatch(contact, m.matchId())));
-        Button refreshMatchButton = visibleButton(
-                latestMatch.filter(m -> m.status() == MatchStatus.COMPLETED).isPresent() ? "View Final Result" : "Refresh Match Progress",
-                showRefresh, e -> latestMatch.ifPresent(m -> refreshMatchProgress(contact, m.matchId(), matchStatusLabel)));
+        cancelMatchButton.setId("peer-match-cancel-button");
 
-        HBox row = new HBox(10, textColumn, actionButton, shareButton, compareButton, startMatch15Button, startMatch30Button,
-                startMatch60Button, acceptMatchButton, declineMatchButton, cancelMatchButton, refreshMatchButton);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setMaxWidth(Double.MAX_VALUE);
-        return row;
+        Label matchProgressCutoffLabel = new Label();
+        matchProgressCutoffLabel.getStyleClass().add("comparison-cutoff-label");
+        matchProgressCutoffLabel.setId("peer-match-progress-cutoff-label");
+        matchProgressCutoffLabel.setVisible(false);
+        matchProgressCutoffLabel.setManaged(false);
+        VBox matchProgressBody = new VBox(4);
+        matchProgressBody.setId("peer-match-progress-body");
+
+        Button refreshMatchButton = visibleButton(
+                latestMatch.filter(m -> m.status() == MatchStatus.COMPLETED).isPresent() ? "View Result" : "Refresh Progress",
+                showRefresh, e -> latestMatch.ifPresent(m ->
+                        refreshMatchProgress(contact, m.matchId(), matchStatusLabel, matchProgressCutoffLabel, matchProgressBody)));
+        refreshMatchButton.setId("peer-match-refresh-button");
+
+        FlowPane matchActions = new FlowPane(8, 8, startMatch15Button, startMatch30Button, startMatch60Button,
+                acceptMatchButton, declineMatchButton, cancelMatchButton, refreshMatchButton);
+        matchActions.getStyleClass().add("match-actions-row");
+
+        VBox matchSection = new VBox(6, matchTitle, matchStatusLabel, matchActions, matchProgressCutoffLabel, matchProgressBody);
+        matchSection.getStyleClass().addAll("peer-section", "peer-section-divider");
+        matchSection.setId("peer-match-section");
+
+        card.getChildren().addAll(header, mainActions, comparisonSection, matchSection);
+        return card;
     }
 
     private static Button visibleButton(String text, boolean visible, javafx.event.EventHandler<javafx.event.ActionEvent> onAction) {
@@ -562,60 +639,97 @@ public class PeerController {
      * (never manufactured here), delegating every actual decision to {@link PeerComparisonService}/
      * {@code SnapshotComparisonEngine}. Never touches {@code PeerSyncSessionService}, {@code
      * PeerConnection}, or {@code UnlockedIdentity} - this screen only ever calls the one narrow,
-     * already-reviewed comparison entry point.
+     * already-reviewed comparison entry point. Rendering is delegated to {@link #renderComparison}/
+     * {@link PeerComparisonPresentation} - this method's only job is the backend call and which
+     * section's nodes the result goes into.
      */
-    private void compareTodaysProgress(Contact contact, Label resultLabel) {
+    private void compareTodaysProgress(Contact contact, VBox comparisonSection, Label cutoffLabel, VBox body) {
         runPeerAction(() -> comparisonService.compareTodayWith(contact.id()), comparison -> {
-            resultLabel.setText(describeComparison(comparison));
-            resultLabel.setVisible(true);
-            resultLabel.setManaged(true);
+            renderComparison(comparison, cutoffLabel, body, "No study activity recorded by either person yet today.");
+            comparisonSection.setVisible(true);
+            comparisonSection.setManaged(true);
         }, error -> {
-            resultLabel.setText("Comparison failed: " + messageOf(error));
-            resultLabel.setVisible(true);
-            resultLabel.setManaged(true);
+            renderComparisonError(cutoffLabel, body, "Comparison failed: " + messageOf(error));
+            comparisonSection.setVisible(true);
+            comparisonSection.setManaged(true);
         });
     }
 
     /**
-     * Renders {@code SnapshotComparisonEngine}'s own real result as plain text - never a new scoring
-     * or "winner" computation, per this feature's own scope. The comparable/descriptive-only branch
-     * lists the engine's own {@code MetricComparison} rows as-is.
+     * Renders one real {@link SnapshotComparisonEngine.ProgressComparison} - from either "Compare
+     * Today" or a Study Match's own progress - into human-readable rows, the polished empty state, or
+     * a short unavailable/incompatible message, plus the "Compared through …" cutoff line derived
+     * from the comparison's own real cutoff (never {@code Instant.now()}). Every actual rendering
+     * decision (which rows are meaningful, what each reason means in plain language) lives in {@link
+     * PeerComparisonPresentation}, kept deliberately free of any JavaFX dependency so it is directly
+     * unit-testable; this method only turns its result into {@code Node}s.
      */
-    private static String describeComparison(SnapshotComparisonEngine.ProgressComparison comparison) {
-        return switch (comparison.state()) {
-            case UNAVAILABLE -> switch (comparison.reason()) {
-                case RIGHT_NOT_SHARED -> "Not shared by peer.";
-                case RIGHT_MISSING -> "Waiting for peer progress to sync.";
-                case RIGHT_STALE -> "Peer progress is stale.";
-                // A live "today" comparison's two independent captures only align when their elapsed-
-                // since-midnight durations are exactly equal (SnapshotComparisonEngine's own alignment
-                // rule - see its own test for why this is deliberate, not a bug); in practice this, not
-                // the top-level INCOMPATIBLE state below, is the common real shape of "incompatible
-                // windows" for two people studying at different moments of their day.
-                case CUTOFF_MISMATCH, COMPLETE_PARTIAL_MISMATCH ->
-                        "Today's windows are incompatible (" + comparison.reason() + ").";
-                default -> "Comparison unavailable (" + comparison.reason() + ").";
-            };
-            case INCOMPATIBLE -> "Today's windows are incompatible (" + comparison.reason() + ").";
-            case COMPARABLE, DESCRIPTIVE_ONLY -> describeMetrics(comparison);
-        };
+    private static void renderComparison(SnapshotComparisonEngine.ProgressComparison comparison, Label cutoffLabel,
+                                          VBox body, String noActivityMessage) {
+        body.getChildren().clear();
+        PeerComparisonPresentation.Rendered rendered = PeerComparisonPresentation.present(comparison, noActivityMessage);
+        if (rendered.kind() == PeerComparisonPresentation.Kind.ROWS) {
+            body.getChildren().add(buildComparisonGrid(rendered.rows()));
+        } else {
+            Label message = new Label(rendered.message());
+            message.getStyleClass().add("comparison-empty-state");
+            message.setWrapText(true);
+            body.getChildren().add(message);
+        }
+        Optional<Instant> cutoff = rendered.kind() == PeerComparisonPresentation.Kind.MESSAGE
+                ? Optional.empty() : comparison.left().snapshotOptional().map(ProgressSummary::cutoff);
+        if (cutoff.isPresent()) {
+            cutoffLabel.setText("Compared through " + PeerMetricPresentation.formatCutoff(cutoff.get(), ZoneId.systemDefault()));
+            cutoffLabel.setVisible(true);
+            cutoffLabel.setManaged(true);
+        } else {
+            cutoffLabel.setVisible(false);
+            cutoffLabel.setManaged(false);
+        }
     }
 
-    private static String describeMetrics(SnapshotComparisonEngine.ProgressComparison comparison) {
-        StringBuilder text = new StringBuilder("Comparison available");
-        if (comparison.state() == SnapshotComparisonEngine.ComparisonState.DESCRIPTIVE_ONLY) {
-            text.append(" (descriptive only)");
+    private static void renderComparisonError(Label cutoffLabel, VBox body, String message) {
+        body.getChildren().clear();
+        Label errorLabel = new Label(message);
+        errorLabel.getStyleClass().add("comparison-empty-state");
+        errorLabel.setWrapText(true);
+        body.getChildren().add(errorLabel);
+        cutoffLabel.setVisible(false);
+        cutoffLabel.setManaged(false);
+    }
+
+    /** "Metric | You | Peer" - the one comparison table layout both "Compare Today" and Study Match progress share. */
+    private static GridPane buildComparisonGrid(List<PeerComparisonPresentation.Row> rows) {
+        GridPane grid = new GridPane();
+        grid.getStyleClass().add("comparison-grid");
+
+        ColumnConstraints metricColumn = new ColumnConstraints();
+        metricColumn.setHgrow(Priority.ALWAYS);
+        ColumnConstraints youColumn = new ColumnConstraints(64);
+        youColumn.setHalignment(HPos.RIGHT);
+        ColumnConstraints peerColumn = new ColumnConstraints(64);
+        peerColumn.setHalignment(HPos.RIGHT);
+        grid.getColumnConstraints().addAll(metricColumn, youColumn, peerColumn);
+
+        Label youHeader = new Label("You");
+        youHeader.getStyleClass().add("comparison-header-cell");
+        Label peerHeader = new Label("Peer");
+        peerHeader.getStyleClass().add("comparison-header-cell");
+        grid.addRow(0, new Label(), youHeader, peerHeader);
+
+        int rowIndex = 1;
+        for (PeerComparisonPresentation.Row row : rows) {
+            Label metricLabel = new Label(row.label());
+            metricLabel.getStyleClass().add("comparison-metric-cell");
+            metricLabel.setWrapText(true);
+            Label youValue = new Label(row.you());
+            youValue.getStyleClass().add("comparison-value-cell");
+            Label peerValue = new Label(row.peer());
+            peerValue.getStyleClass().add("comparison-value-cell");
+            grid.addRow(rowIndex, metricLabel, youValue, peerValue);
+            rowIndex++;
         }
-        text.append(':');
-        for (SnapshotComparisonEngine.MetricComparison metric : comparison.metrics()) {
-            text.append("\n - ").append(metric.metricId()).append(": ");
-            if (metric.left().isPresent() && metric.right().isPresent()) {
-                text.append(metric.left().get().value()).append(" vs ").append(metric.right().get().value());
-            } else {
-                text.append(metric.state()).append(" (").append(metric.reason()).append(')');
-            }
-        }
-        return text.toString();
+        return grid;
     }
 
     /** The challenger's own action: proposes {@code duration}, granting {@code MATCH_PARTICIPATION} up front. */
@@ -661,13 +775,15 @@ public class PeerController {
     }
 
     /**
-     * "Refresh Match Progress" / "View Final Result": while still {@code ACTIVE}, first captures and
-     * approves this device's own real match-window progress (exactly {@link #shareTodaysProgress}'s
-     * own pattern, reused for a match window instead of today's calendar day) and syncs it now if
-     * already connected; either way, then reads and renders the real comparison. Never touches
-     * {@code PeerSyncSessionService}/{@code PeerConnection}/{@code UnlockedIdentity}.
+     * "Refresh Progress" / "View Result": while still {@code ACTIVE}, first captures and approves
+     * this device's own real match-window progress (exactly {@link #shareTodaysProgress}'s own
+     * pattern, reused for a match window instead of today's calendar day) and syncs it now if already
+     * connected; either way, then reads and renders the real comparison plus the one small,
+     * documented "who is ahead" verdict {@link PeerMatchService#deriveLeaderVerdict} derives - never a
+     * new scoring/winner computation here. Never touches {@code PeerSyncSessionService}/{@code
+     * PeerConnection}/{@code UnlockedIdentity}.
      */
-    private void refreshMatchProgress(Contact contact, ObjectId matchId, Label matchStatusLabel) {
+    private void refreshMatchProgress(Contact contact, ObjectId matchId, Label matchStatusLabel, Label cutoffLabel, VBox body) {
         runPeerAction(() -> {
             Instant now = now();
             Optional<StudyMatch> current = matchService.find(matchId);
@@ -677,14 +793,23 @@ public class PeerController {
             }
             return matchService.compareProgress(matchId, now);
         }, (PeerMatchService.MatchProgressView view) -> {
-            matchStatusLabel.setText(describeMatchProgress(view));
-            matchStatusLabel.setVisible(true);
-            matchStatusLabel.setManaged(true);
-        }, error -> {
-            matchStatusLabel.setText("Match progress refresh failed: " + messageOf(error));
-            matchStatusLabel.setVisible(true);
-            matchStatusLabel.setManaged(true);
-        });
+            renderComparison(view.comparison(), cutoffLabel, body,
+                    "No study activity recorded by either person yet during this match.");
+            view.verdict().ifPresent(verdict -> body.getChildren().add(verdictLabel(verdict)));
+        }, error -> renderComparisonError(cutoffLabel, body, "Match progress refresh failed: " + messageOf(error)));
+    }
+
+    private static Label verdictLabel(PeerMatchService.LeaderVerdict verdict) {
+        String text = switch (verdict) {
+            case AHEAD -> "You are ahead.";
+            case BEHIND -> "You are behind.";
+            case TIED -> "You are tied.";
+            case MIXED -> "Mixed — no consistent leader across comparable metrics.";
+        };
+        Label label = new Label(text);
+        label.getStyleClass().add("match-status-label");
+        label.setWrapText(true);
+        return label;
     }
 
     /** Best-effort immediate sync, shared by every Study Match action - see {@link #shareTodaysProgress}'s own javadoc for why. */
@@ -701,21 +826,29 @@ public class PeerController {
     /**
      * The initial, cheap, no-I/O status line shown for a contact's most recent match as soon as the
      * row is built - never the full progress comparison, which requires a real local capture and so
-     * is only ever computed inside {@link #refreshMatchProgress}'s own background task.
+     * is only ever computed inside {@link #refreshMatchProgress}'s own background task. {@code
+     * latestMatch} empty means no match has ever existed with this contact - Study Match's own section
+     * stays visible regardless (it is itself the "start a match" entry point), just with this default
+     * status line instead of a real match's.
      */
+    private static String describeMatchStatus(Optional<StudyMatch> latestMatch, boolean connected, Instant now) {
+        return latestMatch.map(match -> describeMatchStatus(match, connected, now)).orElse("No active study match.");
+    }
+
     private static String describeMatchStatus(StudyMatch match, boolean connected, Instant now) {
+        String durationLabel = match.duration().minutes() + " min";
         return switch (match.status()) {
             case PENDING -> match.role() == MatchRole.CHALLENGER
-                    ? "Study match invitation sent (" + match.duration().minutes() + " min) - waiting for a response."
-                    : "Incoming study match invitation (" + match.duration().minutes() + " min).";
+                    ? durationLabel + " · Waiting for peer"
+                    : "Incoming " + match.duration().minutes() + "-minute match";
             case ACTIVE -> {
                 Duration remaining = Duration.between(now, match.endsAt());
-                String base = "Study match active - " + formatRemaining(remaining) + " remaining.";
-                yield connected ? base : base + " Peer offline - showing last synced progress.";
+                String base = "Active · " + formatRemaining(remaining) + " remaining";
+                yield connected ? base : base + " — peer offline, showing last synced progress";
             }
-            case COMPLETED -> "Study match completed.";
-            case DECLINED -> "Study match declined.";
-            case CANCELLED -> "Study match cancelled.";
+            case COMPLETED -> durationLabel + " · Completed";
+            case DECLINED -> durationLabel + " · Declined";
+            case CANCELLED -> durationLabel + " · Cancelled";
         };
     }
 
@@ -725,26 +858,6 @@ public class PeerController {
         }
         long totalSeconds = remaining.toSeconds();
         return String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60);
-    }
-
-    /**
-     * Renders the real {@link SnapshotComparisonEngine} result exactly like {@link
-     * #describeComparison} (reused as-is - a match's comparable/incompatible branches mean exactly
-     * the same thing), plus the one small, documented "who is ahead" verdict {@link
-     * PeerMatchService#deriveLeaderVerdict} derives - never a new scoring/winner computation here.
-     */
-    private static String describeMatchProgress(PeerMatchService.MatchProgressView view) {
-        String base = describeComparison(view.comparison());
-        if (view.verdict().isEmpty()) {
-            return base;
-        }
-        String verdictText = switch (view.verdict().get()) {
-            case AHEAD -> "You are AHEAD.";
-            case BEHIND -> "You are BEHIND.";
-            case TIED -> "You are TIED.";
-            case MIXED -> "MIXED - no consistent leader across comparable metrics.";
-        };
-        return base + "\n" + verdictText;
     }
 
     private static String displayNameFor(Contact contact) {

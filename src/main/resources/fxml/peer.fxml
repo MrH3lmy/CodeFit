@@ -2,7 +2,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.PeerController">
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" stylesheets="@../css/peer.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.PeerController">
     <content>
         <VBox spacing="18" styleClass="content" maxWidth="Infinity">
             <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
@@ -46,7 +46,7 @@
                 <Label text="Paired Peers" styleClass="section-title" />
                 <Label text="Both sides must have registered and accepted each other's invitation before a connection can succeed - a rejection below usually just means the other device hasn't done that yet." styleClass="muted" wrapText="true" />
                 <Label fx:id="noContactsLabel" text="No paired peers yet." styleClass="muted" wrapText="true" managed="false" visible="false" />
-                <VBox fx:id="contactsBox" spacing="6" maxWidth="Infinity" />
+                <VBox fx:id="contactsBox" spacing="12" maxWidth="Infinity" />
             </VBox>
 
             <Label fx:id="statusLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />

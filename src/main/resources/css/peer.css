@@ -1,0 +1,105 @@
+/* Peers screen: one card per paired peer, restructured into clear vertical sections (identity +
+ * connection state, main actions, Today's Comparison, Study Match) instead of one crowded row.
+ * Reuses the shared panel/button/pill/typography tokens from base.css/controls.css - no new design
+ * system, no new colors beyond the existing semantic success/warning/danger tokens. */
+
+.peer-card {
+    -fx-background-color: -color-surface-raised;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 16;
+}
+
+.peer-card-header {
+    -fx-alignment: center-left;
+}
+
+.peer-fingerprint {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+/* Small colored status dot, same idiom as the review screen's terminal-dot glyphs. */
+.connection-dot {
+    -fx-font-size: 13px;
+}
+
+.connection-dot-connected { -fx-text-fill: -color-success; }
+.connection-dot-connecting { -fx-text-fill: -color-warning; }
+.connection-dot-offline { -fx-text-fill: -color-danger; }
+
+.connection-status-label {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+.peer-actions-row {
+    -fx-hgap: 8;
+    -fx-vgap: 8;
+}
+
+.peer-section {
+    -fx-padding: 12 0 0 0;
+    -fx-spacing: 8;
+}
+
+/* A hairline divider above each subsection (Today's Comparison / Study Match) so the sections read
+ * as clearly separate from the actions above them, without a nested bordered panel inside a panel. */
+.peer-section-divider {
+    -fx-border-color: transparent transparent -color-border transparent;
+    -fx-border-width: 1;
+    -fx-padding: 0 0 10 0;
+}
+
+.comparison-cutoff-label {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: 500;
+}
+
+.comparison-grid {
+    -fx-hgap: 18;
+    -fx-vgap: 6;
+    -fx-padding: 4 0 0 0;
+}
+
+.comparison-header-cell {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 0.06em;
+}
+
+.comparison-metric-cell {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+}
+
+.comparison-value-cell {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+.comparison-empty-state {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+    -fx-font-style: italic;
+}
+
+.match-status-label {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
+
+.match-actions-row {
+    -fx-hgap: 8;
+    -fx-vgap: 8;
+}

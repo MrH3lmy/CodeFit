@@ -8,6 +8,8 @@ import com.codefit.peer.invitation.Invitation;
 import com.codefit.peer.invitation.InvitationCodec;
 import com.codefit.peer.identity.UnlockedIdentity;
 import com.codefit.peer.protocol.IdentityKey;
+import com.codefit.peer.protocol.MatchDuration;
+import com.codefit.peer.protocol.ObjectId;
 import com.codefit.peer.transport.PeerAddress;
 import com.codefit.service.ContactService;
 import com.codefit.service.IdentityService;
@@ -382,7 +384,7 @@ class PeerControllerTest {
         runOnFxThreadAndWait(() -> {
             Label rowStatus = rowStatusLabel(controller.contactsBox.getChildren().get(0));
             assertEquals("Connecting…", rowStatus.getText(), "exactly one dial must be recorded as in flight after both clicks");
-            Button actionButton = (Button) ((HBox) controller.contactsBox.getChildren().get(0)).getChildren().get(1);
+            Button actionButton = actionButtonOf(controller.contactsBox.getChildren().get(0));
             assertTrue(actionButton.isDisabled(), "the action button must be disabled, not merely unresponsive, while a dial is in flight");
         });
 
@@ -392,7 +394,7 @@ class PeerControllerTest {
         runOnFxThreadAndWait(() -> {
             Label rowStatus = rowStatusLabel(controller.contactsBox.getChildren().get(0));
             assertTrue(rowStatus.getText().startsWith("Offline"), "the in-flight state must be released once the single dial completes");
-            Button actionButton = (Button) ((HBox) controller.contactsBox.getChildren().get(0)).getChildren().get(1);
+            Button actionButton = actionButtonOf(controller.contactsBox.getChildren().get(0));
             assertEquals("Connect", actionButton.getText(), "the button must return to Connect, ready for a genuinely new attempt");
             assertFalse(actionButton.isDisabled());
         });
@@ -449,7 +451,7 @@ class PeerControllerTest {
 
         runOnFxThreadAndWait(() -> start15ButtonOf(controller.contactsBox.getChildren().get(0)).fire());
         waitUntil(() -> fxRead(() -> matchStatusLabel(controller.contactsBox.getChildren().get(0)).getText()),
-                text -> text != null && text.contains("invitation sent"));
+                text -> text != null && text.contains("Waiting for peer"));
 
         runOnFxThreadAndWait(() -> {
             Node row = controller.contactsBox.getChildren().get(0);
@@ -460,7 +462,7 @@ class PeerControllerTest {
 
         runOnFxThreadAndWait(() -> cancelMatchButtonOf(controller.contactsBox.getChildren().get(0)).fire());
         waitUntil(() -> fxRead(() -> matchStatusLabel(controller.contactsBox.getChildren().get(0)).getText()),
-                text -> text != null && text.contains("cancelled"));
+                text -> text != null && text.contains("Cancelled"));
 
         runOnFxThreadAndWait(() -> {
             Node row = controller.contactsBox.getChildren().get(0);
@@ -509,10 +511,149 @@ class PeerControllerTest {
 
         runOnFxThreadAndWait(() -> compareButtonOf(controller.contactsBox.getChildren().get(0)).fire());
 
-        waitUntil(() -> fxRead(() -> comparisonResultLabel(controller.contactsBox.getChildren().get(0)).isVisible()), visible -> visible);
+        waitUntil(() -> fxRead(() -> comparisonSectionOf(controller.contactsBox.getChildren().get(0)).isVisible()), visible -> visible);
         runOnFxThreadAndWait(() -> {
-            String text = comparisonResultLabel(controller.contactsBox.getChildren().get(0)).getText();
-            assertTrue(text.contains("Not shared"), "no consent was ever received from this peer: " + text);
+            Node row = controller.contactsBox.getChildren().get(0);
+            String text = comparisonMessageText(row);
+            assertTrue(text.contains("hasn't shared"), "no consent was ever received from this peer, and the message must be plain product copy, "
+                    + "never an engine reason name: " + text);
+            assertFalse(comparisonCutoffLabelOf(row).isVisible(), "no cutoff was ever actually compared, so no 'Compared through' line should show");
+        });
+    }
+
+    @Test
+    @Timeout(15)
+    void comparisonSectionAndStudyMatchSectionCoexistCleanly() throws Exception {
+        identityService.createIdentity(PASSPHRASE.clone(), now());
+        KeyPair strangerIdentity = KeyPairs.generate();
+        IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
+        Contact contact = contactService.registerPendingContact(strangerKey, "", now());
+        contact = contactService.acceptInvitation(contact.id(), now());
+
+        runOnFxThreadAndWait(controller::initialize);
+        waitUntil(() -> fxRead(() -> controller.contactsBox.getChildren().size()), size -> size == 1);
+
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertFalse(comparisonSectionOf(row).isVisible(), "Today's Comparison starts collapsed until Compare Today has actually run");
+            assertTrue(matchSectionOf(row).isVisible(), "Study Match is always present - it is itself the 'start a match' entry point");
+        });
+
+        // Start the match FIRST: starting/responding/cancelling a match rebuilds the whole row (so a
+        // freshly-rendered row can pick up the new match state), same as the pre-redesign row always
+        // did - that full rebuild is pre-existing behavior, not something this PR's own card layout
+        // changes. Comparing SECOND, which only ever updates the comparison section's own nodes in
+        // place and never rebuilds the row, is what actually proves the two sections coexist cleanly
+        // within one rendered row without clobbering each other.
+        runOnFxThreadAndWait(() -> start15ButtonOf(controller.contactsBox.getChildren().get(0)).fire());
+        waitUntil(() -> fxRead(() -> matchStatusLabel(controller.contactsBox.getChildren().get(0)).getText()),
+                text -> text != null && text.contains("Waiting for peer"));
+
+        runOnFxThreadAndWait(() -> compareButtonOf(controller.contactsBox.getChildren().get(0)).fire());
+        waitUntil(() -> fxRead(() -> comparisonSectionOf(controller.contactsBox.getChildren().get(0)).isVisible()), visible -> visible);
+
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            // Both sections must be independently visible with their own, non-interfering content -
+            // starting a match must never collapse or overwrite the comparison section, and vice versa.
+            assertTrue(comparisonSectionOf(row).isVisible());
+            assertTrue(comparisonMessageText(row).contains("hasn't shared"));
+            assertTrue(matchSectionOf(row).isVisible());
+            assertTrue(matchStatusLabel(row).getText().contains("Waiting for peer"));
+            assertTrue(cancelMatchButtonOf(row).isVisible());
+        });
+    }
+
+    @Test
+    @Timeout(15)
+    void correctStudyMatchActionsAreShownForEachMatchState() throws Exception {
+        KeyPair strangerIdentity = KeyPairs.generate();
+        IdentityKey strangerKey = new IdentityKey(KeyPairs.rawPublicKey(strangerIdentity.getPublic()));
+        Contact contact = contactService.registerPendingContact(strangerKey, "", now());
+        contact = contactService.acceptInvitation(contact.id(), now());
+        long contactId = contact.id();
+
+        com.codefit.repository.MatchRepository matchRepository = new com.codefit.repository.MatchRepository();
+
+        runOnFxThreadAndWait(controller::initialize);
+        waitUntil(() -> fxRead(() -> controller.contactsBox.getChildren().size()), size -> size == 1);
+
+        // No match yet: only the Start actions.
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertTrue(start15ButtonOf(row).isVisible());
+            assertFalse(cancelMatchButtonOf(row).isVisible());
+            assertFalse(acceptMatchButtonOf(row).isVisible());
+            assertFalse(declineMatchButtonOf(row).isVisible());
+            assertFalse(refreshMatchButtonOf(row).isVisible());
+        });
+
+        // PENDING, challenger role (this device started it): only Cancel Match.
+        ObjectId challengerMatchId = randomMatchId(1);
+        matchRepository.createChallengerInvitation(contactId, challengerMatchId, MatchDuration.FIFTEEN_MINUTES, now());
+        runOnFxThreadAndWait(controller::initialize);
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertFalse(start15ButtonOf(row).isVisible());
+            assertTrue(cancelMatchButtonOf(row).isVisible());
+            assertFalse(acceptMatchButtonOf(row).isVisible());
+            assertFalse(refreshMatchButtonOf(row).isVisible());
+        });
+
+        // ACTIVE: only Refresh Progress.
+        matchRepository.recordLocalResponse(challengerMatchId, true, now(), now());
+        runOnFxThreadAndWait(controller::initialize);
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertFalse(start15ButtonOf(row).isVisible());
+            assertFalse(cancelMatchButtonOf(row).isVisible());
+            assertTrue(refreshMatchButtonOf(row).isVisible());
+            assertEquals("Refresh Progress", refreshMatchButtonOf(row).getText());
+        });
+
+        // COMPLETED: Refresh Progress becomes View Result, and Start is offered again (terminal).
+        matchRepository.completeIfPastEndsAt(challengerMatchId, now().plus(Duration.ofMinutes(20)));
+        runOnFxThreadAndWait(controller::initialize);
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertTrue(refreshMatchButtonOf(row).isVisible());
+            assertEquals("View Result", refreshMatchButtonOf(row).getText());
+            assertTrue(start15ButtonOf(row).isVisible(), "a terminal match still offers starting a new one");
+        });
+
+        // PENDING, opponent role (a peer invited this device): only Accept Match / Decline.
+        ObjectId opponentMatchId = randomMatchId(2);
+        try (var connection = com.codefit.config.DatabaseConfig.getConnection()) {
+            matchRepository.applyReceivedInvitation(connection, contactId, opponentMatchId, MatchDuration.THIRTY_MINUTES, now());
+        }
+        runOnFxThreadAndWait(controller::initialize);
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertFalse(start15ButtonOf(row).isVisible());
+            assertTrue(acceptMatchButtonOf(row).isVisible());
+            assertTrue(declineMatchButtonOf(row).isVisible());
+            assertFalse(cancelMatchButtonOf(row).isVisible());
+        });
+
+        // DECLINED: terminal, Start offered again.
+        matchRepository.recordLocalResponse(opponentMatchId, false, null, now());
+        runOnFxThreadAndWait(controller::initialize);
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertTrue(start15ButtonOf(row).isVisible());
+            assertFalse(acceptMatchButtonOf(row).isVisible());
+            assertFalse(declineMatchButtonOf(row).isVisible());
+        });
+
+        // CANCELLED: terminal, Start offered again.
+        ObjectId cancelledMatchId = randomMatchId(3);
+        matchRepository.createChallengerInvitation(contactId, cancelledMatchId, MatchDuration.FIFTEEN_MINUTES, now());
+        matchRepository.recordLocalCancellation(cancelledMatchId, now());
+        runOnFxThreadAndWait(controller::initialize);
+        runOnFxThreadAndWait(() -> {
+            Node row = controller.contactsBox.getChildren().get(0);
+            assertTrue(start15ButtonOf(row).isVisible());
+            assertFalse(cancelMatchButtonOf(row).isVisible());
         });
     }
 
@@ -540,6 +681,13 @@ class PeerControllerTest {
         }
     }
 
+    private static ObjectId randomMatchId(int seed) {
+        byte[] bytes = new byte[ObjectId.LENGTH];
+        bytes[0] = (byte) seed;
+        bytes[ObjectId.LENGTH - 1] = (byte) (seed >>> 8);
+        return new ObjectId(bytes);
+    }
+
     private static String syntheticInvitationBase64(KeyPair identityKeyPair, int port) {
         IdentityKey identityKey = new IdentityKey(KeyPairs.rawPublicKey(identityKeyPair.getPublic()));
         KeyPair transportKeyPair = KeyPairs.generate();
@@ -552,17 +700,16 @@ class PeerControllerTest {
         return InvitationCodec.toBase64(InvitationCodec.sign(invitation, signer));
     }
 
-    private static Label rowStatusLabel(Node row) {
-        return (Label) ((javafx.scene.layout.VBox) ((HBox) row).getChildren().get(0)).getChildren().get(1);
-    }
+    // Every interactive/readable node in a peer card carries a stable id (see
+    // PeerController.buildContactRow) - looked up by id rather than by fixed child-index, which is
+    // far more robust to the card's own section-based layout than the previous single flat HBox row.
 
-    /** Appended after nameLabel/statusLabel (index 2) - see {@code PeerController.buildContactRow}. */
-    private static Label comparisonResultLabel(Node row) {
-        return (Label) ((javafx.scene.layout.VBox) ((HBox) row).getChildren().get(0)).getChildren().get(2);
+    private static Label rowStatusLabel(Node row) {
+        return (Label) row.lookup("#peer-connection-status-label");
     }
 
     private static Button actionButtonOf(Node row) {
-        return (Button) ((HBox) row).getChildren().get(1);
+        return (Button) row.lookup("#peer-connect-button");
     }
 
     private static void fireConnectButton(Node row) {
@@ -570,25 +717,58 @@ class PeerControllerTest {
     }
 
     private static Label matchStatusLabel(Node row) {
-        return (Label) ((javafx.scene.layout.VBox) ((HBox) row).getChildren().get(0)).getChildren().get(3);
+        return (Label) row.lookup("#peer-match-status-label");
     }
 
     private static Button start15ButtonOf(Node row) {
-        return (Button) ((HBox) row).getChildren().get(4);
+        return (Button) row.lookup("#peer-match-start-15-button");
+    }
+
+    private static Button acceptMatchButtonOf(Node row) {
+        return (Button) row.lookup("#peer-match-accept-button");
+    }
+
+    private static Button declineMatchButtonOf(Node row) {
+        return (Button) row.lookup("#peer-match-decline-button");
     }
 
     private static Button cancelMatchButtonOf(Node row) {
-        return (Button) ((HBox) row).getChildren().get(9);
+        return (Button) row.lookup("#peer-match-cancel-button");
     }
 
-    /** Appended after the connect/disconnect button (index 2) - see {@code PeerController.buildContactRow}. */
+    private static Button refreshMatchButtonOf(Node row) {
+        return (Button) row.lookup("#peer-match-refresh-button");
+    }
+
     private static Button shareButtonOf(Node row) {
-        return (Button) ((HBox) row).getChildren().get(2);
+        return (Button) row.lookup("#peer-share-button");
     }
 
-    /** Appended after the share button (index 3) - see {@code PeerController.buildContactRow}. */
     private static Button compareButtonOf(Node row) {
-        return (Button) ((HBox) row).getChildren().get(3);
+        return (Button) row.lookup("#peer-compare-button");
+    }
+
+    private static Node comparisonSectionOf(Node row) {
+        return row.lookup("#peer-comparison-section");
+    }
+
+    private static Node comparisonBodyOf(Node row) {
+        return row.lookup("#peer-comparison-body");
+    }
+
+    private static Label comparisonCutoffLabelOf(Node row) {
+        return (Label) row.lookup("#peer-comparison-cutoff-label");
+    }
+
+    /** The comparison body's own rendered message, for the MESSAGE/EMPTY cases (a single {@code
+     *  Label} child) - not applicable to the ROWS case, which renders a {@code GridPane} instead. */
+    private static String comparisonMessageText(Node row) {
+        javafx.scene.layout.VBox body = (javafx.scene.layout.VBox) comparisonBodyOf(row);
+        return ((Label) body.getChildren().get(0)).getText();
+    }
+
+    private static Node matchSectionOf(Node row) {
+        return row.lookup("#peer-match-section");
     }
 
     private PeerController loadController(IdentityService identityService, NetworkingService networkingService,

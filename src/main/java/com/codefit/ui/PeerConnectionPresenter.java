@@ -100,14 +100,67 @@ public final class PeerConnectionPresenter {
         return lastEventFor(contactId).map(PeerConnectionPresenter::describe).orElse("Offline");
     }
 
+    /**
+     * Whether the most recent recorded event says an attempt is underway. Like {@link #displayTextFor},
+     * the caller's own {@code activeConnectionPresent} ground truth always wins over it.
+     */
+    public boolean isConnectingFor(IdentityId contactId, boolean activeConnectionPresent) {
+        return !activeConnectionPresent && lastEventFor(contactId)
+                .map(event -> switch (event.state()) {
+                    case QUEUED, CONNECTING, AUTHENTICATING, RETRY_WAITING -> true;
+                    default -> false;
+                }).orElse(false);
+    }
+
+    /**
+     * Why a contact that is not connected is offline, when the most recent event says so - exactly the
+     * parenthetical {@link #displayTextFor} appends, as its own value so the UI can show the status
+     * ("Offline") and the reason separately. Empty when connected or when there is nothing to explain.
+     */
+    public Optional<String> offlineReasonFor(IdentityId contactId, boolean activeConnectionPresent) {
+        if (activeConnectionPresent) {
+            return Optional.empty();
+        }
+        return lastEventFor(contactId).flatMap(PeerConnectionPresenter::reasonOf);
+    }
+
     private static String describe(ConnectionEvent event) {
         return switch (event.state()) {
             case CONNECTED -> "Connected";
             case QUEUED, CONNECTING, AUTHENTICATING, RETRY_WAITING -> "Connecting…";
             case CLOSED, CANCELLED -> "Offline";
-            case UNREACHABLE -> "Offline (could not reach the other device)";
-            case INCOMPATIBLE_VERSION -> "Offline (incompatible protocol version)";
-            case REJECTED -> "Offline (" + describeRejection(event.reason()) + ")";
+            case UNREACHABLE, INCOMPATIBLE_VERSION, REJECTED -> "Offline (" + reasonOf(event).orElseThrow() + ")";
+        };
+    }
+
+    private static Optional<String> reasonOf(ConnectionEvent event) {
+        return switch (event.state()) {
+            case UNREACHABLE -> Optional.of("could not reach the other device");
+            case INCOMPATIBLE_VERSION -> Optional.of("incompatible protocol version");
+            case REJECTED -> Optional.of(describeRejection(event.reason()));
+            default -> Optional.empty();
+        };
+    }
+
+    /**
+     * Plain-language reason for a failed connection attempt's own outcome (as opposed to the cached
+     * event above) - never the enum constant's name.
+     */
+    public static String describeFailure(ConnectionFailureReason reason) {
+        if (reason == null) {
+            return "the connection was refused";
+        }
+        return switch (reason) {
+            case CONNECT_TIMEOUT, CONNECTION_REFUSED, NETWORK_UNREACHABLE, HANDSHAKE_TIMEOUT ->
+                    "the other device couldn't be reached. Check that it's online and on the same network";
+            case UNKNOWN_IDENTITY, NOT_PAIRED, WRONG_PIN, STALE_BINDING, BINDING_KEY_MISMATCH, IDENTITY_MISMATCH,
+                 BINDING_NOT_YET_VALID, BINDING_EXPIRED, ROLLOVER_REFUSED, CONNECTION_LIMIT_REACHED ->
+                    describeRejection(reason);
+            case UNSUPPORTED_VERSION -> "their CodeFit version is incompatible";
+            case NETWORKING_DISABLED, LISTENER_NOT_RUNNING -> "networking is turned off";
+            case NO_KNOWN_ADDRESS -> "there is no known address for them yet";
+            case CANCELLED -> "the attempt was cancelled";
+            default -> "the connection was refused";
         };
     }
 

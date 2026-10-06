@@ -2,54 +2,128 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
+<!--
+  Peers page. Top to bottom: page header, a compact identity/network status strip, then the peers
+  section (header with the "Add a peer" entry point, the collapsible add-a-peer panel, and the peer
+  cards). Each major area is its own VBox so a future section (e.g. Private Challenges) can slot in
+  between the status strip and the peers section without touching either.
+-->
 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll" stylesheets="@../css/peer.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.PeerController">
     <content>
-        <VBox spacing="18" styleClass="content" maxWidth="Infinity">
+        <VBox spacing="20" styleClass="content" maxWidth="Infinity">
             <VBox spacing="4" styleClass="page-header" maxWidth="Infinity">
                 <Label text="Peers" styleClass="page-title" wrapText="true" />
-                <Label text="Pair with another CodeFit instance on the same network and establish a direct, authenticated connection. Nothing here goes through any server - both sides must exchange and accept each other's invitation before a connection can succeed." styleClass="muted" wrapText="true" />
+                <Label text="Direct, private connections between CodeFit users." styleClass="muted" wrapText="true" />
             </VBox>
 
-            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
-                <Label text="Your Identity" styleClass="section-title" />
-                <Label fx:id="identityStatusLabel" styleClass="dashboard-card-helper" wrapText="true" />
-                <PasswordField fx:id="vaultPassphraseField" promptText="Vault passphrase (re-enter for protected actions)" maxWidth="Infinity" />
-                <HBox spacing="8">
-                    <Button fx:id="createIdentityButton" text="Create Identity" onAction="#createIdentity" />
-                    <Button fx:id="enableNetworkingButton" text="Enable Networking" onAction="#enableNetworking" />
-                    <Button fx:id="disableNetworkingButton" text="Disable Networking" onAction="#disableNetworking" />
+            <!-- ===== Identity + network status ===== -->
+            <VBox fx:id="statusSection" spacing="14" styleClass="panel" maxWidth="Infinity">
+                <FlowPane hgap="40" vgap="14">
+                    <VBox spacing="4" styleClass="status-block">
+                        <Label text="YOUR IDENTITY" styleClass="section-title" />
+                        <Label fx:id="identityStatusLabel" styleClass="identity-value" />
+                    </VBox>
+                    <VBox spacing="4" styleClass="status-block">
+                        <Label text="NETWORK" styleClass="section-title" />
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label fx:id="networkDot" text="●" styleClass="network-dot" />
+                            <Label fx:id="networkingStatusLabel" styleClass="network-title" />
+                            <Button fx:id="disableNetworkingButton" text="Disable networking" onAction="#disableNetworking" styleClass="peer-link-button" />
+                        </HBox>
+                        <Label fx:id="networkingDetailLabel" styleClass="muted" wrapText="true" />
+                    </VBox>
+                </FlowPane>
+
+                <VBox fx:id="setupBox" spacing="10" styleClass="setup-box">
+                    <Label fx:id="setupHintLabel" styleClass="muted" wrapText="true" />
+                    <FlowPane hgap="8" vgap="8">
+                        <PasswordField fx:id="vaultPassphraseField" promptText="Vault passphrase" prefWidth="280" />
+                        <Button fx:id="createIdentityButton" text="Create identity" onAction="#createIdentity" styleClass="peer-button-primary" />
+                        <Button fx:id="enableNetworkingButton" text="Enable networking" onAction="#enableNetworking" styleClass="peer-button-primary" />
+                    </FlowPane>
+                </VBox>
+                <Label fx:id="networkingFeedbackLabel" styleClass="peer-feedback" wrapText="true" managed="false" visible="false" />
+            </VBox>
+
+            <!-- ===== Your peers ===== -->
+            <VBox fx:id="peersSection" spacing="14" maxWidth="Infinity">
+                <HBox spacing="12" alignment="CENTER_LEFT">
+                    <Label text="Your peers" styleClass="section-heading" />
+                    <Label fx:id="peersSummaryLabel" styleClass="muted" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Button fx:id="addPeerButton" text="Add a peer" onAction="#toggleAddPeer" styleClass="peer-button-secondary" minWidth="-Infinity" />
                 </HBox>
-                <Label fx:id="networkingStatusLabel" styleClass="dashboard-card-helper" wrapText="true" />
-                <Label fx:id="networkingFeedbackLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
-            </VBox>
 
-            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
-                <Label text="Your Invitation" styleClass="section-title" />
-                <Label text="Create an invitation and send the text below to the other person through any channel you like (chat, email, read it aloud) - CodeFit never sends it anywhere itself. Re-enter your vault passphrase above before creating an invitation; it is cleared after every protected action." styleClass="muted" wrapText="true" />
-                <Button fx:id="createInvitationButton" text="Create Invitation" onAction="#createInvitation" />
-                <TextArea fx:id="myInvitationArea" editable="false" wrapText="true" prefRowCount="3" maxWidth="Infinity" />
-                <Button fx:id="copyInvitationButton" text="Copy" onAction="#copyInvitation" disable="true" />
-                <Label fx:id="invitationFeedbackLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
-            </VBox>
+                <!-- Add a peer: collapsed until asked for. Step 1 = share my invitation, step 2 = add theirs and verify. -->
+                <VBox fx:id="addPeerPanel" spacing="16" styleClass="panel" maxWidth="Infinity" managed="false" visible="false">
+                    <VBox spacing="4">
+                        <Label text="Pair with someone new" styleClass="panel-title" />
+                        <Label text="Both of you create an invitation and add the other's. Nothing goes through a server, and nothing is accepted until you've confirmed their fingerprint." styleClass="muted" wrapText="true" />
+                    </VBox>
 
-            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
-                <Label text="Their Invitation" styleClass="section-title" />
-                <Label text="Paste the invitation text the other person sent you, then verify the fingerprint with them out of band before accepting." styleClass="muted" wrapText="true" />
-                <TextArea fx:id="peerInvitationArea" wrapText="true" prefRowCount="3" maxWidth="Infinity" promptText="Paste their invitation text here" />
-                <Button fx:id="parseInvitationButton" text="Parse" onAction="#parseInvitation" />
-                <Label fx:id="parsedFingerprintLabel" styleClass="dashboard-card-helper" wrapText="true" managed="false" visible="false" />
-                <Button fx:id="registerAndAcceptButton" text="Register &amp; Accept" onAction="#registerAndAccept" disable="true" />
-                <Label fx:id="pairingFeedbackLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
-            </VBox>
+                    <VBox spacing="8">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label text="1" styleClass="step-badge" />
+                            <Label text="Share your invitation" styleClass="step-title" />
+                        </HBox>
+                        <Label text="Send it to them over chat or email. CodeFit never sends it for you." styleClass="muted" wrapText="true" />
+                        <VBox fx:id="ownFingerprintBox" spacing="4" styleClass="own-fingerprint-box" managed="false" visible="false">
+                            <Label text="YOUR FINGERPRINT" styleClass="section-title" />
+                            <Label fx:id="ownFingerprintLabel" styleClass="verify-fingerprint" wrapText="true" />
+                            <Label text="They'll compare this with what they see before accepting. Read it out if they ask." styleClass="verify-note" wrapText="true" />
+                        </VBox>
+                        <FlowPane hgap="8" vgap="8">
+                            <PasswordField fx:id="invitationPassphraseField" promptText="Vault passphrase" prefWidth="240" />
+                            <Button fx:id="createInvitationButton" text="Create invitation" onAction="#createInvitation" styleClass="peer-button-secondary" />
+                        </FlowPane>
+                        <Label fx:id="invitationHintLabel" text="Turn on networking above to create an invitation." styleClass="muted" wrapText="true" />
+                        <VBox fx:id="invitationResultBox" spacing="8" managed="false" visible="false">
+                            <TextArea fx:id="myInvitationArea" editable="false" wrapText="true" prefRowCount="3" maxWidth="Infinity" />
+                            <HBox>
+                                <Button fx:id="copyInvitationButton" text="Copy invitation" onAction="#copyInvitation" styleClass="peer-button-secondary" disable="true" />
+                            </HBox>
+                        </VBox>
+                        <Label fx:id="invitationFeedbackLabel" styleClass="peer-feedback" wrapText="true" managed="false" visible="false" />
+                    </VBox>
 
-            <VBox spacing="8" styleClass="panel" maxWidth="Infinity">
-                <Label text="Paired Peers" styleClass="section-title" />
-                <Label text="Both sides must have registered and accepted each other's invitation before a connection can succeed - a rejection below usually just means the other device hasn't done that yet." styleClass="muted" wrapText="true" />
-                <Label fx:id="noContactsLabel" text="No paired peers yet." styleClass="muted" wrapText="true" managed="false" visible="false" />
-                <VBox fx:id="contactsBox" spacing="12" maxWidth="Infinity" />
-            </VBox>
+                    <Separator />
 
-            <Label fx:id="statusLabel" styleClass="muted" wrapText="true" managed="false" visible="false" />
+                    <VBox spacing="8">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label text="2" styleClass="step-badge" />
+                            <Label text="Add their invitation" styleClass="step-title" />
+                        </HBox>
+                        <Label text="Paste what they sent you, then check their fingerprint with them." styleClass="muted" wrapText="true" />
+                        <TextArea fx:id="peerInvitationArea" wrapText="true" prefRowCount="3" maxWidth="Infinity" promptText="Paste their invitation here" />
+                        <HBox>
+                            <Button fx:id="parseInvitationButton" text="Check invitation" onAction="#parseInvitation" styleClass="peer-button-secondary" />
+                        </HBox>
+                        <VBox fx:id="verifyBox" spacing="8" styleClass="verify-box" managed="false" visible="false">
+                            <Label text="THEIR FINGERPRINT" styleClass="section-title" />
+                            <Label fx:id="parsedFingerprintLabel" styleClass="verify-fingerprint" wrapText="true" managed="false" visible="false" />
+                            <Label text="Ask them to read out their fingerprint, or compare it on a call or in person. Only continue if it matches exactly." styleClass="verify-note" wrapText="true" />
+                            <HBox>
+                                <Button fx:id="registerAndAcceptButton" text="Fingerprint matches — accept" onAction="#registerAndAccept" styleClass="peer-button-primary" disable="true" />
+                            </HBox>
+                        </VBox>
+                        <Label fx:id="pairingFeedbackLabel" styleClass="peer-feedback" wrapText="true" managed="false" visible="false" />
+                    </VBox>
+
+                    <HBox alignment="CENTER_RIGHT">
+                        <Button fx:id="closeAddPeerButton" text="Done" onAction="#toggleAddPeer" styleClass="peer-link-button" />
+                    </HBox>
+                </VBox>
+
+                <Label fx:id="statusLabel" styleClass="peer-feedback" wrapText="true" managed="false" visible="false" />
+
+                <VBox fx:id="emptyPeersBox" spacing="10" styleClass="empty-state" alignment="CENTER" maxWidth="Infinity">
+                    <Label fx:id="noContactsLabel" text="You haven't paired with anyone yet." styleClass="empty-title" wrapText="true" />
+                    <Label text="Pair with a friend to compare your progress and challenge them to a Study Match." styleClass="muted" wrapText="true" textAlignment="CENTER" />
+                    <Button fx:id="emptyAddPeerButton" text="Add your first peer" onAction="#toggleAddPeer" styleClass="peer-button-primary" />
+                </VBox>
+
+                <VBox fx:id="contactsBox" spacing="14" maxWidth="Infinity" />
+            </VBox>
         </VBox>
     </content>
 </ScrollPane>

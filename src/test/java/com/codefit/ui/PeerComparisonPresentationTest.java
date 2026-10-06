@@ -158,6 +158,19 @@ class PeerComparisonPresentationTest {
         assertFalse(incompatible.message().contains("_"), "no engine enum constant name may leak: " + incompatible.message());
     }
 
+    @Test
+    void whenThePeerIsNamedTheUnavailableMessagesNameThem() {
+        assertEquals("Ahmed hasn't shared their progress.",
+                PeerComparisonPresentation.present(unavailableResult(Reason.RIGHT_NOT_SHARED), "x", "Ahmed").message());
+        assertEquals("Waiting for Ahmed's progress…",
+                PeerComparisonPresentation.present(unavailableResult(Reason.RIGHT_MISSING), "x", "Ahmed").message());
+        assertEquals("Ahmed's progress is too old. Ask them to share again.",
+                PeerComparisonPresentation.present(unavailableResult(Reason.RIGHT_STALE), "x", "Ahmed").message());
+        assertEquals("Your peer hasn't shared their progress.",
+                PeerComparisonPresentation.present(unavailableResult(Reason.RIGHT_NOT_SHARED), "x", "your peer").message(),
+                "a sentence that starts with the generic 'your peer' is capitalised");
+    }
+
     // --- helpers ---
 
     private static PeerComparisonPresentation.Row rowFor(PeerComparisonPresentation.Rendered rendered, String label) {

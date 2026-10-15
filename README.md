@@ -93,9 +93,10 @@ The desktop UI is a persistent application shell rather than a per-screen window
 
 ## Evolution System foundation
 
-The proposed local-first Evolution V1 architecture, source audit, contracts, Java Debugging &
+The local-first Evolution V1 architecture, source audit, contracts, Java Debugging &
 Concurrency slice, and implementation sequence are in [docs/evolution](docs/evolution/README.md)
-(issue #209 under epic #208). This is a design foundation; the Evolution runtime is not implemented yet.
+(epic #208). [EV-02](docs/evolution/skill-graph.md) adds the versioned skill catalog and prerequisite
+graph; the learner progression loop remains future work.
 
 ## Problem-solving training
 

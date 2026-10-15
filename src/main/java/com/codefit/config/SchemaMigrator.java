@@ -70,7 +70,19 @@ final class SchemaMigrator {
                     SchemaMigrator::createPeerSyncTables),
             new VersionedMigration(12,
                     "Add the local 1-v-1 Study Match lifecycle table",
-                    SchemaMigrator::createStudyMatchTable)
+                    SchemaMigrator::createStudyMatchTable),
+            new VersionedMigration(13,
+                    "Add immutable versioned skill definitions and prerequisite graphs (#210)",
+                    connection -> {
+                        try {
+                            SkillCatalogSchema.create(connection);
+                            JavaDebuggingSkillSeed.seed(connection);
+                        } catch (RuntimeException invalidCatalog) {
+                            // The existing migration runner rolls back SQLExceptions. Domain validation
+                            // must take that same path rather than implicitly committing partial DDL.
+                            throw new SQLException("Invalid Evolution skill catalog seed", invalidCatalog);
+                        }
+                    })
     );
 
     static void migrate(Connection connection) throws SQLException {

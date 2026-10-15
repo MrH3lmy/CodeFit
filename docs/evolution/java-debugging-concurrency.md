@@ -5,6 +5,9 @@ assets; #214 validates harnesses and sample solutions; #212 computes the baselin
 selects tasks; #216 delivers the UI. The example deliberately does not claim general intelligence,
 production certification or proof against every JVM schedule.
 
+The four-skill taxonomy below is implemented by [EV-02](skill-graph.md). Challenges, rubrics and
+learner outcomes in this document remain design fixtures for later tickets.
+
 ## Goal and minimal skill graph
 
 Goal: "Diagnose and repair shared-state bugs in a small Java service, then preserve invariants in a

@@ -4,10 +4,10 @@ Design deliverable for [#209](https://github.com/MrH3lmy/CodeFit/issues/209), un
 [epic #208](https://github.com/MrH3lmy/CodeFit/issues/208). Audited against `main`
 `9cf3e5f554829300bca1346511b4bca38ce92e46` on 2026-10-15.
 
-**Status:** proposed V1 contracts for review. This PR adds documentation only. None of the
-Evolution services, tables, policies, or example results below are implemented by this PR.
-Existing behavior is identified explicitly in the audit; requirements elsewhere describe proposed behavior.
-Approval of this foundation precedes schema implementation in #210. This is not evidence of learning gains.
+**Status:** foundation accepted in merged PR #219. [EV-02 skill catalog](skill-graph.md) implements
+versioned definitions and prerequisite graphs for #210. The remaining Evolution runtime, policies,
+and example learner results are future work. The original audit describes the pre-Evolution baseline;
+implementation status and verification are recorded per slice. This is not evidence of learning gains.
 
 CodeFit should help learners solve unfamiliar real problems better. Activity, XP, card familiarity,
 and a passed local test are useful signals with different meanings; none alone proves that outcome.
@@ -21,6 +21,7 @@ and a passed local test are useful signals with different meanings; none alone p
 | Java Debugging & Concurrency example and evaluation design | [First vertical slice](java-debugging-concurrency.md) |
 | #210–#218 dependencies, refinements, next implementation | [Implementation roadmap](implementation-roadmap.md) |
 | #209 acceptance mapping, checks, limitations | [Verification](verification.md) |
+| #210 implemented catalog, API, schema, tests and limits | [Versioned skill graph](skill-graph.md) |
 
 Read the audit before the ADR and contracts. Numerical thresholds in the lifecycle are a deliberately
 conservative, versioned starting policy, to be tested in #212/#215 and evaluated in #218; they are

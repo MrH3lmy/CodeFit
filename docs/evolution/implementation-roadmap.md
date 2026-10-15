@@ -1,9 +1,10 @@
 # Implementation roadmap and ticket refinements
 
 Reviewed complete bodies/comments of #210–#218 against the audited classes, not just their titles.
-This foundation implements none of those tickets. Keep existing issues; no duplicate engines/tickets.
+The foundation implements none of those tickets. [EV-02 implementation](skill-graph.md) now supplies
+the skill catalog for #210; #211 is next. Keep existing issues; no duplicate engines/tickets.
 
-## Implement #210 next
+## Foundation recommendation: implement #210 first
 
 After #209's contracts/reuse decisions are reviewed, implement
 [#210](https://github.com/MrH3lmy/CodeFit/issues/210): stable skill IDs, observable behaviors, a tiny

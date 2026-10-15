@@ -131,10 +131,18 @@ class SkillCatalogMigrationTest {
         assertEquals(JavaDebuggingSkillSeed.graph(), new SkillCatalogRepository().findGraph(JavaDebuggingSkillSeed.GRAPH).orElseThrow());
     }
 
-    /** Removes only EV-02 objects from a throwaway DB, leaving the real version-12 schema/data. */
+    /** Reconstructs the pre-Evolution version-12 schema/data in a throwaway database. */
     private static void prepareVersionTwelve() throws SQLException {
         try (Connection connection = DatabaseConfig.getConnection(); Statement sql = connection.createStatement()) {
             sql.execute("PRAGMA foreign_keys = OFF");
+            // Later additive migrations depend on the catalog. Remove those only in this
+            // downgrade fixture, then retain the original v12 -> head preservation assertions.
+            var evidenceTables = new ArrayList<String>();
+            try (var rows = sql.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'evolution_evidence_%'")) {
+                while (rows.next()) evidenceTables.add(rows.getString(1));
+            }
+            for (String table : evidenceTables) sql.execute("DROP TABLE " + table);
+            sql.execute("DELETE FROM schema_migrations WHERE version > 13");
             for (String table : CATALOG_TABLES) sql.execute("DROP TABLE " + table);
             sql.execute("DELETE FROM schema_migrations WHERE version = 13");
             assertEquals(12, scalar(connection, "SELECT MAX(version) FROM schema_migrations"));

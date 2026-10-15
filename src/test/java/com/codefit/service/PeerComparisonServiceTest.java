@@ -56,6 +56,10 @@ class PeerComparisonServiceTest {
 
     private static final char[] PASSPHRASE = "peer-comparison-test-passphrase".toCharArray();
     private static final ZoneId ZONE = ZoneId.systemDefault();
+    // Midday keeps shifted windows and earlier peer cutoffs inside the same fixture day.
+    // Retain the device zone because compareTodayWith deliberately uses systemDefault().
+    private static final LocalDate TODAY = LocalDate.of(2026, 1, 15);
+    private static final Instant NOW = TODAY.atTime(12, 0).atZone(ZONE).toInstant();
 
     private ContactService contactService;
     private IdentityService identityService;
@@ -101,12 +105,15 @@ class PeerComparisonServiceTest {
      */
     private PeerComparisonService serviceAt(Instant fixedNow) {
         Clock clock = Clock.fixed(fixedNow, ZONE);
-        ProgressSnapshotService fixedSnapshotService = new ProgressSnapshotService(
+        return new PeerComparisonService(contactService, identityService, snapshotServiceAt(clock),
+                peerProgressSummaryRepository, peerSyncConsentRepository, clock);
+    }
+
+    private ProgressSnapshotService snapshotServiceAt(Clock clock) {
+        return new ProgressSnapshotService(
                 new com.codefit.repository.ReviewHistoryRepository(), new com.codefit.repository.ProblemAttemptRepository(),
                 new com.codefit.repository.InterviewMockRepository(), new com.codefit.repository.LocalProgressSnapshotRepository(),
                 clock);
-        return new PeerComparisonService(contactService, identityService, fixedSnapshotService,
-                peerProgressSummaryRepository, peerSyncConsentRepository, clock);
     }
 
     // --- 1: peer never sent any consent ---
@@ -144,7 +151,7 @@ class PeerComparisonServiceTest {
     void bothSidesSharedAndSyncedIsComparable() throws Exception {
         Instant now = nowMillis();
         saveConsent(List.of(SharingScope.DAILY_SUMMARY), 1);
-        ComparisonWindow myWindow = ComparisonWindow.day(LocalDate.now(ZONE), ZONE);
+        ComparisonWindow myWindow = ComparisonWindow.day(TODAY, ZONE);
         // receivedAt == now, the exact same instant "my own" side's fixed-clock capture will use as
         // its own cutoff too - see savePeerSummaryExact's own javadoc for why this must be exact,
         // not merely close.
@@ -157,7 +164,7 @@ class PeerComparisonServiceTest {
 
     @Test
     void aFreshEarlierPeerCutoffIsRecomputedLocallyAtTheSameElapsedPoint() throws Exception {
-        LocalDate today = LocalDate.now(ZONE);
+        LocalDate today = TODAY;
         Instant now = today.atTime(15, 0).atZone(ZONE).toInstant();
         Instant peerCutoff = now.minus(Duration.ofMinutes(7));
         saveConsent(List.of(SharingScope.DAILY_SUMMARY), 1);
@@ -190,7 +197,7 @@ class PeerComparisonServiceTest {
         // Deliberately not "my" exact today's window (which could never itself be this wide while
         // still containing "now"), so this reaches the engine through the fallback path.
         ComparisonWindow wideWindow = new ComparisonWindow(com.codefit.peer.protocol.WindowKind.DAY,
-                LocalDate.now(ZONE), ZONE.getId(), null, now.minus(Duration.ofHours(25)), now.plus(Duration.ofHours(1)));
+                TODAY, ZONE.getId(), null, now.minus(Duration.ofHours(25)), now.plus(Duration.ofHours(1)));
         savePeerSummaryExactWithCutoff(wideWindow, wideWindow.start(), now);
 
         ProgressComparison comparison = serviceAt(now).compareTodayWith(contactId);
@@ -204,7 +211,7 @@ class PeerComparisonServiceTest {
     void yesterdaysSnapshotIsNeverUsedAsTodaysFallback() throws Exception {
         Instant now = nowMillis();
         saveConsent(List.of(SharingScope.DAILY_SUMMARY), 1);
-        ComparisonWindow yesterday = ComparisonWindow.day(LocalDate.now(ZONE).minusDays(1), ZONE);
+        ComparisonWindow yesterday = ComparisonWindow.day(TODAY.minusDays(1), ZONE);
         // Not the exact object id for today, and yesterday's own window does not contain "now" -
         // must never qualify as a fallback candidate. Received shortly after yesterday's own window
         // closed - any later point is equally valid, but must be at or after its own cutoff/end.
@@ -222,7 +229,7 @@ class PeerComparisonServiceTest {
     void aFallbackCandidateWithMismatchedUtcIntervalButSameLocalLabelIsIncompatible() throws Exception {
         Instant now = nowMillis();
         saveConsent(List.of(SharingScope.DAILY_SUMMARY), 1);
-        LocalDate today = LocalDate.now(ZONE);
+        LocalDate today = TODAY;
         ComparisonWindow myWindow = ComparisonWindow.day(today, ZONE);
         // Same kind/local label/zone as mine, but a hand-built, genuinely different UTC interval
         // (shifted by two hours, still inside the valid 22-26h DAY bound) - and it still contains
@@ -252,11 +259,15 @@ class PeerComparisonServiceTest {
         // instant right now - exactly "equivalent current-day publication under the peer's own
         // zone" from this class's own javadoc.
         ZoneId otherZone = ZONE.getId().equals("UTC") ? ZoneId.of("America/New_York") : ZoneId.of("UTC");
-        ComparisonWindow peerWindow = ComparisonWindow.day(LocalDate.now(otherZone), otherZone);
+        ComparisonWindow peerWindow = ComparisonWindow.day(now.atZone(otherZone).toLocalDate(), otherZone);
         assertTrue(peerWindow.contains(now), "fixture precondition: the other zone's own window must contain now");
-        // Exactly "now" (not offset) - see savePeerSummaryExact's own javadoc for why this must match
-        // "my own" side's fixed-clock cutoff exactly for the engine's elapsed-time alignment check.
-        savePeerSummaryExact(peerWindow, now);
+        // Keep both sides at an elapsed point already reached in each day. A peer whose day
+        // started earlier can otherwise have a later elapsed cutoff than my side can reproduce.
+        ComparisonWindow myWindow = ComparisonWindow.day(TODAY, ZONE);
+        Duration myElapsed = Duration.between(myWindow.start(), now);
+        Duration peerElapsed = Duration.between(peerWindow.start(), now);
+        Duration commonElapsed = myElapsed.compareTo(peerElapsed) <= 0 ? myElapsed : peerElapsed;
+        savePeerSummaryExactWithCutoff(peerWindow, peerWindow.start().plus(commonElapsed), now);
 
         ProgressComparison comparison = serviceAt(now).compareTodayWith(contactId);
         // Either genuinely the same local label (improbable but not invalid) or cross-zone -
@@ -271,7 +282,7 @@ class PeerComparisonServiceTest {
     void revocationAfterAPreviouslyReceivedSnapshotIsNotShared() throws Exception {
         Instant now = nowMillis();
         saveConsent(List.of(SharingScope.DAILY_SUMMARY), 1);
-        ComparisonWindow myWindow = ComparisonWindow.day(LocalDate.now(ZONE), ZONE);
+        ComparisonWindow myWindow = ComparisonWindow.day(TODAY, ZONE);
         savePeerSummaryExact(myWindow, now);
 
         // Sanity: comparable before revocation.
@@ -293,7 +304,7 @@ class PeerComparisonServiceTest {
     void duplicateIngestOfTheSamePeerSummaryDoesNotCorruptTheComparison() throws Exception {
         Instant now = nowMillis();
         saveConsent(List.of(SharingScope.DAILY_SUMMARY), 1);
-        ComparisonWindow myWindow = ComparisonWindow.day(LocalDate.now(ZONE), ZONE);
+        ComparisonWindow myWindow = ComparisonWindow.day(TODAY, ZONE);
         savePeerSummaryExact(myWindow, now.minus(Duration.ofMinutes(10)));
         savePeerSummaryExact(myWindow, now); // re-ingest of the same object id, now with the exact cutoff "my own" side needs
 
@@ -351,9 +362,10 @@ class PeerComparisonServiceTest {
             long flashcardId;
             try (PreparedStatement statement = connection.prepareStatement(
                     "INSERT INTO flashcards (deck_id, front, back, card_type, accepted_answers, review_count, due_date) "
-                            + "VALUES (?, 'front', 'back', 'RECALL', 'x', 0, date('now'))",
+                            + "VALUES (?, 'front', 'back', 'RECALL', 'x', 0, ?)",
                     Statement.RETURN_GENERATED_KEYS)) {
                 statement.setLong(1, deckId);
+                statement.setString(2, TODAY.toString());
                 statement.executeUpdate();
                 try (ResultSet keys = statement.getGeneratedKeys()) {
                     keys.next();
@@ -361,7 +373,7 @@ class PeerComparisonServiceTest {
                 }
             }
             com.codefit.repository.ReviewHistoryRepository reviewRepository = new com.codefit.repository.ReviewHistoryRepository();
-            LocalDateTime nowUtc = LocalDateTime.now(ZoneOffset.UTC);
+            LocalDateTime nowUtc = LocalDateTime.ofInstant(NOW.minusSeconds(1), ZoneOffset.UTC);
             ReviewHistory saved = reviewRepository.save(new ReviewHistory(0, flashcardId, ReviewRating.GOOD, 0, 1, nowUtc));
             try (PreparedStatement statement = connection.prepareStatement(
                     "UPDATE review_history SET reviewed_at = ? WHERE id = ?")) {
@@ -372,11 +384,11 @@ class PeerComparisonServiceTest {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
-        ComparisonWindow window = ComparisonWindow.day(LocalDate.now(ZONE), ZONE);
-        return new ProgressSnapshotService().capture(window).snapshot().toProgressSummary().metrics();
+        ComparisonWindow window = ComparisonWindow.day(TODAY, ZONE);
+        return snapshotServiceAt(Clock.fixed(NOW, ZONE)).capture(window).snapshot().toProgressSummary().metrics();
     }
 
     private static Instant nowMillis() {
-        return Instant.ofEpochMilli(Instant.now().toEpochMilli());
+        return NOW;
     }
 }

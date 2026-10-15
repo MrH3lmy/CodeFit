@@ -51,8 +51,8 @@ or learning efficacy. Those are not claims the current app can honestly make.
 | Raw review validation plus `hint_usage_recorded` | Explicit validator outcome and whether in-app hint observation exists | No outside assistance; default false in legacy rows is not observed independence |
 | XP, streak, rank, readiness, card mastery | Derived engagement or scoped preparedness/retention under existing rules | General capability or proof of transfer |
 
-Review/problem repositories omit timestamps on INSERT and SQLite supplies `CURRENT_TIMESTAMP`;
-assessment attempts explicitly store Java `LocalDateTime`. Use persisted rows, not the returned
+EV-03 correction after inspecting all three INSERT statements: review, problem and assessment
+repositories omit timestamps on INSERT; SQLite supplies `CURRENT_TIMESTAMP`. Use persisted rows, not the returned
 in-memory object's time, when adapting history. Legacy mixed writers and unknown completion origins
 remain qualified. See [P2P time/provenance contracts](../p2p/protocol-v1.md) and preserve their semantics.
 

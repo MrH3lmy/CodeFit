@@ -5,7 +5,8 @@ Design deliverable for [#209](https://github.com/MrH3lmy/CodeFit/issues/209), un
 `9cf3e5f554829300bca1346511b4bca38ce92e46` on 2026-10-15.
 
 **Status:** foundation accepted in merged PR #219. [EV-02 skill catalog](skill-graph.md) implements
-versioned definitions and prerequisite graphs for #210. The remaining Evolution runtime, policies,
+versioned definitions and prerequisite graphs for #210. [EV-03 evidence](skill-evidence.md) adds
+provenance-aware observations, exact mappings and bounded local ingestion for #211. Other runtime policies
 and example learner results are future work. The original audit describes the pre-Evolution baseline;
 implementation status and verification are recorded per slice. This is not evidence of learning gains.
 
@@ -22,6 +23,7 @@ and a passed local test are useful signals with different meanings; none alone p
 | #210–#218 dependencies, refinements, next implementation | [Implementation roadmap](implementation-roadmap.md) |
 | #209 acceptance mapping, checks, limitations | [Verification](verification.md) |
 | #210 implemented catalog, API, schema, tests and limits | [Versioned skill graph](skill-graph.md) |
+| #211 evidence, source provenance, schema, backfill, #212/#214 APIs and limits | [Skill evidence](skill-evidence.md) |
 
 Read the audit before the ADR and contracts. Numerical thresholds in the lifecycle are a deliberately
 conservative, versioned starting policy, to be tested in #212/#215 and evaluated in #218; they are

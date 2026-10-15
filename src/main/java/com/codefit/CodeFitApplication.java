@@ -3,6 +3,7 @@ package com.codefit;
 import com.codefit.config.DatabaseConfig;
 import com.codefit.service.BackgroundImportExecutor;
 import com.codefit.service.CompileOutcomeRegistry;
+import com.codefit.service.EvidenceBackfillWorker;
 import com.codefit.service.JavaExecutionCoordinator;
 import com.codefit.ui.NavigationService;
 import com.codefit.ui.PeerSessionHolder;
@@ -12,9 +13,12 @@ import javafx.stage.Stage;
 import java.util.concurrent.TimeUnit;
 
 public class CodeFitApplication extends Application {
+    private EvidenceBackfillWorker evidenceBackfill;
+
     @Override
     public void start(Stage stage) {
         DatabaseConfig.initialize();
+        evidenceBackfill = new EvidenceBackfillWorker();
         NavigationService.setPrimaryStage(stage);
         NavigationService.showDashboard();
     }
@@ -26,6 +30,7 @@ public class CodeFitApplication extends Application {
      */
     @Override
     public void stop() {
+        if (evidenceBackfill != null) evidenceBackfill.close();
         // Compilation itself is not cancellable and has a 15-second timeout, so this window must be
         // longer than that timeout before the compiled directory is allowed to close.
         JavaExecutionCoordinator.cancelActiveAndAwait(20, TimeUnit.SECONDS);

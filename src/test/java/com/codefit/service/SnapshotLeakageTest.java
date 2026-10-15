@@ -159,10 +159,33 @@ class SnapshotLeakageTest {
         contactService.updatePermissions(contact.id(),
                 new PermissionGrant(List.of(SharingScope.DAILY_SUMMARY), null, null, false), BASE);
 
+        // EV-03: private evidence exists locally before publication, but has no wire projection.
+        var ingestion = new EvidenceIngestionService();
+        ingestion.ingestBatch(com.codefit.repository.EvidenceMappingRepository.INITIAL_MAPPING,
+                com.codefit.evolution.evidence.EvidenceTypes.SourceType.REVIEW, 64);
+        ingestion.ingestBatch(com.codefit.repository.EvidenceMappingRepository.INITIAL_MAPPING,
+                com.codefit.evolution.evidence.EvidenceTypes.SourceType.PROBLEM_ATTEMPT, 64);
+        var evidenceSecrets = new java.util.ArrayList<String>();
+        try (Connection connection = DatabaseConfig.getConnection(); var statement = connection.createStatement();
+             var rows = statement.executeQuery("SELECT evidence_id, payload FROM evolution_evidence_observations")) {
+            while (rows.next()) {
+                evidenceSecrets.add(rows.getString(1));
+                String metadata = rawBytesAsLatin1(rows.getBytes(2));
+                assertFalse(metadata.contains(SECRET_ATTEMPT_NOTE));
+                assertFalse(metadata.contains(SECRET_SUBMITTED_ANSWER));
+                assertFalse(metadata.contains(SECRET_FLASHCARD_BACK));
+            }
+        }
+        assertTrue(evidenceSecrets.size() >= 2, "privacy check requires real persisted evidence");
+        evidenceSecrets.add("java-practice-context");
+        evidenceSecrets.add("java.concurrency.atomic-update");
+
         ComparisonWindow window = ComparisonWindow.day(day, UTC);
         SignedEnvelope envelope = publicationService.publishProgressSummary(contact.id(), identity, 1, window);
 
         String wire = rawBytesAsLatin1(EnvelopeCodec.encodeFrame(envelope));
+
+        for (String secret : evidenceSecrets) assertFalse(wire.contains(secret), "Evidence must remain local");
 
         // Sanity check the search itself is meaningful: a legitimately-wire-visible metric id must be found.
         assertTrue(wire.contains("review.attempts"), "sanity check: a real, approved wire field must be found by this search");

@@ -91,6 +91,12 @@ The desktop UI is a persistent application shell rather than a per-screen window
   JavaFX-capable display and skips (not fails) in headless CI environments that don't have one —
   run it locally with a display, or under `xvfb-run -a mvn test` on Linux, to exercise it.
 
+## Evolution System foundation
+
+The proposed local-first Evolution V1 architecture, source audit, contracts, Java Debugging &
+Concurrency slice, and implementation sequence are in [docs/evolution](docs/evolution/README.md)
+(issue #209 under epic #208). This is a design foundation; the Evolution runtime is not implemented yet.
+
 ## Problem-solving training
 
 CodeFit is gaining a dedicated problem-solving training area (epic #141) alongside flashcard review,

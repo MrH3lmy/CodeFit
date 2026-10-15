@@ -82,6 +82,15 @@ final class SchemaMigrator {
                             // must take that same path rather than implicitly committing partial DDL.
                             throw new SQLException("Invalid Evolution skill catalog seed", invalidCatalog);
                         }
+                    }),
+            new VersionedMigration(14,
+                    "Add provenance-aware local skill evidence metadata (#211)",
+                    connection -> {
+                        try {
+                            EvidenceSchema.create(connection);
+                        } catch (RuntimeException invalid) {
+                            throw new SQLException("Invalid evidence schema seed", invalid);
+                        }
                     })
     );
 

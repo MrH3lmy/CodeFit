@@ -2,7 +2,10 @@
 
 Reviewed complete bodies/comments of #210–#218 against the audited classes, not just their titles.
 The foundation implements none of those tickets. [EV-02 implementation](skill-graph.md) now supplies
-the skill catalog for #210; #211 is next. Keep existing issues; no duplicate engines/tickets.
+the skill catalog for #210; [EV-03](skill-evidence.md) supplies evidence for #211. Next implement
+#213 content/family/rubric definitions, then #214 durable evaluation. #212 can develop a pure policy
+against the new retrieval API, with complete baseline acceptance still dependent on #213/#214.
+Keep existing issues; no duplicate engines/tickets.
 
 ## Foundation recommendation: implement #210 first
 

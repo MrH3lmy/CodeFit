@@ -1,6 +1,6 @@
 # ADR-EV-0001: A bounded, local Evolution layer
 
-- Status: proposed for #209 review; implementation begins only in follow-up tickets.
+- Status: accepted foundation in merged PR #219. Skill-catalog implementation: [EV-02](skill-graph.md); remaining responsibilities are follow-up work.
 - Date: 2026-10-15.
 - Context: [audit](existing-system-audit.md), [#208](https://github.com/MrH3lmy/CodeFit/issues/208), completed #164/#104, ongoing #179.
 

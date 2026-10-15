@@ -1,6 +1,7 @@
 # Domain model and V1 contracts
 
-**Proposed, not implemented.** #210–#217 own the additions identified below. Names are frozen at
+**Implementation status:** [#210 skill definitions/graphs](skill-graph.md) are implemented; the other
+contracts remain future work owned by #211–#217. Names are frozen at
 the semantic boundary; Java records may be introduced only when their owner ticket needs them.
 Do not add empty engine classes in #209. [ADR](adr-0001-local-evolution.md) owns storage/privacy decisions.
 

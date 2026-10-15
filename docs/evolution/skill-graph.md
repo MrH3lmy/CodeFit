@@ -141,7 +141,25 @@ and peer tables. Existing initializer behavior is tested honestly: it already fi
 from card backs at startup. Migration 13 itself preserves even those nulls; the repeated-startup fixture
 uses normal initialized card values. That pre-existing normalization is not changed by EV-02.
 
-Focused and full suite results are recorded when complete below. Self-review boundaries:
+Validation on implementation revision `2a5f1b0` (complete Java 21 JDK, Maven 3.9.11):
+
+- Focused: **39 tests passed**, 0 failures/errors/skips, including the 23 new tests and existing
+  `SchemaMigratorTest`.
+- Full existing plus new suite: **1,296 tests passed**, 0 failures/errors/skips (174 test classes).
+  This includes existing JavaFX/FXML, review/mastery, curriculum/import, runner, privacy and P2P
+  integration checks. No existing test was weakened or changed.
+- README/Evolution relative file links resolve; `git diff --check` passes. The root learner
+  `codefit.db` was absent before and after checks; isolated database protections passed.
+- Main was re-fetched before publication: still `9a25a05`, so migration 13 has no current conflict.
+
+Commands (session proxy/CA settings and downloaded JDK/Maven were outside the repository):
+
+```sh
+mvn -B -Dtest=SkillGraphTest,SkillCatalogRepositoryTest,SkillCatalogMigrationTest,SchemaMigratorTest test
+mvn -B test
+```
+
+Self-review boundaries:
 
 | Concern | Decision / verification |
 | --- | --- |

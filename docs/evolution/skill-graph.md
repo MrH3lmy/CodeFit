@@ -44,6 +44,29 @@ Pure immutable records live in [com.codefit.evolution](../../src/main/java/com/c
   SQLite foreign keys **before** starting the transaction, and commit/rollback it. Repository checks
   both requirements; it never commits caller-owned work. All exceptions require caller rollback.
 
+### Bulk-read characterization (#221)
+
+The repository test compares the previous per-definition SQL path with the joined reads using an
+isolated SQLite database. It instruments every `executeQuery` call and checks exact materialized
+definitions/graphs for separate catalogs of 4, 100 and 1,000 definitions, each with two behaviors;
+the graphs contain a chain of `N - 1` edges. The elapsed values below are single same-JVM samples
+after fixture setup (microseconds), included as indicative evidence rather than a speed target.
+Machine, JVM warm-up and SQLite cache state affect timings; the query-count assertions are stable.
+
+| Skills | `findGraph` queries (previous → bulk) | `findGraph` time (µs) | Domain-list queries (previous → bulk) | Domain-list time (µs) |
+| ---: | ---: | ---: | ---: | ---: |
+| 4 | 11 → 2 | 30,180 → 1,778 | 9 → 1 | 2,378 → 2,325 |
+| 100 | 203 → 2 | 17,732 → 6,334 | 201 → 1 | 16,201 → 2,388 |
+| 1,000 | 2,003 → 2 | 85,674 → 29,007 | 2,001 → 1 | 77,842 → 14,684 |
+
+The old counts match the measured `3 + 2N` graph and `1 + 2N` domain-list reads; bulk graph
+materialization takes one member/behavior join and one edge query, while domain listing uses one
+member/behavior join. Stable `ORDER BY` clauses preserve ID/version order and stored behavior
+positions. Graph reads through the standalone repository method run both queries in one SQLite read
+transaction; a connection-scoped caller continues to supply its own validation snapshot. Historical
+published versions, including RETIRED definitions, remain included. This avoids N+1 query growth
+without adding caching, schema changes or a speed requirement.
+
 Once loaded, `SkillGraph` provides direct `prerequisitesOf(ref)`, direct `dependentsOf(ref)`,
 `topologicalOrder()`, and transitive `prerequisiteTraversal(ref)`. The last method returns only the
 requested skill's ancestors, prerequisites first, excluding the requested skill and unrelated nodes.

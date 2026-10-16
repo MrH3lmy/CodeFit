@@ -149,6 +149,48 @@ public final class LegacyEvidenceClassifier {
                 "assessment:" + item);
     }
 
+    /** Prospective item validation is still recall/review scope, never engineering evaluation. */
+    public static EvidenceObservation prospectiveAssessment(
+            long id,
+            long item,
+            boolean correct,
+            String timestamp,
+            String kind,
+            String validator,
+            boolean hint,
+            boolean revealed,
+            String exposure) {
+        boolean objective =
+                "OBJECTIVE_ITEM".equals(kind)
+                        && Set.of("AnswerValidator", "SqlCardValidator", "RegexCardValidator")
+                                .contains(validator);
+        var provenance =
+                objective
+                        ? Provenance.OBJECTIVE_REVIEW
+                        : "SELF_RATED".equals(kind)
+                                ? Provenance.SELF_REPORTED
+                                : Provenance.LEGACY_UNSPECIFIED;
+        return observation(
+                SourceType.ASSESSMENT_ATTEMPT,
+                id,
+                new EvidenceTime(timestamp, Instant.parse(timestamp), TimeBasis.EXACT_UTC),
+                provenance,
+                "UNAVAILABLE".equals(kind)
+                        ? Outcome.UNAVAILABLE
+                        : correct ? Outcome.PASS : Outcome.FAIL,
+                revealed
+                        ? Assistance.EXPLANATION_OR_SOLUTION
+                        : hint ? Assistance.HINT : Assistance.NO_IN_APP_HINT_RECORDED,
+                "REPEAT".equals(exposure) ? Exposure.REPEAT : Exposure.UNKNOWN,
+                Set.of(
+                        Limitation.LEGACY_VALIDATOR_SCOPE,
+                        Limitation.OUTSIDE_ASSISTANCE_UNKNOWN,
+                        Limitation.NO_ARTIFACT_SNAPSHOT),
+                correct ? "CORRECT" : "INCORRECT",
+                "PROSPECTIVE_ASSESSMENT",
+                "assessment:" + item);
+    }
+
     private static Outcome ratingOutcome(String rating) {
         return switch (Objects.toString(rating, "")) {
             case "GOOD", "EASY" -> Outcome.PASS;

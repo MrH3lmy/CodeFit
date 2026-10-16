@@ -156,7 +156,7 @@ class SkillCatalogMigrationTest {
             List<String> tables = new ArrayList<>();
             try (ResultSet rows = sql.executeQuery("""
                     SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'evolution_%'
-                        AND name NOT IN ('schema_migrations', 'sqlite_sequence') ORDER BY name
+                        AND name NOT IN ('schema_migrations', 'sqlite_sequence', 'assessment_attempt_facts') ORDER BY name
                     """)) {
                 while (rows.next()) tables.add(rows.getString(1));
             }

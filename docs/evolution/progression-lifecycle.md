@@ -1,6 +1,6 @@
 # Player progression lifecycle
 
-**Proposed V1 behavior.** See [contracts](domain-contracts.md) for field/status meanings and the
+**V1 design; baseline/estimate policy is implemented in [EV-04](mastery-estimation.md).** See [contracts](domain-contracts.md) for field/status meanings and the
 [audit](existing-system-audit.md) for current behavior. All dates and outcomes in examples are fixtures.
 
 ## Exact V1 journey

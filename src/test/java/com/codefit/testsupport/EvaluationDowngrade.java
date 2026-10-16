@@ -7,6 +7,7 @@ public final class EvaluationDowngrade {
     private EvaluationDowngrade() {}
 
     public static void remove(Connection c) throws SQLException {
+        MasteryDowngrade.remove(c);
         try (var s = c.createStatement()) {
             s.execute("PRAGMA foreign_keys=OFF");
             for (String t :

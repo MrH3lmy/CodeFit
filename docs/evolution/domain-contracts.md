@@ -2,7 +2,9 @@
 
 **Implementation status:** [#210 skill definitions/graphs](skill-graph.md) and
 [#211 evidence contracts/storage](skill-evidence.md) are implemented; the other
-contracts remain future work owned by #212–#217. Names are frozen at
+contracts are implemented by their owner slices: [catalog](quest-catalog.md),
+[evaluation](challenge-evaluation.md), and [baseline/estimates](mastery-estimation.md).
+Adaptation, UI and rewards remain #215–#217. Names are frozen at
 the semantic boundary; Java records may be introduced only when their owner ticket needs them.
 Do not add empty engine classes in #209. [ADR](adr-0001-local-evolution.md) owns storage/privacy decisions.
 

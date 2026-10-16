@@ -376,6 +376,16 @@ public final class EvidenceRepository {
         }
     }
 
+    /** Original source publication sequence, stable across corrections and mapping versions. */
+    public long firstSourceSequence(Connection c,EvidenceSourceRef source)throws SQLException {
+        if(c.getAutoCommit())throw new IllegalArgumentException("Caller read snapshot required");
+        try(var s=c.prepareStatement("SELECT MIN(sequence) FROM evolution_evidence_observations WHERE root_id=?")) {
+            s.setString(1,EvidenceIds.root(source));try(var r=s.executeQuery()) {
+                if(!r.next()||r.getLong(1)<=0)throw new IllegalArgumentException("Unknown evidence source root");return r.getLong(1);
+            }
+        }
+    }
+
     private static StoredEvidence read(ResultSet r) throws SQLException {
         var o = EvidenceCodec.decode(r.getBytes("payload"));
         String id = r.getString("evidence_id");

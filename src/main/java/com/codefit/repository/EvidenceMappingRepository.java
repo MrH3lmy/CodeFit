@@ -16,6 +16,35 @@ public final class EvidenceMappingRepository {
     public static final EvidenceMappingRef INITIAL_MAPPING =
             new EvidenceMappingRef("java-practice-context", 1);
 
+    /** Known older skill interpretations awaiting the explicitly selected replacement version. */
+    public boolean hasPendingInterpretations(
+            Connection c, EvidenceMappingRef ref, com.codefit.evolution.SkillRef skill)
+            throws SQLException {
+        if (c.getAutoCommit()) throw new IllegalArgumentException("Caller read snapshot required");
+        try (var s =
+                c.prepareStatement(
+                        """
+SELECT 1 FROM evolution_evidence_interpretations i
+JOIN evolution_evidence_observations o USING(evidence_id)
+JOIN evolution_evidence_sources x USING(root_id)
+JOIN evolution_evidence_mapping_rules r ON r.mapping_id=i.mapping_id
+  AND r.mapping_version=i.mapping_version AND r.source_type=x.source_type AND r.selector=i.selector
+WHERE i.mapping_id=? AND i.mapping_version<? AND r.skill_id=? AND r.definition_version=?
+  AND NOT EXISTS (SELECT 1 FROM evolution_evidence_interpretations n
+    WHERE n.evidence_id=x.head_id AND n.mapping_id=? AND n.mapping_version=?) LIMIT 1
+""")) {
+            s.setString(1, ref.mappingId());
+            s.setInt(2, ref.version());
+            s.setString(3, skill.skillId());
+            s.setInt(4, skill.definitionVersion());
+            s.setString(5, ref.mappingId());
+            s.setInt(6, ref.version());
+            try (var r = s.executeQuery()) {
+                return r.next();
+            }
+        }
+    }
+
     public void publish(EvidenceMapping mapping) {
         new EvidenceRepository()
                 .transaction(
@@ -38,7 +67,7 @@ public final class EvidenceMappingRepository {
         try (var s =
                 c.prepareStatement(
                         "SELECT COALESCE(MAX(mapping_version),0) FROM evolution_evidence_mappings"
-                            + " WHERE mapping_id=?")) {
+                                + " WHERE mapping_id=?")) {
             s.setString(1, m.ref().mappingId());
             try (var r = s.executeQuery()) {
                 if (r.next()) last = r.getInt(1);
@@ -50,7 +79,7 @@ public final class EvidenceMappingRepository {
         try (var s =
                 c.prepareStatement(
                         "SELECT published FROM evolution_skill_graphs WHERE graph_id=? AND"
-                            + " graph_version=?")) {
+                                + " graph_version=?")) {
             s.setString(1, m.graph().graphId());
             s.setInt(2, m.graph().graphVersion());
             try (var r = s.executeQuery()) {
@@ -85,7 +114,7 @@ public final class EvidenceMappingRepository {
         try (var s =
                 c.prepareStatement(
                         "UPDATE evolution_evidence_mappings SET published=1 WHERE mapping_id=? AND"
-                            + " mapping_version=?")) {
+                                + " mapping_version=?")) {
             s.setString(1, m.ref().mappingId());
             s.setInt(2, m.ref().version());
             s.executeUpdate();
@@ -98,7 +127,7 @@ public final class EvidenceMappingRepository {
         try (var s =
                 c.prepareStatement(
                         "SELECT graph_id,graph_version FROM evolution_evidence_mappings WHERE"
-                            + " mapping_id=? AND mapping_version=? AND published=1")) {
+                                + " mapping_id=? AND mapping_version=? AND published=1")) {
             s.setString(1, ref.mappingId());
             s.setInt(2, ref.version());
             try (var r = s.executeQuery()) {
@@ -110,8 +139,8 @@ public final class EvidenceMappingRepository {
         try (var s =
                 c.prepareStatement(
                         "SELECT source_type,selector,skill_id,definition_version FROM"
-                            + " evolution_evidence_mapping_rules WHERE mapping_id=? AND"
-                            + " mapping_version=?")) {
+                                + " evolution_evidence_mapping_rules WHERE mapping_id=? AND"
+                                + " mapping_version=?")) {
             s.setString(1, ref.mappingId());
             s.setInt(2, ref.version());
             try (var r = s.executeQuery()) {

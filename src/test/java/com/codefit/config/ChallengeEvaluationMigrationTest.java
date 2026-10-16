@@ -79,7 +79,7 @@ class ChallengeEvaluationMigrationTest {
             try (var r =
                     s.executeQuery(
                             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT"
-                                + " IN('schema_migrations','sqlite_sequence','evolution_submissions','evolution_evaluation_runs','evolution_evaluation_revisions','evolution_evaluation_assessment_aliases')"
+                                + " IN('schema_migrations','sqlite_sequence','evolution_submissions','evolution_evaluation_runs','evolution_evaluation_revisions','evolution_evaluation_assessment_aliases','evolution_estimate_epochs','evolution_estimate_revisions','evolution_baseline_choices','assessment_attempt_facts')"
                                 + " ORDER BY name")) {
                 while (r.next()) tables.add(r.getString(1));
             }

@@ -61,9 +61,11 @@ public record EvidenceObservation(
             throw new IllegalArgumentException("Manual problem verdicts are not machine-verified");
         }
         if (source.type() == SourceType.ASSESSMENT_ATTEMPT
-                && provenance != Provenance.LEGACY_UNSPECIFIED) {
+                && provenance != Provenance.LEGACY_UNSPECIFIED
+                && provenance != Provenance.OBJECTIVE_REVIEW
+                && provenance != Provenance.SELF_REPORTED) {
             throw new IllegalArgumentException(
-                    "Existing assessment booleans lack grading provenance");
+                    "Assessment evidence requires persisted prospective grading facts or legacy uncertainty");
         }
         if (change == Change.ORIGINAL) {
             if (source.revision() != 1

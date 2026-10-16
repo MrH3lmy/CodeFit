@@ -55,6 +55,7 @@ public class ProblemFlashcardService {
      *  that field currently holds (blank for {@link ReflectionCardSource#EDGE_CASE}, which has no
      *  backing stored field) — never persisted until {@link #createCard} is called. */
     public ProblemFlashcardDraft buildDraft(long problemId, ReflectionCardSource source) {
+        ProblemVisibility.requireOrdinary(problemId);
         Problem problem = problemRepository.findById(problemId)
                 .orElseThrow(() -> new IllegalArgumentException("No problem with id " + problemId + " exists."));
         ProblemProgress progress = progressService.getOrCreate(problemId);
@@ -101,6 +102,7 @@ public class ProblemFlashcardService {
 
     /** The card, if any, already linked to this exact (problem, reflection field) pair. */
     public Optional<Flashcard> findExistingLinkedCard(long problemId, ReflectionCardSource source) {
+        ProblemVisibility.requireOrdinary(problemId);
         return flashcardRepository.findBySourceProblemIdAndReflectionField(problemId, source);
     }
 
@@ -132,6 +134,7 @@ public class ProblemFlashcardService {
      */
     public ProblemFlashcardCreationResult createCard(long deckId, long problemId, ReflectionCardSource source,
                                                       String front, String back, boolean allowDuplicate) {
+        ProblemVisibility.requireOrdinary(problemId);
         if (!allowDuplicate) {
             Optional<Flashcard> existing = findExistingLinkedCard(problemId, source);
             if (existing.isPresent()) {
@@ -149,7 +152,7 @@ public class ProblemFlashcardService {
     /** The problem a card was generated from, for display as optional context/metadata — empty if
      *  the card wasn't generated from a problem, or that problem no longer exists. */
     public Optional<Problem> resolveSourceProblem(Flashcard flashcard) {
-        return flashcard.hasSourceProblem() ? problemRepository.findById(flashcard.getSourceProblemId()) : Optional.empty();
+        return flashcard.hasSourceProblem() ? problemRepository.findById(flashcard.getSourceProblemId()).filter(ProblemVisibility::ordinary) : Optional.empty();
     }
 
     public record ProblemFlashcardDraft(Problem sourceProblem, ReflectionCardSource source, String front, String back) {

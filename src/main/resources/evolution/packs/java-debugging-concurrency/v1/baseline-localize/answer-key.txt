@@ -1,0 +1,1 @@
+location=BatchCounter:9;input=[1];expected=1

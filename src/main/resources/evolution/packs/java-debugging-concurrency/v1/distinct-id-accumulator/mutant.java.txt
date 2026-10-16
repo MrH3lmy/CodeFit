@@ -1,0 +1,19 @@
+class Exercise {
+    private final java.util.Set<String> seen = new java.util.HashSet<>();
+    private long sum;
+
+    public boolean add(String id, long amount) {
+        if (amount < 0) return false;
+        seen.add(id);
+        sum += amount;
+        return true;
+    }
+
+    public long total() {
+        return sum;
+    }
+
+    public int size() {
+        return seen.size();
+    }
+}

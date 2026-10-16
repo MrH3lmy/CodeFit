@@ -1,0 +1,3 @@
+stdin: <empty>
+expected stdout: OK
+nonzero exit rejects this finite functional example. The starter may pass: this does not establish thread safety.

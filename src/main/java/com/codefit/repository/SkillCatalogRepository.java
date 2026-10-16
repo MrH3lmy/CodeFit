@@ -197,7 +197,8 @@ public class SkillCatalogRepository {
         return findSkill(connection, ref).orElseThrow(() -> new IllegalArgumentException("Missing published skill definition " + ref));
     }
 
-    private Optional<SkillGraph> findGraph(Connection connection, GraphRef ref) throws SQLException {
+    /** Read the exact graph on a caller-owned catalog validation snapshot. */
+    public Optional<SkillGraph> findGraph(Connection connection, GraphRef ref) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT 1 FROM evolution_skill_graphs WHERE graph_id = ? AND graph_version = ? AND published = 1
                 """)) {

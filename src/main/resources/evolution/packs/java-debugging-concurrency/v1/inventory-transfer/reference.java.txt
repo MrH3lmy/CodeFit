@@ -1,0 +1,35 @@
+class Exercise {
+    private final java.util.Map<String, Integer> live = new java.util.HashMap<>();
+    private final java.util.Set<String> used = new java.util.HashSet<>();
+    private int free, held;
+
+    Exercise(int n) {
+        if (n < 0) throw new IllegalArgumentException();
+        free = n;
+    }
+
+    public synchronized boolean reserve(String id, int n) {
+        if (n <= 0 || n > free || used.contains(id)) return false;
+        used.add(id);
+        live.put(id, n);
+        free -= n;
+        held += n;
+        return true;
+    }
+
+    public synchronized boolean cancel(String id) {
+        Integer n = live.remove(id);
+        if (n == null) return false;
+        free += n;
+        held -= n;
+        return true;
+    }
+
+    public synchronized int free() {
+        return free;
+    }
+
+    public synchronized int held() {
+        return held;
+    }
+}

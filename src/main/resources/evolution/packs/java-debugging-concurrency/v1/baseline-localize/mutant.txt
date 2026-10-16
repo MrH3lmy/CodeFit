@@ -1,0 +1,1 @@
+location=ReportTest:42;input=[];expected=0

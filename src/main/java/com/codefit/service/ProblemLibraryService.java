@@ -63,6 +63,7 @@ public class ProblemLibraryService {
         Map<Long, ProblemProgress> progressByProblemId = indexById(progressRepository.findAll(), ProblemProgress::getProblemId);
 
         return roadmapEntries.stream()
+                .filter(e -> problemsById.get(e.getProblemId()) == null || ProblemVisibility.ordinary(problemsById.get(e.getProblemId())))
                 .map(entry -> {
                     Problem problem = problemsById.get(entry.getProblemId());
                     if (problem == null) {
@@ -88,6 +89,7 @@ public class ProblemLibraryService {
         Map<Long, ProblemProgress> progressByProblemId = indexById(progressRepository.findAll(), ProblemProgress::getProblemId);
 
         return problemRepository.findAll().stream()
+                .filter(ProblemVisibility::ordinary)
                 .map(problem -> ProblemLibraryEntry.of(problem, primaryEntryByProblemId.get(problem.getId()),
                         progressByProblemId.get(problem.getId())))
                 .toList();
@@ -96,7 +98,7 @@ public class ProblemLibraryService {
     /** True the moment the roadmap has at least one problem — a single {@code COUNT(*)} rather than
      *  loading every row just to check for emptiness (#166). */
     public boolean hasAnyProblems() {
-        return problemRepository.countAll() > 0;
+        return problemRepository.countOrdinary() > 0;
     }
 
     private static <T> Map<Long, T> indexById(List<T> rows, java.util.function.ToLongFunction<T> idFunction) {
@@ -105,7 +107,7 @@ public class ProblemLibraryService {
 
     /** Applies every non-null field of {@code filter}; a row must match all of them. */
     public List<ProblemLibraryEntry> applyFilter(List<ProblemLibraryEntry> entries, ProblemLibraryFilter filter) {
-        return entries.stream().filter(entry -> matches(entry, filter)).toList();
+        return entries.stream().filter(e -> ProblemVisibility.ordinary(e.problem())).filter(entry -> matches(entry, filter)).toList();
     }
 
     /**
@@ -134,6 +136,7 @@ public class ProblemLibraryService {
      *  static-method-over-plain-lists convention) so the recommendation rule is unit testable directly
      *  against a hand-built list, without the shared test database's cross-test noise. */
     static Optional<ProblemLibraryEntry> selectNextRecommended(List<ProblemLibraryEntry> blindOrder) {
+        blindOrder = blindOrder.stream().filter(e -> ProblemVisibility.ordinary(e.problem())).toList();
         Optional<ProblemLibraryEntry> untouchedMandatory = blindOrder.stream()
                 .filter(entry -> entry.progress().getState() == ProblemState.NOT_STARTED)
                 .filter(entry -> entry.roadmapEntry() == null || entry.roadmapEntry().isMandatory())
@@ -177,6 +180,7 @@ public class ProblemLibraryService {
      *  {@link #getNextRecommendedProblem(List)}. */
     public List<ProblemLibraryEntry> getRevisitQueue(List<ProblemLibraryEntry> blindOrderEntries) {
         return blindOrderEntries.stream()
+                .filter(e -> ProblemVisibility.ordinary(e.problem()))
                 .filter(entry -> needsRevisit(entry.progress()))
                 .toList();
     }
@@ -196,6 +200,7 @@ public class ProblemLibraryService {
 
     public List<String> getDistinctTopics() {
         return problemRepository.findAll().stream()
+                .filter(ProblemVisibility::ordinary)
                 .map(Problem::getTopic)
                 .distinct()
                 .sorted(String.CASE_INSENSITIVE_ORDER)
@@ -204,6 +209,7 @@ public class ProblemLibraryService {
 
     public List<String> getDistinctPlatforms() {
         return problemRepository.findAll().stream()
+                .filter(ProblemVisibility::ordinary)
                 .map(Problem::getPlatform)
                 .distinct()
                 .sorted(String.CASE_INSENSITIVE_ORDER)

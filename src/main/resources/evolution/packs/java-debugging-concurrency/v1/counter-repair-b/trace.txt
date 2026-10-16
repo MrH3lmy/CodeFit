@@ -1,0 +1,1 @@
+count=0; A.read=0; B.read=0; A.write=1; B.write=1; expected serial total=2; observed=1; volatile does not prevent schedule.

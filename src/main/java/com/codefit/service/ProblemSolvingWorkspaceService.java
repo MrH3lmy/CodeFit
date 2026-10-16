@@ -51,6 +51,7 @@ public class ProblemSolvingWorkspaceService {
 
     /** Everything the workspace screen needs to render, without starting a session as a side effect of merely opening it. */
     public WorkspaceView loadWorkspace(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         Problem problem = problemRepository.findById(problemId)
                 .orElseThrow(() -> new IllegalArgumentException("No problem with id " + problemId + " exists."));
         RoadmapEntry primaryEntry = roadmapEntryRepository.findByProblemId(problemId).stream().findFirst().orElse(null);
@@ -60,33 +61,40 @@ public class ProblemSolvingWorkspaceService {
     }
 
     public ProblemSolvingSession start(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return sessionService.startOrResume(problemId);
     }
 
     public ProblemSolvingSession pause(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return sessionService.pause(problemId);
     }
 
     public ProblemSolvingSession resume(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return sessionService.resume(problemId);
     }
 
     public void reset(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         sessionService.reset(problemId);
     }
 
     /** Passthrough to {@link ProblemProgressService#updateReflection} so the workspace UI only ever talks to this one service. */
     public ProblemProgress updateReflection(long problemId, ProblemReflection reflection) {
+        ProblemVisibility.requireOrdinary(problemId);
         return progressService.updateReflection(problemId, reflection);
     }
 
     /** Called by the UI timer roughly once a second; a no-op if the session is paused. */
     public ProblemSolvingSession tick(long problemId, SolvingPhase phase, int seconds) {
+        ProblemVisibility.requireOrdinary(problemId);
         return sessionService.recordElapsedTime(problemId, phase, seconds);
     }
 
     /** Switches the current phase without adding elapsed time (e.g. correcting an accidental switch). */
     public ProblemSolvingSession switchPhase(long problemId, SolvingPhase phase) {
+        ProblemVisibility.requireOrdinary(problemId);
         return sessionService.recordElapsedTime(problemId, phase, 0);
     }
 
@@ -118,6 +126,7 @@ public class ProblemSolvingWorkspaceService {
      * @return the recorded attempt, or empty for {@code ABANDONED}
      */
     public Optional<ProblemAttempt> finish(long problemId, SessionFinishOutcome outcome, SubmissionResult submissionResult, String notes) {
+        ProblemVisibility.requireOrdinary(problemId);
         // A genuine real-time workspace finish (#183 review fix, round 4): whatever verdict is
         // recorded, submittedAt is this method's own trustworthy observation of when it happened, so
         // it is always FRESH_ATTEMPT - including a genuine accept-after-failures ACX. The one caller
@@ -128,6 +137,7 @@ public class ProblemSolvingWorkspaceService {
 
     private Optional<ProblemAttempt> finish(long problemId, SessionFinishOutcome outcome, SubmissionResult submissionResult,
                                              String notes, CompletionOrigin completionOrigin) {
+        ProblemVisibility.requireOrdinary(problemId);
         if (outcome == null) {
             throw new IllegalArgumentException("A finish outcome is required.");
         }
@@ -209,6 +219,7 @@ public class ProblemSolvingWorkspaceService {
      * trustworthy first-completion evidence.
      */
     public ProblemAttempt markPreviouslySolved(long problemId, String notes) {
+        ProblemVisibility.requireOrdinary(problemId);
         ProblemAttempt attempt = finish(problemId, SessionFinishOutcome.SUBMITTED, SubmissionResult.ACX, notes,
                 CompletionOrigin.PREVIOUSLY_SOLVED)
                 .orElseThrow(() -> new IllegalStateException("Marking previously solved must always record an attempt."));

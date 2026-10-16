@@ -1,0 +1,24 @@
+class Exercise {
+    private final Object[] locks = {new Object(), new Object()};
+    private final int[] funds;
+
+    Exercise(int a, int b) {
+        funds = new int[] {a, b};
+    }
+
+    public boolean move(int from, int to, int n) {
+        if (from < 0 || from > 1 || to < 0 || to > 1 || n < 0) return false;
+        synchronized (locks[from]) {
+            synchronized (locks[to]) {
+                if (funds[from] < n) return false;
+                funds[from] -= n;
+                funds[to] += n + 1;
+                return true;
+            }
+        }
+    }
+
+    public int balance(int i) {
+        return funds[i];
+    }
+}

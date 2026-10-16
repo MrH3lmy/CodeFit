@@ -1,0 +1,1 @@
+A.read=0; B.read=0; A.write=1; B.write=1; final=1

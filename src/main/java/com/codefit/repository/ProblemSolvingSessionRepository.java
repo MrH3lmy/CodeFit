@@ -24,22 +24,30 @@ import java.util.Optional;
 public class ProblemSolvingSessionRepository {
 
     public Optional<ProblemSolvingSession> findByProblemId(long problemId) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return findByProblemId(connection, problemId);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to access existing workspace", e);
+        }
+    }
+
+    public Optional<ProblemSolvingSession> findByProblemId(Connection connection, long problemId)
+            throws SQLException {
         String sql = "SELECT * FROM problem_solving_sessions WHERE problem_id = ?";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, problemId);
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? Optional.of(mapSession(resultSet)) : Optional.empty();
             }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to load problem solving session", exception);
         }
     }
 
     /** Every session left active (started but neither finished nor abandoned) — surfaced on the
      *  dashboard (#147) as "unfinished attempts" separate from the roadmap recommendation. */
     public List<ProblemSolvingSession> findAllActive() {
-        String sql = "SELECT * FROM problem_solving_sessions WHERE active = 1";
+        String sql =
+                "SELECT * FROM problem_solving_sessions WHERE active = 1 AND problem_id IN (SELECT"
+                    + " id FROM problems WHERE platform <> 'CODEFIT_EVOLUTION')";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
@@ -49,16 +57,28 @@ public class ProblemSolvingSessionRepository {
             }
             return sessions;
         } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to load active problem solving sessions", exception);
+            throw new IllegalStateException(
+                    "Unable to load active problem solving sessions", exception);
         }
     }
 
     public ProblemSolvingSession save(ProblemSolvingSession session) {
-        String sql = "INSERT INTO problem_solving_sessions (problem_id, phase, reading_seconds_elapsed, "
-                + "thinking_seconds_elapsed, coding_seconds_elapsed, debugging_seconds_elapsed, notes, active, paused) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return save(connection, session);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to access existing workspace", e);
+        }
+    }
+
+    public ProblemSolvingSession save(Connection connection, ProblemSolvingSession session)
+            throws SQLException {
+        String sql =
+                "INSERT INTO problem_solving_sessions (problem_id, phase, reading_seconds_elapsed,"
+                    + " thinking_seconds_elapsed, coding_seconds_elapsed,"
+                    + " debugging_seconds_elapsed, notes, active, paused) VALUES (?, ?, ?, ?, ?, ?,"
+                    + " ?, ?, ?)";
+        try (PreparedStatement statement =
+                connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bindInsertFields(statement, session);
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -66,9 +86,7 @@ public class ProblemSolvingSessionRepository {
                     session.setId(keys.getLong(1));
                 }
             }
-            return findByProblemId(session.getProblemId()).orElseThrow();
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to save problem solving session", exception);
+            return findByProblemId(connection, session.getProblemId()).orElseThrow();
         }
     }
 

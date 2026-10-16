@@ -1,0 +1,2 @@
+# Published resource digests are defined over UTF-8 bytes with LF line endings.
+src/main/resources/evolution/packs/** text eol=lf

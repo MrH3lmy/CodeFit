@@ -1,0 +1,1 @@
+Lifecycle: reserve(x,4), cancel(x), delayed reserve(x,4). The last operation must be rejected even though x is no longer live.

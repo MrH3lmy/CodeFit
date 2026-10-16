@@ -1,0 +1,90 @@
+class Exercise {
+    private final java.util.Map<String, Integer> orders = new java.util.HashMap<>();
+    private int free;
+
+    Exercise(int n) {
+        free = n;
+    }
+
+    public boolean reserve(String id, int n) {
+        if (n <= 0 || n > free) return false;
+        orders.put(id, n);
+        free -= n;
+        return true;
+    }
+
+    public boolean cancel(String id) {
+        Integer n = orders.get(id);
+        if (n == null) return false;
+        free += n;
+        return true;
+    }
+
+    public int remaining() {
+        return free;
+    }
+}
+
+public class Main {
+    static void check(boolean value) {
+        if (!value) throw new AssertionError("Contract violated");
+    }
+
+    static void parallel(Runnable a, Runnable b) throws Exception {
+        var failure = new java.util.concurrent.atomic.AtomicReference<Throwable>();
+        var gate = new java.util.concurrent.CountDownLatch(1);
+        Thread left =
+                new Thread(
+                        () -> {
+                            try {
+                                gate.await();
+                                a.run();
+                            } catch (Throwable t) {
+                                failure.set(t);
+                            }
+                        });
+        Thread right =
+                new Thread(
+                        () -> {
+                            try {
+                                gate.await();
+                                b.run();
+                            } catch (Throwable t) {
+                                failure.set(t);
+                            }
+                        });
+        left.setDaemon(true);
+        right.setDaemon(true);
+        left.start();
+        right.start();
+        gate.countDown();
+        left.join(3000);
+        right.join(3000);
+        if (left.isAlive() || right.isAlive()) throw new AssertionError("Observed nontermination");
+        if (failure.get() != null) throw new AssertionError("Worker failed", failure.get());
+    }
+
+    public static void main(String[] args) throws Exception {
+        String mode =
+                new String(System.in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
+                        .strip();
+        if (mode.equals("concurrency")) {
+            Exercise e = new Exercise(7);
+            parallel(() -> e.reserve("same", 4), () -> e.reserve("same", 4));
+            check(e.remaining() == 3);
+            parallel(() -> e.cancel("same"), () -> e.cancel("same"));
+            check(e.remaining() == 7);
+        } else {
+            Exercise e = new Exercise(7);
+            check(e.reserve("a", 3));
+            check(!e.reserve("a", 2));
+            check(!e.reserve("b", 5));
+            check(!e.reserve("zero", 0));
+            check(e.remaining() == 4);
+            check(e.cancel("a"));
+            check(!e.cancel("a"));
+            check(e.remaining() == 7);
+        }
+        System.out.print("OK\n");
+    }
+}

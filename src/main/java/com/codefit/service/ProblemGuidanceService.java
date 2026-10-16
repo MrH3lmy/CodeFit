@@ -38,19 +38,23 @@ public class ProblemGuidanceService {
 
     /** Returns the learner override when one exists, otherwise the original authored guidance. */
     public Optional<ProblemGuidance> getGuidance(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return guidanceRepository.findByProblemId(problemId);
     }
 
     /** Loads one exact provenance record, without applying learner-override precedence. */
     public Optional<ProblemGuidance> getGuidance(long problemId, GuidanceSource source) {
+        ProblemVisibility.requireOrdinary(problemId);
         return guidanceRepository.findByProblemIdAndSource(problemId, source);
     }
 
     public List<String> getPrerequisites(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return getGuidance(problemId).map(g -> AcceptedAnswerCodec.decode(g.getPrerequisitesEncoded())).orElse(List.of());
     }
 
     public List<String> getReferenceLinks(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return getGuidance(problemId).map(g -> AcceptedAnswerCodec.decode(g.getReferenceLinksEncoded())).orElse(List.of());
     }
 
@@ -64,6 +68,7 @@ public class ProblemGuidanceService {
                                         String approachText, String explanationText, String pseudocodeText,
                                         String complexityNotes, String commonMistakesText, List<String> prerequisites,
                                         List<String> referenceLinks) {
+        ProblemVisibility.requireOrdinary(problemId);
         if (source == GuidanceSource.LEARNER) {
             return saveLearnerGuidance(problemId, clarifyText, observationText, approachText, explanationText,
                     pseudocodeText, complexityNotes, commonMistakesText, prerequisites, referenceLinks);
@@ -151,6 +156,7 @@ public class ProblemGuidanceService {
     /** The highest hint level opened so far in the current attempt, or empty if none has been opened
      *  (or there's no active/resumable session at all yet). */
     public Optional<HintLevel> getOpenedLevel(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return sessionRepository.findByProblemId(problemId).map(ProblemSolvingSession::getHighestHintLevelOpened);
     }
 
@@ -161,6 +167,7 @@ public class ProblemGuidanceService {
      * already at {@link HintLevel#EXPLANATION} is a harmless no-op that just re-reveals it.
      */
     public HintReveal openNextHintLevel(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         ProblemSolvingSession session = sessionRepository.findByProblemId(problemId)
                 .orElseGet(() -> sessionRepository.save(ProblemSolvingSession.start(problemId)));
         HintLevel current = session.getHighestHintLevelOpened();
@@ -175,6 +182,7 @@ public class ProblemGuidanceService {
     /** Reveals a specific level's content directly (e.g. re-displaying an already-opened level)
      *  without changing what's recorded as opened. */
     public HintReveal revealLevel(long problemId, HintLevel level) {
+        ProblemVisibility.requireOrdinary(problemId);
         String text = getGuidance(problemId).map(guidance -> guidance.textForLevel(level)).orElse(null);
         boolean hasContent = text != null && !text.isBlank();
         return new HintReveal(level, hasContent ? text : null, hasContent);

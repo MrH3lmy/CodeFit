@@ -184,6 +184,7 @@ public final class NavigationService {
 
     /** Opens the structured solving workspace (#145) for one problem. */
     public static void showSolvingWorkspace(long problemId) {
+        com.codefit.service.ProblemVisibility.requireOrdinary(problemId);
         pendingWorkspaceProblemId = problemId;
         navigate(Route.SOLVING_WORKSPACE);
     }

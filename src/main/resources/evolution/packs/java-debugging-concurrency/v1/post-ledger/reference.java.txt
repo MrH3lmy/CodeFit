@@ -1,0 +1,18 @@
+class Exercise {
+    private record Entry(int revision, long amount) {}
+
+    private final java.util.Map<String, Entry> entries = new java.util.HashMap<>();
+    private long sum;
+
+    public synchronized boolean apply(String id, int revision, long amount) {
+        Entry old = entries.get(id);
+        if (revision <= 0 || (old != null && revision <= old.revision())) return false;
+        sum += amount - (old == null ? 0 : old.amount());
+        entries.put(id, new Entry(revision, amount));
+        return true;
+    }
+
+    public synchronized long total() {
+        return sum;
+    }
+}

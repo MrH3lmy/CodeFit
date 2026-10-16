@@ -1,0 +1,1 @@
+A owns lock0, wants lock1; B owns lock1, wants lock0 => cycle. With ascending lock indices both start at lock0, so no lock1->lock0 edge.

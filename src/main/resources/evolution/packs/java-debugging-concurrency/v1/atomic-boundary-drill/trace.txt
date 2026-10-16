@@ -1,0 +1,1 @@
+limit=1, active=0; A.check=true; B.check=true; A.increment=1; B.increment=2 violates active<=limit.

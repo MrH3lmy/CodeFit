@@ -1,0 +1,36 @@
+class Exercise {
+    private final java.util.ArrayDeque<String> q = new java.util.ArrayDeque<>();
+    private final java.util.Set<String> all = new java.util.HashSet<>(),
+            flight = new java.util.HashSet<>(),
+            complete = new java.util.HashSet<>();
+
+    public synchronized boolean enqueue(String id) {
+        if (!all.add(id)) return false;
+        q.add(id);
+        return true;
+    }
+
+    public synchronized String claim() {
+        String id = q.poll();
+        if (id != null) flight.add(id);
+        return id;
+    }
+
+    public synchronized boolean ack(String id) {
+        if (!flight.remove(id)) return false;
+        complete.add(id);
+        return true;
+    }
+
+    public synchronized int pending() {
+        return q.size();
+    }
+
+    public synchronized int inFlight() {
+        return flight.size();
+    }
+
+    public synchronized int done() {
+        return complete.size();
+    }
+}

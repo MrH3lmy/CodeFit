@@ -1,0 +1,32 @@
+class Exercise {
+    private final java.util.Map<String, Integer> live = new java.util.HashMap<>();
+    private int free, held;
+
+    Exercise(int n) {
+        free = n;
+    }
+
+    public synchronized boolean reserve(String id, int n) {
+        if (n <= 0 || n > free || live.containsKey(id)) return false;
+        live.put(id, n);
+        free -= n;
+        held += n;
+        return true;
+    }
+
+    public synchronized boolean cancel(String id) {
+        Integer n = live.remove(id);
+        if (n == null) return false;
+        free += n;
+        held -= n;
+        return true;
+    }
+
+    public int free() {
+        return free;
+    }
+
+    public int held() {
+        return held;
+    }
+}

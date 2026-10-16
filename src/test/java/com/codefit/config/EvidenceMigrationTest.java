@@ -25,6 +25,7 @@ class EvidenceMigrationTest {
         DatabaseConfig.initialize();
         try (var c = DatabaseConfig.getConnection();
                 var s = c.createStatement()) {
+            com.codefit.testsupport.QuestCatalogDowngrade.remove(c);
             s.execute("PRAGMA foreign_keys=OFF");
             var tables = new ArrayList<String>();
             try (var r =
@@ -64,7 +65,7 @@ class EvidenceMigrationTest {
         assertEquals(before, rows());
         try (var c = DatabaseConfig.getConnection();
                 var s = c.createStatement()) {
-            assertEquals(14, scalar(s, "SELECT MAX(version) FROM schema_migrations"));
+            assertEquals(15, scalar(s, "SELECT MAX(version) FROM schema_migrations"));
             assertEquals(1, scalar(s, "SELECT COUNT(*) FROM schema_migrations WHERE version=14"));
             assertEquals(3, scalar(s, "SELECT COUNT(*) FROM evolution_evidence_mapping_rules"));
             assertEquals(0, scalar(s, "SELECT COUNT(*) FROM evolution_evidence_observations"));
@@ -86,6 +87,7 @@ class EvidenceMigrationTest {
         var before = rows();
         try (var c = DatabaseConfig.getConnection();
                 var s = c.createStatement()) {
+            s.execute("PRAGMA foreign_keys=ON");
             s.execute("CREATE TABLE evolution_evidence_mapping_rules(unexpected TEXT)");
             assertThrows(SQLException.class, () -> SchemaMigrator.migrate(c));
             assertEquals(13, scalar(s, "SELECT MAX(version) FROM schema_migrations"));
@@ -116,7 +118,9 @@ class EvidenceMigrationTest {
             try (var r =
                     s.executeQuery(
                             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE"
-                                + " 'evolution_evidence_%' AND name NOT"
+                                + " 'evolution_evidence_%' AND name NOT LIKE 'evolution_challenge_%'"
+                                + " AND name NOT LIKE 'evolution_quest_%'"
+                                + " AND name <> 'evolution_assessment_reservations' AND name NOT"
                                 + " IN('schema_migrations','sqlite_sequence') ORDER BY name")) {
                 while (r.next()) tables.add(r.getString(1));
             }

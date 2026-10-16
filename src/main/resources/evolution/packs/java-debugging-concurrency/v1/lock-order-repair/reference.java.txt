@@ -1,0 +1,28 @@
+class Exercise {
+    private final Object[] locks = {new Object(), new Object()};
+    private final int[] funds;
+
+    Exercise(int a, int b) {
+        if (a < 0 || b < 0) throw new IllegalArgumentException();
+        funds = new int[] {a, b};
+    }
+
+    public boolean move(int from, int to, int n) {
+        if (from < 0 || from > 1 || to < 0 || to > 1 || n < 0) return false;
+        int lo = Math.min(from, to), hi = Math.max(from, to);
+        synchronized (locks[lo]) {
+            synchronized (locks[hi]) {
+                if (funds[from] < n) return false;
+                funds[from] -= n;
+                funds[to] += n;
+                return true;
+            }
+        }
+    }
+
+    public int balance(int i) {
+        synchronized (locks[i]) {
+            return funds[i];
+        }
+    }
+}

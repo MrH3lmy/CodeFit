@@ -42,15 +42,45 @@ public class ProblemService {
     }
 
     public List<Problem> getAllProblems() {
-        return problemRepository.findAll();
+        return problemRepository.findAll().stream().filter(ProblemVisibility::ordinary).toList();
     }
 
     public List<Problem> getProblemsByTopic(String topic) {
-        return problemRepository.findByTopic(topic);
+        return problemRepository.findByTopic(topic).stream()
+                .filter(ProblemVisibility::ordinary)
+                .toList();
     }
 
     public Optional<Problem> findById(long id) {
-        return problemRepository.findById(id);
+        return problemRepository.findById(id).filter(ProblemVisibility::ordinary);
+    }
+
+    /** Catalog-only binding, without roadmap membership or learner progress mutation. */
+    public Problem bindEvolutionProblem(
+            Connection connection, com.codefit.evolution.quest.CatalogRef ref) throws SQLException {
+        String code = com.codefit.repository.QuestCatalogRepository.bindingKey(ref);
+        var existing =
+                problemRepository.findByPlatformAndExternalCode(
+                        connection, "CODEFIT_EVOLUTION", code);
+        if (existing.isPresent()) {
+            Problem p = existing.get();
+            if (!p.getTitle().equals("Evolution challenge")
+                    || p.getUrl() != null
+                    || !p.getTopic().equals("Evolution")
+                    || p.getLearningResources() != null)
+                throw new IllegalArgumentException("Conflicting reserved problem header");
+            return p;
+        }
+        return problemRepository.save(
+                connection,
+                new Problem(
+                        code,
+                        "CODEFIT_EVOLUTION",
+                        "Evolution challenge",
+                        null,
+                        "Evolution",
+                        null,
+                        null));
     }
 
     /**
@@ -70,6 +100,8 @@ public class ProblemService {
     /** {@link Connection}-scoped variant of {@link #findOrCreateProblem} that reports what happened, for the importer (#143). */
     public ProblemUpsertResult upsertProblem(Connection connection, String platform, String externalCode, String title, String url,
                                              String topic, Integer qualityRating, List<String> learningResources) throws SQLException {
+        if (platform != null && platform.strip().equalsIgnoreCase("CODEFIT_EVOLUTION"))
+            throw new IllegalArgumentException("Reserved catalog platform");
         if (platform == null || platform.isBlank()) {
             throw new IllegalArgumentException("Problem platform is required.");
         }
@@ -130,6 +162,12 @@ public class ProblemService {
             throw new IllegalArgumentException("No problem with id " + problemId + " exists.");
         }
 
+        if (problemRepository
+                .findById(connection, problemId)
+                .orElseThrow()
+                .getPlatform()
+                .equals("CODEFIT_EVOLUTION"))
+            throw new IllegalArgumentException("Evolution challenges are outside the workbook");
         Optional<RoadmapEntry> existingForProblem = roadmapEntryRepository.findByProblemIdAndStage(connection, problemId, stage);
         if (existingForProblem.isPresent()) {
             RoadmapEntry entry = existingForProblem.get();

@@ -15,6 +15,7 @@ import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.VBox;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +64,8 @@ public class WeeklyAssessmentController extends BaseController {
     private AssessmentGradingService.GradingResult latestGrading;
     private boolean answerRevealed;
     private long itemShownAtMillis;
+    private Instant presentedAt;
+    private boolean hintUsed;
 
     @FXML
     public void initialize() {
@@ -138,6 +141,7 @@ public class WeeklyAssessmentController extends BaseController {
         if (current == null || answerRevealed || !current.variant().hasHint()) {
             return;
         }
+        hintUsed = true;
         hintLabel.setText("Hint: " + current.variant().hint());
         setVisible(hintBox, true);
         showHintButton.setDisable(true);
@@ -163,7 +167,9 @@ public class WeeklyAssessmentController extends BaseController {
     private void recordAttempt(boolean correct) {
         Integer responseTimeMs = itemShownAtMillis <= 0 ? null
                 : (int) Math.min(Integer.MAX_VALUE, System.currentTimeMillis() - itemShownAtMillis);
-        assessmentAttemptService.recordAttempt(current.item(), current.variant(), correct, getAttemptText(), responseTimeMs, runId);
+        assessmentAttemptService.recordGradedAttempt(current.item(), current.variant(), correct,
+                getAttemptText(), responseTimeMs, runId, latestGrading, runId + ":" + currentIndex,
+                presentedAt, hintUsed, latestGrading.needsSelfRating());
         totalAnswered++;
         if (correct) {
             correctCount++;
@@ -191,6 +197,8 @@ public class WeeklyAssessmentController extends BaseController {
         answerRevealed = false;
         latestGrading = null;
         itemShownAtMillis = System.currentTimeMillis();
+        presentedAt = Instant.now();
+        hintUsed = false;
 
         AssessmentVariant variant = current.variant();
         queueLabel.setText((currentIndex + 1) + " / " + queue.size());

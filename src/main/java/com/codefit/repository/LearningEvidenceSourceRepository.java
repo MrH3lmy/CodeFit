@@ -42,6 +42,45 @@ public final class LearningEvidenceSourceRepository {
         }
     }
 
+    /**
+     * Rehearsal lookup on an estimator snapshot, restricted to explicitly mapped source contexts.
+     */
+    public List<SourceObservation> batchForSelectors(
+            Connection c, SourceType type, long after, int limit, Set<String> selectors)
+            throws SQLException {
+        if (c.getAutoCommit() || after < 0 || limit < 1 || limit > 256 || selectors.size() > 128)
+            throw new IllegalArgumentException("Bounded caller-owned source snapshot required");
+        if (selectors.isEmpty()) return List.of();
+        String column =
+                switch (type) {
+                    case REVIEW -> "f.skill_category";
+                    case ASSESSMENT_ATTEMPT -> "a.skill_category";
+                    case PROBLEM_ATTEMPT -> "p.topic";
+                    default ->
+                            throw new IllegalArgumentException(
+                                    "Challenge sources belong to evaluator");
+                };
+        var ordered = selectors.stream().sorted().toList();
+        try (var s =
+                c.prepareStatement(
+                        query(type)
+                                + " WHERE a.id>? AND "
+                                + column
+                                + " IN ("
+                                + String.join(",", Collections.nCopies(ordered.size(), "?"))
+                                + ") ORDER BY a.id LIMIT ?")) {
+            s.setLong(1, after);
+            int position = 2;
+            for (String selector : ordered) s.setString(position++, selector);
+            s.setInt(position, limit);
+            var result = new ArrayList<SourceObservation>();
+            try (var r = s.executeQuery()) {
+                while (r.next()) result.add(read(type, r));
+            }
+            return List.copyOf(result);
+        }
+    }
+
     private static String query(SourceType type) {
         return switch (type) {
             case PROBLEM_ATTEMPT ->
@@ -55,9 +94,12 @@ public final class LearningEvidenceSourceRepository {
                         + " AS selector FROM review_history a JOIN flashcards f ON"
                         + " f.id=a.flashcard_id";
             case ASSESSMENT_ATTEMPT ->
-                    "SELECT a.id,a.assessment_item_id,a.correct,a.attempted_at,a.skill_category AS"
-                        + " selector FROM assessment_attempts a JOIN assessment_items i ON"
-                        + " i.id=a.assessment_item_id";
+                    "SELECT"
+                        + " a.id,a.assessment_item_id,a.correct,a.attempted_at,f.grade_kind,f.validator,f.submitted_at"
+                        + " AS fact_time,f.hint_used AS fact_hint,f.solution_revealed,f.exposure AS"
+                        + " fact_exposure,a.skill_category AS selector FROM assessment_attempts a"
+                        + " JOIN assessment_items i ON i.id=a.assessment_item_id LEFT JOIN"
+                        + " assessment_attempt_facts f ON f.attempt_id=a.id";
             default -> throw new IllegalArgumentException("No historical challenge adapter");
         };
     }
@@ -85,11 +127,22 @@ public final class LearningEvidenceSourceRepository {
                                     r.getInt("boss_battle") == 1,
                                     r.getString("reviewed_at"));
                     case ASSESSMENT_ATTEMPT ->
-                            LegacyEvidenceClassifier.assessment(
-                                    id,
-                                    r.getLong("assessment_item_id"),
-                                    r.getInt("correct") == 1,
-                                    r.getString("attempted_at"));
+                            r.getString("grade_kind") == null
+                                    ? LegacyEvidenceClassifier.assessment(
+                                            id,
+                                            r.getLong("assessment_item_id"),
+                                            r.getInt("correct") == 1,
+                                            r.getString("attempted_at"))
+                                    : LegacyEvidenceClassifier.prospectiveAssessment(
+                                            id,
+                                            r.getLong("assessment_item_id"),
+                                            r.getInt("correct") == 1,
+                                            r.getString("fact_time"),
+                                            r.getString("grade_kind"),
+                                            r.getString("validator"),
+                                            r.getInt("fact_hint") != 0,
+                                            r.getInt("solution_revealed") != 0,
+                                            r.getString("fact_exposure"));
                     default -> throw new IllegalArgumentException();
                 };
         String selector = Objects.toString(r.getString("selector"), "");

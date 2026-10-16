@@ -58,7 +58,10 @@ public final class DurableEvaluationRepository {
             com.codefit.evolution.quest.CatalogRef quest,
             com.codefit.evolution.quest.CatalogRef challenge,
             com.codefit.evolution.quest.QuestTypes.Cohort cohort,
-            List<CheckSummary> checks) {
+            List<CheckSummary> checks,
+            com.codefit.evolution.quest.ChallengePresentation presentation,
+            com.codefit.evolution.quest.ChallengePresentation.ExposureContext exposureAtSubmission,
+            int priorFamilySubmissions) {
         public EvaluationInput {
             checks = List.copyOf(checks);
         }
@@ -67,6 +70,26 @@ public final class DurableEvaluationRepository {
     public Optional<EvaluationInput> evaluationInput(String command) {
         SubmissionRequest.identity(command);
         return transactions.transaction(c -> evaluationInput(c, command));
+    }
+
+    /** Metadata-only rehearsal history includes interrupted commands; never reads editable drafts. */
+    public record SubmissionExposure(long id, String command, String presentationId,
+            com.codefit.evolution.quest.CatalogRef challenge, java.time.Instant submittedAt) {}
+
+    public List<SubmissionExposure> submissionExposurePage(Connection c, long afterId, int limit)
+            throws SQLException {
+        if (c.getAutoCommit() || afterId < 0 || limit < 1 || limit > 128)
+            throw new IllegalArgumentException("Bounded caller-owned read snapshot required");
+        var result = new ArrayList<SubmissionExposure>();
+        try (var s = c.prepareStatement("SELECT * FROM evolution_submissions WHERE id>? ORDER BY id LIMIT ?")) {
+            s.setLong(1, afterId); s.setInt(2, limit);
+            try (var r = s.executeQuery()) { while (r.next()) {
+                var submission = read(r); var snapshot = submission.snapshot();
+                result.add(new SubmissionExposure(submission.id(), snapshot.request().id(),
+                        snapshot.presentation().id(), snapshot.challenge().ref(), snapshot.submittedAt()));
+            }}
+        }
+        return List.copyOf(result);
     }
 
     /**
@@ -114,7 +137,10 @@ public final class DurableEvaluationRepository {
                         s.snapshot().presentation().quest(),
                         spec.ref(),
                         spec.cohort(),
-                        checks));
+                        checks,
+                        s.snapshot().presentation(),
+                        s.snapshot().exposureAtSubmission(),
+                        s.snapshot().priorFamilySubmissions()));
     }
 
     private final QuestCatalogRepository transactions = new QuestCatalogRepository();

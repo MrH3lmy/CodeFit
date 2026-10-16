@@ -188,6 +188,13 @@ class EvolutionPeerPrivacyTest {
             engine.invalidate(request.id(), "private-correction-" + challenge, false);
             engine.invalidate(request.id(), "private-withdrawal-" + challenge, true);
         }
+        // Estimate revisions, baseline preferences and resets are private derived state too.
+        var estimates = new com.codefit.evolution.mastery.MasteryEstimateService();
+        estimates.pilot(NOW);
+        new com.codefit.evolution.mastery.EstimateRevisionRepository().reset(
+                com.codefit.config.JavaDebuggingSkillSeed.GRAPH, "private-estimate-reset", CLOCK);
+        new com.codefit.evolution.mastery.BaselineDiagnosticService().skipAll("private-skip-baseline");
+        estimates.pilot(NOW);
         assertEquals(ordinary, attempts.findSubmittedBetweenUtc(start, end));
         assertEquals(fresh, attempts.countFreshFirstCompletionsBetweenUtc(start, end));
         assertEquals(ambiguous, attempts.hasUnknownSubmittedBetweenUtc(start, end));
@@ -214,7 +221,9 @@ class EvolutionPeerPrivacyTest {
                             "counter-repair",
                             "LOCAL_EVALUATION",
                             "evolution_evidence",
-                            "artifact_sha")) assertFalse(bytes.contains(secret), secret);
+                            "artifact_sha",
+                            "ordinal-v1", "private-estimate-reset", "private-skip-baseline",
+                            "evolution_estimate", "NO_DIRECT_EVIDENCE")) assertFalse(bytes.contains(secret), secret);
         }
         var prepAfter = publication.publishPreparationSnapshot(contact.id(), identity, 1, profile);
         assertEquals(prepBefore, prepAfter);

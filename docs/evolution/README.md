@@ -9,8 +9,9 @@ versioned definitions and prerequisite graphs for #210. [EV-03 evidence](skill-e
 provenance-aware observations, exact mappings and bounded local ingestion for #211.
 [EV-05 catalog](quest-catalog.md) adds immutable offline quests/challenges and durable exposure for #213.
 [EV-06 evaluation](challenge-evaluation.md) adds frozen submissions, bounded local checks, durable
-source/evidence completion and recovery for #214. Estimate/adaptation policies
-and example learner results are future work. The original audit describes the pre-Evolution baseline;
+source/evidence completion and recovery for #214. [EV-04 baseline and mastery estimates](mastery-estimation.md)
+now provide conservative, versioned per-skill interpretations for #212. Adaptation policies and example
+learner results are future work. The original audit describes the pre-Evolution baseline;
 implementation status and verification are recorded per slice. This is not evidence of learning gains.
 
 CodeFit should help learners solve unfamiliar real problems better. Activity, XP, card familiarity,
@@ -28,6 +29,7 @@ and a passed local test are useful signals with different meanings; none alone p
 | #210 implemented catalog, API, schema, tests and limits | [Versioned skill graph](skill-graph.md) |
 | #211 evidence, source provenance, schema, backfill, #212/#214 APIs and limits | [Skill evidence](skill-evidence.md) |
 | #213 quest/challenge catalog, original pack, hold-out isolation, exposure and #214/#216 handoff | [Quest catalog](quest-catalog.md) |
+| #212 ordinal policy, coherent inputs, revisions/epochs, baseline and prospective assessment facts | [Mastery estimation](mastery-estimation.md), [verification](mastery-estimation-verification.md) |
 | #214 staged evaluation, checks, evidence, recovery, privacy and limits | [Challenge evaluation](challenge-evaluation.md), [verification](challenge-evaluation-verification.md) |
 
 Read the audit before the ADR and contracts. Numerical thresholds in the lifecycle are a deliberately

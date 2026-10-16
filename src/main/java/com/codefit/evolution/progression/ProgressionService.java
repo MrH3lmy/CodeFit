@@ -9,7 +9,9 @@ import com.codefit.evolution.evaluation.EvaluationTypes;
 import com.codefit.evolution.evaluation.EvaluationCodec;
 import com.codefit.evolution.evidence.EvidenceCodec;
 import com.codefit.evolution.evidence.EvidenceTypes.Availability;
+import com.codefit.evolution.GraphRef;
 import com.codefit.evolution.mastery.EstimateRevisionRepository;
+import com.codefit.evolution.mastery.MasteryEstimateService;
 import com.codefit.evolution.mastery.MasteryEstimate;
 import com.codefit.evolution.quest.CatalogCodec;
 import com.codefit.evolution.quest.EvolutionQuest;
@@ -120,62 +122,104 @@ public final class ProgressionService {
         }
     }
 
-    /** Mastery is only the eligibility proof; reward amounts are fixed by this independent policy. */
-    public void recordEstimate(EstimateRevisionRepository.Revision revision) {
-        Objects.requireNonNull(revision);
-        if (!eligibleMilestone(revision.estimate())) return;
-        runTransaction(
-                c -> {
+    /**
+     * Current-state reconciliation for the Player System only. It takes and publishes its own
+     * fenced snapshot after the adaptation decision has committed; historical revisions are never
+     * reward inputs.
+     */
+    public void reconcileCurrentMilestones(GraphRef graph, java.time.Instant asOf) {
+        Objects.requireNonNull(graph);
+        Objects.requireNonNull(asOf);
+        if (!graph.equals(com.codefit.config.JavaDebuggingSkillSeed.GRAPH)) return;
+        var mastery = new MasteryEstimateService();
+        var estimateRevisions = new EstimateRevisionRepository();
+        for (int retry = 0; retry < 3; retry++) {
+            try (var c = DatabaseConfig.getConnection()) {
+                long before = version(c);
+                c.setAutoCommit(false);
+                MasteryEstimateService.CapturedPilot captured;
+                try {
+                    captured = mastery.capturePilot(c, asOf);
+                    c.commit();
+                } catch (SQLException | RuntimeException failure) {
+                    c.rollback();
+                    throw failure;
+                }
+                c.setAutoCommit(true);
+                var prepared = mastery.prepare(captured);
+                c.setAutoCommit(false);
+                try {
                     lock(c);
-                    var persisted = persistedEstimate(c, revision);
-                    if (persisted.isEmpty()) return null;
-                    MasteryEstimate estimate = persisted.get();
-                    if (!eligibleMilestone(estimate)) return null;
-                    var proof = postUpgradeIndependentProof(c, estimate);
-                    if (proof.isEmpty()) return null;
-                    var skill = estimate.skill();
-                    String subject = skill.skillId();
-                    String source =
-                            "estimate:"
-                                    + estimate.graph().graphId()
-                                    + ":v"
-                                    + estimate.graph().graphVersion()
-                                    + ":"
-                                    + skill.skillId()
-                                    + ":v"
-                                    + skill.definitionVersion()
-                                    + ":revision:"
-                                    + revision.id()
-                                    + ":evidence:"
-                                    + proof.get();
-                    if (estimate.band().ordinal() >= Band.INDEPENDENT.ordinal())
-                        insertAndAward(
-                                c,
-                                "independent:"
-                                        + skill.skillId()
-                                        + ":v"
-                                        + skill.definitionVersion(),
-                                RewardType.INDEPENDENT_MILESTONE,
-                                subject,
-                                skill.definitionVersion(),
-                                source,
-                                "First current INDEPENDENT support for this skill definition",
-                                ProgressionPolicy.INDEPENDENT_MILESTONE_XP);
-                    if (estimate.band() == Band.RETENTION_SUPPORTED)
-                        insertAndAward(
-                                c,
-                                "retention:"
-                                        + skill.skillId()
-                                        + ":v"
-                                        + skill.definitionVersion(),
-                                RewardType.RETENTION_MILESTONE,
-                                subject,
-                                skill.definitionVersion(),
-                                source,
-                                "First current RETENTION_SUPPORTED support for this skill definition",
-                                ProgressionPolicy.RETENTION_MILESTONE_XP);
-                    return null;
-                });
+                    if (version(c) != before) {
+                        c.rollback();
+                        continue;
+                    }
+                    for (var item : prepared) {
+                        var revision = mastery.publish(c, item);
+                        recordEstimate(c, revision, item.estimate());
+                    }
+                    c.commit();
+                    return;
+                } catch (SQLException | RuntimeException failure) {
+                    c.rollback();
+                    throw failure;
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("Unable to reconcile current mastery milestones", e);
+            }
+        }
+        throw new IllegalStateException("Evidence changed during milestone reconciliation; retry");
+    }
+
+    private static void recordEstimate(
+            Connection c, EstimateRevisionRepository.Revision revision, MasteryEstimate estimate)
+            throws SQLException {
+        if (!eligibleMilestone(estimate)) return;
+        var persisted = persistedEstimate(c, revision);
+        if (persisted.isEmpty() || !eligibleMilestone(persisted.get())) return;
+        estimate = persisted.get();
+        var skill = estimate.skill();
+        var proof = postUpgradeIndependentProof(c, estimate);
+        if (proof.isEmpty()) return;
+        String source =
+                "estimate:"
+                        + estimate.graph().graphId()
+                        + ":v"
+                        + estimate.graph().graphVersion()
+                        + ":"
+                        + skill.skillId()
+                        + ":v"
+                        + skill.definitionVersion()
+                        + ":revision:"
+                        + revision.id()
+                        + ":evidence:"
+                        + proof.get();
+        if (estimate.band().ordinal() >= Band.INDEPENDENT.ordinal()
+                && !preexistingMilestone(
+                        c, RewardType.INDEPENDENT_MILESTONE, skill.skillId(),
+                        skill.definitionVersion()))
+            insertAndAward(
+                    c,
+                    "independent:" + skill.skillId() + ":v" + skill.definitionVersion(),
+                    RewardType.INDEPENDENT_MILESTONE,
+                    skill.skillId(),
+                    skill.definitionVersion(),
+                    source,
+                    "First current INDEPENDENT support for this skill definition",
+                    ProgressionPolicy.INDEPENDENT_MILESTONE_XP);
+        if (estimate.band() == Band.RETENTION_SUPPORTED
+                && !preexistingMilestone(
+                        c, RewardType.RETENTION_MILESTONE, skill.skillId(),
+                        skill.definitionVersion()))
+            insertAndAward(
+                    c,
+                    "retention:" + skill.skillId() + ":v" + skill.definitionVersion(),
+                    RewardType.RETENTION_MILESTONE,
+                    skill.skillId(),
+                    skill.definitionVersion(),
+                    source,
+                    "First current RETENTION_SUPPORTED support for this skill definition",
+                    ProgressionPolicy.RETENTION_MILESTONE_XP);
     }
 
     private static Optional<MasteryEstimate> persistedEstimate(
@@ -201,6 +245,30 @@ public final class ProgressionService {
                 return Optional.of(
                         new com.codefit.evolution.mastery.OrdinalMasteryPolicy().estimate(input));
             }
+        }
+    }
+
+    private static boolean preexistingMilestone(
+            Connection c, RewardType type, String skill, int definitionVersion)
+            throws SQLException {
+        try (var s =
+                c.prepareStatement(
+                        "SELECT 1 FROM evolution_reward_milestone_baseline"
+                                + " WHERE reward_type=? AND subject_id=?"
+                                + " AND definition_version=?")) {
+            s.setString(1, type.name());
+            s.setString(2, skill);
+            s.setInt(3, definitionVersion);
+            try (var r = s.executeQuery()) {
+                return r.next();
+            }
+        }
+    }
+
+    private static long version(Connection c) throws SQLException {
+        try (var s = c.createStatement(); var r = s.executeQuery("PRAGMA data_version")) {
+            if (!r.next()) throw new SQLException("Missing data_version");
+            return r.getLong(1);
         }
     }
 

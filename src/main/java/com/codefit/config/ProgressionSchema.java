@@ -1,5 +1,7 @@
 package com.codefit.config;
 
+import com.codefit.evolution.mastery.*;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -80,4 +82,94 @@ final class ProgressionSchema {
                     """);
         }
     }
+
+    /** Freeze only mastery milestones already observable before the prospective reward boundary. */
+    static void preserveHistoricalMilestones(Connection c) throws SQLException {
+        try (Statement s = c.createStatement()) {
+            s.execute(
+                    """
+                    CREATE TABLE evolution_reward_milestone_baseline (
+                      reward_type TEXT NOT NULL CHECK(reward_type IN
+                        ('INDEPENDENT_MILESTONE','RETENTION_MILESTONE')),
+                      subject_id TEXT NOT NULL,
+                      definition_version INTEGER NOT NULL CHECK(definition_version>0),
+                      source_revision INTEGER NOT NULL,
+                      PRIMARY KEY(reward_type,subject_id,definition_version)
+                    )
+                    """);
+            s.execute(
+                    """
+                    CREATE TRIGGER evolution_reward_milestone_baseline_immutable_update
+                    BEFORE UPDATE ON evolution_reward_milestone_baseline
+                    BEGIN SELECT RAISE(ABORT,'Historical milestone baseline is immutable'); END
+                    """);
+            s.execute(
+                    """
+                    CREATE TRIGGER evolution_reward_milestone_baseline_immutable_delete
+                    BEFORE DELETE ON evolution_reward_milestone_baseline
+                    BEGIN SELECT RAISE(ABORT,'Historical milestone baseline is immutable'); END
+                    """);
+        }
+        var latest = new java.util.LinkedHashMap<String, HistoricalEstimate>();
+        try (var s =
+                        c.createStatement();
+                var r =
+                        s.executeQuery(
+                                "SELECT revision,graph_id,graph_version,skill_id,skill_version,"
+                                        + "input_sha,inputs FROM evolution_estimate_revisions"
+                                        + " ORDER BY revision")) {
+            while (r.next()) {
+                byte[] bytes = r.getBytes("inputs");
+                if (!com.codefit.evolution.quest.CatalogCodec.digest(bytes)
+                        .equals(r.getString("input_sha")))
+                    throw new SQLException("Historical estimate digest mismatch");
+                String key =
+                        r.getString("graph_id")
+                                + ":v"
+                                + r.getInt("graph_version")
+                                + ":"
+                                + r.getString("skill_id")
+                                + ":v"
+                                + r.getInt("skill_version");
+                latest.put(
+                        key,
+                        new HistoricalEstimate(
+                                r.getLong("revision"),
+                                r.getInt("skill_version"),
+                                EstimateCodec.decode(bytes)));
+            }
+        } catch (RuntimeException invalid) {
+            throw new SQLException("Historical milestone baseline is invalid", invalid);
+        }
+        try (var s =
+                c.prepareStatement(
+                        "INSERT INTO evolution_reward_milestone_baseline"
+                                + "(reward_type,subject_id,definition_version,source_revision)"
+                                + " VALUES(?,?,?,?)")) {
+            for (var row : latest.values()) {
+                var estimate = new OrdinalMasteryPolicy().estimate(row.input());
+                if (estimate.contradicted()
+                        || !estimate.currentCapabilitySupported()
+                        || estimate.freshness() != MasteryTypes.Freshness.CURRENT)
+                    continue;
+                if (estimate.band().ordinal() >= MasteryTypes.Band.INDEPENDENT.ordinal()) {
+                    s.setString(1, "INDEPENDENT_MILESTONE");
+                    s.setString(2, estimate.skill().skillId());
+                    s.setInt(3, row.skillVersion());
+                    s.setLong(4, row.revision());
+                    s.addBatch();
+                }
+                if (estimate.band() == MasteryTypes.Band.RETENTION_SUPPORTED) {
+                    s.setString(1, "RETENTION_MILESTONE");
+                    s.setString(2, estimate.skill().skillId());
+                    s.setInt(3, row.skillVersion());
+                    s.setLong(4, row.revision());
+                    s.addBatch();
+                }
+            }
+            s.executeBatch();
+        }
+    }
+
+    private record HistoricalEstimate(long revision, int skillVersion, EstimateInput input) {}
 }

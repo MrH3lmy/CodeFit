@@ -7,6 +7,7 @@ import com.codefit.config.*;
 import com.codefit.evolution.*;
 import com.codefit.evolution.adaptation.AdaptationDecisionRepository.*;
 import com.codefit.evolution.mastery.*;
+import com.codefit.evolution.progression.ProgressionService;
 import com.codefit.evolution.quest.*;
 import com.codefit.repository.*;
 import com.codefit.service.*;
@@ -64,6 +65,14 @@ public final class AdaptiveQuestService {
 
     public Decision recommend(Instant asOf) {
         return recommend(JavaDebuggingSkillSeed.GRAPH, asOf);
+    }
+
+    /** Current Player System entry point; historical/replayed decisions never grant milestones. */
+    public Decision recommendCurrent() {
+        var decision = recommend(JavaDebuggingSkillSeed.GRAPH, clock.instant());
+        new ProgressionService()
+                .reconcileCurrentMilestones(decision.input().graph(), decision.input().asOf());
+        return decision;
     }
 
     public Decision recommend(GraphRef graph, Instant asOf) {

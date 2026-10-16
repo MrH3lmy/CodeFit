@@ -14,7 +14,7 @@ import java.util.*;
 
 /**
  * Explicit on-demand derivation. It does not scan on startup or mutate evidence/peer aggregates;
- * eligible current milestones are recorded separately through the progression ledger.
+ * the current Player System path reconciles milestones after recommendation publication.
  */
 public final class MasteryEstimateService {
     private final EstimateRevisionRepository revisions = new EstimateRevisionRepository();
@@ -63,9 +63,7 @@ public final class MasteryEstimateService {
                 var existing = revisions.existing(c, bytes, result);
                 if (version(c) != before) continue;
                 if (existing.isPresent()) {
-                    var revision = existing.get();
-                    new ProgressionService().recordEstimate(revision);
-                    return revision;
+                    return existing.get();
                 }
                 c.setAutoCommit(false);
                 try {
@@ -82,7 +80,6 @@ public final class MasteryEstimateService {
                     }
                     var revision = revisions.save(c, input, bytes, result);
                     c.commit();
-                    new ProgressionService().recordEstimate(revision);
                     return revision;
                 } catch (SQLException | RuntimeException e) {
                     c.rollback();

@@ -91,7 +91,7 @@ public final class PlayerSystemService {
         this.adaptive = adaptive;
         this.evaluation = evaluation;
         this.baseline = new BaselineDiagnosticService(presentations, evaluation, clock);
-        this.recommend = recommend == null ? () -> adaptive.recommend(clock.instant()) : recommend;
+        this.recommend = recommend == null ? adaptive::recommendCurrent : recommend;
     }
 
     public Overview overview() {

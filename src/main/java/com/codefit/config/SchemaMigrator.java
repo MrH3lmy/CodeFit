@@ -116,7 +116,10 @@ final class SchemaMigrator {
                     PlayerWorkspaceSchema::create),
             new VersionedMigration(20,
                     "Add versioned Evolution XP entitlements and reward preferences (#217)",
-                    ProgressionSchema::create)
+                    ProgressionSchema::create),
+            new VersionedMigration(21,
+                    "Preserve mastery milestones already reached before prospective rewards",
+                    ProgressionSchema::preserveHistoricalMilestones)
     );
 
     static void migrate(Connection connection) throws SQLException {

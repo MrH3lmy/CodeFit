@@ -29,6 +29,11 @@ public interface CodeRunner {
      */
     CompileOutcome compile(String source, String mainClassName);
 
+    /** Bounded compilation for deliberate Evolution submissions; old implementations remain compatible. */
+    default CompileOutcome compile(String source, String mainClassName, RunLimits limits, RunCancellationToken token) {
+        return compile(source, mainClassName);
+    }
+
     /**
      * Runs the already-compiled program with {@code stdin} fed to its standard input, subject to
      * {@code limits}. If {@code cancellationToken} is cancelled while the process is running (from

@@ -14,5 +14,7 @@ public enum SubmissionResult {
     WA,
     TLE,
     RTE,
-    MLE
+    MLE,
+    /** Local challenge observation; consult its durable evaluation, never an external judge verdict. */
+    LOCAL_EVALUATION
 }

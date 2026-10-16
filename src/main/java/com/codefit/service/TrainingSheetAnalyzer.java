@@ -412,7 +412,8 @@ final class TrainingSheetAnalyzer {
             return null;
         }
         try {
-            return SubmissionResult.valueOf(rawStatus.strip().toUpperCase(Locale.ROOT));
+            SubmissionResult result = SubmissionResult.valueOf(rawStatus.strip().toUpperCase(Locale.ROOT));
+            return result == SubmissionResult.LOCAL_EVALUATION ? null : result;
         } catch (IllegalArgumentException notAVerdict) {
             return null;
         }

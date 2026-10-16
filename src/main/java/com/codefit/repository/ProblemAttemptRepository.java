@@ -65,6 +65,8 @@ public class ProblemAttemptRepository {
         String sql = "SELECT * FROM problem_attempts WHERE datetime(submitted_at) >= datetime(?) "
                 + "AND datetime(submitted_at) < datetime(?) "
                 + "AND completion_origin IN ('FRESH_ATTEMPT', 'PREVIOUSLY_SOLVED') "
+                + "AND submission_result <> 'LOCAL_EVALUATION' "
+                + "AND NOT EXISTS (SELECT 1 FROM problems p WHERE p.id=problem_attempts.problem_id AND p.platform='CODEFIT_EVOLUTION') "
                 + "ORDER BY problem_id, attempt_number";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -86,7 +88,8 @@ public class ProblemAttemptRepository {
      */
     public boolean hasUnknownSubmittedBetweenUtc(LocalDateTime startUtcInclusive, LocalDateTime endUtcExclusive) {
         String sql = "SELECT 1 FROM problem_attempts WHERE datetime(submitted_at) >= datetime(?) "
-                + "AND datetime(submitted_at) < datetime(?) AND completion_origin = 'UNKNOWN' LIMIT 1";
+                + "AND datetime(submitted_at) < datetime(?) AND completion_origin = 'UNKNOWN' AND submission_result <> 'LOCAL_EVALUATION' "
+                + "AND NOT EXISTS (SELECT 1 FROM problems p WHERE p.id=problem_attempts.problem_id AND p.platform='CODEFIT_EVOLUTION') LIMIT 1";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, startUtcInclusive.toString());
@@ -127,6 +130,7 @@ public class ProblemAttemptRepository {
                 + "  SELECT pa.problem_id, pa.submitted_at AS first_success, pa.completion_origin AS first_origin "
                 + "  FROM problem_attempts pa "
                 + "  WHERE pa.submission_result IN ('AC', 'ACX') "
+                + "    AND NOT EXISTS (SELECT 1 FROM problems p WHERE p.id=pa.problem_id AND p.platform='CODEFIT_EVOLUTION') "
                 + "    AND pa.attempt_number = ("
                 + "      SELECT MIN(pa2.attempt_number) FROM problem_attempts pa2 "
                 + "      WHERE pa2.problem_id = pa.problem_id AND pa2.submission_result IN ('AC', 'ACX')"
@@ -159,6 +163,20 @@ public class ProblemAttemptRepository {
         }
     }
 
+    /** Legacy external-judge aggregate source; raw history remains available via findAll(). */
+    public List<ProblemAttempt> findAllOrdinary() {
+        String sql = "SELECT a.* FROM problem_attempts a WHERE a.submission_result <> 'LOCAL_EVALUATION' "
+                + "AND NOT EXISTS (SELECT 1 FROM problems p WHERE p.id=a.problem_id AND p.platform='CODEFIT_EVOLUTION') "
+                + "ORDER BY a.problem_id,a.attempt_number";
+        try (Connection c = DatabaseConfig.getConnection();
+             var statement = c.prepareStatement(sql);
+             var rows = statement.executeQuery()) {
+            return mapAll(rows);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to load ordinary problem attempts", e);
+        }
+    }
+
     public int countByProblemId(long problemId) {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return countByProblemId(connection, problemId);
@@ -177,6 +195,14 @@ public class ProblemAttemptRepository {
         }
     }
 
+    /** Allocate only while holding the caller's writer transaction; tolerate preserved history gaps. */
+    public int nextAttemptNumber(Connection connection, long problemId) throws SQLException {
+        try (var s = connection.prepareStatement("SELECT COALESCE(MAX(attempt_number),0)+1 FROM problem_attempts WHERE problem_id=?")) {
+            s.setLong(1, problemId);
+            try (var row = s.executeQuery()) { row.next(); return row.getInt(1); }
+        }
+    }
+
     public ProblemAttempt save(ProblemAttempt attempt) {
         try (Connection connection = DatabaseConfig.getConnection()) {
             return save(connection, attempt);
@@ -186,10 +212,25 @@ public class ProblemAttemptRepository {
     }
 
     public ProblemAttempt save(Connection connection, ProblemAttempt attempt) throws SQLException {
+        return save(connection, attempt, false);
+    }
+
+    /** Deliberate local evaluations keep the frozen UTC submission time, not recovery time. */
+    public ProblemAttempt saveLocalEvaluation(Connection connection, ProblemAttempt attempt) throws SQLException {
+        if (attempt.submissionResult() != SubmissionResult.LOCAL_EVALUATION || attempt.submittedAt() == null)
+            throw new IllegalArgumentException("A timestamped local evaluation is required");
+        try (var check = connection.prepareStatement("SELECT 1 FROM problems WHERE id=? AND platform='CODEFIT_EVOLUTION'")) {
+            check.setLong(1, attempt.problemId());
+            try (var r = check.executeQuery()) { if (!r.next()) throw new IllegalArgumentException("Reserved Evolution backing required"); }
+        }
+        return save(connection, attempt, true);
+    }
+
+    private ProblemAttempt save(Connection connection, ProblemAttempt attempt, boolean frozenTime) throws SQLException {
         String sql = "INSERT INTO problem_attempts (problem_id, attempt_number, submission_result, "
                 + "reading_time_seconds, thinking_time_seconds, coding_time_seconds, debugging_time_seconds, notes, "
-                + "session_outcome, completion_origin) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + "session_outcome, completion_origin" + (frozenTime ? ", submitted_at" : "") + ") "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?" + (frozenTime ? ", ?" : "") + ")";
         CompletionOrigin completionOrigin = attempt.completionOrigin() == null ? CompletionOrigin.UNKNOWN : attempt.completionOrigin();
         try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, attempt.problemId());
@@ -202,6 +243,7 @@ public class ProblemAttemptRepository {
             statement.setString(8, attempt.notes());
             statement.setString(9, attempt.sessionOutcome() == null ? null : attempt.sessionOutcome().name());
             statement.setString(10, completionOrigin.name());
+            if (frozenTime) statement.setString(11, attempt.submittedAt().toString());
             statement.executeUpdate();
             long id = 0;
             try (ResultSet keys = statement.getGeneratedKeys()) {

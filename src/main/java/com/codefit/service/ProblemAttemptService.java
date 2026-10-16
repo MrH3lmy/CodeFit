@@ -83,6 +83,9 @@ public class ProblemAttemptService {
         if (completionOrigin == null) {
             throw new IllegalArgumentException("A completion origin is required to record an attempt.");
         }
+        if (submissionResult == SubmissionResult.LOCAL_EVALUATION) {
+            throw new IllegalArgumentException("Local results require the Evolution completion coordinator");
+        }
         int nextAttemptNumber = attemptRepository.countByProblemId(problemId) + 1;
         ProblemAttempt attempt = new ProblemAttempt(0, problemId, nextAttemptNumber, submissionResult,
                 readingTimeSeconds, thinkingTimeSeconds, codingTimeSeconds, debuggingTimeSeconds,

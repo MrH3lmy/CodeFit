@@ -24,10 +24,18 @@ import java.util.Map;
 public class AssessmentAttemptRepository {
 
     public AssessmentAttempt save(AssessmentAttempt attempt) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return save(connection, attempt);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to save assessment attempt", exception);
+        }
+    }
+
+    /** Caller owns the transaction, including the authoritative Evolution evaluation and alias. */
+    public AssessmentAttempt save(Connection connection, AssessmentAttempt attempt) throws SQLException {
         String sql = "INSERT INTO assessment_attempts (assessment_item_id, variant_index, skill_category, "
                 + "module_name, correct, submitted_answer, response_time_ms, run_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, attempt.assessmentItemId());
             statement.setInt(2, attempt.variantIndex());
             statement.setString(3, attempt.skillCategory());
@@ -50,8 +58,6 @@ public class AssessmentAttemptRepository {
             return new AssessmentAttempt(id, attempt.assessmentItemId(), attempt.variantIndex(), attempt.skillCategory(),
                     attempt.moduleName(), attempt.correct(), attempt.submittedAnswer(), attempt.responseTimeMs(),
                     attempt.attemptedAt(), attempt.runId());
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to save assessment attempt", exception);
         }
     }
 
@@ -65,6 +71,18 @@ public class AssessmentAttemptRepository {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to load assessment attempts", exception);
+        }
+    }
+
+    /** Existing weekly reports must not incorporate reserved Evolution diagnostics. */
+    public List<AssessmentAttempt> findRecentOrdinary(int limit) {
+        if (limit < 1 || limit > 1000) throw new IllegalArgumentException("Bounded history required");
+        String sql = "SELECT * FROM assessment_attempts a WHERE NOT EXISTS (SELECT 1 FROM evolution_assessment_reservations r WHERE r.item_id=a.assessment_item_id) AND NOT EXISTS (SELECT 1 FROM evolution_evaluation_assessment_aliases e WHERE e.assessment_attempt_id=a.id) ORDER BY attempted_at DESC,id DESC LIMIT ?";
+        try (Connection c = DatabaseConfig.getConnection(); var s = c.prepareStatement(sql)) {
+            s.setInt(1, limit);
+            try (var rows = s.executeQuery()) { return mapAll(rows); }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to load ordinary assessment history", e);
         }
     }
 

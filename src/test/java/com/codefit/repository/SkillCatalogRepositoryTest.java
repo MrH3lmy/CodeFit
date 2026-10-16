@@ -14,13 +14,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -51,6 +57,80 @@ class SkillCatalogRepositoryTest {
         assertTrue(repository.findSkill(new SkillRef("unknown.skill", 1)).isEmpty());
         assertTrue(repository.findGraph(new GraphRef("missing.graph", 1)).isEmpty());
         assertEquals(List.of(), repository.listSkillsInDomain("unknown-domain"));
+    }
+
+    @Test
+    void bulkReadsUseBoundedQueriesAndPreserveExactDefinitionsAtCatalogScale() throws Exception {
+        List<List<SkillDefinition>> catalogs = List.of(4, 100, 1_000).stream().map(size ->
+                java.util.stream.IntStream.range(0, size).mapToObj(index -> new SkillDefinition(
+                        new SkillRef("bulk.%04d.skill.%04d".formatted(size, index), 1), "bulk." + size,
+                        "Bulk skill " + index, "Bulk capability " + index,
+                        List.of("First behavior", "Second behavior"), SkillLifecycle.ACTIVE)).toList()).toList();
+        List<SkillDefinition> definitions = catalogs.stream().flatMap(List::stream).toList();
+        List<SkillGraph> graphs = catalogs.stream().map(catalog -> new SkillGraph(
+                new GraphRef("bulk.graph", catalog.size()), catalog,
+                java.util.stream.IntStream.range(1, catalog.size()).mapToObj(index ->
+                        new SkillPrerequisite(catalog.get(index - 1).ref(), catalog.get(index).ref())).toList())).toList();
+        try (Connection connection = foreignKeyConnection()) {
+            connection.setAutoCommit(false);
+            for (SkillDefinition definition : definitions) repository.publishDefinition(connection, definition);
+            for (SkillGraph graph : graphs) repository.publishGraph(connection, graph);
+            connection.commit();
+        }
+
+        for (SkillGraph expected : graphs) {
+            ReadMeasurement<SkillGraph> previousGraph = measure(connection -> readSnapshot(connection,
+                    snapshot -> legacyFindGraph(snapshot, expected.ref()).orElseThrow()));
+            ReadMeasurement<SkillGraph> bulkGraph = measure(connection -> readSnapshot(connection,
+                    snapshot -> repository.findGraph(snapshot, expected.ref()).orElseThrow()));
+            assertEquals(expected, previousGraph.value());
+            assertEquals(previousGraph.value(), bulkGraph.value());
+            assertEquals(3 + 2 * expected.definitions().size(), previousGraph.queries());
+            assertEquals(2, bulkGraph.queries());
+            assertEquals(expected, repository.findGraph(expected.ref()).orElseThrow());
+
+            ReadMeasurement<List<SkillDefinition>> previousDomain = measure(connection ->
+                    legacyListSkillsInDomain(connection, expected.definitions().getFirst().domainId()));
+            ReadMeasurement<List<SkillDefinition>> bulkDomain = measure(connection ->
+                    repository.listSkillsInDomain(connection, expected.definitions().getFirst().domainId()));
+            assertEquals(expected.definitions(), previousDomain.value());
+            assertEquals(previousDomain.value(), bulkDomain.value());
+            assertEquals(1 + 2 * expected.definitions().size(), previousDomain.queries());
+            assertEquals(1, bulkDomain.queries());
+            assertEquals(expected.definitions(), repository.listSkillsInDomain(
+                    expected.definitions().getFirst().domainId()));
+
+            if (expected.definitions().size() == 1_000) {
+                runPair(() -> assertEquals(expected, repository.findGraph(expected.ref()).orElseThrow()),
+                        () -> assertEquals(expected, repository.findGraph(expected.ref()).orElseThrow()));
+                runPair(() -> assertEquals(expected.definitions(), repository.listSkillsInDomain("bulk.1000")),
+                        () -> assertEquals(expected.definitions(), repository.listSkillsInDomain("bulk.1000")));
+            }
+            System.out.printf("bulk-read size=%d graph queries=%d->%d time-us=%d->%d domain queries=%d->%d time-us=%d->%d%n",
+                    expected.definitions().size(), previousGraph.queries(), bulkGraph.queries(),
+                    previousGraph.elapsedNanos() / 1_000, bulkGraph.elapsedNanos() / 1_000,
+                    previousDomain.queries(), bulkDomain.queries(),
+                    previousDomain.elapsedNanos() / 1_000, bulkDomain.elapsedNanos() / 1_000);
+        }
+    }
+
+    @Test
+    void bulkReadsRejectIncompleteBehaviorsAndMissingPublishedGraphMembers() throws SQLException {
+        SkillDefinition definition = skill("malformed.bulk");
+        repository.publishDefinition(definition);
+        SkillGraph graph = new SkillGraph(new GraphRef("malformed.bulk", 1), List.of(definition), List.of());
+        repository.publishGraph(graph);
+        try (Connection connection = DatabaseConfig.getConnection(); Statement sql = connection.createStatement()) {
+            sql.execute("DROP TRIGGER evolution_skill_behaviors_immutable_DELETE");
+            sql.execute("DELETE FROM evolution_skill_behaviors WHERE skill_id = 'malformed.bulk' AND position = 0");
+            assertThrows(IllegalStateException.class, () -> repository.findGraph(graph.ref()));
+            assertThrows(IllegalStateException.class, () -> repository.listSkillsInDomain("example"));
+
+            sql.execute("DROP TRIGGER evolution_skill_definitions_immutable_UPDATE");
+            sql.execute("UPDATE evolution_skill_definitions SET published = 0 WHERE skill_id = 'malformed.bulk'");
+            assertTrue(assertThrows(IllegalArgumentException.class, () -> repository.findGraph(graph.ref()))
+                    .getMessage().contains("Missing published skill definition"));
+        }
     }
 
     @Test
@@ -265,6 +345,146 @@ class SkillCatalogRepositoryTest {
         Connection connection = DatabaseConfig.getConnection();
         try (Statement statement = connection.createStatement()) { statement.execute("PRAGMA foreign_keys = ON"); }
         return connection;
+    }
+
+    private static Connection countQueries(Connection connection, AtomicInteger count) {
+        return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class},
+                (proxy, method, arguments) -> {
+                    try {
+                        Object result = method.invoke(connection, arguments);
+                        if (result instanceof java.sql.PreparedStatement statement) {
+                            return Proxy.newProxyInstance(java.sql.PreparedStatement.class.getClassLoader(),
+                                    new Class<?>[]{java.sql.PreparedStatement.class}, (statementProxy, statementMethod, statementArguments) -> {
+                                        if (statementMethod.getName().equals("executeQuery")) count.incrementAndGet();
+                                        try {
+                                            return statementMethod.invoke(statement, statementArguments);
+                                        } catch (InvocationTargetException exception) {
+                                            throw exception.getCause();
+                                        }
+                                    });
+                        }
+                        return result;
+                    } catch (InvocationTargetException exception) {
+                        throw exception.getCause();
+                    }
+                });
+    }
+
+    @FunctionalInterface
+    private interface SqlRead<T> {
+        T read(Connection connection) throws Exception;
+    }
+
+    private record ReadMeasurement<T>(T value, int queries, long elapsedNanos) { }
+
+    private static <T> ReadMeasurement<T> measure(SqlRead<T> read) throws Exception {
+        AtomicInteger queries = new AtomicInteger();
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            long started = System.nanoTime();
+            T value = read.read(countQueries(connection, queries));
+            return new ReadMeasurement<>(value, queries.get(), System.nanoTime() - started);
+        }
+    }
+
+    private static <T> T readSnapshot(Connection connection, SqlRead<T> read) throws Exception {
+        connection.setAutoCommit(false);
+        try {
+            T result = read.read(connection);
+            connection.commit();
+            return result;
+        } catch (Exception failure) {
+            try { connection.rollback(); } catch (SQLException rollback) { failure.addSuppressed(rollback); }
+            throw failure;
+        }
+    }
+
+    private static Optional<SkillGraph> legacyFindGraph(Connection connection, GraphRef ref) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT 1 FROM evolution_skill_graphs WHERE graph_id = ? AND graph_version = ? AND published = 1
+                """)) {
+            statement.setString(1, ref.graphId());
+            statement.setInt(2, ref.graphVersion());
+            try (ResultSet rows = statement.executeQuery()) {
+                if (!rows.next()) return Optional.empty();
+            }
+        }
+        List<SkillRef> members = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT skill_id, definition_version FROM evolution_graph_skills WHERE graph_id = ? AND graph_version = ?
+                """)) {
+            statement.setString(1, ref.graphId());
+            statement.setInt(2, ref.graphVersion());
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) members.add(new SkillRef(rows.getString(1), rows.getInt(2)));
+            }
+        }
+        List<SkillDefinition> definitions = new ArrayList<>();
+        for (SkillRef member : members) definitions.add(legacyFindSkill(connection, member));
+        List<SkillPrerequisite> edges = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT prerequisite_skill_id, prerequisite_version, dependent_skill_id, dependent_version
+                FROM evolution_skill_prerequisites WHERE graph_id = ? AND graph_version = ?
+                """)) {
+            statement.setString(1, ref.graphId());
+            statement.setInt(2, ref.graphVersion());
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) edges.add(new SkillPrerequisite(new SkillRef(rows.getString(1), rows.getInt(2)),
+                        new SkillRef(rows.getString(3), rows.getInt(4))));
+            }
+        }
+        return Optional.of(new SkillGraph(ref, definitions, edges));
+    }
+
+    private static List<SkillDefinition> legacyListSkillsInDomain(Connection connection, String domainId) throws SQLException {
+        List<SkillRef> refs = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT skill_id, definition_version FROM evolution_skill_definitions
+                WHERE domain_id = ? AND published = 1 ORDER BY skill_id, definition_version
+                """)) {
+            statement.setString(1, domainId);
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) refs.add(new SkillRef(rows.getString(1), rows.getInt(2)));
+            }
+        }
+        List<SkillDefinition> definitions = new ArrayList<>();
+        for (SkillRef ref : refs) definitions.add(legacyFindSkill(connection, ref));
+        return List.copyOf(definitions);
+    }
+
+    private static SkillDefinition legacyFindSkill(Connection connection, SkillRef ref) throws SQLException {
+        String domainId;
+        String name;
+        String description;
+        SkillLifecycle lifecycle;
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT domain_id, name, description, lifecycle FROM evolution_skill_definitions
+                WHERE skill_id = ? AND definition_version = ? AND published = 1
+                """)) {
+            statement.setString(1, ref.skillId());
+            statement.setInt(2, ref.definitionVersion());
+            try (ResultSet row = statement.executeQuery()) {
+                if (!row.next()) throw new IllegalArgumentException("Missing published skill definition " + ref);
+                domainId = row.getString(1);
+                name = row.getString(2);
+                description = row.getString(3);
+                lifecycle = SkillLifecycle.valueOf(row.getString(4));
+            }
+        }
+        List<String> behaviors = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT position, behavior FROM evolution_skill_behaviors
+                WHERE skill_id = ? AND definition_version = ? ORDER BY position
+                """)) {
+            statement.setString(1, ref.skillId());
+            statement.setInt(2, ref.definitionVersion());
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    if (rows.getInt(1) != behaviors.size()) throw new IllegalStateException("Incomplete behaviors for " + ref);
+                    behaviors.add(rows.getString(2));
+                }
+            }
+        }
+        return new SkillDefinition(ref, domainId, name, description, behaviors, lifecycle);
     }
 
     private static int count(String table, String where) {

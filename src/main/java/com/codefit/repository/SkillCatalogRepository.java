@@ -13,7 +13,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -40,27 +42,53 @@ public class SkillCatalogRepository {
     /** All historical versions, including RETIRED, sorted by stable ID then definition version. */
     public List<SkillDefinition> listSkillsInDomain(String domainId) {
         if (domainId == null || domainId.isBlank()) throw new IllegalArgumentException("Domain ID is required");
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement("""
-                     SELECT skill_id, definition_version FROM evolution_skill_definitions
-                     WHERE domain_id = ? AND published = 1 ORDER BY skill_id, definition_version
-                     """)) {
-            statement.setString(1, domainId);
-            List<SkillRef> refs = new ArrayList<>();
-            try (ResultSet rows = statement.executeQuery()) {
-                while (rows.next()) refs.add(new SkillRef(rows.getString(1), rows.getInt(2)));
-            }
-            List<SkillDefinition> result = new ArrayList<>();
-            for (SkillRef ref : refs) result.add(requireSkill(connection, ref));
-            return List.copyOf(result);
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return listSkillsInDomain(connection, domainId);
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to list skills in domain " + domainId, exception);
         }
     }
 
+    /** Reads all published versions and ordered behaviors in one query on the caller's snapshot. */
+    public List<SkillDefinition> listSkillsInDomain(Connection connection, String domainId) throws SQLException {
+        if (domainId == null || domainId.isBlank()) throw new IllegalArgumentException("Domain ID is required");
+        Map<SkillRef, DefinitionRows> definitions = new LinkedHashMap<>();
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT d.skill_id, d.definition_version, d.domain_id, d.name, d.description, d.lifecycle,
+                       b.position, b.behavior
+                FROM evolution_skill_definitions d
+                LEFT JOIN evolution_skill_behaviors b USING(skill_id, definition_version)
+                WHERE d.domain_id = ? AND d.published = 1
+                ORDER BY d.skill_id, d.definition_version, b.position
+                """)) {
+            statement.setString(1, domainId);
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    SkillRef ref = new SkillRef(rows.getString(1), rows.getInt(2));
+                    DefinitionRows definition = definitions.get(ref);
+                    if (definition == null) {
+                        definition = new DefinitionRows(ref, rows.getString(3), rows.getString(4),
+                                rows.getString(5), rows.getString(6));
+                        definitions.put(ref, definition);
+                    }
+                    definition.addBehavior(rows.getInt(7), rows.getString(8), rows.wasNull());
+                }
+            }
+        }
+        return definitions.values().stream().map(DefinitionRows::build).toList();
+    }
+
     public Optional<SkillGraph> findGraph(GraphRef ref) {
         try (Connection connection = DatabaseConfig.getConnection()) {
-            return findGraph(connection, ref);
+            connection.setAutoCommit(false);
+            try {
+                Optional<SkillGraph> graph = findGraph(connection, ref);
+                connection.commit();
+                return graph;
+            } catch (SQLException | RuntimeException failure) {
+                try { connection.rollback(); } catch (SQLException rollback) { failure.addSuppressed(rollback); }
+                throw failure;
+            }
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to load skill graph " + ref, exception);
         }
@@ -199,25 +227,39 @@ public class SkillCatalogRepository {
 
     /** Read the exact graph on a caller-owned catalog validation snapshot. */
     public Optional<SkillGraph> findGraph(Connection connection, GraphRef ref) throws SQLException {
+        Map<SkillRef, DefinitionRows> definitions = new LinkedHashMap<>();
         try (PreparedStatement statement = connection.prepareStatement("""
-                SELECT 1 FROM evolution_skill_graphs WHERE graph_id = ? AND graph_version = ? AND published = 1
-                """)) {
-            bindGraph(statement, ref);
-            try (ResultSet row = statement.executeQuery()) {
-                if (!row.next()) return Optional.empty();
-            }
-        }
-        List<SkillDefinition> definitions = new ArrayList<>();
-        List<SkillRef> members = new ArrayList<>();
-        try (PreparedStatement statement = connection.prepareStatement("""
-                SELECT skill_id, definition_version FROM evolution_graph_skills WHERE graph_id = ? AND graph_version = ?
+                SELECT m.skill_id, m.definition_version, d.domain_id, d.name, d.description, d.lifecycle,
+                       b.position, b.behavior
+                FROM evolution_skill_graphs g
+                LEFT JOIN evolution_graph_skills m USING(graph_id, graph_version)
+                LEFT JOIN evolution_skill_definitions d
+                    ON d.skill_id = m.skill_id AND d.definition_version = m.definition_version AND d.published = 1
+                LEFT JOIN evolution_skill_behaviors b
+                    ON b.skill_id = m.skill_id AND b.definition_version = m.definition_version
+                WHERE g.graph_id = ? AND g.graph_version = ? AND g.published = 1
+                ORDER BY m.skill_id, m.definition_version, b.position
                 """)) {
             bindGraph(statement, ref);
             try (ResultSet rows = statement.executeQuery()) {
-                while (rows.next()) members.add(new SkillRef(rows.getString(1), rows.getInt(2)));
+                if (!rows.next()) return Optional.empty();
+                do {
+                    String skillId = rows.getString(1);
+                    if (skillId == null) continue;
+                    SkillRef member = new SkillRef(skillId, rows.getInt(2));
+                    if (rows.getString(3) == null) {
+                        throw new IllegalArgumentException("Missing published skill definition " + member);
+                    }
+                    DefinitionRows definition = definitions.get(member);
+                    if (definition == null) {
+                        definition = new DefinitionRows(member, rows.getString(3), rows.getString(4),
+                                rows.getString(5), rows.getString(6));
+                        definitions.put(member, definition);
+                    }
+                    definition.addBehavior(rows.getInt(7), rows.getString(8), rows.wasNull());
+                } while (rows.next());
             }
         }
-        for (SkillRef member : members) definitions.add(requireSkill(connection, member));
         List<SkillPrerequisite> edges = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT prerequisite_skill_id, prerequisite_version, dependent_skill_id, dependent_version
@@ -229,7 +271,34 @@ public class SkillCatalogRepository {
                         new SkillRef(rows.getString(3), rows.getInt(4))));
             }
         }
-        return Optional.of(new SkillGraph(ref, definitions, edges)); // validate on read, don't silently trim corrupt data
+        return Optional.of(new SkillGraph(ref, definitions.values().stream().map(DefinitionRows::build).toList(), edges));
+    }
+
+    private static final class DefinitionRows {
+        private final SkillRef ref;
+        private final String domainId;
+        private final String name;
+        private final String description;
+        private final SkillLifecycle lifecycle;
+        private final List<String> behaviors = new ArrayList<>();
+
+        private DefinitionRows(SkillRef ref, String domainId, String name, String description, String lifecycle) {
+            this.ref = ref;
+            this.domainId = domainId;
+            this.name = name;
+            this.description = description;
+            this.lifecycle = SkillLifecycle.valueOf(lifecycle);
+        }
+
+        private void addBehavior(int position, String behavior, boolean missing) {
+            if (missing) return;
+            if (position != behaviors.size()) throw new IllegalStateException("Incomplete behaviors for " + ref);
+            behaviors.add(behavior);
+        }
+
+        private SkillDefinition build() {
+            return new SkillDefinition(ref, domainId, name, description, behaviors, lifecycle);
+        }
     }
 
     private static void bindRef(PreparedStatement statement, int offset, SkillRef ref) throws SQLException {

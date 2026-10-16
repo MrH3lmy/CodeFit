@@ -121,3 +121,48 @@ is not a sandbox; hard crashes can lose unsaved debounced edits; journal/estimat
 have explicit bounds; and unsupported historical interpreters fail closed. #228–#230 and
 #232/#233/#235/#236 remain deferred. New future tracks/graph versions need a reviewed UI adapter.
 No learner-improvement, platform portability or accessibility certification is claimed.
+
+## PR #237 recovery correction
+
+Both reported defects were reproduced against `d86c93a` with actual FXML/controller tests under
+Xvfb: the cold-start Resume/Cancel buttons inherited `challengeBox`'s disabled state, and inspecting
+an old finalized submission selected another challenge's active editor. Neither failure required a
+mock controller. The new tests were run before changing production code and failed on those exact
+assertions.
+
+The correction separates saved submissions from the authorized editor. Every saved view has its
+own challenge/version, frozen command ID, presentation/timestamp, stage and outcome. Only metadata
+and the existing redacted coordinator result cross into that view. `showWork()` remains the only
+place that enables the challenge editor. Inspection/recovery never loads the frozen artifact into
+that editor or creates a new presentation. Dirty editor state is saved before historical inspection
+and before recovery actions, including edits made after visiting the saved tab.
+
+Real controller regressions cover:
+
+- PREPARED recovery after controller restart with no `Work`, enabled Resume and Cancel, and a
+  FINALIZED result still readable after a second restart.
+- Journal recovery of abandoned RUNNING commands (the durable representation of interruption),
+  staged EVALUATED results, FINALIZED/CANCELLED results and a missing runner returning
+  TOOL_UNAVAILABLE. No unavailable result is presented as a capability failure.
+- Cancellation requested through the actual cold-start button, then finalized by resuming the same
+  frozen command; no new submission is minted.
+- Old results inspected while a different authorized challenge is open; its title and persisted draft
+  remain separate. A further edit followed immediately by recovery is saved, while the evaluator
+  executes only the original frozen artifact.
+- Unchanged presentation/exposure counts, one command/observation/attempt where applicable, no
+  fabricated Java attempt for keyed diagnostics, and no source, answer or harness in saved results.
+
+The focused run used Java 21 and real Xvfb with `TZ=Pacific/Honolulu`, exercising controller/FXML,
+services, evaluator, evidence, catalog/exposure, discovery isolation, migrations, ordinary
+session/draft/attempt behavior and signed P2P privacy: **177 tests, zero failures/errors/skips**.
+The complete clean Java 21 suite under Xvfb with `TZ=UTC` passed **1,724 tests, zero
+failures/errors/skips**, in **7m41s** (`mvn -B clean test`). It includes all **16** actual
+Evolution controller tests. Exact-commit CI results are linked in PR #237 after verification.
+
+Final adversarial review inspected recovery authorization, retained command IDs, result replacement
+(no stale buttons for another command), generation-fenced worker callbacks, content visibility,
+working-draft separation and all changed production paths. No additional confirmed recovery or
+privacy blocker was found. The existing coordinator still owns execution, cancellation, durable
+finalization and idempotent replay. No schema, evaluator, XP or sharing behavior changed. Existing
+runner/security and platform-validation limitations above remain; no new follow-up is required by
+this correction.

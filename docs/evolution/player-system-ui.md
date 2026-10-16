@@ -40,14 +40,15 @@ The existing shell and theme remain in use: `Route.EVOLUTION`, `Sidebar`, `Navig
 [evolution.css](../../src/main/resources/css/evolution.css). All ordinary navigation destinations
 remain available. Review/assessment/guided-training distraction-free behavior is unchanged.
 
-Five tabs form one destination rather than disconnected routes:
+Six tabs form one destination rather than disconnected routes:
 
 | Tab | Behavior |
 | --- | --- |
 | Overview | Purpose/limits, exact track and goal, active-time budget, current recommendation and reasons, safe quest overview, alternatives/exploration, decline/defer/re-enable, pause/resume, skill summaries, latest estimate comparison, latest result and continuation/recovery links. |
 | Skills | Exact authored definitions, ordinal band/support/freshness, required/supported/missing behaviors, family count, contradictions, observation time, actual reason codes, contributions/exclusions, provenance/assistance/exposure counts, prerequisites and paged saved revision history. |
 | Diagnostics | The three reserved baseline tasks through `BaselineDiagnosticService`; start/skip task/skip all/resume; familiarity declaration and preserved prior submissions. Invariants/liveness are not given fabricated baseline results. |
-| Challenge | Authorized prompt, editable local fragment or keyed response, autosave/manual save, ungraded reflection, assistance declaration, hints/solution/familiarity recording, permitted public practice, deliberate evaluation, cancel/recover and safe results. |
+| Challenge | Authorized prompt, editable local fragment or keyed response, autosave/manual save, ungraded reflection, assistance declaration, hints/solution/familiarity recording, permitted public practice, deliberate submission and public-practice feedback. |
+| Saved submission | Frozen challenge/command identity, stage/outcome, redacted results and recovery; independent of the authorized editor. |
 | Journal | Chronological metadata projection, bounded pages, stable source references, saved decision/estimate interpretation, source evidence inspection, existing presentation/choice/submission continuation. |
 
 A first-time learner sees UNKNOWN and an actionable baseline recommendation. Expand the direction
@@ -186,3 +187,24 @@ validate Windows/macOS, assistive technology, physical power loss or learning ef
 Next feature ticket: **#217**, consuming existing durable evaluation/estimate references for separately
 reviewed reward entitlements. #218 still needs its own consented, predeclared outcome protocol; this
 UI and its test fixtures are not evidence that learning improved.
+
+## Saved submissions and cold-start recovery
+
+Saved evaluations and recovery controls live in a separate **Saved submission** tab, never inside
+`challengeBox`. The Challenge editor stays disabled until `showWork()` receives an authorized
+presentation. Inspecting a saved command reads only the existing redacted evaluation view and a
+metadata projection of its immutable identity, off the FX thread. It does not resume a presentation,
+reveal a prompt/hint/solution, load an artifact into the editor, or mint exposure. Every stage shows
+its exact challenge/version, frozen command ID, presentation, timestamp, stage and outcome; pending
+commands explicitly say they are not completed results. The view replaces the previous command's
+controls rather than accumulating stale actions.
+
+Overview, Diagnostics and Journal use the same result boundary, including on a fresh controller
+without `Work`. Another open challenge keeps its authorized title, prompt and draft in the separate
+Challenge tab. Dirty drafts are saved before historical inspection and before recovery actions,
+including edits made after previously inspecting the saved tab. Recovery still delegates to the
+existing coordinator's persisted command and presentation authorization: PREPARED and abandoned
+RUNNING commands can resume; EVALUATED commands finalize without another execution; FINALIZED
+(including CANCELLED or TOOL_UNAVAILABLE) results have no resume/cancel controls. Cancellation
+records a durable request; resume completes pending cancellation. Active recovery exposes the
+existing execution cancellation control. No evaluator, persistence schema or sharing contract changes.

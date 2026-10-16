@@ -37,6 +37,11 @@
           <VBox fx:id="feedbackBox" spacing="10"/>
         </VBox></ScrollPane>
       </Tab>
+      <Tab text="Saved submission" fx:id="submissionTab">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER"><VBox fx:id="submissionBox" spacing="12" styleClass="evolution-page">
+          <Label text="Inspect a saved submission from Overview, Diagnostics or Journal. Recovery uses its frozen artifact and does not open challenge content or change your draft." wrapText="true" styleClass="evolution-muted"/>
+        </VBox></ScrollPane>
+      </Tab>
       <Tab text="Journal" fx:id="journalTab"><ScrollPane fitToWidth="true" hbarPolicy="NEVER"><VBox fx:id="journalBox" spacing="12" styleClass="evolution-page"/></ScrollPane></Tab>
     </tabs>
   </TabPane>

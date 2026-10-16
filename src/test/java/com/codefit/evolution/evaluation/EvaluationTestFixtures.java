@@ -23,6 +23,53 @@ public final class EvaluationTestFixtures {
                 b -> {});
     }
 
+    /** A missing installed JDK must remain a tool outcome during cold-start UI recovery. */
+    public static ChallengeEvaluationCoordinator unavailableRunner(Clock clock) {
+        var assets = new BundledAssets();
+        var runner =
+                new com.codefit.service.CodeRunner() {
+                    public boolean isAvailable() {
+                        return false;
+                    }
+
+                    public String getUnavailabilityReason() {
+                        return "Local JDK unavailable";
+                    }
+
+                    public com.codefit.service.CompileOutcome compile(String source, String main) {
+                        throw new AssertionError("Unavailable runner must not compile");
+                    }
+
+                    public com.codefit.service.RunResult run(
+                            com.codefit.service.CompileOutcome compiled,
+                            String input,
+                            com.codefit.service.RunLimits limits,
+                            com.codefit.service.RunCancellationToken cancellation) {
+                        throw new AssertionError("Unavailable runner must not execute");
+                    }
+                };
+        return new ChallengeEvaluationCoordinator(
+                new QuestCatalogRepository(),
+                assets,
+                new JavaChallengeEvaluator(runner, assets, clock),
+                clock,
+                b -> {});
+    }
+
+    /** Leave real staged check results durable, before the canonical finalization transaction. */
+    public static ChallengeEvaluationCoordinator interruptAfterStaging(Clock clock) {
+        var assets = new BundledAssets();
+        return new ChallengeEvaluationCoordinator(
+                new QuestCatalogRepository(),
+                assets,
+                new JavaChallengeEvaluator(new JavaCodeRunner(), assets, clock),
+                clock,
+                b -> {
+                    if (b == ChallengeEvaluationCoordinator.Boundary.STAGED)
+                        throw new IllegalStateException("Simulated interruption after staging");
+                });
+    }
+
     /** UI lost-response fixture: the durable commit succeeds, then the first response is lost. */
     public static ChallengeEvaluationCoordinator loseFirstResponse(Clock clock) {
         var lost = new java.util.concurrent.atomic.AtomicBoolean();

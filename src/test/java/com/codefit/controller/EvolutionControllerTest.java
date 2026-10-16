@@ -3,10 +3,12 @@ package com.codefit.controller;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.codefit.config.DatabaseConfig;
+import com.codefit.evolution.evaluation.*;
 import com.codefit.evolution.evaluation.EvaluationTypes.OutsideAssistance;
 import com.codefit.evolution.player.PlayerSystemService;
 import com.codefit.evolution.quest.*;
 import com.codefit.evolution.quest.QuestTypes.Familiarity;
+import com.codefit.service.ChallengePresentationService;
 import com.codefit.testsupport.IsolatedDatabaseExtension;
 import com.codefit.ui.*;
 
@@ -21,6 +23,8 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.*;
 import java.time.*;
@@ -193,7 +197,7 @@ class EvolutionControllerTest {
                     return null;
                 });
         awaitIdle();
-        String result = fx(() -> allText((Parent) loader.getNamespace().get("feedbackBox")));
+        String result = fx(() -> allText((Parent) loader.getNamespace().get("submissionBox")));
         assertTrue(result.contains("Saved evaluation · PASSED"), result);
         assertTrue(result.contains("Canonical evidence:"));
         assertFalse(result.contains("public class Main"));
@@ -247,7 +251,7 @@ class EvolutionControllerTest {
         awaitIdle();
         assertEquals(1, scalar("evolution_submissions"));
         assertTrue(
-                fx(() -> allText((Parent) loader.getNamespace().get("feedbackBox")))
+                fx(() -> allText((Parent) loader.getNamespace().get("submissionBox")))
                         .contains("COMPILE_ERROR"));
     }
 
@@ -299,7 +303,7 @@ class EvolutionControllerTest {
                 fx(() -> ((Label) loader.getNamespace().get("statusLabel")).getText())
                         .contains("Result saved — recommendation pending"));
         assertTrue(
-                fx(() -> allText((Parent) loader.getNamespace().get("feedbackBox")))
+                fx(() -> allText((Parent) loader.getNamespace().get("submissionBox")))
                         .contains("Saved evaluation · PASSED"));
         assertFalse(fx(() -> allText(root)).contains("private hidden evaluator details"));
         failed.set(false);
@@ -448,7 +452,7 @@ class EvolutionControllerTest {
         }
         awaitIdle();
         assertTrue(
-                fx(() -> allText((Parent) loader.getNamespace().get("feedbackBox")))
+                fx(() -> allText((Parent) loader.getNamespace().get("submissionBox")))
                         .contains("Saved evaluation · CANCELLED"));
         assertEquals(1, scalar("evolution_submissions"));
         assertEquals(1, scalar("evolution_evidence_observations"));
@@ -507,7 +511,7 @@ class EvolutionControllerTest {
         assertEquals(1, scalar("problem_attempts"));
         assertEquals(1, scalar("evolution_evidence_observations"));
         assertTrue(
-                fx(() -> allText((Parent) loader.getNamespace().get("feedbackBox")))
+                fx(() -> allText((Parent) loader.getNamespace().get("submissionBox")))
                         .contains("Saved evaluation · PASSED"));
         assertEquals(
                 "new unsent draft after response loss",
@@ -527,6 +531,407 @@ class EvolutionControllerTest {
                         .snapshot()
                         .request()
                         .artifact());
+    }
+
+    @Test
+    void coldStartSavedPreparedSubmissionHasEnabledRecoveryWithoutOpeningAnEditor()
+            throws Exception {
+        var request = preparedSubmission("baseline-trace");
+        long exposureEvents = scalar("evolution_challenge_exposure_events");
+        reload(() -> new PlayerSystemService(CLOCK));
+        inspectLatest();
+        fx(
+                () -> {
+                    assertFalse(
+                            findButton(root, "Resume frozen submission").isDisabled(),
+                            "Recovery must work without an authorized editor after restart");
+                    assertFalse(findButton(root, "Cancel frozen submission").isDisabled());
+                    assertTrue(((VBox) loader.getNamespace().get("challengeBox")).isDisabled());
+                    assertEquals(
+                            "", ((TextArea) loader.getNamespace().get("promptArea")).getText());
+                    assertEquals(
+                            "", ((TextArea) loader.getNamespace().get("sourceArea")).getText());
+                    return null;
+                });
+        assertSavedIdentity(request, "baseline-trace", "PREPARED", "Not evaluated");
+        fx(
+                () -> {
+                    findButton(root, "Resume frozen submission").fire();
+                    return null;
+                });
+        awaitIdle();
+        assertSavedIdentity(request, "baseline-trace", "FINALIZED", "PASSED");
+        assertEquals(1, scalar("evolution_evidence_observations"));
+        assertEquals(
+                0,
+                scalar("problem_attempts"),
+                "Keyed diagnostics must not fabricate Java attempts");
+        // A finalized result must also be readable after another cold controller restart.
+        reload(() -> new PlayerSystemService(CLOCK));
+        inspectLatest();
+        assertSavedIdentity(request, "baseline-trace", "FINALIZED", "PASSED");
+        assertClosedEditor();
+        assertNull(fx(() -> maybeButton(root, "Resume frozen submission")));
+        assertEquals(1, scalar("evolution_submissions"));
+        assertEquals(1, scalar("evolution_evidence_observations"));
+        assertEquals(1, scalar("evolution_challenge_presentations"));
+        assertEquals(exposureEvents, scalar("evolution_challenge_exposure_events"));
+    }
+
+    @Test
+    void historicalSubmissionIsSeparateFromAnotherAuthorizedChallengeAndPreservesDraft()
+            throws Exception {
+        var request = preparedSubmission("baseline-trace");
+        new com.codefit.evolution.evaluation.ChallengeEvaluationCoordinator(CLOCK)
+                .resume(request.id());
+        reload(() -> new PlayerSystemService(CLOCK));
+        openCounter();
+        String draft = "// my unsaved counter investigation";
+        fx(
+                () -> {
+                    ((TextArea) loader.getNamespace().get("sourceArea")).setText(draft);
+                    return null;
+                });
+        inspectLatest();
+        fx(
+                () -> {
+                    assertNotEquals(
+                            loader.getNamespace().get("challengeTab"),
+                            ((TabPane) loader.getNamespace().get("tabs"))
+                                    .getSelectionModel()
+                                    .getSelectedItem(),
+                            "An old result must not appear under a different challenge editor");
+                    assertEquals(
+                            draft, ((TextArea) loader.getNamespace().get("sourceArea")).getText());
+                    return null;
+                });
+        assertSavedIdentity(request, "baseline-trace", "FINALIZED", "PASSED");
+        assertFalse(
+                fx(() -> allText((Parent) loader.getNamespace().get("feedbackBox")))
+                        .contains("Saved evaluation"));
+        assertFalse(
+                fx(() -> allText((Parent) loader.getNamespace().get("submissionBox")))
+                        .contains(draft));
+        assertEquals(
+                draft,
+                new com.codefit.repository.JavaSolutionDraftRepository()
+                        .findByProblemId(
+                                new com.codefit.repository.QuestCatalogRepository()
+                                        .transaction(
+                                                c ->
+                                                        new com.codefit.repository
+                                                                        .QuestCatalogRepository()
+                                                                .problemId(
+                                                                        c,
+                                                                        new CatalogRef(
+                                                                                "baseline-counter",
+                                                                                1))))
+                        .orElseThrow()
+                        .getSourceCode());
+        fx(
+                () -> {
+                    ((TabPane) loader.getNamespace().get("tabs"))
+                            .getSelectionModel()
+                            .select((Tab) loader.getNamespace().get("challengeTab"));
+                    assertEquals(
+                            "baseline-counter/v1",
+                            ((Label) loader.getNamespace().get("challengeTitle")).getText());
+                    assertEquals(
+                            draft, ((TextArea) loader.getNamespace().get("sourceArea")).getText());
+                    return null;
+                });
+        assertEquals(2, scalar("evolution_challenge_presentations"));
+        assertEquals(1, scalar("evolution_submissions"));
+    }
+
+    @Test
+    void recoverySavesNewEditsInAnotherChallengeButExecutesOnlyTheOldFrozenArtifact()
+            throws Exception {
+        var request = preparedSubmission("baseline-trace");
+        reload(() -> new PlayerSystemService(CLOCK));
+        openCounter();
+        inspectLatest();
+        String newer = "// unrelated counter draft written after inspecting recovery";
+        fx(
+                () -> {
+                    var tabs = (TabPane) loader.getNamespace().get("tabs");
+                    tabs.getSelectionModel()
+                            .select((Tab) loader.getNamespace().get("challengeTab"));
+                    ((TextArea) loader.getNamespace().get("sourceArea")).setText(newer);
+                    tabs.getSelectionModel()
+                            .select((Tab) loader.getNamespace().get("submissionTab"));
+                    findButton(root, "Resume frozen submission").fire();
+                    return null;
+                });
+        awaitIdle();
+        assertSavedIdentity(request, "baseline-trace", "FINALIZED", "PASSED");
+        assertEquals(
+                request.artifact(),
+                new DurableEvaluationRepository()
+                        .find(request.id())
+                        .orElseThrow()
+                        .snapshot()
+                        .request()
+                        .artifact());
+        assertEquals(
+                newer,
+                new com.codefit.repository.JavaSolutionDraftRepository()
+                        .findByProblemId(
+                                new com.codefit.repository.QuestCatalogRepository()
+                                        .transaction(
+                                                c ->
+                                                        new com.codefit.repository
+                                                                        .QuestCatalogRepository()
+                                                                .problemId(
+                                                                        c,
+                                                                        new CatalogRef(
+                                                                                "baseline-counter",
+                                                                                1))))
+                        .orElseThrow()
+                        .getSourceCode());
+        assertEquals(
+                newer, fx(() -> ((TextArea) loader.getNamespace().get("sourceArea")).getText()));
+        assertEquals(1, scalar("evolution_submissions"));
+        assertEquals(1, scalar("evolution_evidence_observations"));
+        assertEquals(0, scalar("problem_attempts"));
+        assertEquals(2, scalar("evolution_challenge_presentations"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RUNNING", "EVALUATED", "CANCELLED", "TOOL_UNAVAILABLE"})
+    void journalColdStartRecoversDurableStagesWithoutReopeningContent(String state)
+            throws Exception {
+        var request = preparedSubmission("baseline-counter");
+        long exposureEvents = scalar("evolution_challenge_exposure_events");
+        var engine = new ChallengeEvaluationCoordinator(CLOCK);
+        switch (state) {
+            case "RUNNING" -> {
+                // Model a process that died after claiming the command, as the engine's restart
+                // tests do.
+                assertTrue(ProcessHandle.of(99999999).isEmpty());
+                new com.codefit.repository.QuestCatalogRepository()
+                        .transaction(
+                                c -> {
+                                    try (var q =
+                                            c.prepareStatement(
+                                                    "UPDATE evolution_submissions SET"
+                                                        + " state='RUNNING',execution_number=1,run_token='orphan-ui',owner_pid=99999999,owner_started='unknown'"
+                                                        + " WHERE command_id=?")) {
+                                        q.setString(1, request.id());
+                                        assertEquals(1, q.executeUpdate());
+                                    }
+                                    return null;
+                                });
+            }
+            case "EVALUATED" ->
+                    assertThrows(
+                            IllegalStateException.class,
+                            () ->
+                                    EvaluationTestFixtures.interruptAfterStaging(CLOCK)
+                                            .resume(request.id()));
+            case "CANCELLED" -> {
+                engine.cancel(request.id());
+                engine.resume(request.id());
+            }
+            case "TOOL_UNAVAILABLE" -> engine = EvaluationTestFixtures.unavailableRunner(CLOCK);
+            default -> throw new AssertionError(state);
+        }
+        var recoveryEngine = engine;
+        reload(
+                () ->
+                        new PlayerSystemService(
+                                CLOCK,
+                                new ChallengePresentationService(
+                                        new com.codefit.repository.QuestCatalogRepository(),
+                                        new BundledAssets(),
+                                        CLOCK),
+                                new com.codefit.evolution.adaptation.AdaptiveQuestService(
+                                        CLOCK,
+                                        new BundledAssets(),
+                                        () -> true,
+                                        new com.codefit.service.ProblemLibraryService()),
+                                recoveryEngine,
+                                null));
+        inspectJournalSubmission(request.id());
+        assertClosedEditor();
+        if (state.equals("CANCELLED")) {
+            assertSavedIdentity(request, "baseline-counter", "FINALIZED", "CANCELLED");
+            assertNull(fx(() -> maybeButton(root, "Resume frozen submission")));
+        } else {
+            assertSavedIdentity(
+                    request,
+                    "baseline-counter",
+                    state.equals("TOOL_UNAVAILABLE") ? "PREPARED" : state,
+                    state.equals("EVALUATED") ? "PASSED" : "Not evaluated");
+            fx(
+                    () -> {
+                        assertFalse(findButton(root, "Resume frozen submission").isDisabled());
+                        findButton(root, "Resume frozen submission").fire();
+                        return null;
+                    });
+            awaitIdle();
+            assertSavedIdentity(
+                    request,
+                    "baseline-counter",
+                    "FINALIZED",
+                    state.equals("TOOL_UNAVAILABLE") ? state : "PASSED");
+        }
+        assertClosedEditor();
+        assertEquals(1, scalar("evolution_submissions"));
+        assertEquals(1, scalar("evolution_evidence_observations"));
+        assertEquals(1, scalar("problem_attempts"));
+        assertEquals(1, scalar("evolution_challenge_presentations"));
+        assertEquals(exposureEvents, scalar("evolution_challenge_exposure_events"));
+        inspectLatest(); // A second supported route returns the same durable result.
+        assertEquals(1, scalar("evolution_evidence_observations"));
+        assertEquals(1, scalar("problem_attempts"));
+    }
+
+    @Test
+    void coldStartCancelButtonPersistsCancellationBeforeFrozenResume() throws Exception {
+        var request = preparedSubmission("baseline-trace");
+        reload(() -> new PlayerSystemService(CLOCK));
+        inspectLatest();
+        fx(
+                () -> {
+                    findButton(root, "Cancel frozen submission").fire();
+                    return null;
+                });
+        awaitIdle();
+        assertTrue(new DurableEvaluationRepository().find(request.id()).orElseThrow().cancel());
+        assertSavedIdentity(request, "baseline-trace", "PREPARED", "Not evaluated");
+        fx(
+                () -> {
+                    findButton(root, "Resume frozen submission").fire();
+                    return null;
+                });
+        awaitIdle();
+        assertSavedIdentity(request, "baseline-trace", "FINALIZED", "CANCELLED");
+        assertClosedEditor();
+        assertEquals(1, scalar("evolution_submissions"));
+        assertEquals(1, scalar("evolution_evidence_observations"));
+    }
+
+    private void assertSavedIdentity(
+            SubmissionRequest request, String challenge, String stageName, String outcome)
+            throws Exception {
+        fx(
+                () -> {
+                    assertEquals(
+                            loader.getNamespace().get("submissionTab"),
+                            ((TabPane) loader.getNamespace().get("tabs"))
+                                    .getSelectionModel()
+                                    .getSelectedItem());
+                    var result = allText((Parent) loader.getNamespace().get("submissionBox"));
+                    assertTrue(
+                            result.contains("Evaluated challenge: " + challenge + "/v1"), result);
+                    assertTrue(result.contains("Frozen submission ID: " + request.id()), result);
+                    assertTrue(
+                            result.contains("Stage: " + stageName + " · Outcome: " + outcome),
+                            result);
+                    assertFalse(
+                            result.contains("public class Main"),
+                            "No trusted harness in saved-result projection");
+                    assertFalse(
+                            result.contains(request.artifact()),
+                            "Saved results must not reveal the frozen source or keyed answer");
+                    return null;
+                });
+    }
+
+    private void assertClosedEditor() throws Exception {
+        fx(
+                () -> {
+                    assertTrue(((VBox) loader.getNamespace().get("challengeBox")).isDisabled());
+                    assertEquals(
+                            "", ((TextArea) loader.getNamespace().get("promptArea")).getText());
+                    assertEquals(
+                            "", ((TextArea) loader.getNamespace().get("sourceArea")).getText());
+                    return null;
+                });
+    }
+
+    private void inspectJournalSubmission(String command) throws Exception {
+        fx(
+                () -> {
+                    ((TabPane) loader.getNamespace().get("tabs"))
+                            .getSelectionModel()
+                            .select((Tab) loader.getNamespace().get("journalTab"));
+                    return null;
+                });
+        awaitIdle();
+        fx(
+                () -> {
+                    var journal = (VBox) loader.getNamespace().get("journalBox");
+                    var entry =
+                            journal.getChildren().stream()
+                                    .filter(
+                                            n ->
+                                                    n instanceof Parent p
+                                                            && allText(p)
+                                                                    .contains(
+                                                                            "SUBMISSION · source "
+                                                                                    + command))
+                                    .map(n -> (Parent) n)
+                                    .findFirst()
+                                    .orElseThrow();
+                    findButton(entry, "Inspect / continue").fire();
+                    return null;
+                });
+        awaitIdle();
+    }
+
+    private com.codefit.evolution.evaluation.SubmissionRequest preparedSubmission(
+            String challenge) {
+        var spec =
+                JavaTrainingPack.challenges().stream()
+                        .filter(c -> c.ref().id().equals(challenge))
+                        .findFirst()
+                        .orElseThrow();
+        var quest =
+                JavaTrainingPack.quests().stream()
+                        .filter(q -> q.challenges().contains(spec.ref()))
+                        .findFirst()
+                        .orElseThrow();
+        String id = UUID.randomUUID().toString();
+        new ChallengePresentationService(
+                        new com.codefit.repository.QuestCatalogRepository(),
+                        new BundledAssets(),
+                        CLOCK)
+                .present(
+                        new ChallengePresentation.Request(
+                                "p-" + id,
+                                quest.ref(),
+                                spec.ref(),
+                                spec.cohort(),
+                                Familiarity.DECLARED_UNFAMILIAR));
+        String source =
+                new BundledAssets()
+                        .read(
+                                spec.assets().stream()
+                                        .filter(a -> a.kind() == QuestTypes.AssetKind.REFERENCE)
+                                        .findFirst()
+                                        .orElseThrow());
+        var request =
+                new com.codefit.evolution.evaluation.SubmissionRequest(
+                        "s-" + id, "p-" + id, source, OutsideAssistance.NONE_DECLARED, "");
+        new com.codefit.evolution.evaluation.ChallengeEvaluationCoordinator(CLOCK).prepare(request);
+        return request;
+    }
+
+    private void inspectLatest() throws Exception {
+        fx(
+                () -> {
+                    ((TabPane) loader.getNamespace().get("tabs"))
+                            .getSelectionModel()
+                            .select((Tab) loader.getNamespace().get("overviewTab"));
+                    findButton(
+                                    (Parent) loader.getNamespace().get("overviewBox"),
+                                    "Inspect latest result / recovery")
+                            .fire();
+                    return null;
+                });
+        awaitIdle();
     }
 
     private void reload(java.util.function.Supplier<PlayerSystemService> factory) throws Exception {

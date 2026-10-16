@@ -35,8 +35,15 @@ import java.util.function.*;
 /** One shell destination, using existing authoritative services. No JDBC or runner work on FX. */
 public final class EvolutionController implements RouteLifecycle {
     @FXML private TabPane tabs;
-    @FXML private Tab overviewTab, skillsTab, baselineTab, challengeTab, journalTab;
-    @FXML private VBox overviewBox, skillsBox, baselineBox, challengeBox, feedbackBox, journalBox;
+    @FXML private Tab overviewTab, skillsTab, baselineTab, challengeTab, submissionTab, journalTab;
+    @FXML
+    private VBox overviewBox,
+            skillsBox,
+            baselineBox,
+            challengeBox,
+            feedbackBox,
+            submissionBox,
+            journalBox;
     @FXML private Label statusLabel, challengeTitle, exposureLabel, draftLabel;
     @FXML private Button refreshButton, retryButton, cancelButton;
     @FXML private ProgressIndicator loading;
@@ -255,7 +262,7 @@ public final class EvolutionController implements RouteLifecycle {
                     renderSkills();
                     renderBaseline();
                     if (previous != null && activeCommand != null) {
-                        var changes = card("What changed after evaluation");
+                        var changes = card("Current skill estimates after refresh");
                         for (var revision : next.estimates()) {
                             var before =
                                     previous.estimates().stream()
@@ -286,7 +293,7 @@ public final class EvolutionController implements RouteLifecycle {
                                     .reasons()
                                     .forEach(r -> changes.getChildren().add(text(r.message())));
                         }
-                        feedbackBox.getChildren().add(changes);
+                        submissionBox.getChildren().add(changes);
                     }
                 });
     }
@@ -1108,6 +1115,18 @@ public final class EvolutionController implements RouteLifecycle {
     }
 
     private void renderResult(ChallengeEvaluationCoordinator.View view) {
+        // Read frozen identity off FX for every stage, including PREPARED after a cold start.
+        // Never resume a presentation or load a mutable draft just to inspect/recover a command.
+        if (view.stage() == Stage.FINALIZED) recommendationPending = true;
+        background(
+                "Reading saved submission identity…",
+                () -> service().submissionMetadata(view.command()),
+                metadata -> renderSavedResult(view, metadata));
+    }
+
+    private void renderSavedResult(
+            ChallengeEvaluationCoordinator.View view,
+            DurableEvaluationRepository.SubmissionExposure metadata) {
         activeCommand = view.command();
         if (view.stage() == Stage.FINALIZED
                 && pendingSubmission != null
@@ -1117,6 +1136,23 @@ public final class EvolutionController implements RouteLifecycle {
                         view.stage() == Stage.FINALIZED
                                 ? "Saved evaluation · " + view.outcome()
                                 : "Submission " + view.stage() + " · not a completed result");
+        box.getChildren()
+                .add(
+                        text(
+                                "Evaluated challenge: "
+                                        + metadata.challenge().tag()
+                                        + "\nFrozen submission ID: "
+                                        + view.command()
+                                        + "\nStage: "
+                                        + view.stage()
+                                        + " · Outcome: "
+                                        + (view.outcome() == null
+                                                ? "Not evaluated"
+                                                : view.outcome())
+                                        + "\nPresentation: "
+                                        + metadata.presentationId()
+                                        + " · Submitted: "
+                                        + metadata.submittedAt()));
         box.getChildren()
                 .add(
                         text(
@@ -1141,33 +1177,28 @@ public final class EvolutionController implements RouteLifecycle {
                                 "A pass describes these checks, not mastery or universal thread"
                                         + " safety. Unsupported, unavailable, timeout and cancelled"
                                         + " outcomes do not establish a failed capability."));
-        feedbackBox.getChildren().add(box);
-        tabs.getSelectionModel().select(challengeTab);
+        // One saved command at a time: no stale recovery buttons or association with the editor.
+        submissionBox.getChildren().setAll(box);
+        tabs.getSelectionModel().select(submissionTab);
         if (view.stage() != Stage.FINALIZED) {
+            box.getChildren()
+                    .add(
+                            text(
+                                    "Resume reuses this frozen command and checks execution"
+                                        + " ownership. Cancel records a durable request; resume"
+                                        + " completes cancellation once execution stops. Neither"
+                                        + " action opens challenge content or changes the editor"
+                                        + " draft."));
             box.getChildren()
                     .add(
                             button(
                                     "Resume frozen submission",
-                                    () ->
-                                            background(
-                                                    "Resuming the existing immutable command…",
-                                                    () ->
-                                                            service()
-                                                                    .evaluation()
-                                                                    .resume(view.command()),
-                                                    this::renderResult)));
+                                    () -> recoverSubmission(view.command(), false)));
             box.getChildren()
                     .add(
                             button(
                                     "Cancel frozen submission",
-                                    () ->
-                                            background(
-                                                    "Recording cancellation…",
-                                                    () ->
-                                                            service()
-                                                                    .evaluation()
-                                                                    .cancel(view.command()),
-                                                    this::renderResult)));
+                                    () -> recoverSubmission(view.command(), true)));
             return;
         }
         recommendationPending = true;
@@ -1230,6 +1261,25 @@ public final class EvolutionController implements RouteLifecycle {
                                                     + " independent capability claim is made."));
                     refresh();
                 });
+    }
+
+    private void recoverSubmission(String command, boolean cancellation) {
+        // The learner may have edited another authorized challenge since last inspecting this tab.
+        if (dirty) {
+            saveThen(() -> recoverSubmission(command, cancellation));
+            return;
+        }
+        activeCommand = command;
+        background(
+                cancellation
+                        ? "Recording cancellation…"
+                        : "Resuming the existing immutable command…",
+                () ->
+                        cancellation
+                                ? service().evaluation().cancel(command)
+                                : service().evaluation().resume(command),
+                this::renderResult);
+        if (!cancellation) visible(cancelButton, true);
     }
 
     private void renderSkills() {

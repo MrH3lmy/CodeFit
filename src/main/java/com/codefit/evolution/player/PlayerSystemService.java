@@ -304,6 +304,16 @@ public final class PlayerSystemService {
         return catalog.transaction(c -> new EvidenceRepository().find(c, id).orElseThrow());
     }
 
+    /** Safe immutable identity for every durable stage; does not authorize or reveal content. */
+    public DurableEvaluationRepository.SubmissionExposure submissionMetadata(String command) {
+        SubmissionRequest.identity(command);
+        return catalog.transaction(
+                c ->
+                        new DurableEvaluationRepository()
+                                .submissionMetadata(c, command)
+                                .orElseThrow());
+    }
+
     public Optional<DurableEvaluationRepository.EvaluationInput> resultContext(String command) {
         return new DurableEvaluationRepository().evaluationInput(command);
     }

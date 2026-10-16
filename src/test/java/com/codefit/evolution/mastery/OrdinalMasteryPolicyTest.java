@@ -265,9 +265,9 @@ class OrdinalMasteryPolicyTest {
     }
 
     @Test
-    void postTestIsNotTransferOrFoundation() {
+    void postTestSupportsIndependentPerformanceWithoutBecomingTransfer() {
         assertEquals(
-                Band.DEVELOPING,
+                Band.INDEPENDENT,
                 estimate(
                                 pass(1, "post", Cohort.PILOT_POST, 0),
                                 pass(2, "second", Cohort.PRACTICE, 1))
@@ -275,9 +275,9 @@ class OrdinalMasteryPolicyTest {
     }
 
     @Test
-    void transferCannotDoubleAsSecondFoundationFamily() {
+    void transferMaySupportIndependentButCannotDoubleAsItsOwnPrerequisite() {
         assertEquals(
-                Band.DEVELOPING,
+                Band.INDEPENDENT,
                 estimate(
                                 pass(1, "first", Cohort.PRACTICE, 0),
                                 pass(2, "transfer", Cohort.TRANSFER, 1))

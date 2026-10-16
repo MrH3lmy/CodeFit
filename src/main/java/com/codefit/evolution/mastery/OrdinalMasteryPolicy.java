@@ -388,20 +388,7 @@ public final class OrdinalMasteryPolicy {
     }
 
     private static Band band(List<Proof> proofs, Set<Integer> required) {
-        // Held-out observations cannot simultaneously supply the two prerequisite practice units.
-        var foundation =
-                proofs.stream()
-                        .filter(
-                                p ->
-                                        p.source().context().cohort() == Cohort.PRACTICE
-                                                || p.source().context().cohort() == Cohort.BASELINE)
-                        .toList();
-        var covered = new HashSet<Integer>();
-        foundation.forEach(p -> covered.addAll(p.behaviors()));
-        if (foundation.size() < 2
-                || foundation.stream()
-                        .noneMatch(p -> p.source().context().cohort() == Cohort.PRACTICE)
-                || !covered.containsAll(required))
+        if (!independent(proofs, required))
             return proofs.isEmpty() ? Band.UNKNOWN : Band.DEVELOPING;
         var transfer =
                 proofs.stream()
@@ -419,27 +406,26 @@ public final class OrdinalMasteryPolicy {
                         .filter(
                                 p -> {
                                     var prior =
-                                            foundation.stream()
+                                            proofs.stream()
                                                     .filter(
                                                             f ->
                                                                     !f.source()
-                                                                            .facts()
-                                                                            .time()
-                                                                            .observedAt()
-                                                                            .isAfter(
-                                                                                    p.source()
-                                                                                            .context()
-                                                                                            .presentedAt()))
+                                                                                    .context()
+                                                                                    .family()
+                                                                                    .equals(
+                                                                                            p.source()
+                                                                                                    .context()
+                                                                                                    .family())
+                                                                            && !f.source()
+                                                                                    .facts()
+                                                                                    .time()
+                                                                                    .observedAt()
+                                                                                    .isAfter(
+                                                                                            p.source()
+                                                                                                    .context()
+                                                                                                    .presentedAt()))
                                                     .toList();
-                                    var priorCoverage = new HashSet<Integer>();
-                                    prior.forEach(f -> priorCoverage.addAll(f.behaviors()));
-                                    return prior.size() >= 2
-                                            && prior.stream()
-                                                    .anyMatch(
-                                                            f ->
-                                                                    f.source().context().cohort()
-                                                                            == Cohort.PRACTICE)
-                                            && priorCoverage.containsAll(required);
+                                    return independent(prior, required);
                                 })
                         .toList();
         if (eligibleTransfer.isEmpty()) return Band.INDEPENDENT;
@@ -459,6 +445,14 @@ public final class OrdinalMasteryPolicy {
                                                         .isBefore(transferAt))
                 ? Band.RETENTION_SUPPORTED
                 : Band.TRANSFER_SUPPORTED;
+    }
+
+    private static boolean independent(List<Proof> proofs, Set<Integer> required) {
+        var coverage = new HashSet<Integer>();
+        proofs.forEach(p -> coverage.addAll(p.behaviors()));
+        return proofs.size() >= 2
+                && proofs.stream().anyMatch(p -> p.source().context().cohort() != Cohort.BASELINE)
+                && coverage.containsAll(required);
     }
 
     private static boolean retentionEligible(
@@ -552,7 +546,7 @@ public final class OrdinalMasteryPolicy {
             case INDEPENDENT_OPPORTUNITY ->
                     "One independent exercise supports the tested behaviors.";
             case NEED_DIVERSITY ->
-                    "Two unrelated independent exercises, including practice outside baseline, are"
+                    "Two unrelated independent exercises, including one outside baseline, are"
                             + " needed with full behavior coverage.";
             case INDEPENDENT_FAMILIES ->
                     "At least two independent challenge families support the required behaviors.";

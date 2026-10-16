@@ -34,16 +34,19 @@ of freshness. Changing policy semantics requires a new version and retaining the
 | --- | --- | --- |
 | UNKNOWN | No adequate direct, available, timed machine-observed skill performance | INSUFFICIENT |
 | DEVELOPING | Relevant checked failure, partial, assisted success, diagnostic-only result, or insufficient independent diversity/coverage | LIMITED; failure does not mean zero ability |
-| INDEPENDENT | Two distinct-family independent passes, including PRACTICE outside BASELINE, cumulatively covering every required behavior | LIMITED |
+| INDEPENDENT | Two distinct-family independent passes, including at least one outside BASELINE, cumulatively covering every required behavior | LIMITED |
 | TRANSFER_SUPPORTED | INDEPENDENT, then a separate genuinely unfamiliar reserved TRANSFER family with complete behavior coverage and curated equivalent changed context | DIVERSE within checked scope |
 | RETENTION_SUPPORTED | TRANSFER_SUPPORTED, then an independent equivalent RETENTION family after at least seven days without recorded relevant exposure, instruction or rehearsal | DIVERSE within checked scope |
 
-Held-out/post observations do not simultaneously supply the two prerequisite baseline/practice units.
-A transfer presented before sufficient foundation cannot later become unseen by accumulating practice.
+An eligible non-baseline observation can support INDEPENDENT without being relabeled as practice.
+A transfer cannot simultaneously supply its own prerequisite: TRANSFER_SUPPORTED requires two other
+qualifying families observed before that transfer presentation. A transfer presented before sufficient
+foundation cannot later become an independent transfer validation by accumulating practice.
 The initial curated equivalence plan pins `inventory-transfer/v1` and `queue-retention/v1` to their
 exact graph/target skills from the approved Java pilot plan. Cohort or a new ID alone never establishes
 equivalence. Other domains require an explicit reviewed context/equivalence provider, not Java-specific
-branches in the ordinal policy. PILOT_POST never silently becomes baseline, practice or transfer.
+branches in the ordinal policy. PILOT_POST keeps its cohort and never becomes an unseen-transfer result merely by supporting the
+underlying independently checked skill.
 
 `MasteryEstimate` includes exact graph/skill and epoch, current and historically supported bands,
 support/freshness, contradiction and regression-cap flags, advancement eligibility, independent family

@@ -9,7 +9,7 @@ Migration 17 is additive and does not replace original learner rows or published
 | #212 / requested deliverable | Implementation and verification |
 | --- | --- |
 | Fresh/low/missing sample states; all four pilot skills | `OrdinalMasteryPolicyTest`, `MasteryIntegrationTest.freshAllFourSkillsAndSkippedBaselineStayUnknownAcrossRestart`; no XP/card mastery input |
-| Approved ordinal policy and exact behavior coverage | Pure decision-table fixtures for same/different families, baseline-only, missing behaviors, diagnostic scope, transfer, retention and post-pool separation |
+| Approved ordinal policy and exact behavior coverage | Pure decision-table fixtures for same/different families, baseline-only, non-baseline cohort threshold without reusing transfer proof, missing behaviors, diagnostic scope, transfer, retention and post-pool separation |
 | Hints, reveals, unknown help/exposure and self-report | Pure assistance/exposure parameter fixtures and real submission/registry integration; prospective/historical assessment distinction |
 | Authoritative effective evidence only | Same-connection `forSkill` + `evaluationInput`, canonical metadata equality, original-root/submission/family grouping; source/mapping/alias regression tests |
 | No inflated check/variant/mapping/replay units | Multiple-check, repeated variant, remapping, corrected/withdrawn and deliberate command replay fixtures |
@@ -59,10 +59,8 @@ mvn -B test
 git diff --check
 ```
 
-Broader focused run: **445 tests passed**, zero failures/errors/reported skips, before the final epoch,
-fresh-independence and optional-counterexample review additions. Final timezone-focused and complete
-suite results are recorded below. An earlier full run was stopped to apply the
-confirmed optional-counterexample correction; it is not counted as a successful complete run.
+Final timezone-focused run: **100 tests passed**, zero failures/errors/reported skips. Complete Java 21
+suite: **1,566 passed**, zero failures/errors/reported skips. Detailed final results follow.
 
 Desktop manual rendering, Windows/macOS execution, physical power loss and learning outcomes were not
 verified. Existing JavaFX headless prerequisites may yield zero discovered cases for those GUI classes;
@@ -73,14 +71,20 @@ No duplicate follow-up issue, new sharing contract or incidental #228/#229/#230 
 
 ## Final local results
 
-- Final timezone-focused command: **99 tests passed**, zero failures/errors/reported skips, Java 21,
-  `Pacific/Honolulu` (55 pure policy, 21 real estimator/baseline integrations, 5 prospective assessment,
+- Final timezone-focused command: **100 tests passed**, zero failures/errors/reported skips, Java 21,
+  `Pacific/Honolulu` (55 pure policy, 22 real estimator/baseline integrations, 5 prospective assessment,
   2 migration, 15 existing evidence repository and 1 signed P2P isolation test).
-- Complete Java 21 `mvn -B test`: **1,565 tests passed**, zero failures/errors/reported skips,
-  **6 minutes 15 seconds**. This includes **83 new tests** over merged-main's 1,482.
+- Complete Java 21 `mvn -B test`: **1,566 tests passed**, zero failures/errors/reported skips,
+  **6 minutes 17 seconds**. This includes **84 new tests** over merged-main's 1,482.
 - 194 XML test reports: 189 have executed cases; the five existing headless GUI classes report zero
   cases. Their prerequisites were not changed, and desktop rendering is not claimed as verified.
 - `git diff --check`, new/updated documentation relative links, and isolated database guards pass.
   Repository-root `codefit.db` remains absent, matching its initial state.
 - Remote main remains `99015651de526653040627ca98f435bbd831c955`; migration 17 has no current conflict.
-  Exact-head GitHub Actions status is recorded in the PR. The PR must remain unmerged for review.
+  Exact-head GitHub Actions status is recorded in [PR #231](https://github.com/MrH3lmy/CodeFit/pull/231).
+  The PR must remain unmerged for review.
+
+The ordinal threshold is at least one eligible opportunity outside BASELINE, irrespective of its retained
+cohort. A TRANSFER result can support the underlying independent band, but TRANSFER_SUPPORTED requires
+two other prior qualifying families; it cannot be its own prerequisite. Pure fixtures and a real
+baseline + transfer integration verify both the approved threshold and the separate transfer requirement.

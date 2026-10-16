@@ -609,4 +609,15 @@ class MasteryIntegrationTest {
                         .estimate()
                         .band());
     }
+
+    @Test
+    void outsideBaselineThresholdDoesNotRequirePracticeCohortOrReuseTransferProof() {
+        pass("baseline-counter", 0);
+        pass("inventory-transfer", 1);
+        var e = atomic(1).estimate();
+        assertEquals(Band.INDEPENDENT, e.band());
+        assertEquals(2, e.independentFamilies());
+        assertTrue(e.currentCapabilitySupported());
+        assertEquals(Support.LIMITED, e.support());
+    }
 }

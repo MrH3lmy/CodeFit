@@ -19,6 +19,8 @@ import java.util.List;
  */
 public final class CompileOutcome implements AutoCloseable {
 
+    public enum Status { SUCCEEDED, COMPILE_ERROR, TIMED_OUT, CANCELLED, RESOURCE_EXHAUSTED, OUTPUT_LIMIT, TOOL_UNAVAILABLE, INFRASTRUCTURE_ERROR }
+    private final Status status;
     private final boolean success;
     private final List<CompileDiagnostic> diagnostics;
     private final String rawOutput;
@@ -27,12 +29,19 @@ public final class CompileOutcome implements AutoCloseable {
     private boolean closed;
 
     CompileOutcome(boolean success, List<CompileDiagnostic> diagnostics, String rawOutput, Path workDir, String mainClassName) {
-        this.success = success;
+        this(success ? Status.SUCCEEDED : Status.COMPILE_ERROR, diagnostics, rawOutput, workDir, mainClassName);
+    }
+
+    CompileOutcome(Status status, List<CompileDiagnostic> diagnostics, String rawOutput, Path workDir, String mainClassName) {
+        this.status = status;
+        this.success = status == Status.SUCCEEDED;
         this.diagnostics = List.copyOf(diagnostics);
         this.rawOutput = rawOutput;
         this.workDir = workDir;
         this.mainClassName = mainClassName;
     }
+
+    public Status status() { return status; }
 
     public boolean success() {
         return success;

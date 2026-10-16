@@ -29,8 +29,8 @@ import java.util.regex.Pattern;
  * past a byte limit) appropriate for a trusted local single-user app running the learner's own code
  * on their own machine — not containment against a hostile submission. A learner's program shares the
  * host's network stack and filesystem visibility (within OS permissions); nothing here claims
- * otherwise. The authoritative result for any problem is always the external judge the learner
- * ultimately submits to, never this local run.
+ * otherwise. Ordinary workspace runs are not external judge verdicts. Evolution evaluation uses
+ * this runner as a bounded execution mechanism under a separately pinned local rubric.
  */
 public final class JavaCodeRunner implements CodeRunner {
 
@@ -57,7 +57,7 @@ public final class JavaCodeRunner implements CodeRunner {
             this.unavailabilityReason = "java.home is not set; the Java runner is unavailable.";
         } else if (resolvedJava == null || resolvedJavac == null) {
             this.unavailabilityReason = "No JDK found under " + home + ". A JRE-only install cannot compile Java code — "
-                    + "install a JDK (e.g. Temurin/OpenJDK 17+) and set JAVA_HOME, or point CodeFit at one, then restart.";
+                    + "install a JDK (e.g. Temurin/OpenJDK 21+) and set JAVA_HOME, or point CodeFit at one, then restart.";
         } else {
             this.unavailabilityReason = null;
         }
@@ -86,60 +86,63 @@ public final class JavaCodeRunner implements CodeRunner {
 
     @Override
     public CompileOutcome compile(String source, String mainClassName) {
-        if (!isAvailable()) {
-            return new CompileOutcome(false,
-                    List.of(new CompileDiagnostic(mainClassName + ".java", 1, null, true, unavailabilityReason)),
-                    unavailabilityReason, null, mainClassName);
-        }
-        Path workDir;
+        return compile(source, mainClassName, new RunLimits(COMPILE_TIMEOUT_SECONDS, 256, RunLimits.defaults().maxOutputBytes()), new RunCancellationToken());
+    }
+
+    @Override
+    public CompileOutcome compile(String source, String mainClassName, RunLimits limits, RunCancellationToken cancellationToken) {
+        RunCancellationToken token = cancellationToken != null ? cancellationToken : new RunCancellationToken();
+        if (!javax.lang.model.SourceVersion.isIdentifier(mainClassName) || javax.lang.model.SourceVersion.isKeyword(mainClassName)) throw new IllegalArgumentException("Simple class name required");
+        if (!isAvailable()) return compilation(CompileOutcome.Status.TOOL_UNAVAILABLE, unavailabilityReason, null, mainClassName);
+        if (token.isCancelled()) return compilation(CompileOutcome.Status.CANCELLED, "Compilation cancelled", null, mainClassName);
+        Path workDir = null;
+        Process process = null;
         try {
             workDir = Files.createTempDirectory("codefit-java-runner-");
-        } catch (IOException exception) {
-            return new CompileOutcome(false,
-                    List.of(new CompileDiagnostic(mainClassName + ".java", 1, null, true,
-                            "Unable to create a work directory: " + exception.getMessage())),
-                    exception.getMessage(), null, mainClassName);
-        }
-        try {
             Path sourceFile = workDir.resolve(mainClassName + ".java");
             Files.writeString(sourceFile, source, StandardCharsets.UTF_8);
-
-            List<String> command = List.of(javacExecutable.toString(), "-d", workDir.toString(), sourceFile.toString());
+            List<String> command = List.of(javacExecutable.toString(), "-J-Xmx" + limits.memoryLimitMb() + "m", "-proc:none", "--release", "21", "-encoding", "UTF-8", "-classpath", workDir.toString(), "-d", workDir.toString(), sourceFile.toString());
             ProcessBuilder builder = new ProcessBuilder(command).directory(workDir.toFile());
             restrictEnvironment(builder);
-
-            Process process = builder.start();
+            long compileStarted = System.nanoTime();
+            process = builder.start();
+            token.attach(process);
             process.getOutputStream().close();
-            StreamCapture stdout = StreamCapture.start(process.getInputStream(), RunLimits.defaults().maxOutputBytes());
-            StreamCapture stderr = StreamCapture.start(process.getErrorStream(), RunLimits.defaults().maxOutputBytes());
-            boolean finished = process.waitFor(COMPILE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            if (!finished) {
-                RunCancellationToken.killTree(process);
-            }
-            stdout.awaitCompletion();
-            stderr.awaitCompletion();
-            String rawOutput = (stderr.text() + stdout.text()).strip();
-
-            if (!finished) {
-                return new CompileOutcome(false,
-                        List.of(new CompileDiagnostic(mainClassName + ".java", 1, null, true,
-                                "Compilation timed out after " + COMPILE_TIMEOUT_SECONDS + "s.")),
-                        rawOutput, workDir, mainClassName);
-            }
-            boolean success = process.exitValue() == 0;
-            List<CompileDiagnostic> diagnostics = parseDiagnostics(rawOutput, mainClassName);
-            return new CompileOutcome(success, diagnostics, rawOutput, workDir, mainClassName);
-        } catch (IOException exception) {
-            return new CompileOutcome(false,
-                    List.of(new CompileDiagnostic(mainClassName + ".java", 1, null, true,
-                            "Unable to compile: " + exception.getMessage())),
-                    exception.getMessage(), workDir, mainClassName);
-        } catch (InterruptedException exception) {
+            StreamCapture stdout = StreamCapture.start(process.getInputStream(), limits.maxOutputBytes());
+            StreamCapture stderr = StreamCapture.start(process.getErrorStream(), limits.maxOutputBytes());
+            boolean finished = waitUntilDeadline(process, compileStarted, limits.timeoutSeconds());
+            if (!finished) RunCancellationToken.killTree(process);
+            stdout.awaitCompletion(); stderr.awaitCompletion();
+            String raw = (stderr.text() + stdout.text()).strip();
+            CompileOutcome.Status status = token.isCancelled() ? CompileOutcome.Status.CANCELLED
+                : !finished ? CompileOutcome.Status.TIMED_OUT
+                : stdout.truncated() || stderr.truncated() ? CompileOutcome.Status.OUTPUT_LIMIT
+                : raw.contains("OutOfMemoryError") ? CompileOutcome.Status.RESOURCE_EXHAUSTED
+                : process.exitValue() == 0 ? CompileOutcome.Status.SUCCEEDED : CompileOutcome.Status.COMPILE_ERROR;
+            return compilation(status, raw, workDir, mainClassName);
+        } catch (IOException e) {
+            return compilation(CompileOutcome.Status.INFRASTRUCTURE_ERROR, "Unable to compile: " + e.getMessage(), workDir, mainClassName);
+        } catch (RuntimeException e) {
+            return compilation(CompileOutcome.Status.INFRASTRUCTURE_ERROR, "Compiler infrastructure failed", workDir, mainClassName);
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return new CompileOutcome(false,
-                    List.of(new CompileDiagnostic(mainClassName + ".java", 1, null, true, "Compilation was interrupted.")),
-                    "", workDir, mainClassName);
+            token.cancel();
+            return compilation(CompileOutcome.Status.CANCELLED, "Compilation interrupted", workDir, mainClassName);
+        } finally {
+            if (process != null && process.isAlive()) RunCancellationToken.killTree(process);
         }
+    }
+
+    private CompileOutcome compilation(CompileOutcome.Status status, String raw, Path dir, String name) {
+        String summary = switch (status) {
+            case TIMED_OUT -> "Compilation timed out.";
+            case CANCELLED -> "Compilation cancelled.";
+            case RESOURCE_EXHAUSTED -> "Compiler heap exhausted.";
+            case OUTPUT_LIMIT -> "Compiler output exceeded its bound.";
+            default -> null;
+        };
+        String output = summary == null ? raw : summary + (raw.isBlank() ? "" : "\n" + raw);
+        return new CompileOutcome(status, parseDiagnostics(output, name), output, dir, name);
     }
 
     /**
@@ -212,7 +215,7 @@ public final class JavaCodeRunner implements CodeRunner {
         StreamCapture stdout = StreamCapture.start(process.getInputStream(), limits.maxOutputBytes());
         StreamCapture stderr = StreamCapture.start(process.getErrorStream(), limits.maxOutputBytes());
         try {
-            boolean finished = process.waitFor(limits.timeoutSeconds(), TimeUnit.SECONDS);
+            boolean finished = waitUntilDeadline(process, startNanos, limits.timeoutSeconds());
             if (!finished) {
                 // Hard kill: an infinite loop or a program blocked reading more stdin than we gave it
                 // won't respond to a polite signal, so destroyForcibly (plus descendants) is the only
@@ -242,6 +245,14 @@ public final class JavaCodeRunner implements CodeRunner {
         }
     }
 
+    /** Process registration and input setup count toward the same monotonic execution budget. */
+    private boolean waitUntilDeadline(Process process, long startedNanos, int seconds) throws InterruptedException {
+        long budget = TimeUnit.SECONDS.toNanos(seconds);
+        long remaining = budget - (System.nanoTime() - startedNanos);
+        if (remaining <= 0 || !process.waitFor(remaining, TimeUnit.NANOSECONDS)) return false;
+        return System.nanoTime() - startedNanos <= budget;
+    }
+
     private long elapsedMillisSince(long startNanos) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
     }
@@ -259,11 +270,14 @@ public final class JavaCodeRunner implements CodeRunner {
     private void restrictEnvironment(ProcessBuilder builder) {
         // Wipe the parent's environment before handing anything to the child: the JavaFX process's
         // env may carry unrelated app configuration, and the child has no legitimate need for it.
-        // PATH is the one exception, kept only because some platforms' dynamic linker needs it to
-        // resolve the JVM's own native libraries.
+        // PATH is kept because some platforms' dynamic linker needs it. Fixed UTF-8 locale
+        // values keep native filename arguments and captured UTF-8 streams consistent without
+        // forwarding any additional parent environment (including secrets).
         Map<String, String> env = builder.environment();
         String path = System.getenv("PATH");
         env.clear();
+        env.put("LANG", "C.UTF-8");
+        env.put("LC_ALL", "C.UTF-8");
         if (path != null) {
             env.put("PATH", path);
         }

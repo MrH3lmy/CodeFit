@@ -32,7 +32,7 @@ public final class EvidenceRepository {
     private final LearningEvidenceSourceRepository sources = new LearningEvidenceSourceRepository();
 
     public EvidenceRepository() {
-        this((c, o) -> false);
+        this(new com.codefit.evolution.evaluation.DurableEvaluationRepository()::matches);
     }
 
     public EvidenceRepository(ChallengeLookup lookup) {
@@ -351,6 +351,12 @@ public final class EvidenceRepository {
                     if (o.source().type() == SourceType.PROBLEM_ATTEMPT
                             && hasEvaluationAlias(c, o.source().recordId()))
                         excluded.add(Exclusion.EVALUATION_AUTHORITATIVE);
+                    if (o.source().type() == SourceType.ASSESSMENT_ATTEMPT) {
+                        try (var alias = c.prepareStatement("SELECT 1 FROM evolution_evaluation_assessment_aliases WHERE assessment_attempt_id=?")) {
+                            alias.setLong(1, o.source().recordId());
+                            try (var row = alias.executeQuery()) { if (row.next()) excluded.add(Exclusion.EVALUATION_AUTHORITATIVE); }
+                        }
+                    }
                     views.add(new EvidenceView(stored, mapping, skill, availability, excluded));
                 }
             }

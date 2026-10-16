@@ -9,17 +9,27 @@ import java.util.concurrent.atomic.AtomicReference;
  * documented as safe to call from any thread, so no additional synchronization is needed beyond the
  * plain volatile/atomic fields here.
  *
- * <p>Not reusable across runs: create a fresh token for each {@link CodeRunner#run} call.
+ * <p>One-shot: may cover a sequential compile/check group, but never reset or reuse after cancellation.
  */
 public final class RunCancellationToken {
 
     private final AtomicReference<Process> processRef = new AtomicReference<>();
     private volatile boolean cancelled;
+    private final java.util.function.Consumer<ProcessHandle> started;
+
+    public RunCancellationToken() { this(p -> {}); }
+
+    /** Short durable ownership checkpoint; callback must never wait for process completion. */
+    public RunCancellationToken(java.util.function.Consumer<ProcessHandle> started) {
+        this.started = java.util.Objects.requireNonNull(started);
+    }
 
     /** Called by the runner once the child process has started; if {@link #cancel()} already ran
      *  before this (a race between a very fast cancel and process startup), kills it immediately. */
     void attach(Process process) {
         processRef.set(process);
+        try { started.accept(process.toHandle()); }
+        catch (RuntimeException failure) { killTree(process); throw failure; }
         if (cancelled) {
             killTree(process);
         }

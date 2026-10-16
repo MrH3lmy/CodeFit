@@ -118,7 +118,7 @@ class QuestCatalogMigrationTest {
                             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE"
                                 + " 'evolution_quest_%' AND name NOT LIKE 'evolution_challenge_%'"
                                 + " AND name NOT"
-                                + " IN('evolution_assessment_reservations','schema_migrations','sqlite_sequence')"
+                                + " IN('evolution_assessment_reservations','schema_migrations','sqlite_sequence','evolution_submissions','evolution_evaluation_runs','evolution_evaluation_revisions','evolution_evaluation_assessment_aliases')"
                                 + " ORDER BY name")) {
                 while (rs.next()) tables.add(rs.getString(1));
             }

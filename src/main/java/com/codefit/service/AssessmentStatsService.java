@@ -21,11 +21,11 @@ public class AssessmentStatsService {
     private final AssessmentAttemptRepository assessmentAttemptRepository = new AssessmentAttemptRepository();
 
     public List<TransferSkillPerformance> getTransferPerformanceBySkill() {
-        return buildTransferPerformanceBySkill(assessmentAttemptRepository.findRecent(RECENT_ATTEMPT_LIMIT));
+        return buildTransferPerformanceBySkill(assessmentAttemptRepository.findRecentOrdinary(RECENT_ATTEMPT_LIMIT));
     }
 
     public Optional<AssessmentRunSummary> getLatestRunSummary() {
-        return buildLatestRunSummary(assessmentAttemptRepository.findRecent(RECENT_ATTEMPT_LIMIT));
+        return buildLatestRunSummary(assessmentAttemptRepository.findRecentOrdinary(RECENT_ATTEMPT_LIMIT));
     }
 
     /** Package-private/static so the by-skill aggregation is directly unit testable without a database. */

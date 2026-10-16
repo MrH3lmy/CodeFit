@@ -1012,6 +1012,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
 
     private void configureVerdictMenu() {
         for (SubmissionResult result : SubmissionResult.values()) {
+            if (result == SubmissionResult.LOCAL_EVALUATION) continue;
             MenuItem item = new MenuItem(result.name());
             item.setOnAction(event -> {
                 selectedVerdict = result;

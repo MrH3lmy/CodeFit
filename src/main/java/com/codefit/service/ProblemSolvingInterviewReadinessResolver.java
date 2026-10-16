@@ -59,7 +59,7 @@ class ProblemSolvingInterviewReadinessResolver implements InterviewRequirementRe
 
         InterviewProblemSolvingMetrics metrics = buildMetrics(
                 roadmapEntryRepository.findAllInRoadmapOrder(),
-                attemptRepository.findAll(),
+                attemptRepository.findAllOrdinary(),
                 progressRepository.findAll());
         return fromMetrics(requirement, metrics);
     }
@@ -102,7 +102,8 @@ class ProblemSolvingInterviewReadinessResolver implements InterviewRequirementRe
                     .filter(attempt -> attempt.attemptNumber() == 1)
                     .findFirst()
                     .orElse(null);
-            if (firstAttempt == null || firstAttempt.submissionResult() == SubmissionResult.ACX) {
+            if (firstAttempt == null || firstAttempt.submissionResult() == SubmissionResult.ACX
+                    || firstAttempt.submissionResult() == SubmissionResult.LOCAL_EVALUATION) {
                 continue;
             }
 

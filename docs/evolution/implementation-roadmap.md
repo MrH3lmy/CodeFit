@@ -4,9 +4,12 @@ Reviewed complete bodies/comments of #210–#218 against the audited classes, no
 The foundation implements none of those tickets. [EV-02 implementation](skill-graph.md) now supplies
 the skill catalog for #210; [EV-03](skill-evidence.md) supplies evidence for #211.
 [EV-05](quest-catalog.md) now supplies #213 content/family/rubric definitions, backing-source bindings
-and durable presentation exposure. Next implement **#214 durable evaluation**, using the
-[submission handoff](quest-catalog.md#214-handoff-and-evidenceprivacy-guarantees). #212 can develop a pure policy
-against the new retrieval API, with complete baseline acceptance still dependent on #213/#214.
+and durable presentation exposure. [EV-06](challenge-evaluation.md) now supplies #214 durable
+submission/evaluation, source/evidence finalization and peer aggregate isolation. Next implement
+**#212 baseline and proficiency estimates**, using the existing exact evidence views and the
+[evaluation handoff](challenge-evaluation.md#handoff-and-remaining-boundaries). The #213/#214 inputs now
+exist; estimate policy must still distinguish bounded check success, assistance, repeats, unavailable
+execution and independent transfer. #212 does not own another grader, attempt store or runner.
 Keep existing issues; no duplicate engines/tickets.
 
 ## Foundation recommendation: implement #210 first

@@ -8,6 +8,7 @@ public final class QuestCatalogDowngrade {
     private QuestCatalogDowngrade() {}
 
     public static void remove(Connection c) throws SQLException {
+        EvaluationDowngrade.remove(c);
         try (var s = c.createStatement()) {
             s.execute("PRAGMA foreign_keys=OFF");
             List<String> tables = new ArrayList<>();

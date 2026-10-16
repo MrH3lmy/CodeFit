@@ -7,7 +7,9 @@ Design deliverable for [#209](https://github.com/MrH3lmy/CodeFit/issues/209), un
 **Status:** foundation accepted in merged PR #219. [EV-02 skill catalog](skill-graph.md) implements
 versioned definitions and prerequisite graphs for #210. [EV-03 evidence](skill-evidence.md) adds
 provenance-aware observations, exact mappings and bounded local ingestion for #211.
-[EV-05 catalog](quest-catalog.md) adds immutable offline quests/challenges and durable exposure for #213. Other runtime policies
+[EV-05 catalog](quest-catalog.md) adds immutable offline quests/challenges and durable exposure for #213.
+[EV-06 evaluation](challenge-evaluation.md) adds frozen submissions, bounded local checks, durable
+source/evidence completion and recovery for #214. Estimate/adaptation policies
 and example learner results are future work. The original audit describes the pre-Evolution baseline;
 implementation status and verification are recorded per slice. This is not evidence of learning gains.
 
@@ -26,6 +28,7 @@ and a passed local test are useful signals with different meanings; none alone p
 | #210 implemented catalog, API, schema, tests and limits | [Versioned skill graph](skill-graph.md) |
 | #211 evidence, source provenance, schema, backfill, #212/#214 APIs and limits | [Skill evidence](skill-evidence.md) |
 | #213 quest/challenge catalog, original pack, hold-out isolation, exposure and #214/#216 handoff | [Quest catalog](quest-catalog.md) |
+| #214 staged evaluation, checks, evidence, recovery, privacy and limits | [Challenge evaluation](challenge-evaluation.md), [verification](challenge-evaluation-verification.md) |
 
 Read the audit before the ADR and contracts. Numerical thresholds in the lifecycle are a deliberately
 conservative, versioned starting policy, to be tested in #212/#215 and evaluated in #218; they are

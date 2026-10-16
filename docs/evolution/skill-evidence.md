@@ -3,7 +3,8 @@
 Implementation for [#211](https://github.com/MrH3lmy/CodeFit/issues/211), under
 [epic #208](https://github.com/MrH3lmy/CodeFit/issues/208), built on main
 `c110ea6a0045d83b37b151f93f5a45de588eed63` (merged #220). This document describes implemented
-behavior. Mastery estimation, new grading, quests, rewards and UI remain future work.
+behavior as of EV-03. [EV-06](challenge-evaluation.md) now supplies durable challenge evaluation and
+same-connection source validation. Mastery estimation, rewards and Evolution UI remain future work.
 
 An observation records what a source actually says, including its uncertainty. `PASS`, a category
 mapping, and `effective()` are never claims of independent ability or proficiency.
@@ -39,14 +40,15 @@ For subjective/legacy ratings GOOD/EASY produce a reported PASS, AGAIN a reporte
 HARD and unsupported ratings produce UNAVAILABLE because difficulty does not establish correctness. These retain their provenance; no new objective truth is
 assigned. Outcome and provenance must always be read together.
 
-All three existing INSERT repositories omit the timestamp column and SQLite supplies
+The original three legacy INSERT paths omit the timestamp column and SQLite supplies
 `CURRENT_TIMESTAMP`. The timestamp on a returned in-memory Java object may differ from the stored
 row. Strict `yyyy-MM-dd HH:mm:ss` persisted values are interpreted as UTC with
 `LEGACY_SQLITE_UTC` and a limitation, not as an authenticated event clock. Other formats, including
 ambiguous offset-free Java timestamps from other writers, retain their original bounded value but
 have no normalized observation instant. Imported/prior-solved/unknown problem completion origins
 have no inferred completion instant. `recordedAt` is separate ingestion time; it never fills a
-missing observation time. This corrects the foundation audit's assessment timestamp statement.
+missing observation time. This corrects the foundation audit's assessment timestamp statement. EV-06's reserved local ProblemAttempt
+writer is a separate scoped path that stores the frozen submission UTC time explicitly.
 
 ## Identity, correlation and immutable history
 

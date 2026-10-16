@@ -101,7 +101,10 @@ final class SchemaMigrator {
                         } catch (RuntimeException invalid) {
                             throw new SQLException("Invalid quest catalog seed", invalid);
                         }
-                    })
+                    }),
+            new VersionedMigration(16,
+                    "Add durable challenge submissions and evaluation revisions (#214)",
+                    ChallengeEvaluationSchema::create)
     );
 
     static void migrate(Connection connection) throws SQLException {

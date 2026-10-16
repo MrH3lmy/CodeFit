@@ -70,7 +70,7 @@ public class ProblemDashboardService {
         List<RoadmapEntry> roadmapEntries = roadmapEntryRepository.findAllInRoadmapOrder();
         List<Problem> problems = problemRepository.findAll().stream().filter(ProblemVisibility::ordinary).toList();
         List<ProblemProgress> progressRows = progressRepository.findAll();
-        List<ProblemAttempt> attempts = attemptRepository.findAll();
+        List<ProblemAttempt> attempts = attemptRepository.findAllOrdinary();
 
         Map<Long, Problem> problemsById = problems.stream().collect(Collectors.toMap(Problem::getId, p -> p));
         Map<Long, ProblemProgress> progressByProblemId = progressRows.stream()

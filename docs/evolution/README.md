@@ -10,8 +10,9 @@ provenance-aware observations, exact mappings and bounded local ingestion for #2
 [EV-05 catalog](quest-catalog.md) adds immutable offline quests/challenges and durable exposure for #213.
 [EV-06 evaluation](challenge-evaluation.md) adds frozen submissions, bounded local checks, durable
 source/evidence completion and recovery for #214. [EV-04 baseline and mastery estimates](mastery-estimation.md)
-now provide conservative, versioned per-skill interpretations for #212. Adaptation policies and example
-learner results are future work. The original audit describes the pre-Evolution baseline;
+now provide conservative, versioned per-skill interpretations for #212.
+[EV-07 adaptation](adaptive-quest-policy.md) adds deterministic next actions and durable learner controls
+for #215. Evolution UI, rewards and observed learning outcomes remain future work. The original audit describes the pre-Evolution baseline;
 implementation status and verification are recorded per slice. This is not evidence of learning gains.
 
 CodeFit should help learners solve unfamiliar real problems better. Activity, XP, card familiarity,
@@ -30,6 +31,7 @@ and a passed local test are useful signals with different meanings; none alone p
 | #211 evidence, source provenance, schema, backfill, #212/#214 APIs and limits | [Skill evidence](skill-evidence.md) |
 | #213 quest/challenge catalog, original pack, hold-out isolation, exposure and #214/#216 handoff | [Quest catalog](quest-catalog.md) |
 | #212 ordinal policy, coherent inputs, revisions/epochs, baseline and prospective assessment facts | [Mastery estimation](mastery-estimation.md), [verification](mastery-estimation-verification.md) |
+| #215 ordered adaptive policy, coherent decisions, learner controls and UI handoff | [Adaptive quest policy](adaptive-quest-policy.md), [verification](adaptive-quest-verification.md) |
 | #214 staged evaluation, checks, evidence, recovery, privacy and limits | [Challenge evaluation](challenge-evaluation.md), [verification](challenge-evaluation-verification.md) |
 
 Read the audit before the ADR and contracts. Numerical thresholds in the lifecycle are a deliberately

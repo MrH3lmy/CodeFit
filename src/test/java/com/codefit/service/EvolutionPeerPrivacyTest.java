@@ -195,6 +195,16 @@ class EvolutionPeerPrivacyTest {
                 com.codefit.config.JavaDebuggingSkillSeed.GRAPH, "private-estimate-reset", CLOCK);
         new com.codefit.evolution.mastery.BaselineDiagnosticService().skipAll("private-skip-baseline");
         estimates.pilot(NOW);
+        // New adaptation interpretations and explicit learner controls remain private too.
+        var adaptation = new com.codefit.evolution.adaptation.AdaptiveQuestService(
+                CLOCK, new BundledAssets(), () -> true, new ProblemLibraryService());
+        var decision = adaptation.recommend(NOW);
+        adaptation.respond(com.codefit.evolution.adaptation.LearnerCommand.simple(
+                "private-adaptation-pause", com.codefit.evolution.adaptation.AdaptationTypes.CommandKind.PAUSE));
+        adaptation.respond(com.codefit.evolution.adaptation.LearnerCommand.simple(
+                "private-adaptation-resume", com.codefit.evolution.adaptation.AdaptationTypes.CommandKind.RESUME));
+        adaptation.recommend(NOW);
+        assertEquals(decision, new com.codefit.evolution.adaptation.AdaptationDecisionRepository().find(decision.id()).orElseThrow());
         assertEquals(ordinary, attempts.findSubmittedBetweenUtc(start, end));
         assertEquals(fresh, attempts.countFreshFirstCompletionsBetweenUtc(start, end));
         assertEquals(ambiguous, attempts.hasUnknownSubmittedBetweenUtc(start, end));
@@ -223,7 +233,8 @@ class EvolutionPeerPrivacyTest {
                             "evolution_evidence",
                             "artifact_sha",
                             "ordinal-v1", "private-estimate-reset", "private-skip-baseline",
-                            "evolution_estimate", "NO_DIRECT_EVIDENCE")) assertFalse(bytes.contains(secret), secret);
+                            "evolution_estimate", "NO_DIRECT_EVIDENCE", "adaptive-v1", "java-pilot-v1",
+                            "private-adaptation-pause", "evolution_adaptation", "decision-")) assertFalse(bytes.contains(secret), secret);
         }
         var prepAfter = publication.publishPreparationSnapshot(contact.id(), identity, 1, profile);
         assertEquals(prepBefore, prepAfter);

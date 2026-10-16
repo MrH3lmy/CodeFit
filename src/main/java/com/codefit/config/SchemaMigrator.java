@@ -107,7 +107,10 @@ final class SchemaMigrator {
                     ChallengeEvaluationSchema::create),
             new VersionedMigration(17,
                     "Add versioned skill estimates, baseline choices and prospective assessment facts (#212)",
-                    MasterySchema::create)
+                    MasterySchema::create),
+            new VersionedMigration(18,
+                    "Add explainable adaptation decisions and learner controls (#215)",
+                    AdaptationSchema::create)
     );
 
     static void migrate(Connection connection) throws SQLException {

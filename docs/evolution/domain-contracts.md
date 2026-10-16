@@ -4,7 +4,7 @@
 [#211 evidence contracts/storage](skill-evidence.md) are implemented; the other
 contracts are implemented by their owner slices: [catalog](quest-catalog.md),
 [evaluation](challenge-evaluation.md), and [baseline/estimates](mastery-estimation.md).
-Adaptation, UI and rewards remain #215–#217. Names are frozen at
+[Adaptation](adaptive-quest-policy.md) implements #215; UI and rewards remain #216–#217. Names are frozen at
 the semantic boundary; Java records may be introduced only when their owner ticket needs them.
 Do not add empty engine classes in #209. [ADR](adr-0001-local-evolution.md) owns storage/privacy decisions.
 
@@ -12,7 +12,7 @@ Do not add empty engine classes in #209. [ADR](adr-0001-local-evolution.md) owns
 
 | Concept | Definition / minimum data | Owner |
 | --- | --- | --- |
-| Player | Local learner view: selected goal/skill IDs, domain, budget, selected track, paused/deferred tasks; composed engagement/estimate views | #212 baseline preferences; #216 UI; existing UserProgress for engagement |
+| Player | Local learner view: selected goal/skill IDs, domain, budget, selected track, paused/deferred tasks; composed engagement/estimate views | #212 baseline skips; #215 durable controls; #216 UI; existing UserProgress for engagement |
 | Skill | Stable namespaced ID (`java.concurrency.atomic-update`), domain, definition version, observable behaviors, lifecycle ACTIVE/RETIRED | #210 |
 | Skill Graph | Versioned directed prerequisite edges with exact skill-version endpoints; deterministic traversal | #210 |
 | Evidence | A traceable observation mapped to one or more exact skills, with quality/assistance/exposure and correction status | #211 |

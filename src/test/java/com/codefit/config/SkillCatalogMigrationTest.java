@@ -134,6 +134,7 @@ class SkillCatalogMigrationTest {
     /** Reconstructs the pre-Evolution version-12 schema/data in a throwaway database. */
     private static void prepareVersionTwelve() throws SQLException {
         try (Connection connection = DatabaseConfig.getConnection(); Statement sql = connection.createStatement()) {
+            com.codefit.testsupport.QuestCatalogDowngrade.remove(connection);
             sql.execute("PRAGMA foreign_keys = OFF");
             // Later additive migrations depend on the catalog. Remove those only in this
             // downgrade fixture, then retain the original v12 -> head preservation assertions.

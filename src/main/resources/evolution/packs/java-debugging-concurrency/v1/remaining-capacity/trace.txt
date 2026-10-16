@@ -1,0 +1,1 @@
+free=7; A checks reserve(a,4); B checks reserve(b,4); both pass; map contains two entries, free becomes -1. A repeated cancel can inflate free without a live reservation.

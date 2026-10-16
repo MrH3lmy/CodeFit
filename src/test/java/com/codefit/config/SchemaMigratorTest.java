@@ -29,6 +29,15 @@ class SchemaMigratorTest {
         connection = DriverManager.getConnection("jdbc:sqlite:" + tempDir.resolve("legacy.db"));
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON");
+            // Later migrations seed Problems and reserved #104 diagnostics; include their existing parents.
+            statement.execute("CREATE TABLE problems(id INTEGER PRIMARY KEY AUTOINCREMENT, external_code TEXT,"
+                    + " platform TEXT, title TEXT, url TEXT, topic TEXT, quality_rating INTEGER, learning_resources TEXT,"
+                    + " created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE roadmap_entries(id INTEGER PRIMARY KEY AUTOINCREMENT, problem_id INTEGER)");
+            statement.execute("CREATE TABLE assessment_items(id INTEGER PRIMARY KEY AUTOINCREMENT,skill_category TEXT,"
+                    + "module_name TEXT,card_type TEXT,validation_mode TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE assessment_variants(id INTEGER PRIMARY KEY AUTOINCREMENT,assessment_item_id INTEGER,"
+                    + "variant_index INTEGER,scenario TEXT,accepted_answers TEXT,reference_answer TEXT,simulated_output TEXT,hint TEXT)");
             statement.execute("""
                     CREATE TABLE flashcards (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,

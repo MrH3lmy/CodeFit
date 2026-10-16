@@ -91,6 +91,16 @@ final class SchemaMigrator {
                         } catch (RuntimeException invalid) {
                             throw new SQLException("Invalid evidence schema seed", invalid);
                         }
+                    }),
+            new VersionedMigration(15,
+                    "Add immutable offline quests, challenges and durable exposure history (#213)",
+                    connection -> {
+                        try {
+                            QuestCatalogSchema.create(connection);
+                            com.codefit.evolution.quest.JavaTrainingPack.seed(connection);
+                        } catch (RuntimeException invalid) {
+                            throw new SQLException("Invalid quest catalog seed", invalid);
+                        }
                     })
     );
 

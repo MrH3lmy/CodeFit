@@ -38,12 +38,14 @@ public class JavaSolutionWorkspaceService {
 
     /** The problem's saved draft, or a fresh minimal template if none has been saved yet. */
     public JavaSolutionDraft loadDraft(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return draftRepository.findByProblemId(problemId).orElseGet(() -> JavaSolutionDraft.template(problemId));
     }
 
     /** Creates or overwrites the problem's one draft row in place — this is "autosave": call it as
      *  often as needed (e.g. on every edit, or on a debounce timer), it never accumulates history. */
     public JavaSolutionDraft saveDraft(long problemId, String mainClassName, String sourceCode, String stdin, String expectedOutput) {
+        ProblemVisibility.requireOrdinary(problemId);
         Optional<JavaSolutionDraft> existing = draftRepository.findByProblemId(problemId);
         if (existing.isPresent()) {
             JavaSolutionDraft draft = existing.get();
@@ -96,16 +98,19 @@ public class JavaSolutionWorkspaceService {
     // ---- Local test cases (#163's "run multiple local test cases") -----------------------------
 
     public List<JavaTestCase> listTestCases(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         return testCaseRepository.findByProblemId(problemId);
     }
 
     /** Appends a fresh, blank test case after whatever the problem already has. */
     public JavaTestCase addTestCase(long problemId) {
+        ProblemVisibility.requireOrdinary(problemId);
         int nextPosition = testCaseRepository.countByProblemId(problemId);
         return testCaseRepository.save(new JavaTestCase(0, problemId, nextPosition, "", ""));
     }
 
     public void updateTestCase(long testCaseId, long problemId, int position, String stdin, String expectedOutput) {
+        ProblemVisibility.requireOrdinary(problemId);
         testCaseRepository.update(new JavaTestCase(testCaseId, problemId, position, stdin, expectedOutput));
     }
 

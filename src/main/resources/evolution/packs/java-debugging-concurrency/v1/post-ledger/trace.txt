@@ -1,0 +1,1 @@
+apply(x,1,10), apply(x,3,-2), apply(x,2,8). Expected contribution -2. Blind accumulation gives 8; accepting stale revisions gives 8.

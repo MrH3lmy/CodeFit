@@ -1,0 +1,5 @@
+# Two account locks in opposite directions
+
+Two account workers transfer balances in opposite directions and occasionally stop forever; an independent accounting regression can also create money. Exercise has two private account monitors and initial balances a,b (nonnegative). move(from,to,n) supports indices 0 and 1, rejects negative n or insufficient funds, and treats a valid same-account move as a no-op success only when funded. balance(index) observes one balance. Repair lock acquisition with a single total order shared by both directions. Preserve the per-account locks (do not serialize everything with a new global lock). Account identities are fixed, so there is no identity-hash collision problem. Reconstruct the wait-for cycle, remove it, preserve total money and validate changed transfer directions. A bounded successful run is an observation of termination, not a proof of universal liveness.
+
+Deliver a reproduction, diagnosis, correction and verification notes. Record assistance honestly. Public checks are examples, not complete safety proofs. No score or evidence is created by opening or manually completing this task.

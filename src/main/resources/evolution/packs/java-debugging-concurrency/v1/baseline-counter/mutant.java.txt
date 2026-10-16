@@ -1,0 +1,16 @@
+class Exercise {
+    private final java.util.Map<String, Integer> counts = new java.util.HashMap<>();
+
+    public void record(String route) {
+        if (route == null || route.isBlank()) throw new IllegalArgumentException();
+        counts.put(route, 1);
+    }
+
+    public int count(String route) {
+        return counts.getOrDefault(route, 0);
+    }
+
+    public int total() {
+        return counts.values().stream().mapToInt(Integer::intValue).sum();
+    }
+}

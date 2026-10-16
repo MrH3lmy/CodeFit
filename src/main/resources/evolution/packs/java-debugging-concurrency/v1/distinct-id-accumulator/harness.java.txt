@@ -1,0 +1,66 @@
+public class Main {
+    static void check(boolean value) {
+        if (!value) throw new AssertionError("Contract violated");
+    }
+
+    static void parallel(Runnable a, Runnable b) throws Exception {
+        var failure = new java.util.concurrent.atomic.AtomicReference<Throwable>();
+        var gate = new java.util.concurrent.CountDownLatch(1);
+        Thread left =
+                new Thread(
+                        () -> {
+                            try {
+                                gate.await();
+                                a.run();
+                            } catch (Throwable t) {
+                                failure.set(t);
+                            }
+                        });
+        Thread right =
+                new Thread(
+                        () -> {
+                            try {
+                                gate.await();
+                                b.run();
+                            } catch (Throwable t) {
+                                failure.set(t);
+                            }
+                        });
+        left.setDaemon(true);
+        right.setDaemon(true);
+        left.start();
+        right.start();
+        gate.countDown();
+        left.join(3000);
+        right.join(3000);
+        if (left.isAlive() || right.isAlive()) throw new AssertionError("Observed nontermination");
+        if (failure.get() != null) throw new AssertionError("Worker failed", failure.get());
+    }
+
+    public static void main(String[] args) throws Exception {
+        String mode =
+                new String(System.in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
+                        .strip();
+        if (mode.equals("concurrency")) {
+            Exercise e = new Exercise();
+            parallel(
+                    () -> {
+                        for (int i = 0; i < 1000; i++) e.add("id" + i, 3);
+                    },
+                    () -> {
+                        for (int i = 0; i < 1000; i++) e.add("id" + i, 3);
+                    });
+            check(e.total() == 3000);
+            check(e.size() == 1000);
+        } else {
+            Exercise e = new Exercise();
+            check(e.add("a", 5));
+            check(!e.add("a", 9));
+            check(!e.add("b", -1));
+            check(e.add("b", 3));
+            check(e.total() == 8);
+            check(e.size() == 2);
+        }
+        System.out.print("OK\n");
+    }
+}

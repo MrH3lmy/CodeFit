@@ -1,0 +1,13 @@
+class Exercise {
+    private final java.util.concurrent.atomic.AtomicLong total =
+            new java.util.concurrent.atomic.AtomicLong();
+
+    public void add(long delta) {
+        if (delta < 0) throw new IllegalArgumentException();
+        total.addAndGet(delta);
+    }
+
+    public long value() {
+        return total.get();
+    }
+}

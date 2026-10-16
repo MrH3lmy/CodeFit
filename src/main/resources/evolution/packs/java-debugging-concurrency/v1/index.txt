@@ -1,0 +1,14 @@
+atomic-boundary-drill/challenge.properties
+baseline-counter/challenge.properties
+baseline-localize/challenge.properties
+baseline-trace/challenge.properties
+counter-repair-b/challenge.properties
+counter-repair/challenge.properties
+distinct-id-accumulator/challenge.properties
+inventory-transfer/challenge.properties
+lock-order-repair/challenge.properties
+post-expiry/challenge.properties
+post-ledger/challenge.properties
+queue-retention/challenge.properties
+regression-localize/challenge.properties
+remaining-capacity/challenge.properties

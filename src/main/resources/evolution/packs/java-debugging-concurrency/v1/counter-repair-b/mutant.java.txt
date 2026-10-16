@@ -1,0 +1,12 @@
+class Exercise {
+    private long total;
+
+    public void add(long delta) {
+        if (delta < 0) throw new IllegalArgumentException();
+        total = delta;
+    }
+
+    public long value() {
+        return total;
+    }
+}

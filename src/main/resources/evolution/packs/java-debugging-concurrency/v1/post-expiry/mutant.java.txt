@@ -1,0 +1,23 @@
+class Exercise {
+    private final java.util.Map<String, Long> live = new java.util.HashMap<>();
+
+    public boolean acquire(String id, long deadline, long now) {
+        if (now < 0 || deadline <= now || live.containsKey(id)) return false;
+        live.put(id, deadline);
+        return true;
+    }
+
+    public int expire(long now) {
+        int before = live.size();
+        live.values().removeIf(deadline -> deadline < now);
+        return before - live.size();
+    }
+
+    public boolean release(String id) {
+        return live.remove(id) != null;
+    }
+
+    public int active() {
+        return live.size();
+    }
+}

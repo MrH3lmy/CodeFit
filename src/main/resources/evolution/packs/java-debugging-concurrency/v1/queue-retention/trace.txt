@@ -1,0 +1,1 @@
+claim(a) removes a from pending before adding it to in-flight. Concurrent observers must not see an admitted job in neither collection. ack(a), ack(a) must count only once.

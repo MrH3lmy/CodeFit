@@ -1,0 +1,26 @@
+class Exercise {
+    private final java.util.Map<String, Integer> orders = new java.util.HashMap<>();
+    private int free;
+
+    Exercise(int n) {
+        free = n;
+    }
+
+    public boolean reserve(String id, int n) {
+        if (n <= 0 || n > free) return false;
+        orders.put(id, n);
+        free -= n;
+        return true;
+    }
+
+    public boolean cancel(String id) {
+        Integer n = orders.get(id);
+        if (n == null) return false;
+        free += n;
+        return true;
+    }
+
+    public int remaining() {
+        return free;
+    }
+}

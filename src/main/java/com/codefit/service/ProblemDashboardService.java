@@ -68,7 +68,7 @@ public class ProblemDashboardService {
 
     public ProblemDashboard build(ProblemDashboardFilter filter) {
         List<RoadmapEntry> roadmapEntries = roadmapEntryRepository.findAllInRoadmapOrder();
-        List<Problem> problems = problemRepository.findAll();
+        List<Problem> problems = problemRepository.findAll().stream().filter(ProblemVisibility::ordinary).toList();
         List<ProblemProgress> progressRows = progressRepository.findAll();
         List<ProblemAttempt> attempts = attemptRepository.findAll();
 

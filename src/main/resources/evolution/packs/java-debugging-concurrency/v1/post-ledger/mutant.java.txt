@@ -1,0 +1,15 @@
+class Exercise {
+    private final java.util.Map<String, Integer> versions = new java.util.HashMap<>();
+    private long sum;
+
+    public boolean apply(String id, int revision, long amount) {
+        if (revision <= 0 || revision <= versions.getOrDefault(id, 0)) return false;
+        versions.put(id, revision);
+        sum += amount;
+        return true;
+    }
+
+    public long total() {
+        return sum;
+    }
+}

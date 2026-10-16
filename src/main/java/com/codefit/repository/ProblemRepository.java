@@ -80,7 +80,9 @@ public class ProblemRepository {
 
     /** Every problem whose external code matches, regardless of platform (used by Topics-sheet lookups). */
     public List<Problem> findAllByExternalCode(Connection connection, String externalCode) throws SQLException {
-        String sql = "SELECT * FROM problems WHERE external_code = ?";
+        String sql =
+                "SELECT * FROM problems WHERE external_code = ? AND platform <>"
+                    + " 'CODEFIT_EVOLUTION'";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, externalCode);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -159,6 +161,19 @@ public class ProblemRepository {
             statement.setString(5, problem.getLearningResources());
             statement.setLong(6, problem.getId());
             statement.executeUpdate();
+        }
+    }
+
+    public int countOrdinary() {
+        try (Connection c = DatabaseConfig.getConnection();
+                var s = c.createStatement();
+                var rs =
+                        s.executeQuery(
+                                "SELECT COUNT(*) FROM problems WHERE platform <>"
+                                    + " 'CODEFIT_EVOLUTION'")) {
+            return rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to count ordinary problems", e);
         }
     }
 

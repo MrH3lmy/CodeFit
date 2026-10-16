@@ -1,0 +1,5 @@
+# Request counts disappear for a newly seen route
+
+An API gateway counts completed requests by route. Exercise.record(route) increments that route once; count(route) returns zero for a route never observed. total() is read after workers finish and sums all routes. Routes are nonnull, nonblank strings; invalid routes must be rejected before mutation. Requests are distinct (no deduplication is required). The starter lazily creates a route entry with a separate contains/get/put sequence, so both first publication and later increments can race. Reproduce losing the first two requests for the same route, repair per-route atomic updates, and preserve different routes. All counts fit int. This diagnostic exercises keyed-state publication, not the scalar telemetry API used in practice.
+
+Deliver a reproduction, diagnosis, correction and verification notes. Record assistance honestly. Public checks are examples, not complete safety proofs. No score or evidence is created by opening or manually completing this task.

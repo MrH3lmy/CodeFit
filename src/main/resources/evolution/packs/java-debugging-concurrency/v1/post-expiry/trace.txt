@@ -1,0 +1,1 @@
+acquire(a,5,0), expire(5), expire(5). Inclusive deadline means first call removes1, second0. Removing without retained identity allows a delayed acquire to resurrect a.

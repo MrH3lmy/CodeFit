@@ -1,0 +1,27 @@
+class Exercise {
+    private final java.util.Map<String, Integer> orders = new java.util.HashMap<>();
+    private int free;
+
+    Exercise(int n) {
+        if (n < 0) throw new IllegalArgumentException();
+        free = n;
+    }
+
+    public synchronized boolean reserve(String id, int n) {
+        if (n <= 0 || orders.containsKey(id) || n > free) return false;
+        orders.put(id, n);
+        free -= n;
+        return true;
+    }
+
+    public synchronized boolean cancel(String id) {
+        Integer n = orders.remove(id);
+        if (n == null) return false;
+        free += n;
+        return true;
+    }
+
+    public synchronized int remaining() {
+        return free;
+    }
+}

@@ -120,7 +120,10 @@ class ImportToPracticeCriticalPathTest {
         // DatabaseConfig.initialize() seeds the Stage A pilot guidance's 10 problems/roadmap rows
         // (#171) unconditionally on every startup, so "clean" here means "only the seed", not zero.
         int countBeforeAnalyze = problemRepository.countAll();
-        assertEquals(10, countBeforeAnalyze, "only the Stage A pilot guidance seed exists before any workbook import");
+        long evolutionCount = com.codefit.evolution.quest.JavaTrainingPack.challenges().stream()
+                .filter(c -> c.runner() == com.codefit.evolution.quest.QuestTypes.Runner.JAVA21_MAIN).count();
+        assertEquals(10, problemRepository.countOrdinary(), "the Stage A pilot seed remains unchanged");
+        assertEquals(10 + evolutionCount, countBeforeAnalyze, "Evolution bindings stay separate from the workbook");
 
         TrainingSheetImportService importService = new TrainingSheetImportService();
 
@@ -153,8 +156,10 @@ class ImportToPracticeCriticalPathTest {
         assertEquals(923, uniqueProblemIds.size(), "923 unique real problems");
 
         // The Stage A pilot seed's 10 problems merge into these same rows rather than duplicating
-        // (#174's documented identity contract) - importing must never grow past 923 unique problems.
-        assertEquals(923, problemRepository.countAll(), "the pilot seed's 10 problems merge into the import, not duplicate alongside it");
+        // (#174's documented identity contract) - importing must never grow past 923 ordinary unique problems.
+        assertEquals(evolutionCount, problemRepository.countAll() - problemRepository.countOrdinary(),
+                "the import preserves every Evolution binding");
+        assertEquals(923, problemRepository.countOrdinary(), "the pilot seed's 10 problems merge into the import, not duplicate alongside it");
 
         pilotProblemId = problemRepository.findByPlatformAndExternalCode("Codeforces", "CF677-D2-A").orElseThrow().getId();
     }
@@ -173,7 +178,11 @@ class ImportToPracticeCriticalPathTest {
 
         assertEquals(0, second.problemsCreated(), "no new problems on a repeat import");
         assertEquals(0, second.roadmapMembershipsCreated(), "no new roadmap memberships on a repeat import");
-        assertEquals(923, problemRepository.countAll(), "re-importing must never duplicate problem rows");
+        long evolutionCount = com.codefit.evolution.quest.JavaTrainingPack.challenges().stream()
+                .filter(c -> c.runner() == com.codefit.evolution.quest.QuestTypes.Runner.JAVA21_MAIN).count();
+        assertEquals(evolutionCount, problemRepository.countAll() - problemRepository.countOrdinary(),
+                "the import preserves every Evolution binding");
+        assertEquals(923, problemRepository.countOrdinary(), "re-importing must never duplicate problem rows");
 
         RoadmapEntryRepository roadmapEntryRepository = new RoadmapEntryRepository();
         assertEquals(926, roadmapEntryRepository.findAllInRoadmapOrder().size(),

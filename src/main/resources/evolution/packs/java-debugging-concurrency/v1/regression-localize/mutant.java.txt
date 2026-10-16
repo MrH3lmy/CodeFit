@@ -1,0 +1,6 @@
+class Exercise {
+    public static int[] page(int[] ids, int after, int limit) {
+        if (limit <= 0) return new int[0];
+        return java.util.Arrays.stream(ids).filter(v -> v >= after).limit(limit).toArray();
+    }
+}

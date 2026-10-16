@@ -1,0 +1,1 @@
+Original index-based cursor: ids=[2,8], after=3 should return [8], not empty. For a different inclusive-filter mutant, ids=[8], after=8, limit=1. Exclusive cursor expected []; inclusive filter yields [8]. IDs are values, not array positions.

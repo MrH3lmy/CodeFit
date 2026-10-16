@@ -1,0 +1,22 @@
+class Exercise {
+    private final int limit;
+    private int active;
+
+    Exercise(int n) {
+        limit = n;
+    }
+
+    public boolean enter() {
+        if (active > limit) return false;
+        active++;
+        return true;
+    }
+
+    public void leave() {
+        active--;
+    }
+
+    public int used() {
+        return active;
+    }
+}

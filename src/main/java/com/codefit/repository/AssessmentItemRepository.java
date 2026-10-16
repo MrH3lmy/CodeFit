@@ -25,15 +25,20 @@ import java.util.Optional;
  */
 public class AssessmentItemRepository {
 
+    private static final String ITEM_QUERY =
+            """
+            SELECT ai.id AS item_id, ai.skill_category, ai.module_name, ai.card_type, ai.validation_mode, ai.created_at,
+                   av.id AS variant_id, av.variant_index, av.scenario, av.accepted_answers, av.reference_answer,
+                   av.simulated_output, av.hint
+            FROM assessment_items ai
+            JOIN assessment_variants av ON av.assessment_item_id = ai.id
+            """;
+
     public List<AssessmentItem> findAll() {
-        String sql = """
-                SELECT ai.id AS item_id, ai.skill_category, ai.module_name, ai.card_type, ai.validation_mode, ai.created_at,
-                       av.id AS variant_id, av.variant_index, av.scenario, av.accepted_answers, av.reference_answer,
-                       av.simulated_output, av.hint
-                FROM assessment_items ai
-                JOIN assessment_variants av ON av.assessment_item_id = ai.id
-                ORDER BY ai.id, av.variant_index
-                """;
+        String sql =
+                ITEM_QUERY
+                        + " WHERE NOT EXISTS (SELECT 1 FROM evolution_assessment_reservations r"
+                        + " WHERE r.item_id=ai.id) ORDER BY ai.id,av.variant_index";
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
@@ -47,54 +52,90 @@ public class AssessmentItemRepository {
         return findAll().stream().filter(item -> item.getId() == id).findFirst();
     }
 
+    /** Trusted catalog/evaluator read; never use this to populate ordinary weekly selection. */
+    public Optional<AssessmentItem> findCatalogItem(Connection connection, long id)
+            throws SQLException {
+        try (var statement =
+                connection.prepareStatement(
+                        ITEM_QUERY + " WHERE ai.id=? ORDER BY av.variant_index")) {
+            statement.setLong(1, id);
+            try (var rs = statement.executeQuery()) {
+                return mapItems(rs).stream().findFirst();
+            }
+        }
+    }
+
     /** Saves a new item together with all of its variants in a single transaction. */
     public AssessmentItem save(String skillCategory, String moduleName, CardType cardType, ValidationMode validationMode,
                                List<VariantInput> variants) {
-        if (variants == null || variants.isEmpty()) {
-            throw new IllegalArgumentException("An assessment item needs at least one variant.");
-        }
-        String insertItemSql = "INSERT INTO assessment_items (skill_category, module_name, card_type, validation_mode) VALUES (?, ?, ?, ?)";
-        String insertVariantSql = "INSERT INTO assessment_variants (assessment_item_id, variant_index, scenario, accepted_answers, reference_answer, simulated_output, hint) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConfig.getConnection()) {
-            boolean previousAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
             try {
-                long itemId;
-                try (PreparedStatement statement = connection.prepareStatement(insertItemSql, Statement.RETURN_GENERATED_KEYS)) {
-                    statement.setString(1, skillCategory);
-                    statement.setString(2, moduleName);
-                    statement.setString(3, cardType.name());
-                    statement.setString(4, validationMode.name());
-                    statement.executeUpdate();
-                    try (ResultSet keys = statement.getGeneratedKeys()) {
-                        keys.next();
-                        itemId = keys.getLong(1);
-                    }
-                }
-                for (int index = 0; index < variants.size(); index++) {
-                    VariantInput variant = variants.get(index);
-                    try (PreparedStatement statement = connection.prepareStatement(insertVariantSql)) {
-                        statement.setLong(1, itemId);
-                        statement.setInt(2, index);
-                        statement.setString(3, variant.scenario());
-                        statement.setString(4, variant.acceptedAnswers());
-                        statement.setString(5, variant.referenceAnswer());
-                        statement.setString(6, variant.simulatedOutput());
-                        statement.setString(7, variant.hint());
-                        statement.executeUpdate();
-                    }
-                }
+                var item =
+                        save(
+                                connection,
+                                skillCategory,
+                                moduleName,
+                                cardType,
+                                validationMode,
+                                variants);
                 connection.commit();
-                return findById(itemId).orElseThrow();
-            } catch (SQLException exception) {
+                return item;
+            } catch (SQLException | RuntimeException e) {
                 connection.rollback();
-                throw exception;
-            } finally {
-                connection.setAutoCommit(previousAutoCommit);
+                throw e;
             }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to save assessment item", exception);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to save assessment item", e);
         }
+    }
+
+    /** Caller-owned transaction for atomic catalog publication. */
+    public AssessmentItem save(
+            Connection connection,
+            String skillCategory,
+            String moduleName,
+            CardType cardType,
+            ValidationMode validationMode,
+            List<VariantInput> variants)
+            throws SQLException {
+        if (connection.getAutoCommit())
+            throw new IllegalArgumentException("Caller transaction required");
+        if (variants == null || variants.isEmpty())
+            throw new IllegalArgumentException("Assessment variants required");
+        String insertItemSql =
+                "INSERT INTO assessment_items (skill_category, module_name, card_type,"
+                    + " validation_mode) VALUES (?, ?, ?, ?)";
+        String insertVariantSql =
+                "INSERT INTO assessment_variants (assessment_item_id, variant_index, scenario,"
+                    + " accepted_answers, reference_answer, simulated_output, hint) VALUES (?, ?,"
+                    + " ?, ?, ?, ?, ?)";
+        long itemId;
+        try (PreparedStatement statement = connection.prepareStatement(insertItemSql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, skillCategory);
+            statement.setString(2, moduleName);
+            statement.setString(3, cardType.name());
+            statement.setString(4, validationMode.name());
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                keys.next();
+                itemId = keys.getLong(1);
+            }
+        }
+        for (int index = 0; index < variants.size(); index++) {
+            VariantInput variant = variants.get(index);
+            try (PreparedStatement statement = connection.prepareStatement(insertVariantSql)) {
+                statement.setLong(1, itemId);
+                statement.setInt(2, index);
+                statement.setString(3, variant.scenario());
+                statement.setString(4, variant.acceptedAnswers());
+                statement.setString(5, variant.referenceAnswer());
+                statement.setString(6, variant.simulatedOutput());
+                statement.setString(7, variant.hint());
+                statement.executeUpdate();
+            }
+        }
+        return findCatalogItem(connection, itemId).orElseThrow();
     }
 
     private List<AssessmentItem> mapItems(ResultSet resultSet) throws SQLException {

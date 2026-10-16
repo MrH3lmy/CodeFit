@@ -19,23 +19,39 @@ import java.util.Optional;
 public class JavaSolutionDraftRepository {
 
     public Optional<JavaSolutionDraft> findByProblemId(long problemId) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return findByProblemId(connection, problemId);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to access existing workspace", e);
+        }
+    }
+
+    public Optional<JavaSolutionDraft> findByProblemId(Connection connection, long problemId)
+            throws SQLException {
         String sql = "SELECT * FROM java_solution_drafts WHERE problem_id = ?";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, problemId);
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next() ? Optional.of(mapDraft(resultSet)) : Optional.empty();
             }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to load Java solution draft", exception);
         }
     }
 
     public JavaSolutionDraft save(JavaSolutionDraft draft) {
-        String sql = "INSERT INTO java_solution_drafts (problem_id, main_class_name, source_code, stdin, expected_output) "
-                + "VALUES (?, ?, ?, ?, ?)";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            return save(connection, draft);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to access existing workspace", e);
+        }
+    }
+
+    public JavaSolutionDraft save(Connection connection, JavaSolutionDraft draft)
+            throws SQLException {
+        String sql =
+                "INSERT INTO java_solution_drafts (problem_id, main_class_name, source_code, stdin,"
+                    + " expected_output) VALUES (?, ?, ?, ?, ?)";
+        try (PreparedStatement statement =
+                connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setLong(1, draft.getProblemId());
             statement.setString(2, draft.getMainClassName());
             statement.setString(3, draft.getSourceCode());
@@ -47,9 +63,7 @@ public class JavaSolutionDraftRepository {
                     draft.setId(keys.getLong(1));
                 }
             }
-            return findByProblemId(draft.getProblemId()).orElseThrow();
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to save Java solution draft", exception);
+            return findByProblemId(connection, draft.getProblemId()).orElseThrow();
         }
     }
 

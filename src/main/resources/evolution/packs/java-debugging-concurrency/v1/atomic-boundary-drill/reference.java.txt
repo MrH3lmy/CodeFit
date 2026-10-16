@@ -1,0 +1,24 @@
+class Exercise {
+    private final int limit;
+    private int active;
+
+    Exercise(int n) {
+        if (n < 0) throw new IllegalArgumentException();
+        limit = n;
+    }
+
+    public synchronized boolean enter() {
+        if (active == limit) return false;
+        active++;
+        return true;
+    }
+
+    public synchronized void leave() {
+        if (active == 0) throw new IllegalStateException();
+        active--;
+    }
+
+    public synchronized int used() {
+        return active;
+    }
+}

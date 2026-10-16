@@ -2,8 +2,10 @@
 
 Reviewed complete bodies/comments of #210–#218 against the audited classes, not just their titles.
 The foundation implements none of those tickets. [EV-02 implementation](skill-graph.md) now supplies
-the skill catalog for #210; [EV-03](skill-evidence.md) supplies evidence for #211. Next implement
-#213 content/family/rubric definitions, then #214 durable evaluation. #212 can develop a pure policy
+the skill catalog for #210; [EV-03](skill-evidence.md) supplies evidence for #211.
+[EV-05](quest-catalog.md) now supplies #213 content/family/rubric definitions, backing-source bindings
+and durable presentation exposure. Next implement **#214 durable evaluation**, using the
+[submission handoff](quest-catalog.md#214-handoff-and-evidenceprivacy-guarantees). #212 can develop a pure policy
 against the new retrieval API, with complete baseline acceptance still dependent on #213/#214.
 Keep existing issues; no duplicate engines/tickets.
 

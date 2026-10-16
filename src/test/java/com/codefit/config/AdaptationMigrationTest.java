@@ -112,7 +112,7 @@ class AdaptationMigrationTest {
             try (var r =
                     s.executeQuery(
                             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN"
-                                + " ('schema_migrations','sqlite_sequence','evolution_adaptation_decisions','evolution_adaptation_choices','evolution_working_notes','evolution_reward_entitlements','evolution_reward_state','evolution_reward_preferences')"
+                                + " ('schema_migrations','sqlite_sequence','evolution_adaptation_decisions','evolution_adaptation_choices','evolution_working_notes','evolution_reward_entitlements','evolution_reward_state','evolution_reward_preferences','evolution_reward_milestone_baseline')"
                                 + " ORDER BY name")) {
                 while (r.next()) tables.add(r.getString(1));
             }

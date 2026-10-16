@@ -5,6 +5,7 @@ import com.codefit.evolution.*;
 import com.codefit.evolution.adaptation.*;
 import com.codefit.evolution.evaluation.*;
 import com.codefit.evolution.mastery.*;
+import com.codefit.evolution.progression.ProgressionService;
 import com.codefit.evolution.quest.*;
 import com.codefit.repository.*;
 import com.codefit.service.*;
@@ -24,7 +25,8 @@ public final class PlayerSystemService {
             List<EvolutionJournal.Entry> recent,
             List<EvolutionQuest> quests,
             ChallengeEvaluationCoordinator.View latest,
-            Map<SkillRef, EstimateRevisionRepository.Revision> prior) {}
+            Map<SkillRef, EstimateRevisionRepository.Revision> prior,
+            ProgressionService.Snapshot progression) {}
 
     public record Work(
             String presentationId,
@@ -115,7 +117,8 @@ public final class PlayerSystemService {
                 recent,
                 catalog.quests(),
                 latest,
-                Map.copyOf(prior));
+                Map.copyOf(prior),
+                new ProgressionService().snapshot());
     }
 
     public BaselineDiagnosticService baseline() {
@@ -128,6 +131,10 @@ public final class PlayerSystemService {
 
     public ChallengeEvaluationCoordinator evaluation() {
         return evaluation;
+    }
+
+    public void setRewardsEnabled(boolean enabled) {
+        new ProgressionService().setRewardsEnabled(enabled);
     }
 
     public Instant now() {

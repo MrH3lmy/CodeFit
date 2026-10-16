@@ -43,6 +43,7 @@ UNION ALL SELECT as_of,'ESTIMATE',CAST(revision AS TEXT),'Skill estimate: '||ski
 UNION ALL SELECT as_of,'DECISION',id,'Next action decided · '||policy FROM evolution_adaptation_decisions
 UNION ALL SELECT chosen_at,'CHOICE',command_id,'Learner choice saved' FROM evolution_adaptation_choices
 UNION ALL SELECT chosen_at,'BASELINE',command_id,'Diagnostic '||action||': '||task FROM evolution_baseline_choices
+UNION ALL SELECT earned_at,'REWARD',CAST(sequence AS TEXT),reward_type||' · '||subject_id||' · '||status||' · +'||xp_awarded||' XP · policy v'||policy_version||' · '||reason||' · '||source_ref FROM evolution_reward_entitlements
 """;
     // Normalize Instant's optional fractional digits before lexicographic ordering; retain
     // nanoseconds.
@@ -146,6 +147,33 @@ UNION ALL SELECT chosen_at,'BASELINE',command_id,'Diagnostic '||action||': '||ta
                                     r.getString(1),
                                     "Submission " + r.getString(2) + " · inspect / recover"));
             }
+            try (var s = c.createStatement();
+                    var r =
+                            s.executeQuery(
+                                    "SELECT earned_at,sequence,reward_type,subject_id,status,"
+                                            + "xp_awarded,policy_version,reason,source_ref FROM"
+                                            + " evolution_reward_entitlements ORDER BY sequence DESC"
+                                            + " LIMIT 8")) {
+                while (r.next())
+                    out.add(
+                            new Entry(
+                                    Instant.parse(r.getString(1)),
+                                    "REWARD",
+                                    r.getString(2),
+                                    r.getString(3)
+                                            + " · "
+                                            + r.getString(4)
+                                            + " · "
+                                            + r.getString(5)
+                                            + " · +"
+                                            + r.getInt(6)
+                                            + " XP · policy v"
+                                            + r.getString(7)
+                                            + " · "
+                                            + r.getString(8)
+                                            + " · "
+                                            + r.getString(9)));
+            }
             c.commit();
             return List.copyOf(out);
         } catch (SQLException e) {
@@ -176,7 +204,8 @@ UNION ALL SELECT chosen_at,'BASELINE',command_id,'Diagnostic '||action||': '||ta
                         "evolution_estimate_revisions",
                         "evolution_adaptation_decisions",
                         "evolution_adaptation_choices",
-                        "evolution_baseline_choices")) {
+                        "evolution_baseline_choices",
+                        "evolution_reward_entitlements")) {
             try (var s = c.createStatement();
                     var r = s.executeQuery("SELECT COALESCE(MAX(rowid),0) FROM " + table)) {
                 r.next();

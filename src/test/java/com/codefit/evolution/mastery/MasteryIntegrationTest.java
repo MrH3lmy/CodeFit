@@ -9,6 +9,7 @@ import com.codefit.config.*;
 import com.codefit.evolution.*;
 import com.codefit.evolution.evaluation.*;
 import com.codefit.evolution.evidence.*;
+import com.codefit.evolution.progression.ProgressionService;
 import com.codefit.evolution.quest.*;
 import com.codefit.repository.*;
 import com.codefit.service.*;
@@ -111,6 +112,29 @@ class MasteryIntegrationTest {
         }
     }
 
+    long rewardCount(String type) throws SQLException {
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                "SELECT COUNT(*) FROM evolution_reward_entitlements"
+                                        + " WHERE reward_type=? AND status='AWARDED'")) {
+            s.setString(1, type);
+            try (var r = s.executeQuery()) {
+                r.next();
+                return r.getLong(1);
+            }
+        }
+    }
+
+    int xp() throws SQLException {
+        try (var c = DatabaseConfig.getConnection();
+                var s = c.createStatement();
+                var r = s.executeQuery("SELECT xp FROM user_progress WHERE id=1")) {
+            r.next();
+            return r.getInt(1);
+        }
+    }
+
     @Test
     void freshAllFourSkillsAndSkippedBaselineStayUnknownAcrossRestart() throws Exception {
         var baseline = new BaselineDiagnosticService();
@@ -197,12 +221,20 @@ class MasteryIntegrationTest {
         coordinator.submit(first);
         assertEquals(Band.DEVELOPING, atomic(0).estimate().band());
         pass("remaining-capacity", 1);
+        int beforeIndependent = xp();
         assertEquals(Band.INDEPENDENT, atomic(1).estimate().band());
+        assertEquals(beforeIndependent + 25, xp());
+        assertEquals(1, rewardCount("INDEPENDENT_MILESTONE"));
+        atomic(1);
+        assertEquals(beforeIndependent + 25, xp());
         pass("inventory-transfer", 2);
         assertEquals(Band.TRANSFER_SUPPORTED, atomic(2).estimate().band());
         pass("queue-retention", 9);
+        int beforeRetention = xp();
         var e = atomic(9).estimate();
         assertEquals(Band.RETENTION_SUPPORTED, e.band());
+        assertEquals(beforeRetention + 25, xp());
+        assertEquals(1, rewardCount("RETENTION_MILESTONE"));
         assertEquals(4, e.independentFamilies());
         assertEquals(4, e.contributions().size());
         assertEquals(4, count("problem_attempts"));
@@ -299,11 +331,14 @@ class MasteryIntegrationTest {
     }
 
     @Test
-    void withdrawalReestimatesWithoutRegressionAndSavedRevisionRemainsInspectable() {
+    void withdrawalReestimatesWithoutRegressionAndSavedRevisionRemainsInspectable()
+            throws Exception {
         var first = pass("counter-repair", 0);
         pass("remaining-capacity", 1);
         var before = atomic(1);
         assertEquals(Band.INDEPENDENT, before.estimate().band());
+        int earnedXp = new ProgressionService().snapshot().xp();
+        assertEquals(1, rewardCount("INDEPENDENT_MILESTONE"));
         EvaluationTestFixtures.service(clock(2)).invalidate(first.id(), "withdraw-first", true);
         var after = atomic(2);
         assertEquals(Band.DEVELOPING, after.estimate().band());
@@ -314,6 +349,17 @@ class MasteryIntegrationTest {
                                 e ->
                                         e.code() == ReasonCode.UNAVAILABLE_SOURCE
                                                 || e.code() == ReasonCode.SUPERSEDED));
+        var entitlement =
+                new ProgressionService().snapshot().history().stream()
+                        .filter(
+                                e ->
+                                        e.type()
+                                                == ProgressionService.RewardType
+                                                        .INDEPENDENT_MILESTONE)
+                        .findFirst()
+                        .orElseThrow();
+        assertFalse(entitlement.proofAvailable());
+        assertEquals(earnedXp, new ProgressionService().snapshot().xp());
         assertEquals(before, new EstimateRevisionRepository().find(before.id()).orElseThrow());
     }
 

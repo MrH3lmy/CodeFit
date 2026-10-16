@@ -21,6 +21,14 @@ class PlayerWorkspaceMigrationTest {
     void populatedEighteenUpgradeAndRepeatedStartupPreserveEveryOriginalRow() throws Exception {
         try (var c = DatabaseConfig.getConnection();
                 var s = c.createStatement()) {
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_state_immutable_update");
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_state_immutable_delete");
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_entitlements_immutable_update");
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_entitlements_immutable_delete");
+            s.execute("DROP TABLE evolution_reward_entitlements");
+            s.execute("DROP TABLE evolution_reward_state");
+            s.execute("DROP TABLE evolution_reward_preferences");
+            s.execute("DELETE FROM schema_migrations WHERE version=20");
             s.execute("DROP TABLE evolution_working_notes");
             s.execute("DELETE FROM schema_migrations WHERE version=19");
             s.execute("UPDATE user_progress SET xp=432,level=5,streak_days=7 WHERE id=1");
@@ -94,7 +102,7 @@ class PlayerWorkspaceMigrationTest {
                 var r =
                         s.executeQuery(
                                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT"
-                                    + " IN('schema_migrations','sqlite_sequence','evolution_working_notes')"
+                                    + " IN('schema_migrations','sqlite_sequence','evolution_working_notes','evolution_reward_entitlements','evolution_reward_state','evolution_reward_preferences')"
                                     + " ORDER BY name")) {
             while (r.next()) tables.add(r.getString(1));
         }

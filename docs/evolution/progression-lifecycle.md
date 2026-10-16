@@ -142,8 +142,11 @@ policy simply cannot label them independent transfer.
 
 ## Engagement, milestones and unlocks (#217)
 
-Proposed reward policy v1 preserves existing XP/level/streak totals and the existing 100 XP per level.
-Keep rank titles visibly scoped to engagement. New Evolution rewards use explicit entitlements:
+Implemented reward policy v1 preserves existing XP/level/streak totals and the existing 100 XP per
+level. Migration 20 adds a local entitlement ledger and an opt-out preference, and records evidence and
+submission sequence boundaries so existing observations or interrupted pre-upgrade submissions cannot
+trigger reward backfills. Keep rank titles visibly scoped to engagement. New Evolution rewards use
+explicit entitlements:
 
 - Award 10 effort XP once per quest objective when its first deliberate submission receives an
   attributable completed evaluation (pass, fail or partial). Tool errors, empty submissions, duplicate
@@ -160,12 +163,15 @@ Keep rank titles visibly scoped to engagement. New Evolution rewards use explici
   exploratory practice by learner choice; no paywall or compulsory lock. A stale/contradicted estimate
   pauses capability-based recommendation eligibility, not already earned cosmetics or XP.
 
-The ledger and balance update are atomic. If a check is later invalidated, mark the milestone's proof
-unavailable in the journal and recompute future eligibility; do not silently deduct earned XP. Learners
-can disable new rewards/animations while continuing all learning. Existing DailyQuest recovery behavior
-is preserved, but Evolution never imposes a missed-day penalty or forced catch-up objective. #217 tests
-new entitlements and preserves the old balance; it cannot claim old multi-write reward paths are made
-crash-safe without explicitly addressing those paths in scope.
+Evolution submission finalization records effort entitlements alongside evidence and updates the
+existing `user_progress` XP/level balance atomically. Milestone balance updates are atomic with their
+entitlements and retry-safe if estimate publication committed first. Entitlement keys exclude policy
+version, so changing policy cannot re-award the same identity. If a check is later invalidated, its
+proof remains auditable and earned XP is not silently deducted. Learners can disable new rewards while
+continuing all learning; the first suppressed entitlement is recorded as opted out so reenabling rewards
+does not retroactively mint it. Existing DailyQuest recovery behavior is preserved, but Evolution never
+imposes a missed-day penalty or forced catch-up objective. Existing legacy multi-write reward paths are
+unchanged and are not claimed to be crash-safe.
 
 ## States, failure and recovery
 

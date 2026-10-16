@@ -113,7 +113,10 @@ final class SchemaMigrator {
                     AdaptationSchema::create),
             new VersionedMigration(19,
                     "Add local Evolution response drafts and working notes (#216)",
-                    PlayerWorkspaceSchema::create)
+                    PlayerWorkspaceSchema::create),
+            new VersionedMigration(20,
+                    "Add versioned Evolution XP entitlements and reward preferences (#217)",
+                    ProgressionSchema::create)
     );
 
     static void migrate(Connection connection) throws SQLException {

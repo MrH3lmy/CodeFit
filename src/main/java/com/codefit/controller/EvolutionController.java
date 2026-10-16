@@ -501,6 +501,71 @@ public final class EvolutionController implements RouteLifecycle {
         var settings = new TitledPane("Goal, time budget, track and pause controls", welcome);
         settings.setExpanded(false);
         overviewBox.getChildren().add(settings);
+        var progression = card("Engagement progression · not proficiency");
+        var rewards = new CheckBox("Earn new Evolution XP and milestone rewards");
+        rewards.setSelected(overview.progression().rewardsEnabled());
+        rewards.setAccessibleText("Enable or opt out of new Evolution XP and milestone rewards");
+        rewards.setOnAction(
+                event ->
+                        background(
+                                "Saving local reward preference…",
+                                () -> {
+                                    service().setRewardsEnabled(rewards.isSelected());
+                                    return null;
+                                },
+                                ignored -> refresh()));
+        progression.getChildren()
+                .add(
+                        text(
+                                overview.progression().xp()
+                                        + " XP · level "
+                                        + overview.progression().level()
+                                        + " · "
+                                        + overview.progression().engagementRank()
+                                        + ". Levels and rank reflect engagement only; they never"
+                                        + " unlock harder work or change skill estimates."));
+        progression.getChildren().add(rewards);
+        progression
+                .getChildren()
+                .add(
+                        text(
+                                "Cosmetic milestone unlocks: "
+                                        + (overview.progression().unlockedMilestones().isEmpty()
+                                                ? "none"
+                                                : String.join(
+                                                        ", ",
+                                                        overview.progression()
+                                                                .unlockedMilestones()))));
+        if (overview.progression().history().isEmpty()) {
+            progression.getChildren().add(text("No Evolution reward entitlements yet."));
+        } else {
+            for (var entitlement : overview.progression().history()) {
+                progression
+                        .getChildren()
+                        .add(
+                                text(
+                                        entitlement.status()
+                                                + " · "
+                                                + entitlement.type()
+                                                + " · "
+                                                + entitlement.subject()
+                                                + " · +"
+                                                + entitlement.xpAwarded()
+                                                + " XP · policy v"
+                                                + entitlement.policyVersion()
+                                                + " · "
+                                                + entitlement.source()
+                                                + " · "
+                                                + entitlement.reason()
+                                                + " · "
+                                                + (entitlement.proofAvailable()
+                                                        ? "proof/source available"
+                                                        : "proof unavailable or superseded")
+                                                + " · "
+                                                + entitlement.earnedAt()));
+            }
+        }
+        overviewBox.getChildren().add(progression);
         var recommendation = card("Your next quest · " + overview.decision().result().branch());
         overview.decision()
                 .result()

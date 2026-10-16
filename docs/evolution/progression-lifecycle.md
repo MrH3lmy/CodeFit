@@ -145,8 +145,9 @@ policy simply cannot label them independent transfer.
 Implemented reward policy v1 preserves existing XP/level/streak totals and the existing 100 XP per
 level. Migration 20 adds a local entitlement ledger and an opt-out preference, and records evidence and
 submission sequence boundaries so existing observations or interrupted pre-upgrade submissions cannot
-trigger reward backfills. Keep rank titles visibly scoped to engagement. New Evolution rewards use
-explicit entitlements:
+trigger reward backfills. Migration 21 snapshots already recorded mastery milestones so adding evidence
+after upgrade cannot present an already-reached milestone as new. Keep rank titles visibly scoped to
+engagement. New Evolution rewards use explicit entitlements:
 
 - Award 10 effort XP once per quest objective when its first deliberate submission receives an
   attributable completed evaluation (pass, fail or partial). Tool errors, empty submissions, duplicate
@@ -163,15 +164,20 @@ explicit entitlements:
   exploratory practice by learner choice; no paywall or compulsory lock. A stale/contradicted estimate
   pauses capability-based recommendation eligibility, not already earned cosmetics or XP.
 
-Evolution submission finalization records effort entitlements alongside evidence and updates the
-existing `user_progress` XP/level balance atomically. Milestone balance updates are atomic with their
-entitlements and retry-safe if estimate publication committed first. Entitlement keys exclude policy
-version, so changing policy cannot re-award the same identity. If a check is later invalidated, its
-proof remains auditable and earned XP is not silently deducted. Learners can disable new rewards while
-continuing all learning; the first suppressed entitlement is recorded as opted out so reenabling rewards
-does not retroactively mint it. Existing DailyQuest recovery behavior is preserved, but Evolution never
-imposes a missed-day penalty or forced catch-up objective. Existing legacy multi-write reward paths are
-unchanged and are not claimed to be crash-safe.
+Evaluation finalization stores the canonical result and evidence without writing XP. Afterward, the
+Player System reconciles at most 32 pending prospective effort entitlements per refresh from finalized,
+uncorrected evaluation records; a reward failure leaves the source finalized and the entitlement absent,
+so refresh/restart can retry it. The UI shows pending work and offers retry. Entitlement insertion and
+the existing `user_progress` XP/level balance update remain one transaction. Milestones are reconciled
+only after the current Player recommendation commits, using a separate evidence snapshot fence; direct
+estimate calls and replayed decisions do not award them. Their entitlement writes and balance changes
+are atomic. Entitlement keys exclude policy version, so changing policy cannot re-award the same
+identity. If a check is later invalidated, its proof remains auditable and earned XP is not silently
+deducted. Learners can disable new rewards while continuing all learning; the first suppressed
+entitlement is recorded as opted out so reenabling rewards does not retroactively mint it. Existing
+DailyQuest recovery behavior is preserved, but Evolution never imposes a missed-day penalty or forced
+catch-up objective. Existing legacy multi-write reward paths are unchanged and are not claimed to be
+crash-safe.
 
 ## States, failure and recovery
 
@@ -193,7 +199,7 @@ history. Command retry after a DB error uses the same ID and source snapshot.
 | Crash after PREPARED/RUNNING, before finalization | Mark interrupted on restart; no result inferred. Resume/re-evaluate same frozen artifact under same command only with explicit retry |
 | Crash during final transaction | All writes rollback or all persist; retry same command returns committed result |
 | Crash after evaluation commit, before estimate/decision | Show saved result and pending derivation; idempotently rebuild from committed evidence |
-| Crash applying rewards | Ledger + UserProgress transaction resolves once, never a duplicate award |
+| Crash or failure applying an Evolution reward | Evaluation/evidence remain finalized; bounded reconciliation retries an absent entitlement, and entitlement + UserProgress commit once |
 | Stale, contradictory, removed or corrected evidence | Show uncertainty/rebuild reason; preserve earlier decisions and original source history |
 | Graph cycle/orphan, depleted held-out pool, budget too short | Honest no-candidate reason and alternatives; never manufacture content or unseen status |
 | Database full/busy, artifact write error | Visible unsaved/pending status; preserve frozen command if available; rollback and bounded retry, no reward |

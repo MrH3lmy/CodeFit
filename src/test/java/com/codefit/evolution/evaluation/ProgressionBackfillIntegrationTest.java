@@ -66,6 +66,10 @@ class ProgressionBackfillIntegrationTest {
 
         try (var c = DatabaseConfig.getConnection(); var s = c.createStatement()) {
             s.execute("UPDATE user_progress SET xp=432,level=5,streak_days=7 WHERE id=1");
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_update");
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_delete");
+            s.execute("DROP TABLE IF EXISTS evolution_reward_milestone_baseline");
+            s.execute("DELETE FROM schema_migrations WHERE version=21");
             s.execute("DROP TRIGGER evolution_reward_state_immutable_update");
             s.execute("DROP TRIGGER evolution_reward_state_immutable_delete");
             s.execute("DROP TRIGGER evolution_reward_entitlements_immutable_update");

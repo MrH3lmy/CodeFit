@@ -5,8 +5,8 @@ import static com.codefit.evolution.mastery.MasteryTypes.Band;
 import static com.codefit.evolution.mastery.MasteryTypes.Freshness;
 
 import com.codefit.config.DatabaseConfig;
-import com.codefit.evolution.evaluation.EvaluationTypes;
 import com.codefit.evolution.evaluation.EvaluationCodec;
+import com.codefit.evolution.evaluation.EvaluationTypes;
 import com.codefit.evolution.evidence.EvidenceCodec;
 import com.codefit.evolution.evidence.EvidenceTypes.Availability;
 import com.codefit.evolution.GraphRef;
@@ -14,7 +14,9 @@ import com.codefit.evolution.mastery.EstimateRevisionRepository;
 import com.codefit.evolution.mastery.MasteryEstimateService;
 import com.codefit.evolution.mastery.MasteryEstimate;
 import com.codefit.evolution.quest.CatalogCodec;
+import com.codefit.evolution.quest.CatalogRef;
 import com.codefit.evolution.quest.EvolutionQuest;
+import com.codefit.repository.QuestCatalogRepository;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -47,6 +49,7 @@ public final class ProgressionService {
             int level,
             String engagementRank,
             boolean rewardsEnabled,
+            int pendingEffortRewards,
             List<Entitlement> history,
             Set<String> unlockedMilestones) {
         public Snapshot {
@@ -87,6 +90,98 @@ public final class ProgressionService {
                 "submission:" + sourceId,
                 "First attributable completed evaluation for this quest objective",
                 ProgressionPolicy.EFFORT_XP);
+    }
+
+    private record PendingEffort(
+            long submissionId,
+            String commandId,
+            EvolutionQuest quest,
+            Outcome outcome) {}
+
+    /**
+     * Bounded recovery from the immutable finalized submission source. A failed XP transaction
+     * leaves no entitlement, so the same source is retried on the next Player System refresh.
+     */
+    public int reconcilePendingEffortRewards() {
+        var candidates = pendingEffortBatch(32);
+        for (var candidate : candidates) {
+            try {
+                runTransaction(
+                        c -> {
+                            lock(c);
+                            awardEffort(
+                                    c,
+                                    candidate.quest(),
+                                    candidate.outcome(),
+                                    candidate.commandId(),
+                                    candidate.submissionId());
+                            return null;
+                        });
+            } catch (RuntimeException retryableFailure) {
+                // The finalized evaluation remains authoritative and visibly pending.
+            }
+        }
+        return pendingEffortCount();
+    }
+
+    private List<PendingEffort> pendingEffortBatch(int limit) {
+        try (var c = DatabaseConfig.getConnection();
+                var boundary =
+                        c.createStatement();
+                var rows =
+                        boundary.executeQuery(
+                                "SELECT historical_submission_through FROM"
+                                        + " evolution_reward_state WHERE id=1")) {
+            if (!rows.next()) throw new IllegalStateException("Progression boundary is unavailable");
+            long historicalThrough = rows.getLong(1);
+            var result = new ArrayList<PendingEffort>();
+            try (var s =
+                            c.prepareStatement(
+                                    """
+                                    SELECT s.id,s.command_id,r.payload,p.quest_id,p.quest_version
+                                    FROM evolution_submissions s
+                                    JOIN evolution_evaluation_revisions r
+                                      ON r.submission_id=s.id AND r.revision=1
+                                    JOIN evolution_challenge_presentations p
+                                      ON p.id=s.presentation_id
+                                    WHERE s.id>? AND s.state='FINALIZED' AND s.final_revision=1
+                                      AND r.change_kind='ORIGINAL'
+                                      AND NOT EXISTS (
+                                        SELECT 1 FROM evolution_reward_entitlements e
+                                        WHERE e.entitlement_key='effort:'||p.quest_id||':v'||p.quest_version)
+                                    ORDER BY s.id LIMIT 512
+                                    """)) {
+                s.setLong(1, historicalThrough);
+                try (var r = s.executeQuery()) {
+                    var catalog = new QuestCatalogRepository();
+                    int scanned = 0;
+                    while (r.next() && scanned++ < 512 && result.size() < limit) {
+                        var outcome = EvaluationCodec.result(r.getBytes("payload")).outcome();
+                        if (!eligibleOutcome(outcome)) continue;
+                        var quest =
+                                catalog.findQuest(
+                                                c,
+                                                new CatalogRef(
+                                                        r.getString("quest_id"),
+                                                        r.getInt("quest_version")))
+                                        .orElseThrow(
+                                                () ->
+                                                        new IllegalStateException(
+                                                                "Finalized quest is unavailable"));
+                        result.add(
+                                new PendingEffort(
+                                        r.getLong("id"), r.getString("command_id"), quest, outcome));
+                    }
+                }
+            }
+            return List.copyOf(result);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to reconcile finalized effort rewards", e);
+        }
+    }
+
+    private int pendingEffortCount() {
+        return pendingEffortBatch(128).size();
     }
 
     private static boolean isOriginalCompletedEvaluation(
@@ -314,6 +409,7 @@ public final class ProgressionService {
                     level,
                     rank,
                     enabled == 1,
+                    pendingEffortCount(),
                     history,
                     ProgressionPolicy.unlockedMilestones(history));
         } catch (SQLException e) {

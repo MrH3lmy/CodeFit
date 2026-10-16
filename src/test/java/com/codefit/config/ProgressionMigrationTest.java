@@ -14,6 +14,9 @@ class ProgressionMigrationTest {
     @Test
     void migrationPreservesOpeningProgressAndIsIdempotent() throws Exception {
         try (var c = DatabaseConfig.getConnection(); var s = c.createStatement()) {
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_update");
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_delete");
+            s.execute("DROP TABLE IF EXISTS evolution_reward_milestone_baseline");
             s.execute("DROP TRIGGER evolution_reward_state_immutable_update");
             s.execute("DROP TRIGGER evolution_reward_state_immutable_delete");
             s.execute("DROP TRIGGER evolution_reward_entitlements_immutable_update");
@@ -21,7 +24,7 @@ class ProgressionMigrationTest {
             s.execute("DROP TABLE evolution_reward_entitlements");
             s.execute("DROP TABLE evolution_reward_state");
             s.execute("DROP TABLE evolution_reward_preferences");
-            s.execute("DELETE FROM schema_migrations WHERE version=20");
+            s.execute("DELETE FROM schema_migrations WHERE version IN(20,21)");
             s.execute("UPDATE user_progress SET xp=678,level=7,streak_days=12 WHERE id=1");
 
             SchemaMigrator.migrate(c);
@@ -38,6 +41,12 @@ class ProgressionMigrationTest {
             try (var r =
                     s.executeQuery(
                             "SELECT COUNT(*) FROM schema_migrations WHERE version=20")) {
+                assertTrue(r.next());
+                assertEquals(1, r.getInt(1));
+            }
+            try (var r =
+                    s.executeQuery(
+                            "SELECT COUNT(*) FROM schema_migrations WHERE version=21")) {
                 assertTrue(r.next());
                 assertEquals(1, r.getInt(1));
             }

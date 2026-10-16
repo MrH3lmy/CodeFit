@@ -506,14 +506,16 @@ public final class EvolutionController implements RouteLifecycle {
         rewards.setSelected(overview.progression().rewardsEnabled());
         rewards.setAccessibleText("Enable or opt out of new Evolution XP and milestone rewards");
         rewards.setOnAction(
-                event ->
-                        background(
-                                "Saving local reward preference…",
-                                () -> {
-                                    service().setRewardsEnabled(rewards.isSelected());
-                                    return null;
-                                },
-                                ignored -> refresh()));
+                event -> {
+                    boolean enabled = rewards.isSelected();
+                    background(
+                            "Saving local reward preference…",
+                            () -> {
+                                service().setRewardsEnabled(enabled);
+                                return null;
+                            },
+                            ignored -> refresh());
+                });
         progression.getChildren()
                 .add(
                         text(
@@ -524,6 +526,19 @@ public final class EvolutionController implements RouteLifecycle {
                                         + overview.progression().engagementRank()
                                         + ". Levels and rank reflect engagement only; they never"
                                         + " unlock harder work or change skill estimates."));
+        if (overview.progression().pendingEffortRewards() > 0) {
+            int pending = overview.progression().pendingEffortRewards();
+            progression.getChildren()
+                    .add(
+                            text(
+                                    "Reward processing pending for "
+                                            + pending
+                                            + (pending == 128 ? " or more" : "")
+                                            + " finalized evaluation(s). Your results are saved;"
+                                            + " retry when ready."));
+            progression.getChildren()
+                    .add(actions(button("Retry pending rewards", this::refresh)));
+        }
         progression.getChildren().add(rewards);
         progression
                 .getChildren()

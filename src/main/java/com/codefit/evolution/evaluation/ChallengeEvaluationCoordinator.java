@@ -5,7 +5,6 @@ import static com.codefit.evolution.evaluation.EvaluationTypes.*;
 import static com.codefit.evolution.evidence.EvidenceTypes.*;
 
 import com.codefit.evolution.evidence.*;
-import com.codefit.evolution.progression.ProgressionService;
 import com.codefit.evolution.quest.*;
 import com.codefit.model.*;
 import com.codefit.repository.*;
@@ -503,13 +502,6 @@ public final class ChallengeEvaluationCoordinator {
                                             repository.observation(c, completed, 1),
                                             mapping(context).ref(),
                                             context.presentation().familyId());
-                            new ProgressionService()
-                                    .awardEffort(
-                                            c,
-                                            CatalogCodec.quest(context.questManifest()),
-                                            evaluation.outcome(),
-                                            context.request().id(),
-                                            completed.id());
                             faults.at(Boundary.BEFORE_COMMIT);
                             return view(c, completed);
                         });

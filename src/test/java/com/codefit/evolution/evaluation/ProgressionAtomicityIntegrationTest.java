@@ -24,7 +24,7 @@ class ProgressionAtomicityIntegrationTest {
             Clock.fixed(Instant.parse("2026-06-12T12:00:00Z"), ZoneOffset.UTC);
 
     @Test
-    void balanceFailureRollsBackFinalizationAndRetryAwardsExactlyOnce() throws Exception {
+    void balanceFailureLeavesFinalizationDurableAndRetryAwardsExactlyOnce() throws Exception {
         var catalog = new QuestCatalogRepository();
         var assets = new BundledAssets();
         var challenge =
@@ -67,15 +67,24 @@ class ProgressionAtomicityIntegrationTest {
                             + " WHEN NEW.xp<>OLD.xp BEGIN SELECT RAISE(ABORT,'fixture'); END");
         }
 
-        assertThrows(IllegalStateException.class, () -> coordinator.submit(request));
-        assertEquals(Stage.EVALUATED, coordinator.status(request.id()).stage());
+        assertEquals(Outcome.PASSED, coordinator.submit(request).outcome());
+        assertEquals(Stage.FINALIZED, coordinator.status(request.id()).stage());
         assertEquals(0, scalar("SELECT xp FROM user_progress WHERE id=1"));
         assertEquals(0, scalar("SELECT COUNT(*) FROM evolution_reward_entitlements"));
-        assertEquals(0, scalar("SELECT COUNT(*) FROM evolution_evidence_observations"));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM evolution_evidence_observations"));
+        assertEquals(
+                1,
+                new com.codefit.evolution.progression.ProgressionService()
+                        .reconcilePendingEffortRewards());
+        assertEquals(Stage.FINALIZED, coordinator.status(request.id()).stage());
 
         try (var c = DatabaseConfig.getConnection(); var s = c.createStatement()) {
             s.execute("DROP TRIGGER reject_progression_xp");
         }
+        assertEquals(
+                0,
+                new com.codefit.evolution.progression.ProgressionService()
+                        .reconcilePendingEffortRewards());
         assertEquals(Stage.FINALIZED, coordinator.resume(request.id()).stage());
         assertEquals(10, scalar("SELECT xp FROM user_progress WHERE id=1"));
         assertEquals(1, scalar("SELECT COUNT(*) FROM evolution_reward_entitlements"));

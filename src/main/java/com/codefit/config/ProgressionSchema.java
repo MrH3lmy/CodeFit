@@ -147,7 +147,12 @@ final class ProgressionSchema {
                                 + "(reward_type,subject_id,definition_version,source_revision)"
                                 + " VALUES(?,?,?,?)")) {
             for (var row : latest.values()) {
-                var estimate = new OrdinalMasteryPolicy().estimate(row.input());
+                MasteryEstimate estimate;
+                try {
+                    estimate = new OrdinalMasteryPolicy().estimate(row.input());
+                } catch (RuntimeException invalid) {
+                    throw new SQLException("Historical milestone estimate is invalid", invalid);
+                }
                 if (estimate.contradicted()
                         || !estimate.currentCapabilitySupported()
                         || estimate.freshness() != MasteryTypes.Freshness.CURRENT)

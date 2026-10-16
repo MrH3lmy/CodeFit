@@ -7,9 +7,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.codefit.config.*;
 import com.codefit.evolution.*;
+import com.codefit.evolution.adaptation.AdaptiveQuestService;
 import com.codefit.evolution.evaluation.*;
 import com.codefit.evolution.evidence.*;
 import com.codefit.evolution.progression.ProgressionService;
+import com.codefit.evolution.player.PlayerSystemService;
 import com.codefit.evolution.quest.*;
 import com.codefit.repository.*;
 import com.codefit.service.*;
@@ -38,6 +40,15 @@ class MasteryIntegrationTest {
     void freshDb() {
         DatabaseConfig.useDatabaseFile(directory.resolve(UUID.randomUUID() + ".db"));
         DatabaseConfig.initialize();
+    }
+
+    long scalarQuery(String query) throws SQLException {
+        try (var c = DatabaseConfig.getConnection();
+                var s = c.createStatement();
+                var r = s.executeQuery(query)) {
+            r.next();
+            return r.getLong(1);
+        }
     }
 
     static Clock clock(int day) {
@@ -101,6 +112,10 @@ class MasteryIntegrationTest {
                         .filter(r -> r.estimate().skill().equals(ATOMIC))
                         .findFirst()
                         .orElseThrow();
+    }
+
+    PlayerSystemService.Overview player(int day) {
+        return new PlayerSystemService(clock(day)).overview();
     }
 
     long count(String table) throws SQLException {
@@ -223,17 +238,29 @@ class MasteryIntegrationTest {
         pass("remaining-capacity", 1);
         int beforeIndependent = xp();
         assertEquals(Band.INDEPENDENT, atomic(1).estimate().band());
-        assertEquals(beforeIndependent + 25, xp());
+        assertEquals(beforeIndependent, xp(), "Historical/on-demand estimates do not grant rewards");
+        var current = player(1);
+        assertEquals(Band.INDEPENDENT, current.estimates().stream()
+                .filter(r -> r.estimate().skill().equals(ATOMIC))
+                .findFirst().orElseThrow().estimate().band());
+        assertTrue(xp() >= beforeIndependent + 25);
         assertEquals(1, rewardCount("INDEPENDENT_MILESTONE"));
-        atomic(1);
-        assertEquals(beforeIndependent + 25, xp());
+        assertEquals(25, new ProgressionService().snapshot().history().stream()
+                .filter(e -> e.type() == ProgressionService.RewardType.INDEPENDENT_MILESTONE)
+                .findFirst().orElseThrow().xpAwarded());
+        int afterIndependent = xp();
+        player(1);
+        assertEquals(afterIndependent, xp(), "Recomputation and restart are idempotent");
         pass("inventory-transfer", 2);
         assertEquals(Band.TRANSFER_SUPPORTED, atomic(2).estimate().band());
         pass("queue-retention", 9);
         int beforeRetention = xp();
-        var e = atomic(9).estimate();
+        assertEquals(Band.RETENTION_SUPPORTED, atomic(9).estimate().band());
+        var e = player(9).estimates().stream()
+                .filter(r -> r.estimate().skill().equals(ATOMIC))
+                .findFirst().orElseThrow().estimate();
         assertEquals(Band.RETENTION_SUPPORTED, e.band());
-        assertEquals(beforeRetention + 25, xp());
+        assertTrue(xp() >= beforeRetention + 25);
         assertEquals(1, rewardCount("RETENTION_MILESTONE"));
         assertEquals(4, e.independentFamilies());
         assertEquals(4, e.contributions().size());
@@ -243,6 +270,102 @@ class MasteryIntegrationTest {
         assertEquals(Band.RETENTION_SUPPORTED, stale.band());
         assertEquals(Freshness.STALE, stale.freshness());
         assertFalse(stale.currentCapabilitySupported());
+    }
+
+    @Test
+    void onlyCurrentPlayerSystemRecomputationAwardsAndMigrationPreservesPriorMilestones()
+            throws Exception {
+        pass("counter-repair", 0);
+        pass("remaining-capacity", 1);
+        assertEquals(Band.INDEPENDENT, atomic(1).estimate().band());
+        var adaptive =
+                new AdaptiveQuestService(
+                        clock(1), assets, () -> true, new ProblemLibraryService());
+        var historicalDecision = adaptive.recommend(clock(1).instant());
+        new PlayerSystemService(
+                        clock(1),
+                        presentations(1),
+                        adaptive,
+                        EvaluationTestFixtures.service(clock(1)),
+                        () -> historicalDecision)
+                .overview();
+        assertEquals(0, rewardCount("INDEPENDENT_MILESTONE"));
+        assertEquals(10, xp(), "Replaying a decision may reconcile effort, never mastery");
+
+        try (var c = DatabaseConfig.getConnection(); var s = c.createStatement()) {
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_update");
+            s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_delete");
+            s.execute("DROP TABLE evolution_reward_milestone_baseline");
+            s.execute("DELETE FROM schema_migrations WHERE version IN(20,21)");
+            s.execute("DROP TRIGGER evolution_reward_state_immutable_update");
+            s.execute("DROP TRIGGER evolution_reward_state_immutable_delete");
+            s.execute("DROP TRIGGER evolution_reward_entitlements_immutable_update");
+            s.execute("DROP TRIGGER evolution_reward_entitlements_immutable_delete");
+            s.execute("DROP TABLE evolution_reward_entitlements");
+            s.execute("DROP TABLE evolution_reward_state");
+            s.execute("DROP TABLE evolution_reward_preferences");
+        }
+        DatabaseConfig.initialize();
+        assertEquals(
+                1,
+                scalarQuery(
+                        "SELECT COUNT(*) FROM evolution_reward_milestone_baseline"
+                                + " WHERE reward_type='INDEPENDENT_MILESTONE'"
+                                + " AND subject_id='java.concurrency.atomic-update'"));
+
+        pass("distinct-id-accumulator", 2);
+        player(2);
+        assertEquals(
+                0,
+                scalarQuery(
+                        "SELECT COUNT(*) FROM evolution_reward_entitlements"
+                                + " WHERE reward_type='INDEPENDENT_MILESTONE'"
+                                + " AND subject_id='java.concurrency.atomic-update'"));
+    }
+
+    @Test
+    void correctionBeforeCurrentPlayerRecomputeRejectsHistoricalIndependentRevision()
+            throws Exception {
+        var first = pass("counter-repair", 0);
+        pass("remaining-capacity", 1);
+        var historical = atomic(1);
+        assertEquals(Band.INDEPENDENT, historical.estimate().band());
+        EvaluationTestFixtures.service(clock(2)).invalidate(first.id(), "withdraw-before-award", true);
+
+        var current = player(2);
+        assertEquals(
+                Band.DEVELOPING,
+                current.estimates().stream()
+                        .filter(r -> r.estimate().skill().equals(ATOMIC))
+                        .findFirst()
+                        .orElseThrow()
+                        .estimate()
+                        .band());
+        assertEquals(0, rewardCount("INDEPENDENT_MILESTONE"));
+        assertFalse(new ProgressionService().snapshot().history().stream()
+                .anyMatch(
+                        e ->
+                                e.type()
+                                        == ProgressionService.RewardType
+                                                .INDEPENDENT_MILESTONE));
+    }
+
+    @Test
+    void staleCurrentEvidenceCannotEarnAStoredIndependentEstimate() throws Exception {
+        pass("counter-repair", 0);
+        pass("remaining-capacity", 1);
+        assertEquals(Band.INDEPENDENT, atomic(1).estimate().band());
+
+        var stalePlayer = player(40);
+        assertEquals(
+                Freshness.STALE,
+                stalePlayer.estimates().stream()
+                                                .filter(r -> r.estimate().skill().equals(ATOMIC))
+                                                .findFirst()
+                                                .orElseThrow()
+                                                .estimate()
+                                                .freshness());
+        assertEquals(0, rewardCount("INDEPENDENT_MILESTONE"));
     }
 
     @Test
@@ -337,6 +460,7 @@ class MasteryIntegrationTest {
         pass("remaining-capacity", 1);
         var before = atomic(1);
         assertEquals(Band.INDEPENDENT, before.estimate().band());
+        player(1);
         int earnedXp = new ProgressionService().snapshot().xp();
         assertEquals(1, rewardCount("INDEPENDENT_MILESTONE"));
         EvaluationTestFixtures.service(clock(2)).invalidate(first.id(), "withdraw-first", true);

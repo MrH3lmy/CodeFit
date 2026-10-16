@@ -37,7 +37,7 @@ class ProgressionEvaluationIntegrationTest {
     }
 
     @Test
-    void completedEffortRewardCommitsWithSubmissionAndIsIdempotent() throws SQLException {
+    void finalizedEffortRewardReconcilesAndIsIdempotent() throws SQLException {
         var catalog = new QuestCatalogRepository();
         var assets = new BundledAssets();
         var challenge =
@@ -77,6 +77,9 @@ class ProgressionEvaluationIntegrationTest {
         var coordinator = new ChallengeEvaluationCoordinator(CLOCK);
 
         assertEquals(Outcome.PASSED, coordinator.submit(request).outcome());
+        assertEquals(0, xp());
+        var progression = new ProgressionService();
+        assertEquals(0, progression.reconcilePendingEffortRewards());
         assertEquals(10, xp());
         assertEquals(1, entitlements());
         assertTrue(
@@ -144,12 +147,221 @@ class ProgressionEvaluationIntegrationTest {
         progression.setRewardsEnabled(false);
 
         assertEquals(Outcome.PASSED, coordinator.submit(request).outcome());
+        assertEquals(0, progression.reconcilePendingEffortRewards());
         assertEquals(0, xp());
         assertEquals("OPTED_OUT", progression.snapshot().history().getFirst().status());
         progression.setRewardsEnabled(true);
         assertEquals(Outcome.PASSED, coordinator.submit(request).outcome());
         assertEquals(0, xp());
         assertEquals(1, entitlements());
+    }
+
+    @Test
+    void partialAssistedEvaluationEarnsBoundedEffortReward() throws Exception {
+        var challenge =
+                JavaTrainingPack.challenges().stream()
+                        .filter(c -> c.ref().id().equals("counter-repair"))
+                        .findFirst()
+                        .orElseThrow();
+        var quest =
+                JavaTrainingPack.quests().stream()
+                        .filter(q -> q.challenges().contains(challenge.ref()))
+                        .findFirst()
+                        .orElseThrow();
+        String source =
+                new BundledAssets()
+                        .read(
+                                challenge.assets().stream()
+                                        .filter(a -> a.kind() == AssetKind.REFERENCE)
+                                        .findFirst()
+                                        .orElseThrow())
+                        .replace("total += delta;", "total = 0;");
+        assertTrue(source.contains("total = 0;"));
+        String presentation = "partial-" + UUID.randomUUID();
+        new ChallengePresentationService(new QuestCatalogRepository(), new BundledAssets(), CLOCK)
+                .present(
+                        new ChallengePresentation.Request(
+                                presentation,
+                                quest.ref(),
+                                challenge.ref(),
+                                challenge.cohort(),
+                                Familiarity.DECLARED_UNFAMILIAR));
+        var request =
+                new SubmissionRequest(
+                        "partial-" + UUID.randomUUID(),
+                        presentation,
+                        source,
+                        OutsideAssistance.DECLARED,
+                        "");
+        var result = new ChallengeEvaluationCoordinator(CLOCK).submit(request);
+        assertEquals(Outcome.PARTIAL, result.outcome(), result.checks().toString());
+        assertEquals(0, xp());
+        assertEquals(0, new ProgressionService().reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
+    }
+
+    @Test
+    void correctionBeforeRewardRetryDoesNotCreateAnEffortEntitlement() throws Exception {
+        var challenge =
+                JavaTrainingPack.challenges().stream()
+                        .filter(c -> c.ref().id().equals("counter-repair"))
+                        .findFirst()
+                        .orElseThrow();
+        var quest =
+                JavaTrainingPack.quests().stream()
+                        .filter(q -> q.challenges().contains(challenge.ref()))
+                        .findFirst()
+                        .orElseThrow();
+        String presentation = "corrected-" + UUID.randomUUID();
+        new ChallengePresentationService(new QuestCatalogRepository(), new BundledAssets(), CLOCK)
+                .present(
+                        new ChallengePresentation.Request(
+                                presentation,
+                                quest.ref(),
+                                challenge.ref(),
+                                challenge.cohort(),
+                                Familiarity.DECLARED_UNFAMILIAR));
+        String source =
+                new BundledAssets()
+                        .read(
+                                challenge.assets().stream()
+                                        .filter(a -> a.kind() == AssetKind.REFERENCE)
+                                        .findFirst()
+                                        .orElseThrow());
+        var request =
+                new SubmissionRequest(
+                        "corrected-" + UUID.randomUUID(),
+                        presentation,
+                        source,
+                        OutsideAssistance.NONE_DECLARED,
+                        "");
+        var coordinator = new ChallengeEvaluationCoordinator(CLOCK);
+        assertEquals(Outcome.PASSED, coordinator.submit(request).outcome());
+        coordinator.invalidate(request.id(), "before-reward", true);
+        assertEquals(0, new ProgressionService().reconcilePendingEffortRewards());
+        assertEquals(0, xp());
+        assertEquals(0, entitlements());
+    }
+
+    @Test
+    void finalizedFailedEvaluationEarnsTheSameBoundedEffortReward() throws Exception {
+        var challenge =
+                JavaTrainingPack.challenges().stream()
+                        .filter(c -> c.ref().id().equals("counter-repair"))
+                        .findFirst()
+                        .orElseThrow();
+        var quest =
+                JavaTrainingPack.quests().stream()
+                        .filter(q -> q.challenges().contains(challenge.ref()))
+                        .findFirst()
+                        .orElseThrow();
+        String presentation = "failed-" + UUID.randomUUID();
+        var catalog = new QuestCatalogRepository();
+        var assets = new BundledAssets();
+        new ChallengePresentationService(catalog, assets, CLOCK)
+                .present(
+                        new ChallengePresentation.Request(
+                                presentation,
+                                quest.ref(),
+                                challenge.ref(),
+                                challenge.cohort(),
+                                Familiarity.DECLARED_UNFAMILIAR));
+        String source =
+                assets.read(
+                        challenge.assets().stream()
+                                .filter(a -> a.kind() == AssetKind.REFERENCE)
+                                .findFirst()
+                                .orElseThrow());
+        var request =
+                new SubmissionRequest(
+                        "failed-" + UUID.randomUUID(),
+                        presentation,
+                        source,
+                        OutsideAssistance.NONE_DECLARED,
+                        "");
+        var evaluator =
+                new JavaChallengeEvaluator(new com.codefit.service.JavaCodeRunner(), assets, CLOCK) {
+                    @Override
+                    public EvaluationResult evaluate(
+                            SubmissionSnapshot snapshot,
+                            com.codefit.service.RunCancellationToken token) {
+                        var evaluated = super.evaluate(snapshot, token);
+                        return new EvaluationResult(
+                                Outcome.FAILED,
+                                evaluated.checks(),
+                                "Fixture confirmed a failed result",
+                                evaluated.startedAt(),
+                                evaluated.finishedAt(),
+                                evaluated.evaluatorVersion(),
+                                evaluated.runtime());
+                    }
+                };
+        var coordinator =
+                new ChallengeEvaluationCoordinator(catalog, assets, evaluator, CLOCK, b -> {});
+
+        assertEquals(Outcome.FAILED, coordinator.submit(request).outcome());
+        assertEquals(0, xp());
+        assertEquals(0, new ProgressionService().reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
+    }
+
+    @Test
+    void concurrentFinalizedRewardReconciliationDoesNotLoseXpUpdates() throws Exception {
+        var first = submitReference("counter-repair");
+        var second = submitReference("queue-retention");
+        assertEquals(Outcome.PASSED, first.outcome());
+        assertEquals(Outcome.PASSED, second.outcome());
+
+        var service = new ProgressionService();
+        try (var workers = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var a = workers.submit(service::reconcilePendingEffortRewards);
+            var b = workers.submit(service::reconcilePendingEffortRewards);
+            a.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            b.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        assertEquals(0, service.reconcilePendingEffortRewards());
+        assertEquals(20, xp());
+        assertEquals(2, entitlements());
+    }
+
+    private ChallengeEvaluationCoordinator.View submitReference(String challengeId)
+            throws SQLException {
+        var challenge =
+                JavaTrainingPack.challenges().stream()
+                        .filter(c -> c.ref().id().equals(challengeId))
+                        .findFirst()
+                        .orElseThrow();
+        var quest =
+                JavaTrainingPack.quests().stream()
+                        .filter(q -> q.challenges().contains(challenge.ref()))
+                        .findFirst()
+                        .orElseThrow();
+        var assets = new BundledAssets();
+        String presentation = "concurrent-" + UUID.randomUUID();
+        new ChallengePresentationService(new QuestCatalogRepository(), assets, CLOCK)
+                .present(
+                        new ChallengePresentation.Request(
+                                presentation,
+                                quest.ref(),
+                                challenge.ref(),
+                                challenge.cohort(),
+                                Familiarity.DECLARED_UNFAMILIAR));
+        String source =
+                assets.read(
+                        challenge.assets().stream()
+                                .filter(a -> a.kind() == AssetKind.REFERENCE)
+                                .findFirst()
+                                .orElseThrow());
+        return new ChallengeEvaluationCoordinator(CLOCK)
+                .submit(
+                        new SubmissionRequest(
+                                "concurrent-" + UUID.randomUUID(),
+                                presentation,
+                                source,
+                                OutsideAssistance.NONE_DECLARED,
+                                ""));
     }
 
     private int xp() throws SQLException {

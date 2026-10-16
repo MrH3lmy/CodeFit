@@ -96,6 +96,8 @@ public final class PlayerSystemService {
 
     public Overview overview() {
         var decision = recommend.get(); // Always current time; history uses stored decisions below.
+        var progression = new ProgressionService();
+        progression.reconcilePendingEffortRewards();
         var revisions = new EstimateRevisionRepository();
         var estimates =
                 decision.input().skills().stream()
@@ -118,7 +120,7 @@ public final class PlayerSystemService {
                 catalog.quests(),
                 latest,
                 Map.copyOf(prior),
-                new ProgressionService().snapshot());
+                progression.snapshot());
     }
 
     public BaselineDiagnosticService baseline() {

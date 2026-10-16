@@ -106,6 +106,9 @@ simple thresholds for #212 fixtures and #218 evaluation, not a validated measure
 
 ## Adaptation policy v1
 
+Implemented by [EV-07](adaptive-quest-policy.md), including durable inputs, candidate exclusions,
+learner commands and the commit-before-content start boundary. No Evolution screen is added here.
+
 Use ordered branches, then stable candidate ordering. Inputs are explicit player preferences, current
 evidence/estimates, exposure history, graph, catalog versions, last decision and `asOf`. Explain the
 chosen branch and rejected candidates. An old decision remains replayable with its saved inputs;

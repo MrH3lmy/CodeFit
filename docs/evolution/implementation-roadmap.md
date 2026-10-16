@@ -6,11 +6,14 @@ the skill catalog for #210; [EV-03](skill-evidence.md) supplies evidence for #21
 [EV-05](quest-catalog.md) now supplies #213 content/family/rubric definitions, backing-source bindings
 and durable presentation exposure. [EV-06](challenge-evaluation.md) now supplies #214 durable
 submission/evaluation, source/evidence finalization and peer aggregate isolation. Next implement
-**#215 explainable adaptation**, using the existing exact evidence views and the
+**#216 offline Evolution UI**, using the existing exact evidence views and the
 [evaluation handoff](challenge-evaluation.md#handoff-and-remaining-boundaries).
 [EV-04](mastery-estimation.md) implements #212 baseline orchestration, conservative ordinal estimates,
 coherent metadata snapshots, revisions/epochs and prospective assessment facts. #215 can consume these
 exact revision references, eligibility flags, checked behaviors and reasons; it owns the next quest choice.
+[EV-07](adaptive-quest-policy.md) implements #215 ordered next actions, coherent estimate/exposure
+snapshots, durable decisions and learner controls. #216 should consume these application boundaries
+and journal projections; no new selector, evaluator, estimate engine or exposure bypass is needed.
 Keep existing issues; no duplicate engines/tickets.
 
 ## Foundation recommendation: implement #210 first

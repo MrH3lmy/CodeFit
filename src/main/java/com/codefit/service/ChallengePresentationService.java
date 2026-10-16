@@ -48,58 +48,60 @@ public final class ChallengePresentationService {
     }
 
     public View present(Request request) {
-        String id =
-                catalog.transaction(
-                        c -> {
-                            var spec =
-                                    catalog.findChallenge(c, request.challenge())
-                                            .orElseThrow(
-                                                    () ->
-                                                            new IllegalArgumentException(
-                                                                    "Unknown challenge"));
-                            assets.validate(spec);
-                            catalog.verifyBinding(c, spec);
-                            var receipt = exposures.append(c, request, clock.instant());
-                            var backing = catalog.backing(c, spec.ref());
-                            if (backing.problemId() == null) return receipt.id();
-                            long problem = backing.problemId();
-                            var sessions = new ProblemSolvingSessionRepository();
-                            if (sessions.findByProblemId(c, problem).isEmpty()) {
-                                var now =
-                                        LocalDateTime.ofInstant(
-                                                receipt.presentedAt(), ZoneOffset.UTC);
-                                sessions.save(
-                                        c,
-                                        new ProblemSolvingSession(
-                                                0,
-                                                problem,
-                                                SolvingPhase.READING,
-                                                0,
-                                                0,
-                                                0,
-                                                0,
-                                                null,
-                                                true,
-                                                true,
-                                                now,
-                                                now));
-                            }
-                            var drafts = new JavaSolutionDraftRepository();
-                            if (drafts.findByProblemId(c, problem).isEmpty())
-                                drafts.save(
-                                        c,
-                                        new JavaSolutionDraft(
-                                                0,
-                                                problem,
-                                                "Main",
-                                                asset(spec, AssetKind.STARTER),
-                                                "",
-                                                "",
-                                                null));
-                            return receipt.id();
-                        });
+        String id = catalog.transaction(c -> present(c, request));
         // Rendering can fail here, but exposure is already durable and will never be rolled back.
         return resume(id);
+    }
+
+    /** Caller-owned writer boundary for #215: eligibility and presentation commit together.
+     * Returns only a receipt ID. Render via resume AFTER the outer transaction commits. */
+    public String present(Connection c, Request request) throws SQLException {
+        var spec =
+                catalog.findChallenge(c, request.challenge())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Unknown challenge"));
+        assets.validate(spec);
+        catalog.verifyBinding(c, spec);
+        var receipt = exposures.append(c, request, clock.instant());
+        var backing = catalog.backing(c, spec.ref());
+        if (backing.problemId() == null) return receipt.id();
+        long problem = backing.problemId();
+        var sessions = new ProblemSolvingSessionRepository();
+        if (sessions.findByProblemId(c, problem).isEmpty()) {
+            var now =
+                    LocalDateTime.ofInstant(
+                            receipt.presentedAt(), ZoneOffset.UTC);
+            sessions.save(
+                    c,
+                    new ProblemSolvingSession(
+                            0,
+                            problem,
+                            SolvingPhase.READING,
+                            0,
+                            0,
+                            0,
+                            0,
+                            null,
+                            true,
+                            true,
+                            now,
+                            now));
+        }
+        var drafts = new JavaSolutionDraftRepository();
+        if (drafts.findByProblemId(c, problem).isEmpty())
+            drafts.save(
+                    c,
+                    new JavaSolutionDraft(
+                            0,
+                            problem,
+                            "Main",
+                            asset(spec, AssetKind.STARTER),
+                            "",
+                            "",
+                            null));
+        return receipt.id();
     }
 
     public View resume(String presentationId) {

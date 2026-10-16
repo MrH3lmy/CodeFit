@@ -22,10 +22,26 @@ public class AppShellController {
     @FXML private Label topBarTitleLabel;
     @FXML private StackPane contentHost;
 
+    private RouteLifecycle lifecycle;
+    private long navigationGeneration;
     private Route currentRoute;
     private boolean distractionFree;
 
     void showRoute(Route route) {
+        long generation = ++navigationGeneration;
+        Runnable display =
+                () -> {
+                    if (generation == navigationGeneration) displayRoute(route);
+                };
+        if (lifecycle != null) lifecycle.requestLeave(display);
+        else display.run();
+    }
+
+    private void displayRoute(Route route) {
+        if (lifecycle != null) {
+            lifecycle.dispose();
+            lifecycle = null;
+        }
         Parent content = loadContent(route);
         contentHost.getChildren().setAll(content);
         currentRoute = route;
@@ -55,12 +71,29 @@ public class AppShellController {
         topBar.setManaged(!enabled);
     }
 
+    boolean hasLifecycle() {
+        return lifecycle != null;
+    }
+
+    void requestClose(Runnable close) {
+        lifecycle.requestLeave(
+                () -> {
+                    lifecycle.dispose();
+                    lifecycle = null;
+                    close.run();
+                });
+    }
+
     private Parent loadContent(Route route) {
         try {
             URL resource = getClass().getResource(route.fxmlPath());
-            return FXMLLoader.load(resource);
+            FXMLLoader loader = new FXMLLoader(resource);
+            Parent content = loader.load();
+            if (loader.getController() instanceof RouteLifecycle owner) lifecycle = owner;
+            return content;
         } catch (IOException exception) {
-            throw new IllegalStateException("Unable to load screen: " + route.fxmlResource(), exception);
+            throw new IllegalStateException(
+                    "Unable to load screen: " + route.fxmlResource(), exception);
         }
     }
 

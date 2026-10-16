@@ -1,0 +1,26 @@
+.evolution { -fx-padding: 22; -fx-background-color: -color-background; }
+.evolution .label { -fx-text-fill: -color-text-primary; -fx-font-size: 13px; }
+.evolution .evolution-title { -fx-font-size: 25px; -fx-font-weight: bold; }
+.evolution .evolution-heading { -fx-font-size: 17px; -fx-font-weight: bold; }
+.evolution .evolution-eyebrow { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: -color-accent; }
+.evolution .evolution-muted { -fx-text-fill: -color-text-secondary; }
+.evolution .evolution-page { -fx-padding: 18 8 24 0; }
+.evolution .evolution-card { -fx-padding: 18; -fx-spacing: 10; -fx-background-color: -color-surface; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: -color-border; }
+.evolution .evolution-band { -fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: -color-accent; }
+.evolution .evolution-editor { -fx-font-family: 'DejaVu Sans Mono', monospace; -fx-font-size: 13px; }
+.evolution .text-area { -fx-text-fill: -color-text-primary; -fx-control-inner-background: -color-surface; }
+.evolution .scroll-pane, .evolution .scroll-pane > .viewport { -fx-background-color: transparent; }
+.evolution .button:focused, .evolution .combo-box:focused, .evolution .text-area:focused { -fx-border-color: -color-accent; -fx-border-width: 2; }
+.evolution .button { -fx-cursor: hand; -fx-padding: 9 14; }
+.evolution .tab-pane > .tab-header-area > .headers-region > .tab { -fx-padding: 9 12; }
+.evolution .label { -fx-font-weight: normal; }
+.evolution .evolution-heading, .evolution .evolution-title, .evolution .evolution-band { -fx-font-weight: bold; }
+.evolution .combo-box > .list-cell { -fx-background-color: transparent; -fx-text-fill: -color-text-primary; -fx-font-weight: normal; }
+.evolution .tab-header-background { -fx-background-color: -color-background; }
+.evolution .tab { -fx-background-color: -color-surface; -fx-background-insets: 0; -fx-border-color: transparent; -fx-border-width: 0 0 3 0; }
+.evolution .tab:selected { -fx-border-color: -color-accent; }
+.evolution .tab .tab-label { -fx-text-fill: -color-text-secondary; -fx-font-weight: normal; }
+.evolution .tab:selected .tab-label { -fx-text-fill: -color-text-primary; -fx-font-weight: bold; }
+.evolution .titled-pane > .title { -fx-background-color: -color-surface-raised; -fx-padding: 12; }
+.evolution .titled-pane > *.content { -fx-background-color: -color-surface; -fx-border-color: -color-border; -fx-padding: 12; }
+.evolution .spinner .increment-arrow-button, .evolution .spinner .decrement-arrow-button { -fx-background-color: -color-surface-raised; }

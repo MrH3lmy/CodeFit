@@ -197,7 +197,7 @@ final class EstimateInputReader {
                                             "SELECT rowid,id,occurred_at FROM"
                                                 + " evolution_challenge_exposure_events WHERE"
                                                 + " presentation_id=? AND action IN"
-                                                + " ('HINT','SOLUTION') AND rowid>? ORDER BY rowid"
+                                                + " ('HINT','SOLUTION','PRACTICE_CHECK') AND rowid>? ORDER BY rowid"
                                                 + " LIMIT 128")) {
                                 events.setString(1, presentation);
                                 events.setLong(2, eventCursor);

@@ -12,7 +12,7 @@ provenance-aware observations, exact mappings and bounded local ingestion for #2
 source/evidence completion and recovery for #214. [EV-04 baseline and mastery estimates](mastery-estimation.md)
 now provide conservative, versioned per-skill interpretations for #212.
 [EV-07 adaptation](adaptive-quest-policy.md) adds deterministic next actions and durable learner controls
-for #215. Evolution UI, rewards and observed learning outcomes remain future work. The original audit describes the pre-Evolution baseline;
+for #215. [EV-08 Player System](player-system-ui.md) connects those boundaries through an offline JavaFX UI for #216; rewards and observed learning outcomes remain future work. The original audit describes the pre-Evolution baseline;
 implementation status and verification are recorded per slice. This is not evidence of learning gains.
 
 CodeFit should help learners solve unfamiliar real problems better. Activity, XP, card familiarity,
@@ -32,6 +32,7 @@ and a passed local test are useful signals with different meanings; none alone p
 | #213 quest/challenge catalog, original pack, hold-out isolation, exposure and #214/#216 handoff | [Quest catalog](quest-catalog.md) |
 | #212 ordinal policy, coherent inputs, revisions/epochs, baseline and prospective assessment facts | [Mastery estimation](mastery-estimation.md), [verification](mastery-estimation-verification.md) |
 | #215 ordered adaptive policy, coherent decisions, learner controls and UI handoff | [Adaptive quest policy](adaptive-quest-policy.md), [verification](adaptive-quest-verification.md) |
+| #216 JavaFX Player System, authorized workspace, journal and recovery | [Player System](player-system-ui.md), [verification](player-system-verification.md) |
 | #214 staged evaluation, checks, evidence, recovery, privacy and limits | [Challenge evaluation](challenge-evaluation.md), [verification](challenge-evaluation-verification.md) |
 
 Read the audit before the ADR and contracts. Numerical thresholds in the lifecycle are a deliberately

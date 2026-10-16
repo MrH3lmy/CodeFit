@@ -68,18 +68,24 @@ public class JavaSolutionDraftRepository {
     }
 
     public void update(JavaSolutionDraft draft) {
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            update(connection, draft);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to update Java solution draft", exception);
+        }
+    }
+
+    /** Caller owns the transaction; used to save Evolution editor notes with the existing draft. */
+    public void update(Connection connection, JavaSolutionDraft draft) throws SQLException {
         String sql = "UPDATE java_solution_drafts SET main_class_name = ?, source_code = ?, stdin = ?, "
                 + "expected_output = ?, updated_at = CURRENT_TIMESTAMP WHERE problem_id = ?";
-        try (Connection connection = DatabaseConfig.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, draft.getMainClassName());
             statement.setString(2, draft.getSourceCode());
             statement.setString(3, draft.getStdin());
             statement.setString(4, draft.getExpectedOutput());
             statement.setLong(5, draft.getProblemId());
             statement.executeUpdate();
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Unable to update Java solution draft", exception);
         }
     }
 

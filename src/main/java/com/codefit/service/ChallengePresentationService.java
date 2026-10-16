@@ -163,6 +163,37 @@ public final class ChallengePresentationService {
         return text;
     }
 
+    /** Commit factual rehearsal before public execution; a replay must not execute again. */
+    public boolean beginPractice(String presentationId, String eventId) {
+        return catalog.transaction(
+                c -> {
+                    var context = contextForSubmission(c, presentationId);
+                    if (context.challenge().runner() != Runner.JAVA21_MAIN
+                            || !Set.of(Cohort.BASELINE, Cohort.PRACTICE)
+                                    .contains(context.receipt().cohort()))
+                        throw new IllegalArgumentException(
+                                "Public practice is limited to baseline/practice Java tasks");
+                    boolean existing;
+                    try (var query =
+                            c.prepareStatement(
+                                    "SELECT 1 FROM evolution_challenge_exposure_events WHERE"
+                                        + " id=?")) {
+                        query.setString(1, eventId);
+                        try (var rows = query.executeQuery()) {
+                            existing = rows.next();
+                        }
+                    }
+                    exposures.event(
+                            c,
+                            eventId,
+                            presentationId,
+                            ExposureAction.PRACTICE_CHECK,
+                            0,
+                            clock.instant());
+                    return !existing;
+                });
+    }
+
     public void skip(String presentationId, String eventId) {
         event(presentationId, eventId, ExposureAction.SKIP, 0);
     }

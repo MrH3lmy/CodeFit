@@ -205,6 +205,16 @@ class EvolutionPeerPrivacyTest {
                 "private-adaptation-resume", com.codefit.evolution.adaptation.AdaptationTypes.CommandKind.RESUME));
         adaptation.recommend(NOW);
         assertEquals(decision, new com.codefit.evolution.adaptation.AdaptationDecisionRepository().find(decision.id()).orElseThrow());
+        // The Player UI's working notes, Java draft save and journal reads stay local too.
+        var player = new com.codefit.evolution.player.PlayerSystemService(CLOCK);
+        player.save(new com.codefit.evolution.player.PlayerSystemService.Draft(
+                "private-presentation-counter-repair", "private-player-editor", "private-player-reflection",
+                com.codefit.evolution.evaluation.EvaluationTypes.OutsideAssistance.DECLARED));
+        player.save(new com.codefit.evolution.player.PlayerSystemService.Draft(
+                "private-presentation-baseline-trace", "private-keyed-response", "private-player-reflection",
+                com.codefit.evolution.evaluation.EvaluationTypes.OutsideAssistance.UNKNOWN));
+        presenter.beginPractice("private-presentation-counter-repair", "private-practice-exposure");
+        new com.codefit.evolution.player.EvolutionJournal().page(null, 24);
         assertEquals(ordinary, attempts.findSubmittedBetweenUtc(start, end));
         assertEquals(fresh, attempts.countFreshFirstCompletionsBetweenUtc(start, end));
         assertEquals(ambiguous, attempts.hasUnknownSubmittedBetweenUtc(start, end));
@@ -234,7 +244,7 @@ class EvolutionPeerPrivacyTest {
                             "artifact_sha",
                             "ordinal-v1", "private-estimate-reset", "private-skip-baseline",
                             "evolution_estimate", "NO_DIRECT_EVIDENCE", "adaptive-v1", "java-pilot-v1",
-                            "private-adaptation-pause", "evolution_adaptation", "decision-")) assertFalse(bytes.contains(secret), secret);
+                            "private-adaptation-pause", "evolution_adaptation", "decision-", "private-player-editor", "private-player-reflection", "private-keyed-response")) assertFalse(bytes.contains(secret), secret);
         }
         var prepAfter = publication.publishPreparationSnapshot(contact.id(), identity, 1, profile);
         assertEquals(prepBefore, prepAfter);

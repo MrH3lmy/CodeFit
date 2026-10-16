@@ -56,11 +56,15 @@ public final class ChallengeEvaluationCoordinator {
     private final Faults faults;
 
     public ChallengeEvaluationCoordinator() {
+        this(Clock.systemUTC());
+    }
+
+    public ChallengeEvaluationCoordinator(Clock clock) {
         this(
                 new QuestCatalogRepository(),
                 new BundledAssets(),
-                new JavaChallengeEvaluator(),
-                Clock.systemUTC(),
+                new JavaChallengeEvaluator(new JavaCodeRunner(), new BundledAssets(), clock),
+                clock,
                 b -> {});
     }
 

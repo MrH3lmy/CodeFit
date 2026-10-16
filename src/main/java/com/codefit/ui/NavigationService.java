@@ -39,7 +39,8 @@ public final class NavigationService {
             "/css/progress.css",
             "/css/today.css",
             "/css/problems.css",
-            "/css/solving-workspace.css"
+            "/css/solving-workspace.css",
+            "/css/evolution.css"
     };
 
     private static Stage primaryStage;
@@ -78,6 +79,10 @@ public final class NavigationService {
      */
     private static void confirmCloseWhileImportActive(WindowEvent event) {
         if (!shouldBlockCloseForActiveImport(BackgroundImportExecutor.hasActiveImport())) {
+            if (shellController != null && shellController.hasLifecycle()) {
+                event.consume();
+                shellController.requestClose(() -> { primaryStage.hide(); javafx.application.Platform.exit(); });
+            }
             return;
         }
         event.consume();

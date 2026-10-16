@@ -16,4 +16,4 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Run tests
-        run: mvn -B test
+        run: xvfb-run -a mvn -B test

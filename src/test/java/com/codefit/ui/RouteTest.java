@@ -57,6 +57,7 @@ class RouteTest {
 
     @Test
     void primaryNavRoutesHighlightThemselves() {
+        assertEquals(Route.NavItem.EVOLUTION, Route.EVOLUTION.navItem());
         assertEquals(Route.NavItem.TODAY, Route.TODAY.navItem());
         assertEquals(Route.NavItem.REVIEW, Route.REVIEW.navItem());
         assertEquals(Route.NavItem.LIBRARY, Route.LIBRARY.navItem());

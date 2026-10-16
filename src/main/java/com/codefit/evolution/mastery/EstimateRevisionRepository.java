@@ -151,6 +151,30 @@ public final class EstimateRevisionRepository {
         }
     }
 
+    /**
+     * Immediate predecessor for the exact graph/skill; immutable history, no live re-estimation.
+     */
+    public Optional<Revision> previous(Revision current) {
+        var e = current.estimate();
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                "SELECT revision FROM evolution_estimate_revisions WHERE graph_id=?"
+                                    + " AND graph_version=? AND skill_id=? AND skill_version=? AND"
+                                    + " revision<? ORDER BY revision DESC LIMIT 1")) {
+            s.setString(1, e.graph().graphId());
+            s.setInt(2, e.graph().graphVersion());
+            s.setString(3, e.skill().skillId());
+            s.setInt(4, e.skill().definitionVersion());
+            s.setLong(5, current.id());
+            try (var r = s.executeQuery()) {
+                return r.next() ? find(r.getLong(1)) : Optional.empty();
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Estimate comparison unavailable", ex);
+        }
+    }
+
     public Optional<Revision> find(long revision) {
         try (var c = DatabaseConfig.getConnection();
                 var s =

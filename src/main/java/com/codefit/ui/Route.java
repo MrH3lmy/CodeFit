@@ -5,6 +5,7 @@ package com.codefit.ui;
  * and which primary sidebar item (if any) should be highlighted while that destination is active.
  */
 public enum Route {
+    EVOLUTION("evolution.fxml", "Evolution", "Player System", NavItem.EVOLUTION),
     TODAY("dashboard.fxml", "Today", "CodeFit - Today", NavItem.TODAY),
     REVIEW("review.fxml", "Review", "CodeFit - Review", NavItem.REVIEW),
     LIBRARY("decks.fxml", "Library", "CodeFit - Library", NavItem.LIBRARY),
@@ -58,6 +59,7 @@ public enum Route {
 
     /** Persistent primary navigation destinations shown in the sidebar. */
     public enum NavItem {
+        EVOLUTION,
         TODAY,
         REVIEW,
         LIBRARY,

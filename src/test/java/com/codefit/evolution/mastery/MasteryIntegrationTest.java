@@ -283,6 +283,22 @@ class MasteryIntegrationTest {
     }
 
     @Test
+    void publicPracticeRehearsalOnExistingPresentationPostponesRetentionWithoutEvidence() throws Exception {
+        var original=pass("counter-repair",0);
+        pass("remaining-capacity",1);
+        pass("inventory-transfer",2);
+        assertTrue(presentations(8).beginPractice(original.presentationId(),"public-practice-day-eight"));
+        assertFalse(presentations(8).beginPractice(original.presentationId(),"public-practice-day-eight"));
+        pass("queue-retention",9);
+        assertEquals(Band.TRANSFER_SUPPORTED,atomic(9).estimate().band());
+        assertEquals(4,count("evolution_submissions"));
+        assertEquals(4,count("evolution_evidence_observations"));
+        assertThrows(IllegalArgumentException.class,()->presentations(9).beginPractice(
+                request("inventory-transfer",9,AssetKind.REFERENCE,EvaluationTypes.OutsideAssistance.NONE_DECLARED).presentationId(),
+                "held-out-practice-rejected"));
+    }
+
+    @Test
     void withdrawalReestimatesWithoutRegressionAndSavedRevisionRemainsInspectable() {
         var first = pass("counter-repair", 0);
         pass("remaining-capacity", 1);

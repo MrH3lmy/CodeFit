@@ -76,12 +76,30 @@ public final class DurableEvaluationRepository {
     public record SubmissionExposure(long id, String command, String presentationId,
             com.codefit.evolution.quest.CatalogRef challenge, java.time.Instant submittedAt) {}
 
+    /** Bounded metadata lookup on the journal's existing read snapshot, without a nested writer. */
+    public Optional<SubmissionExposure> submissionMetadata(Connection c, String command)
+            throws SQLException {
+        if (c.getAutoCommit())
+            throw new IllegalArgumentException("Caller-owned read snapshot required");
+        return find(c, command)
+                .map(
+                        s ->
+                                new SubmissionExposure(
+                                        s.id(),
+                                        s.snapshot().request().id(),
+                                        s.snapshot().presentation().id(),
+                                        s.snapshot().challenge().ref(),
+                                        s.snapshot().submittedAt()));
+    }
+
     public List<SubmissionExposure> submissionExposurePage(Connection c, long afterId, int limit)
             throws SQLException {
         if (c.getAutoCommit() || afterId < 0 || limit < 1 || limit > 128)
             throw new IllegalArgumentException("Bounded caller-owned read snapshot required");
         var result = new ArrayList<SubmissionExposure>();
-        try (var s = c.prepareStatement("SELECT * FROM evolution_submissions WHERE id>? ORDER BY id LIMIT ?")) {
+        try (var s =
+                c.prepareStatement(
+                        "SELECT * FROM evolution_submissions WHERE id>? ORDER BY id LIMIT ?")) {
             s.setLong(1, afterId); s.setInt(2, limit);
             try (var r = s.executeQuery()) { while (r.next()) {
                 var submission = read(r); var snapshot = submission.snapshot();

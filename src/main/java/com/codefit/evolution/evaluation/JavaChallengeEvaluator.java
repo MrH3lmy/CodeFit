@@ -219,6 +219,78 @@ public class JavaChallengeEvaluator {
         }
     }
 
+    /** Public cases only, ephemeral feedback. No submission, attempt or evidence is published. */
+    public List<ChallengeEvaluationCoordinator.CheckFeedback> practice(
+            ChallengeSpec spec, String artifact, RunCancellationToken token) {
+        if (artifact == null
+                || artifact.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 200000)
+            throw new IllegalArgumentException("Bounded local source required");
+        if (spec.runner() != Runner.JAVA21_MAIN
+                || JavaTrainingPack.challenges().stream().noneMatch(spec::equals))
+            throw new IllegalStateException(
+                    "Practice execution is only available for installed Java challenges");
+        assets.validate(spec);
+        if (!runner.isAvailable())
+            throw new IllegalStateException("Local Java 21 compiler/runner unavailable");
+        try (var operation = JavaExecutionCoordinator.tryStart(token)) {
+            if (operation == null)
+                throw new IllegalStateException(
+                        "Another Java operation is active; retry after it finishes");
+            var profile = RunnerProfile.defaults();
+            String source = assemble(spec, artifact, assets);
+            try (var compiled = runner.compile(source, "Main", profile.compileLimits(), token)) {
+                if (!compiled.success())
+                    return List.of(
+                            new ChallengeEvaluationCoordinator.CheckFeedback(
+                                    "practice-compile",
+                                    CheckStatus.NOT_RUN,
+                                    "Practice compilation: "
+                                            + compiled.status()
+                                            + "; no evidence recorded"));
+                String harness =
+                        assets.read(
+                                spec.assets().stream()
+                                        .filter(a -> a.kind() == AssetKind.HARNESS)
+                                        .findFirst()
+                                        .orElseThrow());
+                var inspection =
+                        mechanisms.inspect(
+                                source.substring(0, source.length() - harness.length()),
+                                spec.familyId());
+                if (!inspection.admitted())
+                    return List.of(
+                            new ChallengeEvaluationCoordinator.CheckFeedback(
+                                    "practice-support",
+                                    CheckStatus.UNSUPPORTED,
+                                    "Solution form unsupported; no negative skill conclusion"));
+                var results = new ArrayList<ChallengeEvaluationCoordinator.CheckFeedback>();
+                for (var check : spec.rubric().checks()) {
+                    if (check.visibility() != Visibility.PUBLIC || check.cases().isEmpty())
+                        continue;
+                    CheckStatus status = CheckStatus.PASSED;
+                    for (var io : check.cases()) {
+                        status =
+                                classify(
+                                        runner.run(
+                                                compiled,
+                                                io.stdin(),
+                                                profile.runLimits(check.timeoutSeconds()),
+                                                token),
+                                        io);
+                        if (status != CheckStatus.PASSED) break;
+                    }
+                    results.add(
+                            new ChallengeEvaluationCoordinator.CheckFeedback(
+                                    check.id(),
+                                    status,
+                                    "Public practice cases only; no evidence recorded. Finite tests"
+                                        + " do not prove thread safety."));
+                }
+                return List.copyOf(results);
+            }
+        }
+    }
+
     private CheckStatus classify(RunResult r, ChallengeRubric.IoCase io) {
         if (r.cancelled()) return CheckStatus.CANCELLED;
         if (r.timedOut()) return CheckStatus.TIMED_OUT;

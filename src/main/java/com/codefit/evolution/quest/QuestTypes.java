@@ -53,6 +53,7 @@ public final class QuestTypes {
     }
 
     public enum ExposureAction {
+        PRACTICE_CHECK,
         HINT,
         SOLUTION,
         SKIP,

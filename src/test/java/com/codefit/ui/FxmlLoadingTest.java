@@ -56,10 +56,15 @@ class FxmlLoadingTest {
 
         Platform.runLater(() -> {
             try {
-                loaded.set(FXMLLoader.load(getClass().getResource(resourcePath)));
+                var loader = new FXMLLoader(getClass().getResource(resourcePath));
+                loaded.set(loader.load());
+                if (loader.getController() instanceof RouteLifecycle lifecycle) {
+                    lifecycle.requestLeave(() -> { lifecycle.dispose(); latch.countDown(); });
+                    return;
+                }
+                latch.countDown();
             } catch (Throwable exception) {
                 failure.set(exception);
-            } finally {
                 latch.countDown();
             }
         });
@@ -70,6 +75,7 @@ class FxmlLoadingTest {
         if (failure.get() != null) {
             fail("Failed to load " + resourcePath, failure.get());
         }
+        FxToolkitSupport.awaitProblemRefresh();
         assertNotNull(loaded.get(), "FXMLLoader returned null root for " + resourcePath);
     }
 }

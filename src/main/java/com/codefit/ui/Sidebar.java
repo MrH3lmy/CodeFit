@@ -17,6 +17,7 @@ public class Sidebar extends VBox {
     private static final String NARROW_CLASS = "sidebar-narrow";
     private static final double NARROW_WINDOW_WIDTH = 920;
 
+    @FXML private Button evolutionButton;
     @FXML private Button todayButton;
     @FXML private Button reviewButton;
     @FXML private Button libraryButton;
@@ -55,6 +56,8 @@ public class Sidebar extends VBox {
         this.activeNavItem = navItem;
         updateActiveNavigation();
     }
+
+    @FXML private void goEvolution() { NavigationService.navigate(Route.EVOLUTION); }
 
     @FXML
     private void goToday() {
@@ -142,6 +145,7 @@ public class Sidebar extends VBox {
     }
 
     private void updateActiveNavigation() {
+        setNavigationStyle(evolutionButton, Route.NavItem.EVOLUTION);
         setNavigationStyle(todayButton, Route.NavItem.TODAY);
         setNavigationStyle(reviewButton, Route.NavItem.REVIEW);
         setNavigationStyle(libraryButton, Route.NavItem.LIBRARY);

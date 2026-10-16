@@ -110,7 +110,10 @@ final class SchemaMigrator {
                     MasterySchema::create),
             new VersionedMigration(18,
                     "Add explainable adaptation decisions and learner controls (#215)",
-                    AdaptationSchema::create)
+                    AdaptationSchema::create),
+            new VersionedMigration(19,
+                    "Add local Evolution response drafts and working notes (#216)",
+                    PlayerWorkspaceSchema::create)
     );
 
     static void migrate(Connection connection) throws SQLException {

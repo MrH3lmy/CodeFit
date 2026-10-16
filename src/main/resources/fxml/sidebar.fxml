@@ -11,6 +11,7 @@
     <VBox styleClass="nav-group" spacing="8">
         <Label text="MAIN" styleClass="nav-section-label" />
         <Button fx:id="todayButton" text="Today" onAction="#goToday" maxWidth="Infinity" />
+        <Button fx:id="evolutionButton" text="Evolution" onAction="#goEvolution" maxWidth="Infinity" />
         <Button fx:id="reviewButton" text="Review" onAction="#goReview" maxWidth="Infinity" />
         <Button fx:id="libraryButton" text="Library" onAction="#goLibrary" maxWidth="Infinity" />
         <Button fx:id="problemsButton" text="Problems" onAction="#goProblems" maxWidth="Infinity" />

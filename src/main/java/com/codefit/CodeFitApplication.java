@@ -35,6 +35,7 @@ public class CodeFitApplication extends Application {
         // longer than that timeout before the compiled directory is allowed to close.
         JavaExecutionCoordinator.cancelActiveAndAwait(20, TimeUnit.SECONDS);
         BackgroundImportExecutor.shutdown(10, TimeUnit.SECONDS);
+        com.codefit.ui.PlayerTasks.shutdown();
         CompileOutcomeRegistry.closeCurrent();
         PeerSessionHolder.shutdown();
     }

@@ -130,6 +130,13 @@ public final class BaselineDiagnosticService {
     /** Uses the exact authorized baseline receipt and existing immutable submission coordinator. */
     public ChallengeEvaluationCoordinator.View submit(
             CatalogRef challenge, SubmissionRequest request) {
+        prepare(challenge, request);
+        return evaluator.resume(request.id());
+    }
+
+    /** Same baseline authorization, allowing #216 to checkpoint before honouring cancellation. */
+    public ChallengeEvaluationCoordinator.View prepare(
+            CatalogRef challenge, SubmissionRequest request) {
         catalog.transaction(
                 c -> {
                     requireDiagnostic(c, challenge);
@@ -153,7 +160,7 @@ public final class BaselineDiagnosticService {
                 });
         if (!request.presentationId().equals(presentationId(challenge)))
             throw new IllegalArgumentException("Submission must use this baseline receipt");
-        return evaluator.submit(request);
+        return evaluator.prepare(request);
     }
 
     public ChallengeEvaluationCoordinator.View resumeSubmission(String command) {

@@ -99,26 +99,15 @@ The issue updates point back to this foundation PR so future reviewers can see t
 | Explainable loop (#215/#216) | `GuidedPracticeService`, `ProblemLibraryService`, `Route`, `NavigationService`, workspace/controller | Fresh-install offline integration, explainable journal links, user choices, ordered curriculum preserved |
 | Rewards/pilot (#217/#218) | `ProgressService`, `UserProgressRepository`, pinned evaluator/policies | Transaction replay tests, preserved opening state; predefined real learning evaluation |
 
-## Pilot outline to inform content now
+## EV-10 protocol and execution gate
 
-#218 refines and freezes the protocol before enrollment/outcomes; this is a design input, not a pilot
-already conducted. Recruit an opt-in feasibility sample with a target of at least 12 completers (6 per
-adaptive/fixed sequence, assigned using a recorded seed, stratified by baseline where practical).
-Below that target, or with materially imbalanced attrition, treat the pilot as feasibility feedback only.
-Even at that size, it cannot establish a general causal effect or validate numerical confidence.
-
-Use equivalent reserved baseline and post-test families, same total practice budget and checks in
-both groups, and a delayed check at 1–4 weeks (record actual delay and intervening practice). Hold
-content/rubric versions fixed; predeclare task assignment to prevent leakage, log deviations and
-exclude exposed tasks from unseen claims. Compare within-person and between-group changes in
-independent correctness on held-out tasks; separately report invariant checks, hints, active time,
-partial outcomes, dropouts and uncertainty. Never optimize the protocol after seeing results.
-
-All records stay local. Optional intentional exports contain participant-chosen pseudonym and bounded
-aggregate/check data, no code/answers/notes by default; do not route through P2P or add telemetry.
-Predeclare go/no-go: no expansion beyond Java until the full loop/replay/privacy gates pass and pilot
-results support improvement on independent held-out and delayed tasks without increased assistance.
-Inconclusive/harmful results mean revise content/policy and repeat within Java, not a claim of growth.
+The predeclared feasibility design, task inventory and known equivalence gaps, sample/attrition rules,
+separate outcome measures, local-only collection/export, analysis, go/no-go thresholds, and
+pre-execution checklist are in the [EV-10 learning validation protocol](learning-validation-protocol.md).
+The protocol is a draft, not a preregistration or pilot. Do not enroll or inspect outcomes until its
+freeze gates and the #212/#214/#215/#216 execution dependencies are satisfied. The #213 content review
+must approve matched held-out forms first; the current baseline/post/transfer/retention inventory is
+not enough to claim equivalence or execute the proposed comparison.
 
 ## Migration and architectural risks
 

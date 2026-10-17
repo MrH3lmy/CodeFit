@@ -1,0 +1,70 @@
+{
+  "schema": "codefit-general-source-validation/v0.11",
+  "item_count": 5,
+  "full_private_spans_read": 5,
+  "body_hashes_verified": 5,
+  "targeted_signals_matched": 25,
+  "checks": [
+    {
+      "source_unit_id": "EJ-ITEM-055",
+      "pdf_page_start": 270,
+      "pdf_page_end_exclusive": 275,
+      "body_chars": 11763,
+      "source_body_hash_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "short_signals_checked": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-056",
+      "pdf_page_start": 275,
+      "pdf_page_end_exclusive": 282,
+      "body_chars": 17063,
+      "source_body_hash_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "short_signals_checked": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-057",
+      "pdf_page_start": 282,
+      "pdf_page_end_exclusive": 285,
+      "body_chars": 5889,
+      "source_body_hash_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "short_signals_checked": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-058",
+      "pdf_page_start": 285,
+      "pdf_page_end_exclusive": 288,
+      "body_chars": 6461,
+      "source_body_hash_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "short_signals_checked": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-059",
+      "pdf_page_start": 288,
+      "pdf_page_end_exclusive": 291,
+      "body_chars": 7759,
+      "source_body_hash_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "short_signals_checked": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "limitations": "Original author verification of five complete private sections and short anchors. No independently approved semantic accuracy; publisher passages remain private."
+}

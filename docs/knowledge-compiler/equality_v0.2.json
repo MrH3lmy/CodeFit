@@ -1,0 +1,94 @@
+{
+  "schema": "codefit-knowledge-capsule/v0.2",
+  "knowledge_id": "java.objects.equality-and-hashing",
+  "status": "DRAFT_REQUIRES_SOURCE_AND_TECHNICAL_REVIEW",
+  "sources": [
+    "OCP-CH-014",
+    "OCP-CH-015",
+    "JCP-P-046",
+    "EJ-ITEM-010",
+    "EJ-ITEM-011",
+    "JM-M-060",
+    "JM-M-061",
+    "JM-M-062",
+    "IG-CH-011"
+  ],
+  "prerequisites": [
+    "java.foundations.objects-and-immutability",
+    "java.collections.maps-basics"
+  ],
+  "original_synthesis": "Identity and value equality answer different questions. An equals implementation should honor reflexivity, symmetry, transitivity, consistency and a false comparison to null. Value-equal objects must return the same hash code, though different objects may collide. Mutating equality/hash-significant fields after inserting a key into a hash collection makes lookup behavior unreliable. Model stable business identity explicitly and choose immutable keys where practical.",
+  "misconceptions": [
+    "Assuming == is the value equality test",
+    "Overriding equals without compatible hashCode",
+    "Treating hash collisions as proof of equality",
+    "Mutating key fields after insertion",
+    "Equating business identifier semantics with Java object identity"
+  ],
+  "original_mission_blueprints": [
+    {
+      "id": "EQUAL-001",
+      "type": "predict_and_explain",
+      "original_prompt_blueprint": "Distinguish reference equality from String value equality.",
+      "review_status": "DRAFT",
+      "executable_grader": "NOT_IMPLEMENTED",
+      "verified_mastery_eligible": false
+    },
+    {
+      "id": "EQUAL-002",
+      "type": "predict_and_explain",
+      "original_prompt_blueprint": "State the hashCode implication of equal objects, and its non-converse.",
+      "review_status": "DRAFT",
+      "executable_grader": "NOT_IMPLEMENTED",
+      "verified_mastery_eligible": false
+    },
+    {
+      "id": "EQUAL-003",
+      "type": "spot_and_fix_bug",
+      "original_prompt_blueprint": "Identify a class overriding equals but not hashCode.",
+      "review_status": "DRAFT",
+      "executable_grader": "NOT_IMPLEMENTED",
+      "verified_mastery_eligible": false
+    },
+    {
+      "id": "EQUAL-004",
+      "type": "predict_and_explain",
+      "original_prompt_blueprint": "Assess whether two unequal objects may share a hash code.",
+      "review_status": "DRAFT",
+      "executable_grader": "NOT_IMPLEMENTED",
+      "verified_mastery_eligible": false
+    },
+    {
+      "id": "EQUAL-005",
+      "type": "choose_and_defend",
+      "original_prompt_blueprint": "Choose an immutable or mutable key design for an order-deduplication index.",
+      "review_status": "DRAFT",
+      "executable_grader": "NOT_IMPLEMENTED",
+      "verified_mastery_eligible": false
+    },
+    {
+      "id": "EQUAL-006",
+      "type": "write_and_test",
+      "original_prompt_blueprint": "Create a stable value key and verify lookup and equality behavior.",
+      "review_status": "DRAFT",
+      "executable_grader": "NOT_IMPLEMENTED",
+      "verified_mastery_eligible": false
+    },
+    {
+      "id": "EQUAL-007",
+      "type": "unseen_integrated_challenge",
+      "original_prompt_blueprint": "Diagnose an unfamiliar payment-event deduplication service that loses keys after metadata edits.",
+      "review_status": "DRAFT",
+      "executable_grader": "NOT_IMPLEMENTED",
+      "verified_mastery_eligible": false
+    }
+  ],
+  "holdout": "Keep final payment-event scenario separate from guided examples, exposure families and publicly practiced solutions.",
+  "release_gates": [
+    "Check source locators and technical reasoning against private originals.",
+    "Add Java 21 JUnit positive/negative/mutation tests.",
+    "Require review of explanation and business-id trade-offs.",
+    "Never award XP or mastery based on draft specs."
+  ],
+  "copyright": "Original paraphrased summary and original prompts only"
+}

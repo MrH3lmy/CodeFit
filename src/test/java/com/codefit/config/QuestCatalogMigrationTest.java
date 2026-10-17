@@ -118,7 +118,7 @@ class QuestCatalogMigrationTest {
                             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE"
                                 + " 'evolution_quest_%' AND name NOT LIKE 'evolution_challenge_%'"
                                 + " AND name NOT"
-                                + " IN('evolution_assessment_reservations','schema_migrations','sqlite_sequence','evolution_submissions','evolution_evaluation_runs','evolution_evaluation_revisions','evolution_evaluation_assessment_aliases','evolution_estimate_epochs','evolution_estimate_revisions','evolution_baseline_choices','assessment_attempt_facts','evolution_adaptation_decisions','evolution_adaptation_choices','evolution_working_notes','evolution_reward_entitlements','evolution_reward_state','evolution_reward_preferences','evolution_reward_milestone_baseline','evolution_reward_effort_scan')"
+                                + " IN('evolution_assessment_reservations','schema_migrations','sqlite_sequence','evolution_submissions','evolution_evaluation_runs','evolution_evaluation_revisions','evolution_evaluation_assessment_aliases','evolution_estimate_epochs','evolution_estimate_revisions','evolution_baseline_choices','assessment_attempt_facts','evolution_adaptation_decisions','evolution_adaptation_choices','evolution_working_notes','evolution_reward_entitlements','evolution_reward_state','evolution_reward_preferences','evolution_reward_milestone_baseline','evolution_reward_effort_scan','evolution_reward_effort_processed')"
                                 + " ORDER BY name")) {
                 while (rs.next()) tables.add(rs.getString(1));
             }

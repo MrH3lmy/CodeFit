@@ -296,8 +296,9 @@ class MasteryIntegrationTest {
             s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_update");
             s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_delete");
             s.execute("DROP TABLE evolution_reward_milestone_baseline");
-            s.execute("DROP TABLE evolution_reward_effort_scan");
-            s.execute("DELETE FROM schema_migrations WHERE version IN(20,21,22)");
+            s.execute("DROP TABLE evolution_reward_effort_processed");
+            s.execute("DROP TABLE IF EXISTS evolution_reward_effort_scan");
+            s.execute("DELETE FROM schema_migrations WHERE version IN(20,21,22,23)");
             s.execute("DROP TRIGGER evolution_reward_state_immutable_update");
             s.execute("DROP TRIGGER evolution_reward_state_immutable_delete");
             s.execute("DROP TRIGGER evolution_reward_entitlements_immutable_update");

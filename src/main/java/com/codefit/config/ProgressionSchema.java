@@ -193,5 +193,21 @@ final class ProgressionSchema {
         }
     }
 
+    static void createEffortProcessed(Connection c) throws SQLException {
+        try (Statement s = c.createStatement()) {
+            s.execute("DROP TABLE evolution_reward_effort_scan");
+            s.execute(
+                    """
+                    CREATE TABLE evolution_reward_effort_processed (
+                      submission_id INTEGER PRIMARY KEY REFERENCES evolution_submissions(id),
+                      disposition TEXT NOT NULL CHECK(disposition IN('RECONCILED','INELIGIBLE'))
+                    )
+                    """);
+            s.execute(
+                    "CREATE INDEX evolution_reward_effort_processed_disposition ON"
+                            + " evolution_reward_effort_processed(disposition,submission_id)");
+        }
+    }
+
     private record HistoricalEstimate(long revision, int skillVersion, EstimateInput input) {}
 }

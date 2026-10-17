@@ -167,7 +167,11 @@ engagement. New Evolution rewards use explicit entitlements:
 Evaluation finalization stores the canonical result and evidence without writing XP. Afterward, the
 Player System reconciles at most 32 pending prospective effort entitlements per refresh from finalized,
 uncorrected evaluation records, advancing a persisted bounded scan over ineligible records; a reward
-failure leaves the source finalized and the entitlement absent, so refresh/restart can retry it. The UI
+failure leaves the source finalized and the entitlement absent, so refresh/restart can retry it.
+Recovery records terminal per-submission scan decisions rather than treating a submission-ID
+high-watermark as proof that older unfinished work cannot later finalize. Migration 23 retires the
+earlier high-watermark cursor. Thus an earlier PREPARED, RUNNING or EVALUATED submission remains
+discoverable after a newer submission is reconciled. The UI
 shows pending work and offers retry. Overview history is bounded and the journal retains paged audit
 access. Entitlement insertion and
 the existing `user_progress` XP/level balance update remain one transaction. Milestones are reconciled

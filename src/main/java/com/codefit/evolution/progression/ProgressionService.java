@@ -25,6 +25,7 @@ import java.util.*;
 /** Local, auditable engagement rewards. XP is never an input to mastery or recommendation policy. */
 public final class ProgressionService {
     private static final int EFFORT_SCAN_LIMIT = 512;
+    private static final int EFFORT_SCAN_BUDGET = 4096;
     private static final int OVERVIEW_HISTORY_LIMIT = 25;
 
     public enum RewardType {
@@ -107,13 +108,19 @@ public final class ProgressionService {
             EvolutionQuest quest,
             Outcome outcome) {}
 
+    private record EffortScan(
+            List<PendingEffort> candidates, List<Long> ineligible, long lastScannedId, int rows) {}
+
+    private record EffortBatch(
+            List<PendingEffort> candidates, long scannedThrough, boolean scanBudgetReached) {}
+
     /**
      * Bounded recovery from the immutable finalized submission source. A failed XP transaction
      * leaves no entitlement, so the same source is retried on the next Player System refresh.
      */
     public int reconcilePendingEffortRewards() {
-        var candidates = pendingEffortBatch(32);
-        for (var candidate : candidates) {
+        var batch = pendingEffortBatch(32);
+        for (var candidate : batch.candidates()) {
             try {
                 runTransaction(
                         c -> {
@@ -124,7 +131,7 @@ public final class ProgressionService {
                                     candidate.outcome(),
                                     candidate.commandId(),
                                     candidate.submissionId());
-                            advanceEffortCursor(c, candidate.submissionId());
+                            markEffortProcessed(c, candidate.submissionId(), "RECONCILED");
                             return null;
                         });
             } catch (RuntimeException retryableFailure) {
@@ -134,109 +141,145 @@ public final class ProgressionService {
         return pendingEffortCount();
     }
 
-    private List<PendingEffort> pendingEffortBatch(int limit) {
-        try (var c = DatabaseConfig.getConnection()) {
-            long cursor = effortCursor(c);
-            var result = new ArrayList<PendingEffort>();
-            try (var s =
-                            c.prepareStatement(
-                                    """
-                                    SELECT s.id,s.command_id,r.payload,p.quest_id,p.quest_version
-                                    FROM evolution_submissions s
-                                    JOIN evolution_evaluation_revisions r
-                                      ON r.submission_id=s.id AND r.revision=1
-                                    JOIN evolution_challenge_presentations p
-                                      ON p.id=s.presentation_id
-                                    WHERE s.id>? AND s.state='FINALIZED' AND s.final_revision=1
-                                      AND r.change_kind='ORIGINAL'
-                                      AND NOT EXISTS (
-                                        SELECT 1 FROM evolution_reward_entitlements e
-                                        WHERE e.entitlement_key='effort:'||p.quest_id||':v'||p.quest_version)
-                                    ORDER BY s.id LIMIT ?
-                                    """)) {
-                s.setLong(1, cursor);
-                s.setInt(2, EFFORT_SCAN_LIMIT);
-                try (var r = s.executeQuery()) {
-                    var catalog = new QuestCatalogRepository();
-                    int scanned = 0;
-                    long scannedThrough = cursor;
-                    while (r.next() && scanned++ < EFFORT_SCAN_LIMIT && result.size() < limit) {
-                        long submissionId = r.getLong("id");
-                        var outcome = EvaluationCodec.result(r.getBytes("payload")).outcome();
-                        if (!eligibleOutcome(outcome)) {
-                            scannedThrough = submissionId;
-                            continue;
-                        }
-                        var maybeQuest =
-                                catalog.findQuest(
-                                        c,
-                                        new CatalogRef(
-                                                r.getString("quest_id"),
-                                                r.getInt("quest_version")));
-                        if (maybeQuest.isEmpty()) {
-                            scannedThrough = submissionId;
-                            continue;
-                        }
-                        result.add(
-                                new PendingEffort(
-                                        submissionId,
-                                        r.getString("command_id"),
-                                        maybeQuest.get(),
-                                        outcome));
-                    }
-                    if (result.isEmpty()) advanceEffortCursor(c, scannedThrough);
-                }
-            }
-            return List.copyOf(result);
-        } catch (SQLException e) {
-            throw new IllegalStateException("Unable to reconcile finalized effort rewards", e);
+    private EffortBatch pendingEffortBatch(int limit) {
+        var result = new ArrayList<PendingEffort>();
+        int scanned = 0;
+        long afterId = 0;
+        while (scanned < EFFORT_SCAN_BUDGET && result.size() < limit) {
+            var scan = scanEffortPage(afterId);
+            if (scan.rows() == 0) break;
+            persistIneligible(scan.ineligible());
+            result.addAll(scan.candidates().stream().limit(limit - result.size()).toList());
+            scanned += scan.rows();
+            afterId = scan.lastScannedId();
         }
+        return new EffortBatch(List.copyOf(result), afterId, scanned >= EFFORT_SCAN_BUDGET);
     }
 
     private int pendingEffortCount() {
         var pending = pendingEffortBatch(128);
-        if (!pending.isEmpty()) return pending.size();
+        if (pending.candidates().size() == 128) return 128;
+        return pending.scanBudgetReached()
+                        && hasUnprocessedFinalizedEffort(pending.scannedThrough())
+                ? 128
+                : pending.candidates().size();
+    }
+
+    private EffortScan scanEffortPage(long afterId) {
         try (var c = DatabaseConfig.getConnection();
                 var s =
                         c.prepareStatement(
                                 """
-                                SELECT 1 FROM evolution_submissions s
+                                SELECT s.id,s.command_id,r.payload,p.quest_id,p.quest_version
+                                FROM evolution_submissions s
                                 JOIN evolution_evaluation_revisions r
                                   ON r.submission_id=s.id AND r.revision=1
                                 JOIN evolution_challenge_presentations p ON p.id=s.presentation_id
-                                WHERE s.id>? AND s.state='FINALIZED' AND s.final_revision=1
+                                WHERE s.id>? AND s.id>(
+                                    SELECT historical_submission_through
+                                    FROM evolution_reward_state WHERE id=1)
+                                  AND s.state='FINALIZED' AND s.final_revision=1
                                   AND r.change_kind='ORIGINAL'
                                   AND NOT EXISTS (
                                     SELECT 1 FROM evolution_reward_entitlements e
                                     WHERE e.entitlement_key='effort:'||p.quest_id||':v'||p.quest_version)
-                                ORDER BY s.id LIMIT 1
+                                  AND NOT EXISTS (
+                                    SELECT 1 FROM evolution_reward_effort_processed x
+                                    WHERE x.submission_id=s.id)
+                                ORDER BY s.id LIMIT ?
                                 """)) {
-            s.setLong(1, effortCursor(c));
+            s.setLong(1, afterId);
+            s.setInt(2, EFFORT_SCAN_LIMIT);
+            var candidates = new ArrayList<PendingEffort>();
+            var ineligible = new ArrayList<Long>();
+            var catalog = new QuestCatalogRepository();
+            long lastScannedId = afterId;
+            int rows = 0;
             try (var r = s.executeQuery()) {
-                return r.next() ? 128 : 0;
+                while (r.next()) {
+                    long id = r.getLong("id");
+                    lastScannedId = id;
+                    rows++;
+                    Outcome outcome;
+                    try {
+                        outcome = EvaluationCodec.result(r.getBytes("payload")).outcome();
+                    } catch (RuntimeException invalid) {
+                        ineligible.add(id);
+                        continue;
+                    }
+                    if (!eligibleOutcome(outcome)) {
+                        ineligible.add(id);
+                        continue;
+                    }
+                    var quest =
+                            catalog.findQuest(
+                                    c,
+                                    new CatalogRef(
+                                            r.getString("quest_id"), r.getInt("quest_version")));
+                    if (quest.isEmpty()) {
+                        ineligible.add(id);
+                        continue;
+                    }
+                    candidates.add(new PendingEffort(id, r.getString("command_id"), quest.get(), outcome));
+                }
             }
+            return new EffortScan(
+                    List.copyOf(candidates), List.copyOf(ineligible), lastScannedId, rows);
         } catch (SQLException e) {
-            throw new IllegalStateException("Unable to count pending effort rewards", e);
+            throw new IllegalStateException("Unable to scan finalized effort rewards", e);
         }
     }
 
-    private static long effortCursor(Connection c) throws SQLException {
-        try (var s =
-                        c.prepareStatement(
-                                "SELECT last_submission_id FROM evolution_reward_effort_scan WHERE id=1");
-                var r = s.executeQuery()) {
-            if (!r.next()) throw new SQLException("Effort recovery cursor is unavailable");
-            return r.getLong(1);
-        }
+    private void persistIneligible(List<Long> submissionIds) {
+        if (submissionIds.isEmpty()) return;
+        runTransaction(
+                c -> {
+                    for (long id : submissionIds) markEffortProcessed(c, id, "INELIGIBLE");
+                    return null;
+                });
     }
 
-    private static void advanceEffortCursor(Connection c, long submissionId) throws SQLException {
+    private static void markEffortProcessed(Connection c, long submissionId, String disposition)
+            throws SQLException {
         try (var s =
                 c.prepareStatement(
-                        "UPDATE evolution_reward_effort_scan SET last_submission_id="
-                                + "MAX(last_submission_id,?) WHERE id=1")) {
+                        "INSERT INTO evolution_reward_effort_processed(submission_id,disposition)"
+                                + " VALUES(?,?) ON CONFLICT(submission_id) DO NOTHING")) {
             s.setLong(1, submissionId);
-            if (s.executeUpdate() != 1) throw new SQLException("Effort recovery cursor is unavailable");
+            s.setString(2, disposition);
+            s.executeUpdate();
+        }
+    }
+
+    private static boolean hasUnprocessedFinalizedEffort(long afterId) {
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                """
+                                SELECT 1
+                                FROM evolution_submissions s
+                                JOIN evolution_evaluation_revisions r
+                                  ON r.submission_id=s.id AND r.revision=1
+                                JOIN evolution_challenge_presentations p ON p.id=s.presentation_id
+                                WHERE s.id>? AND s.id>(
+                                    SELECT historical_submission_through
+                                    FROM evolution_reward_state WHERE id=1)
+                                  AND s.state='FINALIZED' AND s.final_revision=1
+                                  AND r.change_kind='ORIGINAL'
+                                  AND NOT EXISTS (
+                                    SELECT 1 FROM evolution_reward_entitlements e
+                                    WHERE e.entitlement_key='effort:'||p.quest_id||':v'||p.quest_version)
+                                  AND NOT EXISTS (
+                                    SELECT 1 FROM evolution_reward_effort_processed x
+                                    WHERE x.submission_id=s.id)
+                                LIMIT 1
+                                """)) {
+            s.setLong(1, afterId);
+            try (var r = s.executeQuery()) {
+                return r.next();
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to inspect pending effort rewards", e);
         }
     }
 

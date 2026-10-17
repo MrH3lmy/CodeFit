@@ -327,6 +327,60 @@ class ProgressionEvaluationIntegrationTest {
     }
 
     @Test
+    void olderPreparedSubmissionIsReconciledAfterNewerObjectiveFinalizesFirst() throws Exception {
+        var olderChallenge =
+                JavaTrainingPack.challenges().stream()
+                        .filter(c -> c.ref().id().equals("counter-repair"))
+                        .findFirst()
+                        .orElseThrow();
+        var olderQuest =
+                JavaTrainingPack.quests().stream()
+                        .filter(q -> q.challenges().contains(olderChallenge.ref()))
+                        .findFirst()
+                        .orElseThrow();
+        var assets = new BundledAssets();
+        String olderPresentation = "out-of-order-" + UUID.randomUUID();
+        new ChallengePresentationService(new QuestCatalogRepository(), assets, CLOCK)
+                .present(
+                        new ChallengePresentation.Request(
+                                olderPresentation,
+                                olderQuest.ref(),
+                                olderChallenge.ref(),
+                                olderChallenge.cohort(),
+                                Familiarity.DECLARED_UNFAMILIAR));
+        String olderSource =
+                assets.read(
+                        olderChallenge.assets().stream()
+                                .filter(a -> a.kind() == AssetKind.REFERENCE)
+                                .findFirst()
+                                .orElseThrow());
+        var olderRequest =
+                new SubmissionRequest(
+                        "out-of-order-older-" + UUID.randomUUID(),
+                        olderPresentation,
+                        olderSource,
+                        OutsideAssistance.NONE_DECLARED,
+                        "");
+        var coordinator = new ChallengeEvaluationCoordinator(CLOCK);
+        coordinator.prepare(olderRequest);
+
+        var newer = submitReference("queue-retention");
+        assertEquals(Outcome.PASSED, newer.outcome());
+        assertEquals(0, new ProgressionService().reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
+
+        assertEquals(Outcome.PASSED, coordinator.resume(olderRequest.id()).outcome());
+        var restarted = new ProgressionService();
+        assertEquals(0, restarted.reconcilePendingEffortRewards());
+        assertEquals(20, xp());
+        assertEquals(2, entitlements());
+        assertEquals(0, new ProgressionService().reconcilePendingEffortRewards());
+        assertEquals(20, xp());
+        assertEquals(2, entitlements());
+    }
+
+    @Test
     void boundedEffortRecoveryAdvancesPastIneligibleSubmissionsAcrossRestart() throws Exception {
         var challenge =
                 JavaTrainingPack.challenges().stream()
@@ -366,10 +420,12 @@ class ProgressionEvaluationIntegrationTest {
         assertEquals(Outcome.PASSED, new ChallengeEvaluationCoordinator(CLOCK).submit(request).outcome());
 
         var firstRefresh = new ProgressionService();
-        assertEquals(1, firstRefresh.reconcilePendingEffortRewards());
         assertEquals(1, firstRefresh.snapshot().pendingEffortRewards());
         assertEquals(0, xp());
         assertEquals(0, entitlements());
+        assertEquals(0, firstRefresh.reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
 
         var afterRestart = new ProgressionService();
         assertEquals(0, afterRestart.reconcilePendingEffortRewards());

@@ -134,6 +134,76 @@ class EvolutionControllerTest {
     }
 
     @Test
+    void rewardDisplayToggleAndPreferenceSurviveControllerRestart() throws Exception {
+        assertTrue(
+                fx(() -> allText((Parent) loader.getNamespace().get("overviewBox")))
+                        .contains("0 XP · level 1"));
+        assertTrue(fx(() -> rewardsCheckbox().isSelected()));
+
+        fx(
+                () -> {
+                    rewardsCheckbox().fire();
+                    return null;
+                });
+        awaitIdle();
+        assertEquals(0, scalarValue("SELECT enabled FROM evolution_reward_preferences WHERE id=1"));
+        reload(() -> new PlayerSystemService(CLOCK));
+        assertFalse(fx(() -> rewardsCheckbox().isSelected()));
+
+        fx(
+                () -> {
+                    rewardsCheckbox().fire();
+                    return null;
+                });
+        awaitIdle();
+        reload(() -> new PlayerSystemService(CLOCK));
+        assertTrue(fx(() -> rewardsCheckbox().isSelected()));
+        assertEquals(0, scalarValue("SELECT xp FROM user_progress WHERE id=1"));
+    }
+
+    @Test
+    void pendingRewardIsVisibleAndRetryableWithoutLosingFinalizedEvaluation() throws Exception {
+        var request = preparedSubmission("baseline-trace");
+        assertEquals(
+                EvaluationTypes.Outcome.PASSED,
+                new ChallengeEvaluationCoordinator(CLOCK).submit(request).outcome());
+        try (var c = DatabaseConfig.getConnection(); var s = c.createStatement()) {
+            s.execute(
+                    "CREATE TRIGGER reject_progression_xp BEFORE UPDATE ON user_progress"
+                            + " WHEN NEW.xp<>OLD.xp BEGIN SELECT RAISE(ABORT,'fixture'); END");
+        }
+
+        fx(
+                () -> {
+                    ((Button) loader.getNamespace().get("refreshButton")).fire();
+                    return null;
+                });
+        awaitIdle();
+        String pending =
+                fx(() -> allText((Parent) loader.getNamespace().get("overviewBox")));
+        assertTrue(pending.contains("Reward processing pending"), pending);
+        assertTrue(pending.contains("Retry pending rewards"), pending);
+        assertEquals("FINALIZED", new DurableEvaluationRepository().find(request.id()).orElseThrow().stage().name());
+        assertEquals(1, scalar("evolution_evidence_observations"));
+
+        try (var c = DatabaseConfig.getConnection(); var s = c.createStatement()) {
+            s.execute("DROP TRIGGER reject_progression_xp");
+        }
+        fx(
+                () -> {
+                    findButton((Parent) loader.getNamespace().get("overviewBox"), "Retry pending rewards")
+                            .fire();
+                    return null;
+                });
+        awaitIdle();
+        assertFalse(
+                fx(() -> allText((Parent) loader.getNamespace().get("overviewBox")))
+                        .contains("Reward processing pending"));
+        assertEquals(10, scalarValue("SELECT xp FROM user_progress WHERE id=1"));
+        assertEquals(1, scalar("evolution_reward_entitlements"));
+    }
+
+    @Test
     void baselinePromptFollowsExposureDraftSurvivesControllerRestartAndSubmissionClosesLoop()
             throws Exception {
         openCounter();
@@ -998,8 +1068,18 @@ class EvolutionControllerTest {
                 var b = maybeButton(p, label);
                 if (b != null) return b;
             }
+
         }
         throw new AssertionError("Button not found: " + label);
+    }
+
+    private CheckBox rewardsCheckbox() {
+        return root.lookupAll(".check-box").stream()
+                .filter(CheckBox.class::isInstance)
+                .map(CheckBox.class::cast)
+                .filter(c -> c.getText().equals("Earn new Evolution XP and milestone rewards"))
+                .findFirst()
+                .orElseThrow();
     }
 
     private static Button maybeButton(Parent p, String label) {
@@ -1028,6 +1108,15 @@ class EvolutionControllerTest {
                 var s = c.createStatement();
                 var r = s.executeQuery("SELECT COUNT(*) FROM " + table)) {
             r.next();
+            return r.getLong(1);
+        }
+    }
+
+    private long scalarValue(String query) throws Exception {
+        try (var c = DatabaseConfig.getConnection();
+                var s = c.createStatement();
+                var r = s.executeQuery(query)) {
+            assertTrue(r.next());
             return r.getLong(1);
         }
     }

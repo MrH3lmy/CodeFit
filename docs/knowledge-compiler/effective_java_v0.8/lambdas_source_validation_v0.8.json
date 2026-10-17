@@ -1,0 +1,25 @@
+{
+  "schema": "codefit-v8-lambdas-source-verification",
+  "item_count": 2,
+  "hashes_verified": 2,
+  "targeted_source_signal_checks": 10,
+  "source_items": [
+    {
+      "source_unit_id": "EJ-ITEM-042",
+      "complete_span_read": true,
+      "sha256_verified": true,
+      "source_signal_matches": 5,
+      "independent_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-043",
+      "complete_span_read": true,
+      "sha256_verified": true,
+      "source_signal_matches": 5,
+      "independent_review": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "limitations": "Private full source spans read and matched, but no independent claim-by-claim semantic review."
+}

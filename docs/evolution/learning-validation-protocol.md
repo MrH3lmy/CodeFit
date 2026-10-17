@@ -100,21 +100,73 @@ or expose assessment items to compensate for a learner's result.
 - Schedule one baseline before allocation, four practice sessions over a two-week window, then
   immediate post-test and separate held-out transfer tasks after the final practice session. Present
   the distinct pools in a counterbalanced order fixed before enrollment. Schedule the retention-only
-  task at a separate visit 7–28 days after the final instructional exposure. Use the same assessment
-  instructions, form time limits, environment, and permitted resources in both arms. Do not show
-  correctness feedback or solutions between baseline and completion of immediate assessment tasks.
+  task at a separate visit 7–28 days after the last relevant task attempt or instructional exposure,
+  whichever is later. Use the same assessment instructions, form time limits, environment, and
+  permitted resources in both arms. The same assessment feedback embargo in the next section applies
+  to both arms.
 - Set a practice budget of four 30-minute active-practice sessions (120 minutes total) in each arm.
-  Pause/idle time is excluded using the same pinned timer definition; capture each session's actual
-  active time, task, pause, and interruption. Do not extend one arm's budget to reach a desired result.
-  Report assigned-budget and actual-time comparisons. If active-time measurement cannot be verified
-  consistently, treat the time-equivalence gate as failed and the outcome as inconclusive.
+  Time spent solving, requesting hints, reading practice feedback, and reviewing a practice solution
+  counts against the same active-time budget; freeze and verify the timer captures these intervals.
+  Exclude evaluator runtime and explicit pause/idle time under the same pinned timer definition;
+  capture each session's actual active time, task, pause, and interruption. Report assigned-budget and
+  actual-time comparisons separately; do not extend one arm's budget to reach a desired result. If the
+  timer cannot consistently capture these intervals, execution is blocked until resolved; if discovered
+  after enrollment, the time-equivalence gate fails and the outcome is inconclusive.
 - Present transfer tasks only in the immediate held-out assessment and delayed retention tasks only
-  at their separate retention visit; record actual days since instruction plus known in-app and
-  learner-reported intervening practice. For a
-  quiet-retention claim, require at least seven days since the last recorded relevant practice,
-  instruction, hint, or solution reveal. Any intervening or unknown rehearsal is retained as a
-  contaminated/unknown retention observation, not a quiet-retention success. App records cannot
-  observe all off-app activity.
+  at their separate retention visit; record actual days since the final relevant instructional
+  exposure—including feedback, hints, and solution reveals—plus known in-app and learner-reported
+  intervening practice. For a quiet-retention claim, require at least seven days since the latest
+  same-behavior task attempt/presentation, practice instruction, hint, solution reveal, or feedback
+  exposure. Immediate POST and TRANSFER attempts therefore count as rehearsal when they target the
+  retention behavior; any later relevant attempt resets the interval.
+  Any intervening or unknown rehearsal is retained as a contaminated/unknown retention observation,
+  not a quiet-retention success. App records cannot observe all off-app activity.
+
+### Feedback, assistance, and assessment embargo
+
+Freeze the feedback/assistance matrix, content, and release rules before enrollment. The exact
+evaluator, rubric/check versions, feedback wording/detail, hint ladder, solution artifact digests,
+and exposure-record fields are part of the preregistration alongside the task manifests.
+
+- **PRACTICE:** In both arms, after a deliberate PRACTICE submission has a finalized evaluation,
+  show the same redacted overall outcome, required-check statuses, and standard rubric explanation.
+  Freeze per-task which rubric details are shown and the exact hint ladder and solution access rules.
+  While solving, learners may request that task's published hints, one step at a time. If a reference
+  solution is published for a PRACTICE task, it is available only after that task's finalized
+  submission. These options are learner-controlled and available under identical task-specific rules
+  in both arms; usage is not forced or artificially matched. The adaptive arm may use the resulting
+  recorded practice evidence under its pinned policy; the fixed sequence does not change in response.
+  Do not present PRACTICE feedback, hints, or solutions containing assessment-pool answers or
+  equivalent answer disclosure.
+- **BASELINE, immediate POST, TRANSFER, and delayed RETENTION:** Administer as assessment tasks with
+  the same frozen instructions and allowed resources in both arms. Do not provide hints, reference
+  solutions, answer keys, correctness/partial-result feedback, check-by-check results, expected values,
+  or explanations before or during these assessments. Before the release gate, do not expose
+  assessment materials or results through recommendations, ordinary browsing, participant-visible
+  journal/result/log screens, practice hints, exports, or another participant's session. Ask
+  participants not to discuss assessment tasks or answers until the cohort-wide embargo lifts; record
+  reported disclosures as exposure. These tasks and assets are locally inspectable, not secure exams:
+  record known familiarity or disclosure, and never describe route separation as proof that a learner
+  could not inspect local files.
+- **Release gate:** Withhold all participant-visible assessment feedback and keys—including baseline,
+  POST, and TRANSFER—for the entire cohort until every randomized participant has either submitted
+  the delayed RETENTION task and its evaluation is durably fixed, withdrawn/declined further
+  assessments, or reached the end of the predeclared 28-day retention window. Then release feedback
+  for all assessment tasks together. A participant's withdrawal, early completion, or individual
+  feedback release must not lift the embargo for anyone else. If no valid retention submission exists
+  when a participant's follow-up ends, that outcome remains withdrawn/missing, not a failure. Never
+  reveal delayed task feedback before its own submission is fixed. Feedback released after the
+  cohort-wide gate is subsequent learning exposure and cannot alter any already-fixed study outcome.
+- **Exposure audit:** For each arm and task, freeze and retain locally the assignment, task/family/
+  manifest/rubric/evaluator versions, presentation/submission IDs, outcome and finalization time,
+  feedback version/content category and shown time, hint level/events, solution access/time, familiarity
+  and assistance declarations, embargo/release authorization and time, cohort-wide gate state, and any
+  route or timing deviation. Record feedback permitted by assignment separately from feedback actually
+  viewed.
+  Reconcile the journal/exposure history against the preregistered matrix before analysis.
+  Report actual exposure and deviations by arm; classify any assessment leak before the delayed
+  submission as exposed/contaminated, not unseen or independent. Unknown exposure blocks an
+  unqualified unseen/quiet-retention claim.
 
 If fewer than 12 participants complete the immediate post-test, or fewer than six completers remain
 in either arm, the between-arm feasibility comparison is **inconclusive**. Retention follow-up loss
@@ -124,8 +176,9 @@ is reported separately and cannot be hidden by the immediate-post completer coun
 
 The comparison changes only sequence selection. Freeze and apply the same four-session time budget,
 practice pool, baseline/post/transfer/retention instructions, evaluation/check versions, support
-rules, device/runtime requirements, and assessment scheduling to both arms. The fixed arm receives
-the predeclared fixed sequence; the adaptive arm uses `adaptive-v1` with `java-pilot-v1`. Both use
+rules and feedback/assistance matrix, device/runtime requirements, and assessment scheduling to both
+arms. The fixed arm receives the predeclared fixed sequence; the adaptive arm uses `adaptive-v1` with
+`java-pilot-v1`. Both use
 the exact pinned `ordinal-v1` inputs for adaptation. Record actual decisions and exclusions; do not
 replay or hand-select an adaptive sequence.
 
@@ -202,9 +255,21 @@ locally. Include only a participant-chosen pseudonym, frozen protocol/version an
 arm, aggregate/check outcomes, assistance/exposure categories, active-time summaries, elapsed-delay
 days, and attrition/deviation flags needed to interpret the results. Omit real identity, contact
 details, exact local paths, raw code, answers, prompts/notes, reflections, answer keys, hidden test
-inputs/expected outputs, raw qualitative responses, free text, and peer/network data. No export occurs until the participant
-explicitly selects it; no remote destination is preselected. Export does not delete or upload the
-local source record.
+inputs/expected outputs, raw qualitative responses, free text, and peer/network data. No export occurs
+until the participant explicitly selects it; no remote destination is preselected. Export does not
+delete or automatically upload the local source record.
+
+For a pooled participant-level analysis, an analyst may combine only individually authorized export
+bundles, using the participant-chosen pseudonym to keep each person's baseline/post pair together
+and counting that person once. Validate protocol/version, assignment, task-role, and outcome-status
+fields before combining; do not infer absent outcome values from an absent row. Keep the consented
+enrollment/assignment flow record separate from outcome exports. Non-exporters are not study
+withdrawals or outcome failures merely because of export choice; their records remain local and are
+not included in an export-based pooled dataset. Report export coverage separately only to the extent
+participants authorized it. If the available, authorized records do not meet the frozen sample,
+attrition, or endpoint requirements, report the pooled result as incomplete/inconclusive—not as an
+intention-to-treat result for the full cohort. No full-cohort aggregate may include or describe a
+non-exporter's outcome without that participant's intentional export.
 
 ## Feasibility decision rules
 

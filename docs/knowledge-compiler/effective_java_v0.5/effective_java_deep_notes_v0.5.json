@@ -1,0 +1,268 @@
+{
+  "notes": [
+    {
+      "core": "A static factory is a named class-level creation operation. It can make intent clear, reuse immutable instances and hide implementation types; it is not automatically a Factory Method design-pattern implementation.",
+      "mastery_eligible": false,
+      "note_id": "EJ5-001",
+      "nuance": [
+        "Do not teach that every factory caches or is faster.",
+        "Do not conflate a static factory with a design-pattern factory or a dependency-injection container.",
+        "A factory can complement a constructor; neither is universally superior."
+      ],
+      "original_content_only": true,
+      "pdf_page_end_inclusive": 31,
+      "pdf_page_start": 26,
+      "prerequisites": [
+        "classes",
+        "methods",
+        "constructors"
+      ],
+      "publication": "BLOCKED",
+      "rules": [
+        "Choose a descriptive factory when multiple same-typed creation modes would be ambiguous as constructors.",
+        "Factories may return reused objects or private implementation subtypes, but their APIs must specify identity or freshness when callers depend on it.",
+        "Returning only through inaccessible constructors can foreclose ordinary subclassing; discoverability and documentation matter.",
+        "Factory naming conventions express intent, but implementation can change while honoring contract."
+      ],
+      "scene": "A retry policy API offers fixedDelay(500) and exponentialBackoff(500) without two indistinguishable integer constructors.",
+      "source_body_sha256": "400ce8370e4dd943951932dd140881a8af3d09dc787b0ca717b96d1f42b5daf4",
+      "source_coverage_claim": "8 deep-authored notes, NOT full independent semantic review",
+      "source_edition_ref": "effective-java-3rd-2018-text-native",
+      "source_review": "DEEP_AUTHOR_READ__PENDING_INDEPENDENT_REVIEW",
+      "source_unit_id": "EJ-ITEM-001",
+      "title": "Named factories and controlled object creation",
+      "trap": "Expecting `==` to compare two values returned from an arbitrary factory."
+    },
+    {
+      "core": "Builders address many optional or same-typed parameters; validate single-value constraints at setting time and cross-field invariants on the snapshot used to create the final object.",
+      "mastery_eligible": false,
+      "note_id": "EJ5-002",
+      "nuance": [
+        "A builder for two simple parameters adds needless boilerplate.",
+        "Do not expose a builder live collection by reference into the final value.",
+        "The book illustrates builder hierarchies, but hierarchy complexity can itself be a reason to simplify the design."
+      ],
+      "original_content_only": true,
+      "pdf_page_end_inclusive": 38,
+      "pdf_page_start": 31,
+      "prerequisites": [
+        "classes",
+        "constructors",
+        "immutability-basics"
+      ],
+      "publication": "BLOCKED",
+      "rules": [
+        "Telescoping constructors can be unreadable when many optional parameters share primitive types.",
+        "Mutable JavaBeans configuration can expose invalid intermediate states and require synchronization.",
+        "Check cross-field invariants against values copied into the produced object, not earlier mutable builder state.",
+        "Builders support fluent immutable construction and hierarchical variants, at some complexity and allocation cost."
+      ],
+      "scene": "Create a notification policy with required channel and recipient and optional retry limit, quiet-hours and expiry.",
+      "source_body_sha256": "f54751ded1d35b6a5e824d3d573c1394854913b1b2bbd66efe48bc40b13c9a33",
+      "source_coverage_claim": "8 deep-authored notes, NOT full independent semantic review",
+      "source_edition_ref": "effective-java-3rd-2018-text-native",
+      "source_review": "DEEP_AUTHOR_READ__PENDING_INDEPENDENT_REVIEW",
+      "source_unit_id": "EJ-ITEM-002",
+      "title": "Builder lifecycle and validation",
+      "trap": "Validating builder `max` and `min` before copying, then allowing mutation to invalidate the built object."
+    },
+    {
+      "core": "try-with-resources closes AutoCloseable resources predictably, on success and failure, preserving the main failure and recording close failures as suppressed exceptions.",
+      "mastery_eligible": false,
+      "note_id": "EJ5-009",
+      "nuance": [
+        "try-with-resources is not a transaction commit guarantee.",
+        "A resource requires AutoCloseable (or compatible semantics), not merely an arbitrary close-like method.",
+        "Failure should never be declared solved merely by closing without checking data correctness."
+      ],
+      "original_content_only": true,
+      "pdf_page_end_inclusive": 58,
+      "pdf_page_start": 55,
+      "prerequisites": [
+        "exceptions",
+        "interfaces",
+        "try-finally"
+      ],
+      "publication": "BLOCKED",
+      "rules": [
+        "Resources in the try declaration close automatically in reverse declaration order.",
+        "When the body and close both throw, the body failure remains primary and a close failure is suppressed.",
+        "If no body failure occurs and closing fails, a close failure can be the primary failure.",
+        "Close failures should be logged or surfaced according to API policy; silent swallowing conceals incomplete work."
+      ],
+      "scene": "A CSV-based payment settlement importer fails reading a record, and closing the input may also fail.",
+      "source_body_sha256": "b9cfeae585437518ae5018eab68e9922c9b74786857f2b56491c6a7d34cdad42",
+      "source_coverage_claim": "8 deep-authored notes, NOT full independent semantic review",
+      "source_edition_ref": "effective-java-3rd-2018-text-native",
+      "source_review": "DEEP_AUTHOR_READ__PENDING_INDEPENDENT_REVIEW",
+      "source_unit_id": "EJ-ITEM-009",
+      "title": "Deterministic cleanup and suppressed exceptions",
+      "trap": "Losing the original parse error because a cleanup exception is allowed to replace it."
+    },
+    {
+      "core": "Value equality is an equivalence relation: reflexive, symmetric, transitive, consistent while relevant state is unchanged, and false for null. Implementation must correctly override equals(Object).",
+      "mastery_eligible": false,
+      "note_id": "EJ5-010",
+      "nuance": [
+        "Equality across subclass boundaries is a domain choice requiring careful invariants; no universal instanceof/getClass answer without considering hierarchy.",
+        "Mutable fields in equality are a dangerous choice for object stability and hashed collections.",
+        "Hashing compatibility is specified separately by Item 11."
+      ],
+      "original_content_only": true,
+      "pdf_page_end_inclusive": 71,
+      "pdf_page_start": 58,
+      "prerequisites": [
+        "object-equality",
+        "inheritance",
+        "methods-overriding"
+      ],
+      "publication": "BLOCKED",
+      "rules": [
+        "When superclass identity equality is already appropriate, do not override by reflex.",
+        "An equality definition on subclasses with added value fields can break symmetry or transitivity; prefer composition to mix extra information with a base value.",
+        "Never overload equals(T) in place of overriding equals(Object); use @Override to catch signatures.",
+        "Test positive, negative, reverse-order and triple relationships; avoid comparing unrelated types as equal."
+      ],
+      "scene": "A merchant payment event has an id plus optional presentation metadata; define which state constitutes identity.",
+      "source_body_sha256": "d6905f3aff2fd2f95de94577616c4bc01e02ab30818ef9a40a6940d2750c28fd",
+      "source_coverage_claim": "8 deep-authored notes, NOT full independent semantic review",
+      "source_edition_ref": "effective-java-3rd-2018-text-native",
+      "source_review": "DEEP_AUTHOR_READ__PENDING_INDEPENDENT_REVIEW",
+      "source_unit_id": "EJ-ITEM-010",
+      "title": "Equivalence contract of equals",
+      "trap": "One-sided cross-type equality makes a.equals(b) different from b.equals(a)."
+    },
+    {
+      "core": "Whenever equals gives value semantics, hashCode must assign equal values the same int. Hash collisions are legal; good distribution primarily matters for performance.",
+      "mastery_eligible": false,
+      "note_id": "EJ5-011",
+      "nuance": [
+        "Never assert equal hash codes imply equal objects.",
+        "A record typically derives equals and hashCode from components; component mutability may still create map-key hazards.",
+        "Do not micro-optimize hashCode without profiling."
+      ],
+      "original_content_only": true,
+      "pdf_page_end_inclusive": 76,
+      "pdf_page_start": 71,
+      "prerequisites": [
+        "java.objects.equality-and-hashing",
+        "hash-based-collections"
+      ],
+      "publication": "BLOCKED",
+      "rules": [
+        "A HashMap lookup by a logically equal fresh key depends on matching hash codes.",
+        "Unequal objects may share a hash code: hashing is not an equality proof.",
+        "Relevant equality fields should inform hashing; omitting meaningful variation can cause excessive collisions.",
+        "Caching hash codes is safest for effectively immutable values; Objects.hash is convenient but may allocate and box."
+      ],
+      "scene": "A webhook deduplication map receives a second instance with the same stable event key.",
+      "source_body_sha256": "b4223de11ee845f7d6eef70f3ff2ca9e198c20cdb06e12682ad41eef24a37f9b",
+      "source_coverage_claim": "8 deep-authored notes, NOT full independent semantic review",
+      "source_edition_ref": "effective-java-3rd-2018-text-native",
+      "source_review": "DEEP_AUTHOR_READ__PENDING_INDEPENDENT_REVIEW",
+      "source_unit_id": "EJ-ITEM-011",
+      "title": "Equal values must hash alike",
+      "trap": "Overriding equals for a key but inheriting Object.hashCode, leading to missing retrievals."
+    },
+    {
+      "core": "An immutable value preserves observable state after creation: control subclassing, restrict mutators, guard mutable components, use correct field lifetime, and expose functional updates instead of mutation.",
+      "mastery_eligible": false,
+      "note_id": "EJ5-017",
+      "nuance": [
+        "Some immutable types can cache derived values in carefully controlled nonfinal fields.",
+        "Immutable repeated intermediate allocations can cost time/space: design batch operations or a mutable private companion when justified.",
+        "Immutable object identity versus value equality is a distinct concern."
+      ],
+      "original_content_only": true,
+      "pdf_page_end_inclusive": 108,
+      "pdf_page_start": 101,
+      "prerequisites": [
+        "classes",
+        "fields",
+        "references"
+      ],
+      "publication": "BLOCKED",
+      "rules": [
+        "No exposed mutator may change observable state after creation.",
+        "Prevent subclasses from injecting mutable behavior or otherwise weakening the immutable contract.",
+        "Prefer private final fields for core state and exclusive control over all referenced mutable members.",
+        "Defensively copy mutable inputs and outputs; ordinary final fields protect references, not their transitive graphs."
+      ],
+      "scene": "A checkout quote stores currencies, taxes and adjustable presentation metadata.",
+      "source_body_sha256": "8a512072968525a9b7faa0fe9b52591272b2b839b23cff63b9f2b383b18d5558",
+      "source_coverage_claim": "8 deep-authored notes, NOT full independent semantic review",
+      "source_edition_ref": "effective-java-3rd-2018-text-native",
+      "source_review": "DEEP_AUTHOR_READ__PENDING_INDEPENDENT_REVIEW",
+      "source_unit_id": "EJ-ITEM-017",
+      "title": "Immutability and safe sharing",
+      "trap": "Calling List.copyOf() on a collection of mutable elements and assuming deep immutability."
+    },
+    {
+      "core": "Subclass reuse across implementation boundaries is fragile when superclass behavior or self-calls change. Prefer composition and delegation when the wrapper is not a genuine subtype or needs independent behavior.",
+      "mastery_eligible": false,
+      "note_id": "EJ5-018",
+      "nuance": [
+        "Composition is not always better; an actual subtype with a supported extension contract can justify inheritance.",
+        "Forwarding does not automatically preserve equals, hashCode and identity expectations.",
+        "Be careful what an instrumentation count means: calls, attempts, or actual successful additions."
+      ],
+      "original_content_only": true,
+      "pdf_page_end_inclusive": 114,
+      "pdf_page_start": 108,
+      "prerequisites": [
+        "subtyping",
+        "interfaces",
+        "encapsulation"
+      ],
+      "publication": "BLOCKED",
+      "rules": [
+        "Subclassing is appropriate for a true is-a relationship with a superclass designed and documented for extension.",
+        "Overriding one mutator may be re-entered by inherited bulk mutators, invalidating instrumentation or checks.",
+        "A wrapper around an interface isolates internal implementation details but requires correct forwarding of all API behavior.",
+        "Wrapper callbacks may bypass the wrapper because the wrapped object can register itself (self-reference caveat)."
+      ],
+      "scene": "An audit-enabled set of processed invoice IDs must record successful insertions regardless of collection implementation.",
+      "source_body_sha256": "5249a4022d537bcdc5e5a8233247595d2fcab0106bc17f0f651171c1106ac110",
+      "source_coverage_claim": "8 deep-authored notes, NOT full independent semantic review",
+      "source_edition_ref": "effective-java-3rd-2018-text-native",
+      "source_review": "DEEP_AUTHOR_READ__PENDING_INDEPENDENT_REVIEW",
+      "source_unit_id": "EJ-ITEM-018",
+      "title": "Composition versus implementation inheritance",
+      "trap": "Counting addAll input cardinality and then double-counting inherited add calls."
+    },
+    {
+      "core": "Copy mutable caller-supplied data into owned representations before validating dependent invariants; also avoid exposing internal mutable references through accessors.",
+      "mastery_eligible": false,
+      "note_id": "EJ5-050",
+      "nuance": [
+        "A shallow copy does not protect against mutation of nested elements.",
+        "Unmodifiable view of an externally owned mutable collection is not an immutable snapshot.",
+        "This prevents alias-based invariant violations; it does not prove all concurrency races impossible without further synchronization."
+      ],
+      "original_content_only": true,
+      "pdf_page_end_inclusive": 257,
+      "pdf_page_start": 252,
+      "prerequisites": [
+        "references",
+        "validation",
+        "immutability"
+      ],
+      "publication": "BLOCKED",
+      "rules": [
+        "If a constructor stores mutable inputs, it must ordinarily take ownership by copying before validation, protecting against concurrent mutations during the validation window.",
+        "If a getter hands out an internal mutable object, callers can modify the owner’s state unless the value is copied or wrapped safely.",
+        "For subclassable input types, calling their clone() is not a general security boundary.",
+        "Document intentional ownership-transfer APIs explicitly, and consider performance only when justified by trust and measurement."
+      ],
+      "scene": "A payout window accepts mutable Date bounds but must retain invariant from <= to across future caller changes.",
+      "source_body_sha256": "2ffec81c402d8819c1545121f45538ff1a2050543f783d7b6617d196328e3ed4",
+      "source_coverage_claim": "8 deep-authored notes, NOT full independent semantic review",
+      "source_edition_ref": "effective-java-3rd-2018-text-native",
+      "source_review": "DEEP_AUTHOR_READ__PENDING_INDEPENDENT_REVIEW",
+      "source_unit_id": "EJ-ITEM-050",
+      "title": "Defensive copying and time-of-check safety",
+      "trap": "Validate a mutable date range, then copy after validation while a concurrent actor changes the start/end."
+    }
+  ],
+  "schema": "codefit-effective-java-deep-author-drafts/v0.5"
+}

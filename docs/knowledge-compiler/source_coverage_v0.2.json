@@ -1,0 +1,50 @@
+{
+  "schema": "codefit-source-coverage/v0.2",
+  "state": "draft-not-reviewed",
+  "source_scope": "5 personally accessible PDF copies; no PDF bytes or original excerpts committed",
+  "source_books": {
+    "ocp17": {
+      "major_units": 26,
+      "linked_to_drafts": 8
+    },
+    "java_coding_problems": {
+      "major_units": 269,
+      "linked_to_drafts": 9
+    },
+    "java_mistakes": {
+      "major_units": 100,
+      "linked_to_drafts": 15
+    },
+    "effective_java": {
+      "major_units": 90,
+      "linked_to_drafts": 6
+    },
+    "interview_guide": {
+      "major_units": 19,
+      "linked_to_drafts": 5
+    }
+  },
+  "measured": {
+    "major_units_discovered": 504,
+    "bookmarks_indexed": 1334,
+    "draft_capsules": 7,
+    "draft_quest_blueprints": 31,
+    "unique_major_units_linked": 43,
+    "verified_major_units": 0,
+    "independently_reviewed_capsules": 0,
+    "production_graders": 0
+  },
+  "tests": {
+    "python": "6 PASS",
+    "standalone_java21_equality_smoke": "11 PASS",
+    "codefit_integration": "NOT RUN"
+  },
+  "next_actions": [
+    "Audit chapter subheadings, tables, graphics and exercise-level anchors within five originals.",
+    "Review foundations drafts against exact source passages and Java 21 semantics.",
+    "Produce graded original prompts with verified positive/negative tests and untaught held-out families.",
+    "Expand to all units with explicit uncovered and review states before any 100% coverage claim.",
+    "Keep raw PDF content private and check copyright permissions before distributing transformed materials."
+  ],
+  "provenance": "metadata source-to-unit references stored in private compiler checkpoint; status intentionally conservative"
+}

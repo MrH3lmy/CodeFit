@@ -1,0 +1,292 @@
+{
+  "schema": "codefit-effective-java-enums-annotations-enhanced/v0.8",
+  "notes": [
+    {
+      "title": "Closed domain choices with typed enums and behavior strategies",
+      "prerequisites": [
+        "Java class construction",
+        "type-safe APIs",
+        "switch semantics"
+      ],
+      "core": "Model a finite set of domain choices with a dedicated enum type instead of an integer or string protocol. Use explicit data and behavior when a constant carries meaning; require every constant to implement an abstract operation or select a strategy when new constants must make an explicit policy decision.",
+      "rules": [
+        "Keep unrelated categories in distinct enum types so the compiler rejects accidental mixing.",
+        "Use private final per-constant state and a constructor when labels, prices or behavior metadata differ.",
+        "Use constant-specific implementations for truly different behavior and an explicit strategy for shared behavior families.",
+        "Treat name(), valueOf() and custom display labels as different contracts; a display label is not an automatically parseable stable ID.",
+        "Use values() for declared values; do not treat ordinal positions as external identifiers."
+      ],
+      "nuance": [
+        "Enums can evolve by adding constants, but exhaustive clients, persisted names and old compiled clients still need compatibility tests.",
+        "A switch over an enum is reasonable for a separate adapter that cannot change the enum or should not own its policy.",
+        "An enum constructor cannot safely register itself in an ordinary static lookup map; build lookup after constants exist.",
+        "Java 21 supports exhaustive switch expressions, which can replace some older defensive switch patterns; test evolution behavior rather than assuming a default branch is always necessary."
+      ],
+      "misconception": "Enum names, presentation labels, database codes and ordinal positions are interchangeable.",
+      "production_context": "A settlement service chooses one of several closed reconciliation actions, each with its own validation rule and external protocol code.",
+      "java21_delta": "Java 21 switch expressions and newer exhaustiveness diagnostics add alternatives to Java 9-era switch statements; no promise of forward compatibility for serialized/persisted names.",
+      "note_id": "EJ8-034",
+      "source_unit_id": "EJ-ITEM-034",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 178,
+      "pdf_page_end_exclusive": 189,
+      "source_body_sha256": "2062a82bb1536175c09c5fb7cbcece728e4dc06917ea6294a8ba566d081f3569",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Item-level source-informed original synthesis, not an independently audited exhaustive semantic extraction."
+    },
+    {
+      "title": "Stable external values are fields, not enum declaration positions",
+      "prerequisites": [
+        "Java enums",
+        "stable API contracts"
+      ],
+      "core": "Ordinal measures position in a particular declaration, not business identity. Encode a protocol number, severity score or billing weight in a final field so sparse, duplicate or reordered values remain intentional.",
+      "rules": [
+        "Do not persist ordinal() or use it as a network/API business code.",
+        "Store meaningful integer values in explicit final fields with a documented accessor.",
+        "Support gaps and multiple constants sharing a domain numeric value without placeholder enum entries.",
+        "Keep external-code uniqueness separate from score uniqueness; validate whichever the protocol actually requires.",
+        "Test a reorder of enum declarations without changing the public numeric mapping."
+      ],
+      "nuance": [
+        "ordinal() still exists for generic enum data structures and may be appropriate in library internals.",
+        "A business code may need a reverse lookup and explicit handling for deprecated or unknown values.",
+        "Two labels can share a severity score while retaining distinct identifiers and behavior.",
+        "An enum instance field is immutable by design only when its referenced state is immutable or safely encapsulated."
+      ],
+      "misconception": "A stable ordinal offset is equivalent to a stable domain code.",
+      "production_context": "Two fraud decision categories share a severity score, while their external gateway codes remain distinct and must survive enum reordering.",
+      "java21_delta": "The positional meaning of ordinal is unchanged in Java 21; newer enum switches do not turn it into a stable external code.",
+      "note_id": "EJ8-035",
+      "source_unit_id": "EJ-ITEM-035",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 189,
+      "pdf_page_end_exclusive": 190,
+      "source_body_sha256": "c21e48cc309766bddd5367f36186dabc3911d5a4b2df8624a6d5287c7cccc043",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Item-level source-informed original synthesis, not an independently audited exhaustive semantic extraction."
+    },
+    {
+      "title": "Type-safe flag combinations with EnumSet and snapshot boundaries",
+      "prerequisites": [
+        "Set interface",
+        "bitwise flags",
+        "enum types"
+      ],
+      "core": "Represent combinations of a single enum domain with EnumSet or a Set-facing API rather than raw bitmask integers. Preserve value semantics, bulk set operations and type checking while explicitly controlling mutability at trust boundaries.",
+      "rules": [
+        "Use EnumSet for mutable compact sets of enum values and Set<E> for flexible API parameters.",
+        "Use complementOf, copyOf, retainAll and removeAll as set operations, not handwritten bit arithmetic.",
+        "Do not confuse Collections.unmodifiableSet(view) with a defensive snapshot; copy before wrapping.",
+        "Do not assume EnumSet is immutable in Java 21; Set.copyOf produces an unmodifiable Set snapshot of the values, not an EnumSet guarantee.",
+        "EnumSet scales past 64 constants without changing the public Set API."
+      ],
+      "nuance": [
+        "EnumSet.noneOf needs the enum Class token; copyOf on an empty generic collection may not infer an enum type.",
+        "An EnumSet is mutable, so returning an internal instance leaks a writable policy boundary.",
+        "EnumSet is not a general set for mixing different enum classes even if they implement one interface.",
+        "Persisting legacy bitmasks requires an explicit, versioned mapping and migration rather than casting bits to ordinals."
+      ],
+      "misconception": "A Set of flags is automatically immutable or may mix arbitrary enum types.",
+      "production_context": "A merchant permission policy combines VIEW, REFUND and EXPORT capabilities, with callers allowed to inspect but not mutate the policy snapshot.",
+      "java21_delta": "Java 21 still has mutable EnumSet; the book’s Java 9 observation about immutable EnumSet remains a design concern, while immutable Set factories offer a separate return type.",
+      "note_id": "EJ8-036",
+      "source_unit_id": "EJ-ITEM-036",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 190,
+      "pdf_page_end_exclusive": 192,
+      "source_body_sha256": "1f278a5feb69b3c641e3702058c0f8fb9101b520f1155da0f1738f8a9918dd11",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Item-level source-informed original synthesis, not an independently audited exhaustive semantic extraction."
+    },
+    {
+      "title": "Enum-keyed maps and sparse multidimensional state",
+      "prerequisites": [
+        "Map interface",
+        "EnumSet",
+        "collectors"
+      ],
+      "core": "Use EnumMap for enum-keyed associations rather than array indexes derived from ordinals. For pairs of enum keys, use nested maps and explicit absence semantics. Stream grouping must be configured when EnumMap is required and does not automatically materialize empty groups.",
+      "rules": [
+        "Construct EnumMap with the enum Class token and use enum keys instead of ordinal arithmetic.",
+        "Choose whether all enum keys must appear with empty values or only observed keys should appear.",
+        "Use groupingBy(classifier, enumMapFactory, downstream) when the EnumMap representation matters.",
+        "Use nested EnumMaps for sparse two-key relationships rather than a fragile ordinal matrix.",
+        "Represent invalid or missing transitions explicitly; do not assume null is an adequate state model."
+      ],
+      "nuance": [
+        "EnumMap iterates in enum declaration order; do not promise that order as a stable external contract.",
+        "EnumMap rejects null keys on insertion but can hold null values; lookup absence and null value may need containsKey.",
+        "GroupingBy on an empty stream yields no keys even when all categories exist in the enum.",
+        "Nested lookup must handle absent outer and inner keys; blindly chaining get() may throw NullPointerException."
+      ],
+      "misconception": "Collectors.groupingBy always returns EnumMap with an entry for every enum constant.",
+      "production_context": "A reconciliation dashboard groups events by lifecycle and stores only legal source→target state transitions.",
+      "java21_delta": "EnumMap semantics and groupingBy map-factory overload remain valid on Java 21; switch-expression alternatives do not eliminate sparse transition-modeling requirements.",
+      "note_id": "EJ8-037",
+      "source_unit_id": "EJ-ITEM-037",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 192,
+      "pdf_page_end_exclusive": 197,
+      "source_body_sha256": "5876b30d800282b28ae823bbdb5bf2e04f3322c3c2cb2a822fd75845db27a1ee",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Item-level source-informed original synthesis, not an independently audited exhaustive semantic extraction."
+    },
+    {
+      "title": "Open operation families using interfaces and enum implementations",
+      "prerequisites": [
+        "interfaces",
+        "generic bounds",
+        "enums"
+      ],
+      "core": "An enum cannot be subclassed or extended with new constants, but a stable interface can be implemented by multiple independent enums or classes. Accept the interface at extension boundaries; use a bounded enum Class token only when the caller specifically needs enumeration of one enum family.",
+      "rules": [
+        "Define the behavior contract as an interface and let each enum implement it.",
+        "Accept Collection<? extends Rule> to process mixed implementations without depending on one enum class.",
+        "Use <E extends Enum<E> & Rule> Class<E> when reflection over constants of one enum type is essential.",
+        "Do not attempt to extend one enum or combine different enum families into one EnumSet.",
+        "Extract shared stateless behavior into helpers or interface defaults when it does not need inherited enum state."
+      ],
+      "nuance": [
+        "An interface also allows non-enum implementations, so validate plugin trust and compatibility independently.",
+        "Class-token and collection APIs have different guarantees: a class token enumerates one family, a collection can mix families.",
+        "EnumMap and EnumSet remain keyed to one concrete enum class, not an interface hierarchy.",
+        "Default methods cannot transparently share each enum’s private constructor state."
+      ],
+      "misconception": "An enum that implements an interface can extend another enum’s constants.",
+      "production_context": "A merchant rules engine exposes built-in risk checks while partners register additional rule enums through a shared ValidationRule contract.",
+      "java21_delta": "Java 21 permits sealed interfaces as an optional restriction, but a sealed extension contract would deliberately prevent arbitrary plugin implementations.",
+      "note_id": "EJ8-038",
+      "source_unit_id": "EJ-ITEM-038",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 197,
+      "pdf_page_end_exclusive": 201,
+      "source_body_sha256": "31de3cee3fd726dfa8b98cf0d6a17349837e32bca692ff5b223d6412b8b26db2",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Item-level source-informed original synthesis, not an independently audited exhaustive semantic extraction."
+    },
+    {
+      "title": "Declarative metadata with runtime annotations and repeatable processing",
+      "prerequisites": [
+        "reflection",
+        "Java annotation types",
+        "runtime exceptions"
+      ],
+      "core": "Annotations encode structured declarations for tools more reliably than fragile method-name conventions. Retention controls visibility, Target restricts syntactic placement, and repeatable annotations require a container plus deliberate retrieval logic; they do not automatically validate arbitrary method signatures.",
+      "rules": [
+        "Use @Target to restrict legal element kinds and @Retention(RUNTIME) when reflective runtime inspection is required.",
+        "Use typed annotation elements such as Class<? extends RuntimeException> for compiler-checked metadata.",
+        "Use @Repeatable with a compatible container and read getAnnotationsByType for one or multiple occurrences.",
+        "Do not rely only on isAnnotationPresent(repeatedType) to find a method annotated multiple times.",
+        "Validate signature/visibility requirements in an annotation processor or at runtime; @Target(METHOD) alone cannot require static zero-argument methods."
+      ],
+      "nuance": [
+        "RetentionPolicy.CLASS preserves metadata in class files but does not make it visible through ordinary runtime reflection.",
+        "Repeatable annotation containers must have compatible retention and target constraints.",
+        "Reflection invocation wraps exceptions thrown by the invoked method; distinguish user failure from invalid tool configuration.",
+        "Annotations are metadata consumed by tooling; adding one does not by itself execute a policy or change method semantics."
+      ],
+      "misconception": "A runtime annotation automatically executes a method or enforces its parameter list.",
+      "production_context": "An internal compliance verifier discovers annotated policy checks, including multiple exception conditions on one method.",
+      "java21_delta": "The repeatable-annotation reflection behavior and retention policies still apply on Java 21; annotation processors/frameworks may impose extra rules outside Java itself.",
+      "note_id": "EJ8-039",
+      "source_unit_id": "EJ-ITEM-039",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 201,
+      "pdf_page_end_exclusive": 209,
+      "source_body_sha256": "85e577cd266d4cc4ebc59f68dd0e0686b6a360ae085b03679a5791bca1f5d630",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Item-level source-informed original synthesis, not an independently audited exhaustive semantic extraction."
+    },
+    {
+      "title": "Compile-time override intent and equality signature protection",
+      "prerequisites": [
+        "method overloading",
+        "Object.equals contract",
+        "interface methods"
+      ],
+      "core": "Annotate methods intended to override a supertype method so the compiler catches wrong signatures. A same-name overload is not an override; this distinction is especially consequential for equality, collection behavior and default interface methods.",
+      "rules": [
+        "Use @Override when implementing or overriding a supertype method, including interface methods.",
+        "To override Object.equals, use equals(Object), not equals(ConcreteType).",
+        "Keep hashCode aligned with value equality, but do not assume hashCode alone proves equals was overridden.",
+        "Treat compiler errors from @Override as a design signal, not a warning to suppress.",
+        "Use IDE/compiler diagnostics to find both accidental overloads and unintended overrides."
+      ],
+      "nuance": [
+        "A concrete class must implement inherited abstract methods even without @Override; the annotation still documents intent.",
+        "An interface default method can be overridden by a class; the annotation helps protect its signature.",
+        "Overloading equals may coexist with equals(Object), so test through Object/Set references to expose dispatch mistakes.",
+        "Records can supply generated equals/hashCode, but manually declared equality contracts still require signature and semantic checks."
+      ],
+      "misconception": "Matching a method name is enough to override the superclass implementation.",
+      "production_context": "A deduplication key for ledger events accidentally overloads equals and lets logically identical events through a Set.",
+      "java21_delta": "Java 21 records reduce boilerplate for many value carriers but do not make accidental overloading of custom methods safe.",
+      "note_id": "EJ8-040",
+      "source_unit_id": "EJ-ITEM-040",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 209,
+      "pdf_page_end_exclusive": 212,
+      "source_body_sha256": "fb705add7d5120cf790461b1d0ba17549c479003102bde92602bca03418021fe",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Item-level source-informed original synthesis, not an independently audited exhaustive semantic extraction."
+    },
+    {
+      "title": "Marker types versus marker metadata at API boundaries",
+      "prerequisites": [
+        "interfaces",
+        "annotations",
+        "compile-time method calls"
+      ],
+      "core": "A method-free marker interface introduces a type that APIs can require statically. A marker annotation attaches metadata to supported program elements and integrates with annotation-driven tooling, but cannot by itself make an argument satisfy a compile-time parameter type.",
+      "rules": [
+        "Use a marker interface when a method must accept only values satisfying a domain eligibility type.",
+        "Let a marker interface extend a base contract to constrain marking to a particular abstraction.",
+        "Use a marker annotation when marking methods, fields or tooling metadata rather than creating a value type.",
+        "Do not assume runtime annotation presence is checked by a normal Java method call.",
+        "Avoid claiming Serializable guarantees successful serialization; runtime object graphs and API signatures still matter."
+      ],
+      "nuance": [
+        "A marker interface cannot enforce a runtime invariant by itself; implementations still need validation and trusted construction.",
+        "Annotations can be retained at runtime for reflection or consumed by annotation processors, which is a different enforcement layer.",
+        "The ObjectOutputStream API accepts Object, so Serializable marking does not create a compile-time writeObject argument restriction.",
+        "A sealed marker interface may restrict implementors on Java 21, but is a distinct API governance choice."
+      ],
+      "misconception": "A @Trusted annotation on a class automatically makes its instances assignable to TrustedCommand.",
+      "production_context": "A settlement approval API should accept only vetted command types, while an auditing framework also marks methods for discovery.",
+      "java21_delta": "Sealed interfaces (Java 17+) can bound permitted marker implementors, unlike the book’s original Java 9-era open-interface baseline.",
+      "note_id": "EJ8-041",
+      "source_unit_id": "EJ-ITEM-041",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 212,
+      "pdf_page_end_exclusive": 214,
+      "source_body_sha256": "d97eac683c581fbece4dc89b3741ad56b59a2d16597a7eaae7cf850c7bf7c1d5",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Item-level source-informed original synthesis, not an independently audited exhaustive semantic extraction."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "schema": "codefit-javac-negative-v6",
+  "count": 10,
+  "all_expected_rejections": true,
+  "cases": [
+    {
+      "id": "wrong_type_in_typed_list",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "invariant_list_assignment",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "wildcard_insert_forbidden",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "covariant_generic_source_insert_forbidden",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "generic_array_creation_forbidden",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "typed_key_wrong_value",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "unrelated_stack_value",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "raw_unchecked_warning_with_Werror",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "wildcard_super_return_unsafe",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "incompatible_comparable_bound",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    }
+  ]
+}

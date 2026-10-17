@@ -1,0 +1,195 @@
+{
+  "schema": "codefit-general-reflection-exceptions-notes/v0.13",
+  "notes": [
+    {
+      "title": "Restrict reflection to the boundary; work through typed contracts",
+      "prerequisites": [
+        "Java class loading",
+        "interfaces",
+        "reflection exceptions",
+        "JPMS access"
+      ],
+      "core": "Reflection is appropriate for dynamic discovery and specialized frameworks, but contain it at a trusted construction boundary. Check that the discovered implementation meets a known interface and invoke ordinary typed methods afterward.",
+      "rules": [
+        "Prefer normal constructors, factories, and interfaces when the implementation is available at compile time.",
+        "When discovery is essential, validate an allowlisted Class and use asSubclass to establish the expected supertype before constructing.",
+        "Resolve an intentional public constructor with getConstructor rather than suppressing encapsulation through setAccessible.",
+        "Handle ClassNotFoundException, NoSuchMethodException, IllegalAccessException and InvocationTargetException as distinct operational diagnostics where useful.",
+        "Use ServiceLoader for discoverable provider contracts when the module/service model suits the application.",
+        "Keep runtime reflection failures outside request-processing hot paths; do not assume historical slowdown ratios apply to modern HotSpot."
+      ],
+      "nuance": [
+        "Java 21 module strong encapsulation may deny access to non-open packages; a library cannot assume private fields can be opened reflectively.",
+        "Class.asSubclass checks the superclass/interface compatibility at runtime; generic type arguments remain erased.",
+        "Public constructors can still throw application exceptions; InvocationTargetException wraps the underlying cause.",
+        "ServiceLoader is not a universal replacement for runtime plugin names; provider registration and trust still matter.",
+        "Loading an arbitrary user-selected class is a trust and resource-control decision, not made safe by a cast alone."
+      ],
+      "misconception": "A class name plus unchecked reflective cast provides the same compile-time and access guarantees as a typed constructor.",
+      "production_context": "A merchant connector registry selects an explicitly configured provider, validates that it implements PaymentConnector, then executes payments through the typed interface without reflective request dispatch.",
+      "java21_delta": "Java 21 retains strong JPMS encapsulation, Class.asSubclass and ServiceLoader; prohibited deep reflection should not be bypassed with broad --add-opens by default.",
+      "note_id": "EJ13-065",
+      "source_unit_id": "EJ-ITEM-065",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 303,
+      "pdf_page_end_exclusive": 306,
+      "source_body_sha256": "5fae0f8e56a20d15ef1ca60bd73e1013d8026e6210f5a528ed16032c81ec40f4",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis from complete private source section. Independent technical/educational approval pending."
+    },
+    {
+      "title": "Keep native boundaries minimal, reviewed and measured",
+      "prerequisites": [
+        "JNI fundamentals",
+        "process boundaries",
+        "resource ownership",
+        "JDK foreign function evolution"
+      ],
+      "core": "Use native interoperability only for a capability that cannot be met suitably through maintained Java APIs or for a measured and justified native dependency. A native call adds memory-safety, portability, lifecycle and debugging obligations.",
+      "rules": [
+        "First inspect Java standard and maintained JVM libraries for platform or performance needs before introducing JNI.",
+        "Make native access an isolated adapter with explicit input/output ownership and lifetime; use a Java fallback when feasible.",
+        "Treat a native call as a trust boundary: validate sizes, encodings and lifecycle before crossing it.",
+        "Do not claim JNI automatically speeds hot paths; crossing boundaries and copying data can dominate small calls.",
+        "Plan target operating systems, architecture support, release packaging, failure handling and native-memory monitoring.",
+        "Run focused functional, fuzz and leak tests for native code rather than relying on Java type safety."
+      ],
+      "nuance": [
+        "Java21 Foreign Function & Memory API was a preview API (JEP 442), not a universally stable production replacement; review version-specific deployment flags.",
+        "Panama/FFM in newer JDKs has different maturity from Java21; do not backport later guarantees to the 21 baseline.",
+        "Calling an external process via ProcessHandle/ProcessBuilder is distinct from in-process native memory access and has its own security/cancellation needs.",
+        "Java heap health does not alone prove native-memory absence of leaks; off-heap resources need explicit observation.",
+        "JNI remains reasonable for essential vendor drivers or accelerated library integration after tests and risk assessment."
+      ],
+      "misconception": "C++ behind JNI is inherently faster and just as memory safe as Java in the same process.",
+      "production_context": "A settlement reconciliation adapter isolates a required vendor native codec while Java validation, retry logic and business decisions remain in typed Java code.",
+      "java21_delta": "Java21 supports preview java.lang.foreign interop only with appropriate preview enablement; avoid documenting it as the final stable API of later JDKs.",
+      "note_id": "EJ13-066",
+      "source_unit_id": "EJ-ITEM-066",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 306,
+      "pdf_page_end_exclusive": 307,
+      "source_body_sha256": "03823285e4636af0b5dae26b514ededf508bf0b44f60588978e73e2a0b36bb55",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis from complete private source section. Independent technical/educational approval pending."
+    },
+    {
+      "title": "Optimize based on profiles without corrupting stable APIs",
+      "prerequisites": [
+        "measurement methodology",
+        "algorithmic complexity",
+        "JFR/profiling",
+        "backward compatibility"
+      ],
+      "core": "Choose clear algorithms and durable API contracts first, then use measured production-representative evidence to locate actual bottlenecks. Make one controlled change at a time and compare outcomes against correctness and capacity targets.",
+      "rules": [
+        "Identify the user-visible SLO and workload before deciding that a function needs tuning.",
+        "Instrument real hot paths using profiling/tracing and attribute CPU, allocation, lock time and I/O separately.",
+        "Look for algorithmic complexity problems before low-level instruction or allocation tweaks.",
+        "Preserve stable public and persisted formats; do not warp an API for a short-lived performance hypothesis.",
+        "Run comparative before/after benchmarks with warm-up, representative data and correctness checks, including p95/p99 when latency matters.",
+        "Allow rollback if regression, fairness or operational complexity outweighs the measured gain."
+      ],
+      "nuance": [
+        "Microbenchmarks such as JMH isolate small operations but cannot alone predict end-to-end throughput or contention.",
+        "Java21 JIT, GC, CPU shape, virtual-thread scheduling and workload profile may make old runtime ratios irrelevant.",
+        "A fast average can coexist with slow tail latency and unacceptable memory spikes.",
+        "CPU saturation may be consequence or symptom; correlation between high CPU and latency does not prove direction.",
+        "Correctness invariants and observability must be preserved during optimization; avoid timing assertions with a fixed speedup."
+      ],
+      "misconception": "The most visually complicated Java method is the bottleneck, and its microbenchmark speedup proves production improvement.",
+      "production_context": "A checkout pipeline has a p99 regression: tracing implicates a queue stall rather than the arithmetic helper. The team validates queue depth and allocations before choosing a targeted change.",
+      "java21_delta": "Use current JFR/async-profiler and Java21-aware JMH methods; no Java9-era fixed optimization ratios can stand in for measurements.",
+      "note_id": "EJ13-067",
+      "source_unit_id": "EJ-ITEM-067",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 307,
+      "pdf_page_end_exclusive": 310,
+      "source_body_sha256": "c3dfa86242eebc875bb48efdcd4d4da0dd276c825becd84eefcad42ef32a911b",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis from complete private source section. Independent technical/educational approval pending."
+    },
+    {
+      "title": "Use predictable names and APIs without ignoring local conventions",
+      "prerequisites": [
+        "Java style conventions",
+        "Javadoc",
+        "records and getters",
+        "public API migration"
+      ],
+      "core": "Use idiomatic Java identifiers and meaningful grammatical names so clients can infer intent. Where framework conventions or stable public APIs require different forms, document the exception and preserve compatibility.",
+      "rules": [
+        "Use lowercase dotted package names, UpperCamelCase type names and lowerCamelCase method/field names.",
+        "Use uppercase underscore-separated identifiers for true immutable constant fields rather than every static final mutable holder.",
+        "Name state-question methods is/has when natural; name actions with verbs and factories with consistent conventions.",
+        "Use descriptive type and parameter names at public boundaries; abbreviated local loop counters may be appropriate.",
+        "Distinguish toX conversions from asX views when they represent ownership versus sharing, and document mutability precisely.",
+        "Preserve JavaBeans get/set names where frameworks explicitly require them, rather than globally rewriting API methods."
+      ],
+      "nuance": [
+        "Naming conventions guide maintainability; Java itself enforces only identifier syntax, not spelling quality.",
+        "Java21 record component accessors use componentName() (not generated getComponentName()), requiring awareness of reflection and bean libraries.",
+        "All-caps static final collection fields are not automatically deeply immutable; construction and content policies matter.",
+        "An @Override annotation helps discover mistaken method-name changes that silently introduce overloads.",
+        "Renaming public methods or serialized properties can change API compatibility even when new names read better."
+      ],
+      "misconception": "Anything declared static final is an immutable constant and an idiomatic name is safe to retrofit without compatibility tests.",
+      "production_context": "A Java21 record representing a merchant status uses clear accessors while a legacy bean DTO retains getStatus() for framework compatibility.",
+      "java21_delta": "Java21 records, sealed types, builders and JavaBeans-aware frameworks have distinct conventions; validate serialized property names before refactoring.",
+      "note_id": "EJ13-068",
+      "source_unit_id": "EJ-ITEM-068",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 310,
+      "pdf_page_end_exclusive": 314,
+      "source_body_sha256": "11d9b693f0a1cc9c9fdd26b7d742abe3e00a8391681a4add87b986021528b5ba",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis from complete private source section. Independent technical/educational approval pending."
+    },
+    {
+      "title": "Express ordinary state without exception-driven flow control",
+      "prerequisites": [
+        "Java exceptions",
+        "iterators",
+        "Optional",
+        "concurrency races"
+      ],
+      "core": "Exceptions report exceptional failure; ordinary end-of-data and absence should use state tests or result types. Never disguise unrelated failures as normal termination by catching broad exceptions.",
+      "rules": [
+        "Use ordinary loop conditions or enhanced-for instead of relying on an exception to stop iteration.",
+        "Use Iterator.hasNext before next in stable state; do not catch NoSuchElementException as the normal loop exit.",
+        "Offer Optional or a documented absence result when lack of a value is expected and regular.",
+        "Avoid state-test/act race in concurrent or externally mutable objects; use a single atomic attempt with a result type.",
+        "Catch only the exceptions that the boundary can intentionally recover from; preserve unrelated programming failures.",
+        "Keep exceptions informative for violation of explicit contracts rather than swallowing them for control flow."
+      ],
+      "nuance": [
+        "An iterator can become invalid through concurrent modification despite a prior hasNext; ordinary testing is not a substitute for synchronization.",
+        "A queue whose contents can change asynchronously may need poll returning null/Optional as the atomic absence signal, not size()+remove().",
+        "Unchecked exception cost varies across JDK configurations; correctness and debuggability are the primary reasons to avoid using them as flow tokens.",
+        "Exceptions for genuinely invalid methods or unmet invariants are still appropriate, even if a caller can test first.",
+        "Not every absent return should use Optional (collections often return empty); keep semantics consistent with the earlier Item 55 guidance."
+      ],
+      "misconception": "Repeatedly throwing NoSuchElementException is a convenient equivalent to hasNext and masks no other issues.",
+      "production_context": "A consumer polls a concurrent reconciliation work queue, handling null as no task and propagating unexpected failures; a snapshot List is traversed normally.",
+      "java21_delta": "Java21 still offers Iterator.hasNext, Queue.poll and Optional; concurrency can make separate test/act operations unsafe, so distinguish linearizable poll from two-step checks.",
+      "note_id": "EJ13-069",
+      "source_unit_id": "EJ-ITEM-069",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 314,
+      "pdf_page_end_exclusive": 317,
+      "source_body_sha256": "c291f993500c7b3149673932d94f9ae34b7c3b188b7d2da7093147b4b9cf0e5f",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis from complete private source section. Independent technical/educational approval pending."
+    }
+  ]
+}

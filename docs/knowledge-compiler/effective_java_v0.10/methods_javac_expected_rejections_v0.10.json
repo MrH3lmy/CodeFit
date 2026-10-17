@@ -1,0 +1,107 @@
+{
+  "schema": "codefit-methods-javac-negative/v0.10",
+  "count": 14,
+  "all_expected_rejections": true,
+  "cases": [
+    {
+      "case": "check_index_requires_integral_index",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "check_range_requires_three_indices",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "record_constructor_wrong_money_type",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "enum_mode_rejects_boolean",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "map_interface_not_hashmap_subtype",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "record_method_cannot_take_boolean_as_enum",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "overloaded_lambda_targets_ambiguous",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "ambiguous_null_overload",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "required_first_varargs_cannot_be_empty",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "varargs_array_wrong_element_type",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "safevarargs_invalid_nonfinal_instance",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "list_of_not_an_integer_array",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "empty_list_not_map",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    },
+    {
+      "case": "typed_array_cannot_hold_list_directly",
+      "expected_rejection": true,
+      "compiler_rejected": true,
+      "release": 21,
+      "author_owned": true
+    }
+  ],
+  "grader_verified": false,
+  "limitations": "Independent compiler behavior smoke checks only, not adversarial learner grading."
+}

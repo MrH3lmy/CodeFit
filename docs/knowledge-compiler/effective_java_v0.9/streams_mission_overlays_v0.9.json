@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-streams-mission-overlays/v0.9",
+  "missions": [
+    {
+      "mission_id": "EJ9-044-Q1",
+      "note_id": "EJ9-044",
+      "source_unit_id": "EJ-ITEM-044",
+      "stage": "predict",
+      "original_quest_brief": "A service exposes classify(Function<Integer,Boolean>) and classify(IntPredicate). Predict boxing, return values, and overload resolution for typed versus untyped lambdas.",
+      "rubric_criteria": [
+        "Correct target signature",
+        "Identifies boxing implications",
+        "Explains ambiguous lambdas or how to disambiguate"
+      ],
+      "negative_controls": [
+        "boxing",
+        "overload-ambiguity"
+      ],
+      "replaces_draft_id": "EJ4-044-01",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-044-Q2",
+      "note_id": "EJ9-044",
+      "source_unit_id": "EJ-ITEM-044",
+      "stage": "debug",
+      "original_quest_brief": "A functional callback silently loses a checked IO exception and an overloaded registration method makes a lambda unresolvable. Redesign the public API.",
+      "rubric_criteria": [
+        "Preserves exception policy",
+        "Removes or names ambiguous overload",
+        "Communicates contract"
+      ],
+      "negative_controls": [
+        "checked-exception",
+        "functional-overload"
+      ],
+      "replaces_draft_id": "EJ4-044-02",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-044-Q3",
+      "note_id": "EJ9-044",
+      "source_unit_id": "EJ-ITEM-044",
+      "stage": "build",
+      "original_quest_brief": "Build a typed retry-decision policy with a named contract, documented deterministic semantics and safe composition; use standard primitive predicates for hot counters.",
+      "rubric_criteria": [
+        "Correct SAM signature",
+        "Safe composition",
+        "No implicit mutable shared state"
+      ],
+      "negative_controls": [
+        "side-effects",
+        "capture-before-construction"
+      ],
+      "replaces_draft_id": "EJ4-044-03",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-044-Q4",
+      "note_id": "EJ9-044",
+      "source_unit_id": "EJ-ITEM-044",
+      "stage": "defend",
+      "original_quest_brief": "Review when a standard BiPredicate versus a domain-specific eligibility interface is preferable, including binary compatibility and reusable defaults.",
+      "rubric_criteria": [
+        "Accounts for semantic contract",
+        "Analyzes interface evolution",
+        "Weights interoperability versus clarity"
+      ],
+      "negative_controls": [
+        "custom-interface-bloat",
+        "loss-of-domain-contract"
+      ],
+      "replaces_draft_id": "EJ4-044-04",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-045-Q1",
+      "note_id": "EJ9-045",
+      "source_unit_id": "EJ-ITEM-045",
+      "stage": "predict",
+      "original_quest_brief": "Given a pipeline with map, filter and limit but no terminal call, predict how many transformations run; then reason about one short-circuiting terminal operation.",
+      "rubric_criteria": [
+        "Explains laziness",
+        "Explains short circuit",
+        "Rejects guaranteed side-effect count"
+      ],
+      "negative_controls": [
+        "no-terminal",
+        "side-effect-assumption"
+      ],
+      "replaces_draft_id": "EJ4-045-01",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-045-Q2",
+      "note_id": "EJ9-045",
+      "source_unit_id": "EJ-ITEM-045",
+      "stage": "debug",
+      "original_quest_brief": "An ingestion pipeline leaks a lines stream, uses peek as an audit sink, and tries to consume the stream twice. Repair its lifecycle and semantics.",
+      "rubric_criteria": [
+        "Closes resource",
+        "Moves audit to explicit phase",
+        "Avoids stream reuse"
+      ],
+      "negative_controls": [
+        "resource-leak",
+        "stream-consumed"
+      ],
+      "replaces_draft_id": "EJ4-045-02",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-045-Q3",
+      "note_id": "EJ9-045",
+      "source_unit_id": "EJ-ITEM-045",
+      "stage": "build",
+      "original_quest_brief": "Implement a readable reconciliation grouping flow with a named normalization helper, a clear malformed-row policy and deterministic output tests.",
+      "rubric_criteria": [
+        "Reads once",
+        "Handles malformed rows",
+        "Tests determinism"
+      ],
+      "negative_controls": [
+        "empty-input",
+        "invalid-row"
+      ],
+      "replaces_draft_id": "EJ4-045-03",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-045-Q4",
+      "note_id": "EJ9-045",
+      "source_unit_id": "EJ-ITEM-045",
+      "stage": "defend",
+      "original_quest_brief": "Compare a clear imperative scan to a nested flatMap pipeline for generating paired events; select by readability, early-exit needs and memory use.",
+      "rubric_criteria": [
+        "Discusses control flow",
+        "Explains flatMap",
+        "Justifies measurable tradeoffs"
+      ],
+      "negative_controls": [
+        "nested-stream-confusion",
+        "maintainability"
+      ],
+      "replaces_draft_id": "EJ4-045-04",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-046-Q1",
+      "note_id": "EJ9-046",
+      "source_unit_id": "EJ-ITEM-046",
+      "stage": "predict",
+      "original_quest_brief": "Predict a two-argument toMap duplicate-key failure and explain how a deterministic merge strategy changes the outcome.",
+      "rubric_criteria": [
+        "Identifies exception",
+        "States collision policy",
+        "Analyzes encounter order"
+      ],
+      "negative_controls": [
+        "duplicate-key",
+        "last-write-wins"
+      ],
+      "replaces_draft_id": "EJ4-046-01",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-046-Q2",
+      "note_id": "EJ9-046",
+      "source_unit_id": "EJ-ITEM-046",
+      "stage": "debug",
+      "original_quest_brief": "An engineer increments a shared counter in parallel forEach and mutates the source map in filter. Explain both failure modes and repair with collector/reduction.",
+      "rubric_criteria": [
+        "Identifies race",
+        "Identifies interference",
+        "Provides associative alternative"
+      ],
+      "negative_controls": [
+        "shared-mutation",
+        "source-interference"
+      ],
+      "replaces_draft_id": "EJ4-046-02",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-046-Q3",
+      "note_id": "EJ9-046",
+      "source_unit_id": "EJ-ITEM-046",
+      "stage": "build",
+      "original_quest_brief": "Build reconciliation statistics using groupingBy with downstream counting plus an explicit duplicate transaction policy for latest timestamp.",
+      "rubric_criteria": [
+        "Correct grouping",
+        "Stable tie-break",
+        "No shared mutation"
+      ],
+      "negative_controls": [
+        "same-timestamp-tie",
+        "empty-stream"
+      ],
+      "replaces_draft_id": "EJ4-046-03",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-046-Q4",
+      "note_id": "EJ9-046",
+      "source_unit_id": "EJ-ITEM-046",
+      "stage": "defend",
+      "original_quest_brief": "Choose between reducing, groupingBy and toMap for an audit report; document null behavior, mapping collisions and collector characteristics.",
+      "rubric_criteria": [
+        "Matches terminal intent",
+        "Explains contracts",
+        "Tests edge cases"
+      ],
+      "negative_controls": [
+        "null-policy",
+        "unordered-merge"
+      ],
+      "replaces_draft_id": "EJ4-046-04",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-047-Q1",
+      "note_id": "EJ9-047",
+      "source_unit_id": "EJ-ITEM-047",
+      "stage": "predict",
+      "original_quest_brief": "For List, Iterable and Stream return types, predict which clients can use enhanced for and which have a stream() method without adapters.",
+      "rubric_criteria": [
+        "Correct hierarchy",
+        "Correct repeatability",
+        "Distinguishes adapters"
+      ],
+      "negative_controls": [
+        "stream-not-iterable",
+        "single-use"
+      ],
+      "replaces_draft_id": "EJ4-047-01",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-047-Q2",
+      "note_id": "EJ9-047",
+      "source_unit_id": "EJ-ITEM-047",
+      "stage": "debug",
+      "original_quest_brief": "A cursor-backed report leaks a database connection because a Stream is returned without ownership documentation; another API materializes millions of records.",
+      "rubric_criteria": [
+        "Defines close contract",
+        "Removes eager blowup",
+        "Chooses honest API"
+      ],
+      "negative_controls": [
+        "resource-ownership",
+        "eager-materialization"
+      ],
+      "replaces_draft_id": "EJ4-047-02",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-047-Q3",
+      "note_id": "EJ9-047",
+      "source_unit_id": "EJ-ITEM-047",
+      "stage": "build",
+      "original_quest_brief": "Design a finite paginated results API returning a stable List and an alternate lazy export Stream with explicit try-with-resources tests.",
+      "rubric_criteria": [
+        "API type suitability",
+        "Lifecycle safety",
+        "Boundary tests"
+      ],
+      "negative_controls": [
+        "empty-page",
+        "early-close"
+      ],
+      "replaces_draft_id": "EJ4-047-03",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-047-Q4",
+      "note_id": "EJ9-047",
+      "source_unit_id": "EJ-ITEM-047",
+      "stage": "defend",
+      "original_quest_brief": "Compare a computed view Collection with a lazy Stream for combinatorial sequences; discuss size limits, contains complexity and repeated traversal.",
+      "rubric_criteria": [
+        "Recognizes cardinality",
+        "Contract-compliant choices",
+        "Explains performance consequences"
+      ],
+      "negative_controls": [
+        "size-overflow",
+        "view-mutability"
+      ],
+      "replaces_draft_id": "EJ4-047-04",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-048-Q1",
+      "note_id": "EJ9-048",
+      "source_unit_id": "EJ-ITEM-048",
+      "stage": "predict",
+      "original_quest_brief": "Predict encounter-order behavior for parallel forEach, forEachOrdered, findAny and findFirst on an ordered source; distinguish guaranteed from possible outcomes.",
+      "rubric_criteria": [
+        "Correct guarantees",
+        "Avoids deterministic findAny claim",
+        "Notes ordering cost"
+      ],
+      "negative_controls": [
+        "parallel-order",
+        "findAny-stability"
+      ],
+      "replaces_draft_id": "EJ4-048-01",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-048-Q2",
+      "note_id": "EJ9-048",
+      "source_unit_id": "EJ-ITEM-048",
+      "stage": "debug",
+      "original_quest_brief": "A pipeline uses parallel Stream.iterate with limit and updates a plain HashMap from forEach. Diagnose performance and correctness independently.",
+      "rubric_criteria": [
+        "Diagnoses poor splitting",
+        "Diagnoses data race",
+        "Separates safety/liveness"
+      ],
+      "negative_controls": [
+        "iterate-limit",
+        "shared-hashmap"
+      ],
+      "replaces_draft_id": "EJ4-048-02",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-048-Q3",
+      "note_id": "EJ9-048",
+      "source_unit_id": "EJ-ITEM-048",
+      "stage": "build",
+      "original_quest_brief": "Build a deterministic CPU-bound reduction and a reproducible benchmark harness with warmup and multiple input sizes; retain a sequential fallback.",
+      "rubric_criteria": [
+        "Associative reduction",
+        "Correct equivalence tests",
+        "Documents measured speedup or regression"
+      ],
+      "negative_controls": [
+        "small-batch-regression",
+        "nonassociative-combiner"
+      ],
+      "replaces_draft_id": "EJ4-048-03",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ9-048-Q4",
+      "note_id": "EJ9-048",
+      "source_unit_id": "EJ-ITEM-048",
+      "stage": "defend",
+      "original_quest_brief": "Evaluate parallelization of an HTTP request thread path versus an offline batch: examine pool contention, blocking calls, locality and expected speedup.",
+      "rubric_criteria": [
+        "Production context",
+        "Safety checks",
+        "Representative performance evidence"
+      ],
+      "negative_controls": [
+        "blocking-common-pool",
+        "unmeasured-optimization"
+      ],
+      "replaces_draft_id": "EJ4-048-04",
+      "grader_plan": "Design only; independent reviewed held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

@@ -1,0 +1,175 @@
+{
+  "schema": "codefit-original-learning-drafts/v0.3",
+  "review_status": "AUTHOR_DRAFT_NOT_SOURCE_VERIFIED",
+  "learner_release_ready": false,
+  "verified_mastery_eligible": false,
+  "source_policy": "Original topic summaries and source-unit identifiers only. Full protected PDF content and source code examples remain private.",
+  "new_capsules": [
+    {
+      "knowledge_id": "java.collections.list-set-map",
+      "source_unit_ids": [
+        "OCP-CH-012",
+        "OCP-CH-015",
+        "EJ-ITEM-054",
+        "JM-M-069",
+        "JM-M-070",
+        "JM-M-071",
+        "JM-M-072",
+        "JCP-P-109",
+        "JCP-P-111",
+        "IG-CH-011"
+      ],
+      "original_topic_summary": "List / Set / Map semantics; duplicates; null policies; complexity",
+      "mission_stages": [
+        "predict",
+        "debug",
+        "build",
+        "unseen_boss"
+      ],
+      "unseen_boss_blueprint": "Webhook deduplication incident",
+      "number_of_blueprints": 4,
+      "review_required": true
+    },
+    {
+      "knowledge_id": "java.generics.variance-and-safety",
+      "source_unit_ids": [
+        "OCP-CH-011",
+        "EJ-ITEM-026",
+        "EJ-ITEM-028",
+        "EJ-ITEM-029",
+        "EJ-ITEM-031",
+        "JCP-P-097",
+        "JCP-P-098",
+        "IG-CH-006"
+      ],
+      "original_topic_summary": "Generics invariance, raw-type hazards, producer/consumer wildcards",
+      "mission_stages": [
+        "predict",
+        "debug",
+        "build",
+        "unseen_boss"
+      ],
+      "unseen_boss_blueprint": "Type-safe plugin result merging",
+      "number_of_blueprints": 4,
+      "review_required": true
+    },
+    {
+      "knowledge_id": "java.streams.laziness-and-side-effects",
+      "source_unit_ids": [
+        "OCP-CH-013",
+        "OCP-CH-016",
+        "EJ-ITEM-045",
+        "EJ-ITEM-046",
+        "EJ-ITEM-047",
+        "EJ-ITEM-048",
+        "JCP-P-180",
+        "IG-CH-017"
+      ],
+      "original_topic_summary": "Stream laziness, avoiding shared mutable side effects; parallel caveats",
+      "mission_stages": [
+        "predict",
+        "debug",
+        "build",
+        "unseen_boss"
+      ],
+      "unseen_boss_blueprint": "Nondeterministic reconciliation incident",
+      "number_of_blueprints": 4,
+      "review_required": true
+    },
+    {
+      "knowledge_id": "java.exceptions.resource-ownership",
+      "source_unit_ids": [
+        "OCP-CH-007",
+        "OCP-CH-020",
+        "EJ-ITEM-009",
+        "EJ-ITEM-069",
+        "EJ-ITEM-070",
+        "EJ-ITEM-072",
+        "JM-M-041",
+        "JCP-P-042",
+        "IG-CH-005"
+      ],
+      "original_topic_summary": "Exception contracts, try-with-resources, suppressed exceptions",
+      "mission_stages": [
+        "predict",
+        "debug",
+        "build",
+        "unseen_boss"
+      ],
+      "unseen_boss_blueprint": "Partial import failure diagnostics",
+      "number_of_blueprints": 4,
+      "review_required": true
+    },
+    {
+      "knowledge_id": "java.algorithms.strings-hash-table",
+      "source_unit_ids": [
+        "JCP-P-001",
+        "JCP-P-002",
+        "JCP-P-011",
+        "JCP-P-018",
+        "IG-CH-007",
+        "IG-CH-010",
+        "IG-CH-011",
+        "OCP-CH-008"
+      ],
+      "original_topic_summary": "ASCII, Unicode representation, frequency tables, complexity",
+      "mission_stages": [
+        "predict",
+        "debug",
+        "build",
+        "unseen_boss"
+      ],
+      "unseen_boss_blueprint": "Event identifier normalization",
+      "number_of_blueprints": 4,
+      "review_required": true
+    },
+    {
+      "knowledge_id": "java.concurrency.atomicity-and-visibility",
+      "source_unit_ids": [
+        "OCP-CH-022",
+        "OCP-CH-023",
+        "EJ-ITEM-078",
+        "EJ-ITEM-079",
+        "EJ-ITEM-080",
+        "EJ-ITEM-081",
+        "EJ-ITEM-082",
+        "JCP-P-200",
+        "JCP-P-221",
+        "IG-CH-016"
+      ],
+      "original_topic_summary": "Data race, compound atomicity vs visibility, synchronization",
+      "mission_stages": [
+        "predict",
+        "debug",
+        "build",
+        "unseen_boss"
+      ],
+      "unseen_boss_blueprint": "Cross-field invariants in balance update",
+      "number_of_blueprints": 4,
+      "review_required": true
+    },
+    {
+      "knowledge_id": "java.testing.assertions-and-isolation",
+      "source_unit_ids": [
+        "JM-M-095",
+        "JM-M-098",
+        "JM-M-099",
+        "JM-M-100",
+        "IG-CH-018",
+        "JCP-P-177",
+        "JCP-P-178",
+        "EJ-ITEM-049"
+      ],
+      "original_topic_summary": "Positive/negative tests, trustworthy assertions, mutation checks",
+      "mission_stages": [
+        "predict",
+        "debug",
+        "build",
+        "unseen_boss"
+      ],
+      "unseen_boss_blueprint": "Prove tests catch a deliberately reintroduced bug",
+      "number_of_blueprints": 4,
+      "review_required": true
+    }
+  ]
+}

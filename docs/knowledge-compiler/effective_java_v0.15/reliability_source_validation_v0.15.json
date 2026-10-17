@@ -1,0 +1,71 @@
+{
+  "schema": "codefit-reliability-source-validation/v0.15",
+  "items_checked": 5,
+  "complete_sections_read": 5,
+  "body_hashes_verified": 5,
+  "targeted_signals_matched": 25,
+  "checks": [
+    {
+      "source_unit_id": "EJ-ITEM-075",
+      "pdf_page_start": 327,
+      "pdf_page_end_exclusive": 329,
+      "body_chars": 5251,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-076",
+      "pdf_page_start": 329,
+      "pdf_page_end_exclusive": 331,
+      "body_chars": 4630,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-077",
+      "pdf_page_start": 331,
+      "pdf_page_end_exclusive": 332,
+      "body_chars": 2923,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-078",
+      "pdf_page_start": 332,
+      "pdf_page_end_exclusive": 338,
+      "body_chars": 10485,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-079",
+      "pdf_page_start": 338,
+      "pdf_page_end_exclusive": 344,
+      "body_chars": 13390,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "independent_semantic_review": false,
+  "limitations": "Private source identity and targeted anchor checks only, not independent claim-by-claim or educational review. No publisher text exported."
+}

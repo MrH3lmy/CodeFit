@@ -65,7 +65,7 @@ class EvidenceMigrationTest {
         assertEquals(before, rows());
         try (var c = DatabaseConfig.getConnection();
                 var s = c.createStatement()) {
-            assertEquals(21, scalar(s, "SELECT MAX(version) FROM schema_migrations"));
+            assertEquals(22, scalar(s, "SELECT MAX(version) FROM schema_migrations"));
             assertEquals(1, scalar(s, "SELECT COUNT(*) FROM schema_migrations WHERE version=14"));
             assertEquals(3, scalar(s, "SELECT COUNT(*) FROM evolution_evidence_mapping_rules"));
             assertEquals(0, scalar(s, "SELECT COUNT(*) FROM evolution_evidence_observations"));
@@ -121,7 +121,7 @@ class EvidenceMigrationTest {
                                 + " 'evolution_evidence_%' AND name NOT LIKE 'evolution_challenge_%'"
                                 + " AND name NOT LIKE 'evolution_quest_%'"
                                 + " AND name <> 'evolution_assessment_reservations' AND name NOT"
-                                + " IN('schema_migrations','sqlite_sequence','evolution_submissions','evolution_evaluation_runs','evolution_evaluation_revisions','evolution_evaluation_assessment_aliases','evolution_estimate_epochs','evolution_estimate_revisions','evolution_baseline_choices','assessment_attempt_facts','evolution_adaptation_decisions','evolution_adaptation_choices','evolution_working_notes','evolution_reward_entitlements','evolution_reward_state','evolution_reward_preferences','evolution_reward_milestone_baseline') ORDER BY name")) {
+                                + " IN('schema_migrations','sqlite_sequence','evolution_submissions','evolution_evaluation_runs','evolution_evaluation_revisions','evolution_evaluation_assessment_aliases','evolution_estimate_epochs','evolution_estimate_revisions','evolution_baseline_choices','assessment_attempt_facts','evolution_adaptation_decisions','evolution_adaptation_choices','evolution_working_notes','evolution_reward_entitlements','evolution_reward_state','evolution_reward_preferences','evolution_reward_milestone_baseline','evolution_reward_effort_scan') ORDER BY name")) {
                 while (r.next()) tables.add(r.getString(1));
             }
             for (String t : tables) {

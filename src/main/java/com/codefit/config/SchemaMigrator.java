@@ -119,7 +119,10 @@ final class SchemaMigrator {
                     ProgressionSchema::create),
             new VersionedMigration(21,
                     "Preserve mastery milestones already reached before prospective rewards",
-                    ProgressionSchema::preserveHistoricalMilestones)
+                    ProgressionSchema::preserveHistoricalMilestones),
+            new VersionedMigration(22,
+                    "Persist forward progress for bounded effort reward recovery",
+                    ProgressionSchema::createEffortScanState)
     );
 
     static void migrate(Connection connection) throws SQLException {

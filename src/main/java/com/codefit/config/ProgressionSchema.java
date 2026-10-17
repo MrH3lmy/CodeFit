@@ -176,5 +176,22 @@ final class ProgressionSchema {
         }
     }
 
+    static void createEffortScanState(Connection c) throws SQLException {
+        try (Statement s = c.createStatement()) {
+            s.execute(
+                    """
+                    CREATE TABLE evolution_reward_effort_scan (
+                      id INTEGER PRIMARY KEY CHECK(id=1),
+                      last_submission_id INTEGER NOT NULL CHECK(last_submission_id>=0)
+                    )
+                    """);
+            s.execute(
+                    """
+                    INSERT INTO evolution_reward_effort_scan(id,last_submission_id)
+                    SELECT 1,historical_submission_through FROM evolution_reward_state WHERE id=1
+                    """);
+        }
+    }
+
     private record HistoricalEstimate(long revision, int skillVersion, EstimateInput input) {}
 }

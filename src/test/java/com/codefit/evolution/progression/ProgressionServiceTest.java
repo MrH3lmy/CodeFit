@@ -116,4 +116,54 @@ class ProgressionServiceTest {
         assertEquals(
                 "S-Rank Backend Architect", ProgressionPolicy.engagementRank(30, true));
     }
+
+    @Test
+    void rewardHistoryIsBoundedAndFullyAvailableThroughDeterministicPages() throws Exception {
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                """
+                                INSERT INTO evolution_reward_entitlements
+                                  (entitlement_key,reward_type,subject_id,definition_version,
+                                   policy_version,xp_awarded,status,source_ref,reason)
+                                VALUES(?,'EFFORT',?,1,'1',10,'AWARDED',?,'fixture')
+                                """)) {
+            for (int i = 0; i < 140; i++) {
+                s.setString(1, "history:" + i);
+                s.setString(2, "quest-" + i);
+                s.setString(
+                        3,
+                        i == 139
+                                ? "estimate:fixture:evidence:"
+                                        + "0000000000000000000000000000000000000000000000000000000000000000"
+                                : "submission:" + i);
+                s.addBatch();
+            }
+            s.executeBatch();
+        }
+
+        assertEquals(25, service.snapshot().history().size());
+        assertEquals(
+                64,
+                service.historyPage(null, 64).entries().size());
+        assertThrows(IllegalArgumentException.class, () -> service.historyPage(null, 65));
+        assertFalse(service.historyPage(null, 64).entries().get(0).proofAvailable());
+
+        var all = new java.util.ArrayList<ProgressionService.Entitlement>();
+        Long cursor = null;
+        do {
+            var page = service.historyPage(cursor, 37);
+            all.addAll(page.entries());
+            cursor = page.nextBeforeSequence();
+        } while (cursor != null);
+        assertEquals(140, all.size());
+        assertTrue(
+                all.stream()
+                        .map(ProgressionService.Entitlement::sequence)
+                        .reduce((first, second) -> {
+                            assertTrue(first > second);
+                            return second;
+                        })
+                        .isPresent());
+    }
 }

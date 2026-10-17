@@ -531,15 +531,29 @@ public final class EvolutionController implements RouteLifecycle {
             progression.getChildren()
                     .add(
                             text(
-                                    "Reward processing pending for "
-                                            + pending
-                                            + (pending == 128 ? " or more" : "")
-                                            + " finalized evaluation(s). Your results are saved;"
-                                            + " retry when ready."));
+                                    pending == 128
+                                            ? "Reward recovery is scanning additional finalized"
+                                                    + " evaluations; some may not be reward-eligible."
+                                                    + " Your results are saved; retry when ready."
+                                            : "Reward processing pending for "
+                                                    + pending
+                                                    + " finalized evaluation(s). Your results are"
+                                                    + " saved; retry when ready."));
             progression.getChildren()
                     .add(actions(button("Retry pending rewards", this::refresh)));
         }
         progression.getChildren().add(rewards);
+        progression.getChildren().add(text("Latest 25 rewards · open the journal for the full paged audit history."));
+        progression
+                .getChildren()
+                .add(
+                        actions(
+                                button(
+                                        "Open full reward journal",
+                                        () -> {
+                                            tabs.getSelectionModel().select(journalTab);
+                                            if (!busy) loadJournal(true);
+                                        })));
         progression
                 .getChildren()
                 .add(

@@ -326,6 +326,121 @@ class ProgressionEvaluationIntegrationTest {
         assertEquals(2, entitlements());
     }
 
+    @Test
+    void boundedEffortRecoveryAdvancesPastIneligibleSubmissionsAcrossRestart() throws Exception {
+        var challenge =
+                JavaTrainingPack.challenges().stream()
+                        .filter(c -> c.ref().id().equals("counter-repair"))
+                        .findFirst()
+                        .orElseThrow();
+        var quest =
+                JavaTrainingPack.quests().stream()
+                        .filter(q -> q.challenges().contains(challenge.ref()))
+                        .findFirst()
+                        .orElseThrow();
+        String presentation = "starvation-" + UUID.randomUUID();
+        var assets = new BundledAssets();
+        new ChallengePresentationService(new QuestCatalogRepository(), assets, CLOCK)
+                .present(
+                        new ChallengePresentation.Request(
+                                presentation,
+                                quest.ref(),
+                                challenge.ref(),
+                                challenge.cohort(),
+                                Familiarity.DECLARED_UNFAMILIAR));
+        seedIneligibleSubmissions(presentation, 513);
+
+        String solution =
+                assets.read(
+                        challenge.assets().stream()
+                                .filter(a -> a.kind() == AssetKind.REFERENCE)
+                                .findFirst()
+                                .orElseThrow());
+        var request =
+                new SubmissionRequest(
+                        "starvation-eligible-" + UUID.randomUUID(),
+                        presentation,
+                        solution,
+                        OutsideAssistance.NONE_DECLARED,
+                        "");
+        assertEquals(Outcome.PASSED, new ChallengeEvaluationCoordinator(CLOCK).submit(request).outcome());
+
+        var firstRefresh = new ProgressionService();
+        assertEquals(1, firstRefresh.reconcilePendingEffortRewards());
+        assertEquals(1, firstRefresh.snapshot().pendingEffortRewards());
+        assertEquals(0, xp());
+        assertEquals(0, entitlements());
+
+        var afterRestart = new ProgressionService();
+        assertEquals(0, afterRestart.reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
+        assertEquals(0, new ProgressionService().reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
+    }
+
+    private void seedIneligibleSubmissions(String presentation, int count) throws Exception {
+        var unavailable =
+                new EvaluationResult(
+                        Outcome.TOOL_UNAVAILABLE,
+                        java.util.List.of(),
+                        "fixture",
+                        CLOCK.instant(),
+                        CLOCK.instant(),
+                        "fixture",
+                        "fixture");
+        byte[] payload = EvaluationCodec.encode(unavailable);
+        String digest = CatalogCodec.digest(payload);
+        try (var c = DatabaseConfig.getConnection()) {
+            c.setAutoCommit(false);
+            try (var submission =
+                            c.prepareStatement(
+                                    """
+                                    INSERT INTO evolution_submissions
+                                      (command_id,presentation_id,request_sha,snapshot,snapshot_sha,
+                                       artifact_sha,executable_sha,family_id,variant_id,state,final_revision)
+                                    VALUES(?,?,?,X'01',?,?,?,?,?,'FINALIZED',1)
+                                    """);
+                    var revision =
+                            c.prepareStatement(
+                                    """
+                                    INSERT INTO evolution_evaluation_revisions
+                                      (submission_id,revision,correction_id,payload,digest,
+                                       change_kind,reason,actor)
+                                    VALUES(?,1,?,?,?,'ORIGINAL','fixture','SYSTEM')
+                                    """)) {
+                for (int i = 0; i < count; i++) {
+                    String command = "ineligible-" + UUID.randomUUID();
+                    submission.setString(1, command);
+                    submission.setString(2, presentation);
+                    submission.setString(3, "request-" + i);
+                    submission.setString(4, "snapshot-" + i);
+                    submission.setString(5, "artifact-" + i);
+                    submission.setString(6, "executable-" + i);
+                    submission.setString(7, "family-" + i);
+                    submission.setString(8, "variant-" + i);
+                    submission.executeUpdate();
+                    long id;
+                    try (var s = c.createStatement();
+                            var r = s.executeQuery("SELECT last_insert_rowid()")) {
+                        assertTrue(r.next());
+                        id = r.getLong(1);
+                    }
+                    revision.setLong(1, id);
+                    revision.setString(2, command);
+                    revision.setBytes(3, payload);
+                    revision.setString(4, digest);
+                    revision.executeUpdate();
+                }
+                c.commit();
+            } catch (Exception failure) {
+                c.rollback();
+                throw failure;
+            }
+        }
+    }
+
     private ChallengeEvaluationCoordinator.View submitReference(String challengeId)
             throws SQLException {
         var challenge =

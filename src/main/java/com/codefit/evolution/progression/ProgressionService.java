@@ -24,6 +24,9 @@ import java.util.*;
 
 /** Local, auditable engagement rewards. XP is never an input to mastery or recommendation policy. */
 public final class ProgressionService {
+    private static final int EFFORT_SCAN_LIMIT = 512;
+    private static final int OVERVIEW_HISTORY_LIMIT = 25;
+
     public enum RewardType {
         EFFORT,
         INDEPENDENT_MILESTONE,
@@ -56,6 +59,12 @@ public final class ProgressionService {
             history = List.copyOf(history);
             unlockedMilestones =
                     Collections.unmodifiableSet(new TreeSet<>(unlockedMilestones));
+        }
+    }
+
+    public record HistoryPage(List<Entitlement> entries, Long nextBeforeSequence) {
+        public HistoryPage {
+            entries = List.copyOf(entries);
         }
     }
 
@@ -115,25 +124,19 @@ public final class ProgressionService {
                                     candidate.outcome(),
                                     candidate.commandId(),
                                     candidate.submissionId());
+                            advanceEffortCursor(c, candidate.submissionId());
                             return null;
                         });
             } catch (RuntimeException retryableFailure) {
-                // The finalized evaluation remains authoritative and visibly pending.
+                break;
             }
         }
         return pendingEffortCount();
     }
 
     private List<PendingEffort> pendingEffortBatch(int limit) {
-        try (var c = DatabaseConfig.getConnection();
-                var boundary =
-                        c.createStatement();
-                var rows =
-                        boundary.executeQuery(
-                                "SELECT historical_submission_through FROM"
-                                        + " evolution_reward_state WHERE id=1")) {
-            if (!rows.next()) throw new IllegalStateException("Progression boundary is unavailable");
-            long historicalThrough = rows.getLong(1);
+        try (var c = DatabaseConfig.getConnection()) {
+            long cursor = effortCursor(c);
             var result = new ArrayList<PendingEffort>();
             try (var s =
                             c.prepareStatement(
@@ -149,29 +152,39 @@ public final class ProgressionService {
                                       AND NOT EXISTS (
                                         SELECT 1 FROM evolution_reward_entitlements e
                                         WHERE e.entitlement_key='effort:'||p.quest_id||':v'||p.quest_version)
-                                    ORDER BY s.id LIMIT 512
+                                    ORDER BY s.id LIMIT ?
                                     """)) {
-                s.setLong(1, historicalThrough);
+                s.setLong(1, cursor);
+                s.setInt(2, EFFORT_SCAN_LIMIT);
                 try (var r = s.executeQuery()) {
                     var catalog = new QuestCatalogRepository();
                     int scanned = 0;
-                    while (r.next() && scanned++ < 512 && result.size() < limit) {
+                    long scannedThrough = cursor;
+                    while (r.next() && scanned++ < EFFORT_SCAN_LIMIT && result.size() < limit) {
+                        long submissionId = r.getLong("id");
                         var outcome = EvaluationCodec.result(r.getBytes("payload")).outcome();
-                        if (!eligibleOutcome(outcome)) continue;
-                        var quest =
+                        if (!eligibleOutcome(outcome)) {
+                            scannedThrough = submissionId;
+                            continue;
+                        }
+                        var maybeQuest =
                                 catalog.findQuest(
-                                                c,
-                                                new CatalogRef(
-                                                        r.getString("quest_id"),
-                                                        r.getInt("quest_version")))
-                                        .orElseThrow(
-                                                () ->
-                                                        new IllegalStateException(
-                                                                "Finalized quest is unavailable"));
+                                        c,
+                                        new CatalogRef(
+                                                r.getString("quest_id"),
+                                                r.getInt("quest_version")));
+                        if (maybeQuest.isEmpty()) {
+                            scannedThrough = submissionId;
+                            continue;
+                        }
                         result.add(
                                 new PendingEffort(
-                                        r.getLong("id"), r.getString("command_id"), quest, outcome));
+                                        submissionId,
+                                        r.getString("command_id"),
+                                        maybeQuest.get(),
+                                        outcome));
                     }
+                    if (result.isEmpty()) advanceEffortCursor(c, scannedThrough);
                 }
             }
             return List.copyOf(result);
@@ -181,7 +194,50 @@ public final class ProgressionService {
     }
 
     private int pendingEffortCount() {
-        return pendingEffortBatch(128).size();
+        var pending = pendingEffortBatch(128);
+        if (!pending.isEmpty()) return pending.size();
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                """
+                                SELECT 1 FROM evolution_submissions s
+                                JOIN evolution_evaluation_revisions r
+                                  ON r.submission_id=s.id AND r.revision=1
+                                JOIN evolution_challenge_presentations p ON p.id=s.presentation_id
+                                WHERE s.id>? AND s.state='FINALIZED' AND s.final_revision=1
+                                  AND r.change_kind='ORIGINAL'
+                                  AND NOT EXISTS (
+                                    SELECT 1 FROM evolution_reward_entitlements e
+                                    WHERE e.entitlement_key='effort:'||p.quest_id||':v'||p.quest_version)
+                                ORDER BY s.id LIMIT 1
+                                """)) {
+            s.setLong(1, effortCursor(c));
+            try (var r = s.executeQuery()) {
+                return r.next() ? 128 : 0;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to count pending effort rewards", e);
+        }
+    }
+
+    private static long effortCursor(Connection c) throws SQLException {
+        try (var s =
+                        c.prepareStatement(
+                                "SELECT last_submission_id FROM evolution_reward_effort_scan WHERE id=1");
+                var r = s.executeQuery()) {
+            if (!r.next()) throw new SQLException("Effort recovery cursor is unavailable");
+            return r.getLong(1);
+        }
+    }
+
+    private static void advanceEffortCursor(Connection c, long submissionId) throws SQLException {
+        try (var s =
+                c.prepareStatement(
+                        "UPDATE evolution_reward_effort_scan SET last_submission_id="
+                                + "MAX(last_submission_id,?) WHERE id=1")) {
+            s.setLong(1, submissionId);
+            if (s.executeUpdate() != 1) throw new SQLException("Effort recovery cursor is unavailable");
+        }
     }
 
     private static boolean isOriginalCompletedEvaluation(
@@ -403,7 +459,9 @@ public final class ProgressionService {
                     streakDays >= ProgressionPolicy.CONSISTENT_STREAK_DAYS
                             || totalReviews >= ProgressionPolicy.EXPERIENCED_REVIEW_COUNT;
             String rank = ProgressionPolicy.engagementRank(level, consistent);
-            List<Entitlement> history = history(c);
+            List<Entitlement> history = history(c, null, OVERVIEW_HISTORY_LIMIT + 1);
+            if (history.size() > OVERVIEW_HISTORY_LIMIT)
+                history = List.copyOf(history.subList(0, OVERVIEW_HISTORY_LIMIT));
             return new Snapshot(
                     xp,
                     level,
@@ -411,78 +469,139 @@ public final class ProgressionService {
                     enabled == 1,
                     pendingEffortCount(),
                     history,
-                    ProgressionPolicy.unlockedMilestones(history));
+                    unlockedMilestones(c));
         } catch (SQLException e) {
             throw new IllegalStateException("Unable to read local progression", e);
         }
     }
 
-    private List<Entitlement> history(Connection c) throws SQLException {
+    public HistoryPage historyPage(Long beforeSequence, int limit) {
+        if (limit < 1 || limit > 64)
+            throw new IllegalArgumentException("Reward history page 1..64 required");
+        try (var c = DatabaseConfig.getConnection()) {
+            var rows = history(c, beforeSequence, limit + 1);
+            boolean more = rows.size() > limit;
+            List<Entitlement> entries =
+                    more ? List.copyOf(rows.subList(0, limit)) : rows;
+            Long next =
+                    more && !entries.isEmpty()
+                            ? entries.getLast().sequence()
+                            : null;
+            return new HistoryPage(entries, next);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Unable to read reward history", e);
+        }
+    }
+
+    private List<Entitlement> history(Connection c, Long beforeSequence, int limit)
+            throws SQLException {
         List<Entitlement> result = new ArrayList<>();
         try (var s =
-                        c.createStatement();
-                var r =
-                        s.executeQuery(
+                        c.prepareStatement(
                                 "SELECT sequence,entitlement_key,reward_type,subject_id,"
                                         + "definition_version,xp_awarded,status,source_ref,"
                                         + "reason,policy_version,earned_at FROM"
-                                        + " evolution_reward_entitlements ORDER BY sequence DESC")) {
-            while (r.next())
-                result.add(
-                        new Entitlement(
-                                r.getLong("sequence"),
-                                r.getString("entitlement_key"),
-                                RewardType.valueOf(r.getString("reward_type")),
-                                r.getString("subject_id"),
-                                r.getInt("definition_version"),
-                                r.getInt("xp_awarded"),
-                                r.getString("status"),
-                                r.getString("source_ref"),
-                                r.getString("reason"),
-                                true,
-                                r.getString("policy_version"),
-                                r.getString("earned_at")));
+                                        + " evolution_reward_entitlements"
+                                        + (beforeSequence == null ? "" : " WHERE sequence<?")
+                                        + " ORDER BY sequence DESC LIMIT ?")) {
+            int parameter = 1;
+            if (beforeSequence != null) s.setLong(parameter++, beforeSequence);
+            s.setInt(parameter, limit);
+            try (var r = s.executeQuery()) {
+                while (r.next())
+                    result.add(
+                            new Entitlement(
+                                    r.getLong("sequence"),
+                                    r.getString("entitlement_key"),
+                                    RewardType.valueOf(r.getString("reward_type")),
+                                    r.getString("subject_id"),
+                                    r.getInt("definition_version"),
+                                    r.getInt("xp_awarded"),
+                                    r.getString("status"),
+                                    r.getString("source_ref"),
+                                    r.getString("reason"),
+                                    true,
+                                    r.getString("policy_version"),
+                                    r.getString("earned_at")));
+            }
         }
-        return result.stream()
+        return withProofAvailability(c, result);
+    }
+
+    private static List<Entitlement> withProofAvailability(
+            Connection c, List<Entitlement> entitlements) throws SQLException {
+        var evidenceIds = new LinkedHashSet<String>();
+        for (var entitlement : entitlements) {
+            String evidenceId = evidenceId(entitlement.source());
+            if (evidenceId != null) evidenceIds.add(evidenceId);
+        }
+        var available = new HashSet<String>();
+        if (!evidenceIds.isEmpty()) {
+            String placeholders = String.join(",", Collections.nCopies(evidenceIds.size(), "?"));
+            try (var s =
+                    c.prepareStatement(
+                            "SELECT o.evidence_id,o.payload FROM evolution_evidence_sources s"
+                                    + " JOIN evolution_evidence_observations o"
+                                    + " ON o.evidence_id=s.head_id WHERE o.evidence_id IN ("
+                                    + placeholders
+                                    + ")")) {
+                int index = 1;
+                for (String id : evidenceIds) s.setString(index++, id);
+                try (var r = s.executeQuery()) {
+                    while (r.next()) {
+                        try {
+                            if (EvidenceCodec.decode(r.getBytes("payload")).availability()
+                                    == Availability.AVAILABLE)
+                                available.add(r.getString("evidence_id"));
+                        } catch (RuntimeException invalid) {
+                            // Invalid or unavailable proof is displayed as unavailable.
+                        }
+                    }
+                }
+            }
+        }
+        return entitlements.stream()
                 .map(
-                        entitlement ->
-                                new Entitlement(
-                                        entitlement.sequence(),
-                                        entitlement.key(),
-                                        entitlement.type(),
-                                        entitlement.subject(),
-                                        entitlement.definitionVersion(),
-                                        entitlement.xpAwarded(),
-                                        entitlement.status(),
-                                        entitlement.source(),
-                                        entitlement.reason(),
-                                        evidenceAvailable(c, entitlement.source()),
-                                        entitlement.policyVersion(),
-                                        entitlement.earnedAt()))
+                        entitlement -> {
+                            String id = evidenceId(entitlement.source());
+                            boolean proofAvailable =
+                                    id == null || (id.matches("[0-9a-f]{64}") && available.contains(id));
+                            return new Entitlement(
+                                    entitlement.sequence(),
+                                    entitlement.key(),
+                                    entitlement.type(),
+                                    entitlement.subject(),
+                                    entitlement.definitionVersion(),
+                                    entitlement.xpAwarded(),
+                                    entitlement.status(),
+                                    entitlement.source(),
+                                    entitlement.reason(),
+                                    proofAvailable,
+                                    entitlement.policyVersion(),
+                                    entitlement.earnedAt());
+                        })
                 .toList();
     }
 
-    private static boolean evidenceAvailable(Connection c, String source) {
+    private static String evidenceId(String source) {
         int marker = source.lastIndexOf(":evidence:");
-        if (marker < 0) return true;
-        String evidenceId = source.substring(marker + ":evidence:".length());
-        if (!evidenceId.matches("[0-9a-f]{64}")) return false;
-        try (var s =
-                c.prepareStatement(
-                        "SELECT o.payload FROM evolution_evidence_sources s"
-                                + " JOIN evolution_evidence_observations o"
-                                + " ON o.evidence_id=s.head_id"
-                                + " WHERE s.head_id=? AND o.evidence_id=?")) {
-            s.setString(1, evidenceId);
-            s.setString(2, evidenceId);
-            try (var r = s.executeQuery()) {
-                return r.next()
-                        && EvidenceCodec.decode(r.getBytes(1)).availability()
-                                == Availability.AVAILABLE;
-            }
-        } catch (SQLException | RuntimeException unavailable) {
-            return false;
+        return marker < 0 ? null : source.substring(marker + ":evidence:".length());
+    }
+
+    private static Set<String> unlockedMilestones(Connection c) throws SQLException {
+        var unlocked = new TreeSet<String>();
+        try (var s = c.createStatement();
+                var r =
+                        s.executeQuery(
+                                "SELECT DISTINCT reward_type,subject_id"
+                                        + " FROM evolution_reward_entitlements"
+                                        + " WHERE reward_type IN ('INDEPENDENT_MILESTONE',"
+                                        + "'RETENTION_MILESTONE') AND status='AWARDED'"
+                                        + " ORDER BY reward_type,subject_id")) {
+            while (r.next())
+                unlocked.add(r.getString("reward_type") + ":" + r.getString("subject_id"));
         }
+        return Collections.unmodifiableSet(unlocked);
     }
 
     private static int insertAndAward(

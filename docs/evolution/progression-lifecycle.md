@@ -166,8 +166,10 @@ engagement. New Evolution rewards use explicit entitlements:
 
 Evaluation finalization stores the canonical result and evidence without writing XP. Afterward, the
 Player System reconciles at most 32 pending prospective effort entitlements per refresh from finalized,
-uncorrected evaluation records; a reward failure leaves the source finalized and the entitlement absent,
-so refresh/restart can retry it. The UI shows pending work and offers retry. Entitlement insertion and
+uncorrected evaluation records, advancing a persisted bounded scan over ineligible records; a reward
+failure leaves the source finalized and the entitlement absent, so refresh/restart can retry it. The UI
+shows pending work and offers retry. Overview history is bounded and the journal retains paged audit
+access. Entitlement insertion and
 the existing `user_progress` XP/level balance update remain one transaction. Milestones are reconciled
 only after the current Player recommendation commits, using a separate evidence snapshot fence; direct
 estimate calls and replayed decisions do not award them. Their entitlement writes and balance changes

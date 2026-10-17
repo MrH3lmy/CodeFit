@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-general-types-mission-overlays/v0.12",
+  "missions": [
+    {
+      "mission_id": "EJ12-060-Q1",
+      "note_id": "EJ12-060",
+      "source_unit_id": "EJ-ITEM-060",
+      "stage": "predict",
+      "original_quest_brief": "Predict a reconciliation check when two decimal totals use BigDecimal values with scales 1 and 2, and distinguish equals from compareTo while tracing a divide with no explicit rounding mode.",
+      "rubric_criteria": [
+        "Correct scale-sensitive equality",
+        "Correct numeric comparison",
+        "Nonterminating division identified"
+      ],
+      "negative_controls": [
+        "decimal-scale",
+        "division-rounding"
+      ],
+      "replaces_draft_id": "EJ4-060-01",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-060-Q2",
+      "note_id": "EJ12-060",
+      "source_unit_id": "EJ-ITEM-060",
+      "stage": "debug",
+      "original_quest_brief": "A receipt service parses a human-entered fee into double, constructs BigDecimal from that double, then rounds only the final display. Diagnose drift and overflow risk in accumulated minor units.",
+      "rubric_criteria": [
+        "Preserve decimal input meaning",
+        "Checked unit arithmetic",
+        "Tests accumulation branch behavior"
+      ],
+      "negative_controls": [
+        "bigdecimal-from-double",
+        "silent-overflow"
+      ],
+      "replaces_draft_id": "EJ4-060-02",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-060-Q3",
+      "note_id": "EJ12-060",
+      "source_unit_id": "EJ-ITEM-060",
+      "stage": "build",
+      "original_quest_brief": "Build a Java 21 MoneyAmount value model with currency, checked addition, controlled decimal conversion, and an explicit division/rounding policy; reject mixed currencies and overflow.",
+      "rubric_criteria": [
+        "Exact representation and scale",
+        "Checked overflow and currency",
+        "Deterministic rounding tests"
+      ],
+      "negative_controls": [
+        "mixed-currency",
+        "overflow-value"
+      ],
+      "replaces_draft_id": "EJ4-060-03",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-060-Q4",
+      "note_id": "EJ12-060",
+      "source_unit_id": "EJ-ITEM-060",
+      "stage": "defend",
+      "original_quest_brief": "Compare fixed minor-unit long versus BigDecimal for subscription invoices involving tiny fractional fees and multiple currencies; state tradeoffs and what evidence would justify either.",
+      "rubric_criteria": [
+        "Domain precision requirements",
+        "Rounding obligation ownership",
+        "Practical range/performance evidence"
+      ],
+      "negative_controls": [
+        "fractional-cent",
+        "speed-generalization"
+      ],
+      "replaces_draft_id": "EJ4-060-04",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-061-Q1",
+      "note_id": "EJ12-061",
+      "source_unit_id": "EJ-ITEM-061",
+      "stage": "predict",
+      "original_quest_brief": "Predict the results of two separately constructed boxed values compared with == and equals; then trace null unboxing during a counter update without relying on cache boundaries.",
+      "rubric_criteria": [
+        "Identity distinct from value",
+        "Autounboxing null failure",
+        "Cache reliance rejected"
+      ],
+      "negative_controls": [
+        "wrapper-identity",
+        "null-unboxing"
+      ],
+      "replaces_draft_id": "EJ4-061-01",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-061-Q2",
+      "note_id": "EJ12-061",
+      "source_unit_id": "EJ-ITEM-061",
+      "stage": "debug",
+      "original_quest_brief": "A priority comparator orders Integer values by subtraction and uses == for tie checks; diagnose overflow, equality and a nullable score path.",
+      "rubric_criteria": [
+        "Comparator antisymmetry",
+        "Value comparison",
+        "Null handling explicit"
+      ],
+      "negative_controls": [
+        "integer-overflow",
+        "identity-tie"
+      ],
+      "replaces_draft_id": "EJ4-061-02",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-061-Q3",
+      "note_id": "EJ12-061",
+      "source_unit_id": "EJ-ITEM-061",
+      "stage": "build",
+      "original_quest_brief": "Implement a null-aware import-to-long converter and a Comparator<Record> using comparingLong; prove order for extreme magnitudes and optional absence policy.",
+      "rubric_criteria": [
+        "Null policy",
+        "Overflow-safe ordering",
+        "Boundary tests"
+      ],
+      "negative_controls": [
+        "min-max-compare",
+        "missing-score"
+      ],
+      "replaces_draft_id": "EJ4-061-03",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-061-Q4",
+      "note_id": "EJ12-061",
+      "source_unit_id": "EJ-ITEM-061",
+      "stage": "defend",
+      "original_quest_brief": "Review a proposed migration of every primitive counter to Integer for convenience and a presumed zero allocation cost; identify collection boundaries and JDK measurement requirements.",
+      "rubric_criteria": [
+        "Reason about boxing costs",
+        "Nullable semantics",
+        "Maintain domain API clarity"
+      ],
+      "negative_controls": [
+        "auto-boxed-loop",
+        "boxed-null"
+      ],
+      "replaces_draft_id": "EJ4-061-04",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-062-Q1",
+      "note_id": "EJ12-062",
+      "source_unit_id": "EJ-ITEM-062",
+      "stage": "predict",
+      "original_quest_brief": "Given external status text, a composite identifier built with a colon delimiter, and two clients using the same string key, predict parsing collision and namespace behavior.",
+      "rubric_criteria": [
+        "Delimiter collision",
+        "Unknown status handled",
+        "Capability-key collision"
+      ],
+      "negative_controls": [
+        "delimiter-in-value",
+        "shared-key"
+      ],
+      "replaces_draft_id": "EJ4-062-01",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-062-Q2",
+      "note_id": "EJ12-062",
+      "source_unit_id": "EJ-ITEM-062",
+      "stage": "debug",
+      "original_quest_brief": "A multi-tenant billing system uses strings for customer+invoice composite IDs and a shared static map indexed by user-supplied keys. Redesign typed identity and check authorization independently.",
+      "rubric_criteria": [
+        "Typed record key",
+        "No shared untrusted capability name",
+        "Authorization remains explicit"
+      ],
+      "negative_controls": [
+        "cross-tenant",
+        "ambiguous-key"
+      ],
+      "replaces_draft_id": "EJ4-062-02",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-062-Q3",
+      "note_id": "EJ12-062",
+      "source_unit_id": "EJ-ITEM-062",
+      "stage": "build",
+      "original_quest_brief": "Create a validated Java 21 record InvoiceKey and enum ProcessingState, parse raw messages into typed values, and demonstrate safe ThreadLocal cleanup.",
+      "rubric_criteria": [
+        "Correct validation",
+        "Typed value equality",
+        "finally cleanup on failure"
+      ],
+      "negative_controls": [
+        "invalid-status",
+        "context-leak"
+      ],
+      "replaces_draft_id": "EJ4-062-03",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-062-Q4",
+      "note_id": "EJ12-062",
+      "source_unit_id": "EJ-ITEM-062",
+      "stage": "defend",
+      "original_quest_brief": "Assess where strings are appropriate: JSON fields, logs, human names, internal state, and access tokens; justify value types without asserting typed IDs alone provide security.",
+      "rubric_criteria": [
+        "Boundary versus internal type",
+        "Authorization separation",
+        "Evolution/compatibility"
+      ],
+      "negative_controls": [
+        "stringly-typed",
+        "type-safety-not-auth"
+      ],
+      "replaces_draft_id": "EJ4-062-04",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-063-Q1",
+      "note_id": "EJ12-063",
+      "source_unit_id": "EJ-ITEM-063",
+      "stage": "predict",
+      "original_quest_brief": "Trace intermediate string creation and output delimiters for an accumulator that repeatedly executes report += row, then distinguish a single three-part expression from a long loop.",
+      "rubric_criteria": [
+        "Output equivalence",
+        "Accumulation costs",
+        "No magic fixed speedup"
+      ],
+      "negative_controls": [
+        "loop-concat",
+        "single-expression"
+      ],
+      "replaces_draft_id": "EJ4-063-01",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-063-Q2",
+      "note_id": "EJ12-063",
+      "source_unit_id": "EJ-ITEM-063",
+      "stage": "debug",
+      "original_quest_brief": "An invoice exporter becomes slow as rows increase, and a proposed StringBuilder replacement drops separators and retains a static buffer. Fix both performance and correctness risks.",
+      "rubric_criteria": [
+        "Builder lifetime local",
+        "Separator fidelity",
+        "Memory scale"
+      ],
+      "negative_controls": [
+        "static-mutable-buffer",
+        "missing-delimiter"
+      ],
+      "replaces_draft_id": "EJ4-063-02",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-063-Q3",
+      "note_id": "EJ12-063",
+      "source_unit_id": "EJ-ITEM-063",
+      "stage": "build",
+      "original_quest_brief": "Implement an original ordered CSV summary with a StringBuilder and an Appendable streaming variant; test empty, multiline, separator and 10k-row cases without publisher examples.",
+      "rubric_criteria": [
+        "Stable ordering",
+        "Correct delimiter/escaping",
+        "Bounds and memory strategy"
+      ],
+      "negative_controls": [
+        "quote-escaping",
+        "empty-input"
+      ],
+      "replaces_draft_id": "EJ4-063-03",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-063-Q4",
+      "note_id": "EJ12-063",
+      "source_unit_id": "EJ-ITEM-063",
+      "stage": "defend",
+      "original_quest_brief": "A PR cites a 2018 concat benchmark to mandate StringBuilder everywhere. Explain workload-specific profiling, short fixed expressions, streaming options and measurable regressions.",
+      "rubric_criteria": [
+        "Measured workload",
+        "Trade-off clarity",
+        "Streaming for huge outputs"
+      ],
+      "negative_controls": [
+        "historic-benchmark",
+        "preallocation-overflow"
+      ],
+      "replaces_draft_id": "EJ4-063-04",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-064-Q1",
+      "note_id": "EJ12-064",
+      "source_unit_id": "EJ-ITEM-064",
+      "stage": "predict",
+      "original_quest_brief": "Predict which behavior remains valid when a LinkedHashSet-backed Set is replaced by HashSet, distinguishing set equality from guaranteed iteration order and a Java21 sequenced contract.",
+      "rubric_criteria": [
+        "Interface method compatibility",
+        "Order differences",
+        "Explicit domain ordering contract"
+      ],
+      "negative_controls": [
+        "silent-order-change",
+        "equal-set-not-order"
+      ],
+      "replaces_draft_id": "EJ4-064-01",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-064-Q2",
+      "note_id": "EJ12-064",
+      "source_unit_id": "EJ-ITEM-064",
+      "stage": "debug",
+      "original_quest_brief": "An API requires LinkedHashMap but callers need only Map; separately, an implementation swap accidentally reorders audit export. Repair the signature and protect the real order requirement.",
+      "rubric_criteria": [
+        "General public contract",
+        "Order is explicit",
+        "Tests capture behavioral changes"
+      ],
+      "negative_controls": [
+        "concrete-exposure",
+        "order-regression"
+      ],
+      "replaces_draft_id": "EJ4-064-02",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-064-Q3",
+      "note_id": "EJ12-064",
+      "source_unit_id": "EJ-ITEM-064",
+      "stage": "build",
+      "original_quest_brief": "Define a service that consumes Map<Region,Rule> and a separate ordered export using SequencedMap; test HashMap and LinkedHashMap substitution boundaries.",
+      "rubric_criteria": [
+        "Appropriate interface types",
+        "Accurate order semantics",
+        "Immutable and null policies"
+      ],
+      "negative_controls": [
+        "hashmap-unspecified-order",
+        "unsupported-sequencing"
+      ],
+      "replaces_draft_id": "EJ4-064-03",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ12-064-Q4",
+      "note_id": "EJ12-064",
+      "source_unit_id": "EJ-ITEM-064",
+      "stage": "defend",
+      "original_quest_brief": "A team proposes replacing every concrete type with a new interface. Evaluate value classes, framework base classes, and ordered/mutable collection guarantees before accepting.",
+      "rubric_criteria": [
+        "Avoid needless abstractions",
+        "Least specific adequate type",
+        "Behavioral substitution evidence"
+      ],
+      "negative_controls": [
+        "interface-everything",
+        "class-only-contract"
+      ],
+      "replaces_draft_id": "EJ4-064-04",
+      "grader_plan": "Draft rubric, not independently reviewed; held-out learner grader NOT implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

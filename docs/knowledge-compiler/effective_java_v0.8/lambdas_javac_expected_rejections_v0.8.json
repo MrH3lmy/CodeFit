@@ -1,0 +1,32 @@
+{
+  "schema": "codefit-v8-lambdas-expected-javac-rejections",
+  "count": 6,
+  "all_expected_rejections": true,
+  "cases": [
+    {
+      "id": "lambda_to_nonfunctional_interface",
+      "expected_rejection": true
+    },
+    {
+      "id": "lambda_to_abstract_class",
+      "expected_rejection": true
+    },
+    {
+      "id": "capture_reassigned_local",
+      "expected_rejection": true
+    },
+    {
+      "id": "method_reference_wrong_return",
+      "expected_rejection": true
+    },
+    {
+      "id": "method_reference_wrong_arity",
+      "expected_rejection": true
+    },
+    {
+      "id": "constructor_reference_wrong_target",
+      "expected_rejection": true
+    }
+  ],
+  "grader_verified": false
+}

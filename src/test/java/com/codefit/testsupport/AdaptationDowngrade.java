@@ -11,6 +11,7 @@ public final class AdaptationDowngrade {
     public static void remove(Connection c) throws SQLException {
         try (var s = c.createStatement()) {
             s.execute("PRAGMA foreign_keys=OFF");
+            s.execute("DELETE FROM schema_migrations WHERE version=24");
             s.execute("DROP TABLE IF EXISTS evolution_reward_effort_processed");
             s.execute("DELETE FROM schema_migrations WHERE version=23");
             s.execute("DROP TABLE IF EXISTS evolution_reward_effort_scan");

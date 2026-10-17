@@ -209,5 +209,35 @@ final class ProgressionSchema {
         }
     }
 
+    static void addEffortQuarantine(Connection c) throws SQLException {
+        try (Statement s = c.createStatement()) {
+            s.execute("DROP INDEX IF EXISTS evolution_reward_effort_processed_disposition");
+            s.execute(
+                    """
+                    CREATE TABLE evolution_reward_effort_processed_v24 (
+                      submission_id INTEGER PRIMARY KEY REFERENCES evolution_submissions(id),
+                      disposition TEXT NOT NULL CHECK(disposition IN
+                        ('RECONCILED','INELIGIBLE','QUARANTINED')),
+                      failure_code TEXT,
+                      CHECK((disposition='QUARANTINED')=(failure_code IS NOT NULL))
+                    )
+                    """);
+            s.execute(
+                    """
+                    INSERT INTO evolution_reward_effort_processed_v24
+                      (submission_id,disposition,failure_code)
+                    SELECT submission_id,disposition,NULL
+                    FROM evolution_reward_effort_processed
+                    """);
+            s.execute("DROP TABLE evolution_reward_effort_processed");
+            s.execute(
+                    "ALTER TABLE evolution_reward_effort_processed_v24"
+                            + " RENAME TO evolution_reward_effort_processed");
+            s.execute(
+                    "CREATE INDEX evolution_reward_effort_processed_disposition ON"
+                            + " evolution_reward_effort_processed(disposition,submission_id)");
+        }
+    }
+
     private record HistoricalEstimate(long revision, int skillVersion, EstimateInput input) {}
 }

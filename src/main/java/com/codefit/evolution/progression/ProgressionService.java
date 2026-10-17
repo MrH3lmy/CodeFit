@@ -34,6 +34,16 @@ public final class ProgressionService {
         RETENTION_MILESTONE
     }
 
+    private static int quarantinedEffortSourceCount(Connection c) throws SQLException {
+        try (var s =
+                        c.prepareStatement(
+                                "SELECT count(*) FROM evolution_reward_effort_processed"
+                                        + " WHERE disposition='QUARANTINED'");
+                var r = s.executeQuery()) {
+            return r.next() ? r.getInt(1) : 0;
+        }
+    }
+
     public record Entitlement(
             long sequence,
             String key,
@@ -54,6 +64,7 @@ public final class ProgressionService {
             String engagementRank,
             boolean rewardsEnabled,
             int pendingEffortRewards,
+            int quarantinedEffortSources,
             List<Entitlement> history,
             Set<String> unlockedMilestones) {
         public Snapshot {
@@ -108,8 +119,19 @@ public final class ProgressionService {
             EvolutionQuest quest,
             Outcome outcome) {}
 
+    private record EffortMarker(long submissionId, String disposition, String failureCode) {}
+
     private record EffortScan(
-            List<PendingEffort> candidates, List<Long> ineligible, long lastScannedId, int rows) {}
+            List<PendingEffort> candidates, List<EffortMarker> markers, long lastScannedId, int rows) {}
+
+    private static final class EffortIntegrityFailure extends SQLException {
+        private final String code;
+
+        private EffortIntegrityFailure(String code, String message) {
+            super(message);
+            this.code = code;
+        }
+    }
 
     private record EffortBatch(
             List<PendingEffort> candidates, long scannedThrough, boolean scanBudgetReached) {}
@@ -131,10 +153,24 @@ public final class ProgressionService {
                                     candidate.outcome(),
                                     candidate.commandId(),
                                     candidate.submissionId());
-                            markEffortProcessed(c, candidate.submissionId(), "RECONCILED");
+                            markEffortProcessed(c, candidate.submissionId(), "RECONCILED", null);
                             return null;
                         });
-            } catch (RuntimeException retryableFailure) {
+            } catch (RuntimeException failure) {
+                String integrityCode = effortIntegrityCode(failure);
+                if (integrityCode != null) {
+                    try {
+                        persistEffortMarkers(
+                                List.of(
+                                        new EffortMarker(
+                                                candidate.submissionId(),
+                                                "QUARANTINED",
+                                                integrityCode)));
+                    } catch (RuntimeException markerFailure) {
+                        break;
+                    }
+                    continue;
+                }
                 break;
             }
         }
@@ -148,7 +184,7 @@ public final class ProgressionService {
         while (scanned < EFFORT_SCAN_BUDGET && result.size() < limit) {
             var scan = scanEffortPage(afterId);
             if (scan.rows() == 0) break;
-            persistIneligible(scan.ineligible());
+            persistEffortMarkers(scan.markers());
             result.addAll(scan.candidates().stream().limit(limit - result.size()).toList());
             scanned += scan.rows();
             afterId = scan.lastScannedId();
@@ -170,7 +206,7 @@ public final class ProgressionService {
                 var s =
                         c.prepareStatement(
                                 """
-                                SELECT s.id,s.command_id,r.payload,p.quest_id,p.quest_version
+                                SELECT s.id,s.command_id,r.payload,r.digest,p.quest_id,p.quest_version
                                 FROM evolution_submissions s
                                 JOIN evolution_evaluation_revisions r
                                   ON r.submission_id=s.id AND r.revision=1
@@ -191,7 +227,7 @@ public final class ProgressionService {
             s.setLong(1, afterId);
             s.setInt(2, EFFORT_SCAN_LIMIT);
             var candidates = new ArrayList<PendingEffort>();
-            var ineligible = new ArrayList<Long>();
+            var markers = new ArrayList<EffortMarker>();
             var catalog = new QuestCatalogRepository();
             long lastScannedId = afterId;
             int rows = 0;
@@ -200,55 +236,87 @@ public final class ProgressionService {
                     long id = r.getLong("id");
                     lastScannedId = id;
                     rows++;
+                    byte[] payload = r.getBytes("payload");
+                    if (!CatalogCodec.digest(payload).equals(r.getString("digest"))) {
+                        markers.add(
+                                new EffortMarker(
+                                        id, "QUARANTINED", "FINALIZED_EVALUATION_DIGEST_MISMATCH"));
+                        continue;
+                    }
                     Outcome outcome;
                     try {
-                        outcome = EvaluationCodec.result(r.getBytes("payload")).outcome();
+                        outcome = EvaluationCodec.result(payload).outcome();
                     } catch (RuntimeException invalid) {
-                        ineligible.add(id);
+                        markers.add(
+                                new EffortMarker(
+                                        id, "QUARANTINED", "FINALIZED_EVALUATION_PAYLOAD_INVALID"));
                         continue;
                     }
                     if (!eligibleOutcome(outcome)) {
-                        ineligible.add(id);
+                        markers.add(new EffortMarker(id, "INELIGIBLE", null));
                         continue;
                     }
-                    var quest =
-                            catalog.findQuest(
-                                    c,
-                                    new CatalogRef(
-                                            r.getString("quest_id"), r.getInt("quest_version")));
+                    Optional<EvolutionQuest> quest;
+                    try {
+                        quest =
+                                catalog.findQuest(
+                                        c,
+                                        new CatalogRef(
+                                                r.getString("quest_id"), r.getInt("quest_version")));
+                    } catch (RuntimeException invalidReference) {
+                        markers.add(
+                                new EffortMarker(id, "QUARANTINED", "QUEST_REFERENCE_INVALID"));
+                        continue;
+                    }
                     if (quest.isEmpty()) {
-                        ineligible.add(id);
+                        markers.add(
+                                new EffortMarker(id, "QUARANTINED", "QUEST_DEFINITION_UNAVAILABLE"));
                         continue;
                     }
                     candidates.add(new PendingEffort(id, r.getString("command_id"), quest.get(), outcome));
                 }
             }
             return new EffortScan(
-                    List.copyOf(candidates), List.copyOf(ineligible), lastScannedId, rows);
+                    List.copyOf(candidates), List.copyOf(markers), lastScannedId, rows);
         } catch (SQLException e) {
             throw new IllegalStateException("Unable to scan finalized effort rewards", e);
         }
     }
 
-    private void persistIneligible(List<Long> submissionIds) {
-        if (submissionIds.isEmpty()) return;
+    private void persistEffortMarkers(List<EffortMarker> markers) {
+        if (markers.isEmpty()) return;
         runTransaction(
                 c -> {
-                    for (long id : submissionIds) markEffortProcessed(c, id, "INELIGIBLE");
+                    for (var marker : markers)
+                        markEffortProcessed(
+                                c,
+                                marker.submissionId(),
+                                marker.disposition(),
+                                marker.failureCode());
                     return null;
                 });
     }
 
-    private static void markEffortProcessed(Connection c, long submissionId, String disposition)
+    private static void markEffortProcessed(
+            Connection c, long submissionId, String disposition, String failureCode)
             throws SQLException {
         try (var s =
                 c.prepareStatement(
-                        "INSERT INTO evolution_reward_effort_processed(submission_id,disposition)"
-                                + " VALUES(?,?) ON CONFLICT(submission_id) DO NOTHING")) {
+                        "INSERT INTO evolution_reward_effort_processed"
+                                + "(submission_id,disposition,failure_code) VALUES(?,?,?)"
+                                + " ON CONFLICT(submission_id) DO NOTHING")) {
             s.setLong(1, submissionId);
             s.setString(2, disposition);
+            s.setString(3, failureCode);
             s.executeUpdate();
         }
+    }
+
+    private static String effortIntegrityCode(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause())
+            if (cause instanceof EffortIntegrityFailure integrityFailure)
+                return integrityFailure.code;
+        return null;
     }
 
     private static boolean hasUnprocessedFinalizedEffort(long afterId) {
@@ -310,8 +378,16 @@ public final class ProgressionService {
                         || quest.ref().version() != r.getInt("quest_version")) return false;
                 byte[] payload = r.getBytes("payload");
                 if (!CatalogCodec.digest(payload).equals(r.getString("digest")))
-                    throw new SQLException("Finalized evaluation digest mismatch");
-                return EvaluationCodec.result(payload).outcome() == expected;
+                    throw new EffortIntegrityFailure(
+                            "FINALIZED_EVALUATION_DIGEST_MISMATCH",
+                            "Finalized evaluation digest mismatch");
+                try {
+                    return EvaluationCodec.result(payload).outcome() == expected;
+                } catch (RuntimeException invalid) {
+                    throw new EffortIntegrityFailure(
+                            "FINALIZED_EVALUATION_PAYLOAD_INVALID",
+                            "Finalized evaluation payload is invalid");
+                }
             }
         }
     }
@@ -511,6 +587,7 @@ public final class ProgressionService {
                     rank,
                     enabled == 1,
                     pendingEffortCount(),
+                    quarantinedEffortSourceCount(c),
                     history,
                     unlockedMilestones(c));
         } catch (SQLException e) {

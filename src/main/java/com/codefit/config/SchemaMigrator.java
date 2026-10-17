@@ -125,7 +125,10 @@ final class SchemaMigrator {
                     ProgressionSchema::createEffortScanState),
             new VersionedMigration(23,
                     "Track terminal effort-recovery decisions per finalized submission",
-                    ProgressionSchema::createEffortProcessed)
+                    ProgressionSchema::createEffortProcessed),
+            new VersionedMigration(24,
+                    "Audit and isolate corrupted finalized effort reward sources",
+                    ProgressionSchema::addEffortQuarantine)
     );
 
     static void migrate(Connection connection) throws SQLException {

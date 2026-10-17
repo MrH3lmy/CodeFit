@@ -436,6 +436,179 @@ class ProgressionEvaluationIntegrationTest {
         assertEquals(1, entitlements());
     }
 
+    @Test
+    void corruptFinalizedEffortSourceIsQuarantinedWithoutBlockingLaterRewards() throws Exception {
+        var corrupt = submitReference("counter-repair");
+        var valid = submitReference("queue-retention");
+        tamperFinalizedEvaluationDigest(corrupt.command());
+
+        try (var c = DatabaseConfig.getConnection(); var statement = c.createStatement()) {
+            statement.execute(
+                    "CREATE TRIGGER transient_xp_failure BEFORE UPDATE OF xp ON user_progress"
+                            + " BEGIN SELECT RAISE(ABORT,'temporary XP write failure'); END");
+        }
+        var service = new ProgressionService();
+        assertEquals(1, service.reconcilePendingEffortRewards());
+        assertEquals(0, xp());
+        assertEquals(0, entitlements());
+        assertEquals(1, service.snapshot().quarantinedEffortSources());
+        assertEquals(
+                "FINALIZED_EVALUATION_DIGEST_MISMATCH",
+                effortFailureCode(corrupt.command()));
+        try (var c = DatabaseConfig.getConnection(); var statement = c.createStatement()) {
+            statement.execute("DROP TRIGGER transient_xp_failure");
+        }
+        var restarted = new ProgressionService();
+        assertEquals(0, restarted.reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
+        try (var c = DatabaseConfig.getConnection();
+                var statement =
+                        c.prepareStatement(
+                                "SELECT COUNT(*) FROM evolution_reward_entitlements"
+                                        + " WHERE source_ref=?")) {
+            statement.setString(1, "submission:" + valid.command());
+            try (var result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals(1, result.getInt(1));
+            }
+        }
+        assertEquals(0, new ProgressionService().reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
+        assertEquals(0, restarted.snapshot().pendingEffortRewards());
+    }
+
+    @Test
+    void undecodableFinalizedEffortSourceIsQuarantinedRatherThanMarkedIneligible()
+            throws Exception {
+        var corrupt = submitReference("counter-repair");
+        submitReference("queue-retention");
+        tamperFinalizedEvaluationPayload(corrupt.command(), new byte[] {1});
+
+        assertEquals(0, new ProgressionService().reconcilePendingEffortRewards());
+        assertEquals(10, xp());
+        assertEquals(1, entitlements());
+        assertEquals(
+                "FINALIZED_EVALUATION_PAYLOAD_INVALID",
+                effortFailureCode(corrupt.command()));
+        assertEquals(1, new ProgressionService().snapshot().quarantinedEffortSources());
+    }
+
+    @Test
+    void quarantineMigrationPreservesExistingEffortMarkers() throws Exception {
+        var ineligible = submitReference("counter-repair");
+        var next = submitReference("queue-retention");
+        try (var c = DatabaseConfig.getConnection(); var statement = c.createStatement()) {
+            statement.execute("DROP TABLE evolution_reward_effort_processed");
+            statement.execute(
+                    """
+                    CREATE TABLE evolution_reward_effort_processed (
+                      submission_id INTEGER PRIMARY KEY REFERENCES evolution_submissions(id),
+                      disposition TEXT NOT NULL CHECK(disposition IN('RECONCILED','INELIGIBLE'))
+                    )
+                    """);
+            try (var insert =
+                    c.prepareStatement(
+                            "INSERT INTO evolution_reward_effort_processed"
+                                    + "(submission_id,disposition)"
+                                    + " SELECT id,'INELIGIBLE' FROM evolution_submissions"
+                                    + " WHERE command_id=?")) {
+                insert.setString(1, ineligible.command());
+                assertEquals(1, insert.executeUpdate());
+            }
+            statement.execute("DELETE FROM schema_migrations WHERE version=24");
+        }
+
+        DatabaseConfig.initialize();
+
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                "SELECT x.disposition,x.failure_code FROM"
+                                        + " evolution_reward_effort_processed x"
+                                        + " JOIN evolution_submissions e ON e.id=x.submission_id"
+                                        + " WHERE e.command_id=?")) {
+            s.setString(1, ineligible.command());
+            try (var r = s.executeQuery()) {
+                assertTrue(r.next());
+                assertEquals("INELIGIBLE", r.getString(1));
+                assertNull(r.getString(2));
+            }
+        }
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                "INSERT INTO evolution_reward_effort_processed"
+                                        + "(submission_id,disposition,failure_code)"
+                                        + " SELECT id,'QUARANTINED',"
+                                        + "'FINALIZED_EVALUATION_PAYLOAD_INVALID'"
+                                        + " FROM evolution_submissions WHERE command_id=?")) {
+            s.setString(1, next.command());
+            assertEquals(1, s.executeUpdate());
+        }
+    }
+
+    private void tamperFinalizedEvaluationDigest(String commandId) throws Exception {
+        tamperFinalizedEvaluation(commandId, null, "damaged-digest");
+    }
+
+    private void tamperFinalizedEvaluationPayload(String commandId, byte[] payload)
+            throws Exception {
+        tamperFinalizedEvaluation(commandId, payload, null);
+    }
+
+    private void tamperFinalizedEvaluation(String commandId, byte[] payload, String digest)
+            throws Exception {
+        try (var c = DatabaseConfig.getConnection(); var s = c.createStatement()) {
+            s.execute("DROP TRIGGER evolution_evaluation_revisions_no_update");
+            if (payload == null) {
+                try (var update =
+                        c.prepareStatement(
+                                "UPDATE evolution_evaluation_revisions SET digest=?"
+                                        + " WHERE submission_id=(SELECT id FROM"
+                                        + " evolution_submissions WHERE command_id=?)")) {
+                    update.setString(1, digest);
+                    update.setString(2, commandId);
+                    assertEquals(1, update.executeUpdate());
+                }
+            } else {
+                try (var update =
+                        c.prepareStatement(
+                                "UPDATE evolution_evaluation_revisions SET payload=?,digest=?"
+                                        + " WHERE submission_id=(SELECT id FROM"
+                                        + " evolution_submissions WHERE command_id=?)")) {
+                    update.setBytes(1, payload);
+                    update.setString(2, CatalogCodec.digest(payload));
+                    update.setString(3, commandId);
+                    assertEquals(1, update.executeUpdate());
+                }
+            }
+            s.execute(
+                    "CREATE TRIGGER evolution_evaluation_revisions_no_update BEFORE UPDATE"
+                            + " ON evolution_evaluation_revisions BEGIN SELECT"
+                            + " RAISE(ABORT,'Evaluation history is immutable'); END");
+        }
+    }
+
+    private String effortFailureCode(String commandId) throws SQLException {
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                """
+                                SELECT x.failure_code
+                                FROM evolution_reward_effort_processed x
+                                JOIN evolution_submissions e ON e.id=x.submission_id
+                                WHERE e.command_id=? AND x.disposition='QUARANTINED'
+                                """)) {
+            s.setString(1, commandId);
+            try (var r = s.executeQuery()) {
+                assertTrue(r.next());
+                return r.getString(1);
+            }
+        }
+    }
+
     private void seedIneligibleSubmissions(String presentation, int count) throws Exception {
         var unavailable =
                 new EvaluationResult(

@@ -542,6 +542,16 @@ public final class EvolutionController implements RouteLifecycle {
             progression.getChildren()
                     .add(actions(button("Retry pending rewards", this::refresh)));
         }
+        if (overview.progression().quarantinedEffortSources() > 0) {
+            progression
+                    .getChildren()
+                    .add(
+                            text(
+                                    overview.progression().quarantinedEffortSources()
+                                            + " finalized reward source(s) failed integrity checks."
+                                            + " They were not rewarded; local database repair is"
+                                            + " required before retrying."));
+        }
         progression.getChildren().add(rewards);
         progression.getChildren().add(text("Latest 25 rewards · open the journal for the full paged audit history."));
         progression

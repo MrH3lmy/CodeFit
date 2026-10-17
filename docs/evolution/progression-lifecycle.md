@@ -185,6 +185,15 @@ DailyQuest recovery behavior is preserved, but Evolution never imposes a missed-
 catch-up objective. Existing legacy multi-write reward paths are unchanged and are not claimed to be
 crash-safe.
 
+Before reward reconciliation, each finalized evaluation's digest and payload are validated. A
+deterministic integrity failure is recorded as a terminal `QUARANTINED` effort-source marker with a
+specific failure code; it earns no XP and cannot block later valid sources. The Player System shows
+the quarantine count. Database/transaction failures remain unmarked and retryable. Quarantine is a
+fail-closed terminal state for automatic rewards; the current UI does not repair quarantined sources.
+Any local repair requires trusted source restoration and a separately reviewed database procedure
+that preserves the original marker and failure code for audit before reclassifying the source. Never
+clear the marker merely to retry an unrepaired source.
+
 ## States, failure and recovery
 
 Submission lifecycle: PREPARED → RUNNING → FINALIZED; RUNNING may become INTERRUPTED on

@@ -1,0 +1,71 @@
+{
+  "schema": "codefit-general-source-validation/v0.13",
+  "items_checked": 5,
+  "complete_sections_read": 5,
+  "body_hashes_verified": 5,
+  "targeted_signals_matched": 25,
+  "checks": [
+    {
+      "source_unit_id": "EJ-ITEM-065",
+      "pdf_page_start": 303,
+      "pdf_page_end_exclusive": 306,
+      "body_chars": 7280,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independent_technical_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-066",
+      "pdf_page_start": 306,
+      "pdf_page_end_exclusive": 307,
+      "body_chars": 2930,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independent_technical_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-067",
+      "pdf_page_start": 307,
+      "pdf_page_end_exclusive": 310,
+      "body_chars": 8329,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independent_technical_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-068",
+      "pdf_page_start": 310,
+      "pdf_page_end_exclusive": 314,
+      "body_chars": 9458,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independent_technical_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-069",
+      "pdf_page_start": 314,
+      "pdf_page_end_exclusive": 317,
+      "body_chars": 5938,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independent_technical_review": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "independent_semantic_review": false,
+  "limitations": "Author source identification and anchors only. Java21 nuances and educational assessments still need independent review; private publisher content excluded."
+}

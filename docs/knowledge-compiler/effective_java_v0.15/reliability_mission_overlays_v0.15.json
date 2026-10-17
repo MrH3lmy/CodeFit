@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-reliability-mission-overlays/v0.15",
+  "missions": [
+    {
+      "mission_id": "EJ15-075-Q1",
+      "note_id": "EJ15-075",
+      "source_unit_id": "EJ-ITEM-075",
+      "stage": "predict",
+      "original_quest_brief": "A search endpoint rejects index 21 for an allowed range [0,20) and also receives an Authorization header. Choose exact safe failure context and predict how a raw-header log would leak credentials.",
+      "rubric_criteria": [
+        "Bound and failing index",
+        "No secret disclosure",
+        "Human versus machine message distinction"
+      ],
+      "negative_controls": [
+        "missing-bounds",
+        "raw-token-log"
+      ],
+      "replaces_draft_id": "EJ4-075-01",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-075-Q2",
+      "note_id": "EJ15-075",
+      "source_unit_id": "EJ-ITEM-075",
+      "stage": "debug",
+      "original_quest_brief": "A payment exception reports only \"bad request\" while a second exception includes a full card and bearer token. Refactor each diagnostic to preserve useful state without leaking protected data.",
+      "rubric_criteria": [
+        "Bounded structured context",
+        "Sensitive values redacted",
+        "Root cause retained"
+      ],
+      "negative_controls": [
+        "useless-message",
+        "secret-exposure"
+      ],
+      "replaces_draft_id": "EJ4-075-02",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-075-Q3",
+      "note_id": "EJ15-075",
+      "source_unit_id": "EJ-ITEM-075",
+      "stage": "build",
+      "original_quest_brief": "Implement a typed RangeViolation exception with index, fromInclusive, toExclusive, a concise safe detail message, and constructor checks for valid bounds; test extreme indices.",
+      "rubric_criteria": [
+        "Exact diagnostic bounds",
+        "No unchecked interpolation of secrets",
+        "Deterministic typed fields"
+      ],
+      "negative_controls": [
+        "off-by-one",
+        "invalid-range"
+      ],
+      "replaces_draft_id": "EJ4-075-03",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-075-Q4",
+      "note_id": "EJ15-075",
+      "source_unit_id": "EJ-ITEM-075",
+      "stage": "defend",
+      "original_quest_brief": "Review a proposal to ship a complete JSON request body in every failure stack trace. Explain observability, retention, privacy and whether a correlation ID can carry the needed diagnostic evidence.",
+      "rubric_criteria": [
+        "Diagnostic sufficiency",
+        "Redaction strategy",
+        "Operational retention limits"
+      ],
+      "negative_controls": [
+        "capture-everything",
+        "message-only-api"
+      ],
+      "replaces_draft_id": "EJ4-075-04",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-076-Q1",
+      "note_id": "EJ15-076",
+      "source_unit_id": "EJ-ITEM-076",
+      "stage": "predict",
+      "original_quest_brief": "A wallet decrement occurs before checking that the new balance is nonnegative. Predict the balance after an exception and identify the invariant that has already been violated.",
+      "rubric_criteria": [
+        "Failure state explained",
+        "Validation ordering",
+        "No assumed rollback"
+      ],
+      "negative_controls": [
+        "decrement-first",
+        "implicit-rollback"
+      ],
+      "replaces_draft_id": "EJ4-076-01",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-076-Q2",
+      "note_id": "EJ15-076",
+      "source_unit_id": "EJ-ITEM-076",
+      "stage": "debug",
+      "original_quest_brief": "A rules updater clears an active map before parsing all incoming entries; one malformed rule throws halfway. Repair using parse-then-publish and test that the previous map remains usable.",
+      "rubric_criteria": [
+        "Snapshot retained on failure",
+        "Validation before commit",
+        "No partial published state"
+      ],
+      "negative_controls": [
+        "partial-update",
+        "stale-reference"
+      ],
+      "replaces_draft_id": "EJ4-076-02",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-076-Q3",
+      "note_id": "EJ15-076",
+      "source_unit_id": "EJ-ITEM-076",
+      "stage": "build",
+      "original_quest_brief": "Build a thread-safe in-memory rules registry that accepts a complete batch, rejects duplicates and nulls, publishes an immutable snapshot and preserves the prior version after validation failure.",
+      "rubric_criteria": [
+        "Correct atomic publish",
+        "Immutable snapshot",
+        "Concurrent reader guarantees"
+      ],
+      "negative_controls": [
+        "duplicate-key",
+        "null-rule"
+      ],
+      "replaces_draft_id": "EJ4-076-03",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-076-Q4",
+      "note_id": "EJ15-076",
+      "source_unit_id": "EJ-ITEM-076",
+      "stage": "defend",
+      "original_quest_brief": "Compare database transaction rollback, immutable-snapshot publish and a distributed Saga for a payment flow that invokes an external gateway. Explain when each does and does not give failure atomicity.",
+      "rubric_criteria": [
+        "External side-effect boundary",
+        "Idempotent compensation",
+        "Reconciliation plan"
+      ],
+      "negative_controls": [
+        "network-rollback-claim",
+        "lost-event"
+      ],
+      "replaces_draft_id": "EJ4-076-04",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-077-Q1",
+      "note_id": "EJ15-077",
+      "source_unit_id": "EJ-ITEM-077",
+      "stage": "predict",
+      "original_quest_brief": "A payment dispatch catches IOException and immediately returns success, while an optional suggestion lookup times out. Predict which fallback is invalid and why the two error policies differ.",
+      "rubric_criteria": [
+        "No false payment success",
+        "Safe optional fallback",
+        "Failure observable"
+      ],
+      "negative_controls": [
+        "success-on-timeout",
+        "fallback-everywhere"
+      ],
+      "replaces_draft_id": "EJ4-077-01",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-077-Q2",
+      "note_id": "EJ15-077",
+      "source_unit_id": "EJ-ITEM-077",
+      "stage": "debug",
+      "original_quest_brief": "A worker has catch(Exception ignored){} and swallows InterruptedException during shutdown. Restore cancellation, retain the cause, and define a single telemetry owner.",
+      "rubric_criteria": [
+        "Restore interrupt flag",
+        "Avoid catch-all",
+        "Preserve diagnostics"
+      ],
+      "negative_controls": [
+        "interrupt-swallowed",
+        "empty-catch"
+      ],
+      "replaces_draft_id": "EJ4-077-02",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-077-Q3",
+      "note_id": "EJ15-077",
+      "source_unit_id": "EJ-ITEM-077",
+      "stage": "build",
+      "original_quest_brief": "Implement a bounded optional lookup with one safe fallback, plus a mandatory payment lookup that propagates IOException; add tests for timeout, unexpected error and success.",
+      "rubric_criteria": [
+        "Explicit fallback precondition",
+        "Mandatory failure propagated",
+        "No unbounded retry"
+      ],
+      "negative_controls": [
+        "mandatory-default",
+        "catch-runtime"
+      ],
+      "replaces_draft_id": "EJ4-077-03",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-077-Q4",
+      "note_id": "EJ15-077",
+      "source_unit_id": "EJ-ITEM-077",
+      "stage": "defend",
+      "original_quest_brief": "Evaluate whether a failed close() on an already consumed read-only stream may be ignored. Contrast it with failure to flush a durable financial write and document the exception-handling boundary.",
+      "rubric_criteria": [
+        "Cleanup consequence",
+        "Data durability obligation",
+        "Reasoned suppression"
+      ],
+      "negative_controls": [
+        "ignore-flush",
+        "silent-cleanup-policy"
+      ],
+      "replaces_draft_id": "EJ4-077-04",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-078-Q1",
+      "note_id": "EJ15-078",
+      "source_unit_id": "EJ-ITEM-078",
+      "stage": "predict",
+      "original_quest_brief": "Two request handlers execute counter++ on a shared volatile int. Predict whether 2000 requested increments guarantee 2000, and explain lost updates independently of visibility.",
+      "rubric_criteria": [
+        "Read-modify-write race",
+        "Volatile visibility",
+        "Linearizable alternative"
+      ],
+      "negative_controls": [
+        "volatile-increment",
+        "atomic-write-fallacy"
+      ],
+      "replaces_draft_id": "EJ4-078-01",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-078-Q2",
+      "note_id": "EJ15-078",
+      "source_unit_id": "EJ-ITEM-078",
+      "stage": "debug",
+      "original_quest_brief": "A worker polls a nonvolatile boolean to stop, while the controller updates it. Diagnose possible nontermination without assuming a particular runtime outcome; repair with volatile or interruption.",
+      "rubric_criteria": [
+        "Happens-before communication",
+        "Safe cancellation",
+        "No timing-based assertion"
+      ],
+      "negative_controls": [
+        "nonvolatile-stop",
+        "thread-stop"
+      ],
+      "replaces_draft_id": "EJ4-078-02",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-078-Q3",
+      "note_id": "EJ15-078",
+      "source_unit_id": "EJ-ITEM-078",
+      "stage": "build",
+      "original_quest_brief": "Implement a thread-safe meter using AtomicLong, and a bounded concurrent update of an immutable config snapshot. Test exact final count after many parallel tasks and safe publication.",
+      "rubric_criteria": [
+        "Atomic compound increments",
+        "Safe snapshot publication",
+        "Bounded deterministic coordination"
+      ],
+      "negative_controls": [
+        "lost-update",
+        "mutable-snapshot"
+      ],
+      "replaces_draft_id": "EJ4-078-03",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-078-Q4",
+      "note_id": "EJ15-078",
+      "source_unit_id": "EJ-ITEM-078",
+      "stage": "defend",
+      "original_quest_brief": "Evaluate when volatile, synchronized, ConcurrentHashMap.compute and LongAdder fit a high-contention counter-plus-invariant design; state what each cannot promise.",
+      "rubric_criteria": [
+        "Correct atomicity granularity",
+        "Consistency versus throughput",
+        "Measurement needs"
+      ],
+      "negative_controls": [
+        "adder-as-transaction",
+        "split-invariant"
+      ],
+      "replaces_draft_id": "EJ4-078-04",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-079-Q1",
+      "note_id": "EJ15-079",
+      "source_unit_id": "EJ-ITEM-079",
+      "stage": "predict",
+      "original_quest_brief": "An observer called during a synchronized traversal removes itself from the same ArrayList. Predict reentrant mutation and why synchronizing the traversal alone does not make callback behavior safe.",
+      "rubric_criteria": [
+        "Reentrant mutation hazard",
+        "Iterator invalidation",
+        "External code boundary"
+      ],
+      "negative_controls": [
+        "alien-in-lock",
+        "reentrant-removal"
+      ],
+      "replaces_draft_id": "EJ4-079-01",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-079-Q2",
+      "note_id": "EJ15-079",
+      "source_unit_id": "EJ-ITEM-079",
+      "stage": "debug",
+      "original_quest_brief": "A checkout notifier holds a lock while calling partner webhooks, delaying registrations and creating an external lock cycle. Refactor to snapshot-under-lock, notify-outside-lock and define error handling.",
+      "rubric_criteria": [
+        "No callback while locked",
+        "Safe subscription semantics",
+        "Callback failure isolation"
+      ],
+      "negative_controls": [
+        "webhook-under-monitor",
+        "lock-leak"
+      ],
+      "replaces_draft_id": "EJ4-079-02",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-079-Q3",
+      "note_id": "EJ15-079",
+      "source_unit_id": "EJ-ITEM-079",
+      "stage": "build",
+      "original_quest_brief": "Create a listener registry with deterministic snapshot notifications and supported removal during callbacks. Test observers that unregister themselves and a listener that throws.",
+      "rubric_criteria": [
+        "Snapshot semantics",
+        "No internal lock during callback",
+        "Failure policy documented"
+      ],
+      "negative_controls": [
+        "live-iterator",
+        "exception-loses-state"
+      ],
+      "replaces_draft_id": "EJ4-079-03",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ15-079-Q4",
+      "note_id": "EJ15-079",
+      "source_unit_id": "EJ-ITEM-079",
+      "stage": "defend",
+      "original_quest_brief": "Compare synchronized listener snapshots, CopyOnWriteArrayList, and asynchronous queue fan-out for low-churn/high-read and high-churn scenarios; address delivery order and queue overload.",
+      "rubric_criteria": [
+        "Workload-aware structure",
+        "Explicit ordering and backpressure",
+        "No fabricated exactly-once guarantee"
+      ],
+      "negative_controls": [
+        "copy-on-every-event",
+        "async-is-durable"
+      ],
+      "replaces_draft_id": "EJ4-079-04",
+      "grader_plan": "Design only; independently reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

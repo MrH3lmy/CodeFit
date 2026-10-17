@@ -1,0 +1,259 @@
+{
+  "schema": "codefit-effective-java-generics/v0.6",
+  "notes": [
+    {
+      "title": "Parametric typing versus raw legacy APIs",
+      "prerequisites": [
+        "classes",
+        "collection-type-parameters"
+      ],
+      "core": "A raw generic type drops compile-time type checks and pushes failures to distant casts; List<?> retains read-only element-type uncertainty without permitting arbitrary insertion. A List<Object> is not a universal supertype of List<String>.",
+      "rules": [
+        "Prefer parameterized types to catch wrong elements at source instead of after retrieval.",
+        "When an API accepts values of unknown element type and does not insert typed elements, a wildcard is safer than a raw type.",
+        "Only null can be inserted through a bare Collection<?> without a capture or stronger type.",
+        "Raw usage remains a legacy interoperability escape hatch, including a class literal or instanceof involving an unbounded form."
+      ],
+      "nuance": [
+        "A List<Object> accepts arbitrary Objects; a List<?> can stand for any list but cannot safely accept those arbitrary values.",
+        "Some legacy interop boundaries need careful localized unchecked bridges, not pervasive raw declarations.",
+        "@SuppressWarnings does not make runtime casts safe."
+      ],
+      "misconception": "Replacing List<?> with List<Object> as if they were interchangeable.",
+      "scene": "A message-inspection API receives List<String>, List<UUID> and List<Long> but only needs to count entries.",
+      "note_id": "EJ6-026",
+      "source_unit_id": "EJ-ITEM-026",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 138,
+      "pdf_page_end_exclusive": 144,
+      "source_body_sha256": "5e815cd54905d0aa2193322fd64f19e3910287331346d8a4688918a42a08ef96",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Targeted item-level authored synthesis, not a certified exhaustive paragraph-level audit."
+    },
+    {
+      "title": "Unchecked-warning triage and proof obligations",
+      "prerequisites": [
+        "java.generics.raw-vs-parameterized"
+      ],
+      "core": "Unchecked warnings signal possible unsound casts or transfers. Remove the cause when possible, otherwise prove the operation safe and suppress only at the narrowest declaration with a specific rationale.",
+      "rules": [
+        "A clean -Xlint:unchecked compilation should be a project goal.",
+        "An unchecked cast may be valid under a privately enforced invariant; document its proof, not just intent.",
+        "Prefer local variable or tiny helper-level suppression to class-wide annotations.",
+        "A suppression that hides subsequent new warnings creates a silent maintenance regression."
+      ],
+      "nuance": [
+        "An unchecked cast warning is not proof that the operation fails at runtime; it is proof the compiler cannot verify it.",
+        "An Object[] backing store cast to E[] needs to stay private and prevent foreign element insertion.",
+        "Compiler-specific lint configurations affect whether warning cleanup is visible."
+      ],
+      "misconception": "Treating a successful -nowarn compilation as proof of type safety.",
+      "scene": "An adapter maps a legacy API returning List into a typed batch of payment reconciliation rows.",
+      "note_id": "EJ6-027",
+      "source_unit_id": "EJ-ITEM-027",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 144,
+      "pdf_page_end_exclusive": 147,
+      "source_body_sha256": "935bfdd884559cd12310eb4505ffb3996fa60912b8cc4d1a44ecc24aef314124",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Targeted item-level authored synthesis, not a certified exhaustive paragraph-level audit."
+    },
+    {
+      "title": "Array reification and generic invariance",
+      "prerequisites": [
+        "java.generics.raw-vs-parameterized",
+        "inheritance-basics"
+      ],
+      "core": "Arrays carry a reified runtime component type and are covariant, so some bad stores fail at runtime; parameterized collections are invariant and mostly erased, which blocks analogous unsafe assignments at compilation.",
+      "rules": [
+        "Assigning a subtype array to a supertype array can compile and still throw ArrayStoreException on insertion.",
+        "List<Integer> cannot be assigned to List<Number> because mutating the latter would compromise the former.",
+        "Generic array creation for a nonreifiable element type is prohibited; prefer List<T> or a carefully justified internal cast.",
+        "Array APIs can still be appropriate for primitives, interop or measured workloads, rather than blanket banning arrays."
+      ],
+      "nuance": [
+        "An array of unbounded-wildcard lists is legal because the component type is reifiable; it is not a normal List<String>[] creation.",
+        "Array runtime stores and generic compile-time checking solve different safety problems.",
+        "A heap pollution warning is a cue to inspect varargs and unchecked bridges."
+      ],
+      "misconception": "Believing arrays and List have the same subtyping rules.",
+      "scene": "A batch parser API accepts a collection of event handlers with different concrete payload types.",
+      "note_id": "EJ6-028",
+      "source_unit_id": "EJ-ITEM-028",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 147,
+      "pdf_page_end_exclusive": 151,
+      "source_body_sha256": "95e50180423a308040a7d24cb0051b5ef40d8dcd6c6633f304c2f076dc03370e",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Targeted item-level authored synthesis, not a certified exhaustive paragraph-level audit."
+    },
+    {
+      "title": "Designing reusable generic containers",
+      "prerequisites": [
+        "java.generics.array-and-invariance",
+        "type-erasure-basics"
+      ],
+      "core": "A container should expose its element type explicitly to callers, preventing client casts. Internal Object[] storage and private checked casts can sometimes support safe implementation, but external additions must honor E.",
+      "rules": [
+        "Make the class generic at its API boundary so push/pop preserve the same type parameter.",
+        "Type erasure prevents new E[] directly; a private Object[] implementation can return E through a carefully isolated unchecked cast.",
+        "Clear unused array slots after pop to avoid unintentionally retaining object references.",
+        "Never expose internal storage as E[] to an unrelated caller when its runtime type cannot support that promise."
+      ],
+      "nuance": [
+        "An internally used unchecked cast is safe only if all paths into storage respect E.",
+        "An ArrayList<E> delegate can avoid manual array casts at a modest different footprint.",
+        "Generic type parameters can be bounded, but bounds should express real operations required by the container."
+      ],
+      "misconception": "Assuming making the signature generic automatically makes an Object[] backing store safe.",
+      "scene": "A retry work queue holds only RetryTask values with consistent push/pop contracts.",
+      "note_id": "EJ6-029",
+      "source_unit_id": "EJ-ITEM-029",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 151,
+      "pdf_page_end_exclusive": 156,
+      "source_body_sha256": "608df5b47b94b0e9f2ad285288fe251f00cad81771fa8f3214ed70a870058e00",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Targeted item-level authored synthesis, not a certified exhaustive paragraph-level audit."
+    },
+    {
+      "title": "Generic methods and recursive bounds",
+      "prerequisites": [
+        "java.generics.reusable-container"
+      ],
+      "core": "Generic methods can express relationships between arguments and result types without raw casts. A recursive bound such as T extends Comparable<? super T> describes safe comparable contracts.",
+      "rules": [
+        "A generic method type parameter is declared before the return type, independent of class genericity.",
+        "A reusable immutable identity function can return its argument, preserving T without creating per-type functions.",
+        "Type inference should keep callers cast-free when their inputs agree with declared method constraints.",
+        "Recursive bounds model comparison among admissible types, not arbitrary objects."
+      ],
+      "nuance": [
+        "Set union typed at E may infer a broader common type only when return expectations allow it.",
+        "An explicit type witness can occasionally guide inference, but should not become everyday noise.",
+        "An unsafe raw identity function is not equivalent to a type-safe generic method."
+      ],
+      "misconception": "Using Object return values where T could preserve caller types.",
+      "scene": "A sorting helper picks the smaller of two comparable versions in a deployment reconciler.",
+      "note_id": "EJ6-030",
+      "source_unit_id": "EJ-ITEM-030",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 156,
+      "pdf_page_end_exclusive": 160,
+      "source_body_sha256": "57e5dcf70e6e508c4a4b53f416afa68621532644bc658d98666665330ea9fc46",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Targeted item-level authored synthesis, not a certified exhaustive paragraph-level audit."
+    },
+    {
+      "title": "Wildcard variance: producers, consumers and capture",
+      "prerequisites": [
+        "java.generics.invariance-and-arrays",
+        "generic-methods"
+      ],
+      "core": "For generic API flexibility, a source producing E often uses ? extends E, while a destination consuming E often uses ? super E. Comparator and Comparable participate as consumers; wildcard capture sometimes needs an internal generic helper.",
+      "rules": [
+        "Iterable<? extends E> can supply E-compatible values while List<? super E> can accept E values.",
+        "List<? extends Number> cannot safely accept an arbitrary Number because its true element subtype is unknown.",
+        "Comparator<? super T> allows comparators for a supertype to order T.",
+        "Avoid using wildcards in simple return types that force callers to reason about capture unless the API needs that flexibility."
+      ],
+      "nuance": [
+        "PECS is a rule of thumb dependent on whether a parameter produces, consumes or both.",
+        "If the caller must place values in and read specific types out, explicit T may be better than a wildcard.",
+        "Unbounded wildcard swap may require a private generic method to capture an unknown but consistent element type."
+      ],
+      "misconception": "Using extends everywhere as if it means any subtype can be appended.",
+      "scene": "An alert delivery batch copies specialized events into a broader sink, then sorts them with a comparator of Event.",
+      "note_id": "EJ6-031",
+      "source_unit_id": "EJ-ITEM-031",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 160,
+      "pdf_page_end_exclusive": 167,
+      "source_body_sha256": "d241f94c6cd2ad68622b354b384dccb26733a30c723f5493434a1bde4ed4c6b8",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Targeted item-level authored synthesis, not a certified exhaustive paragraph-level audit."
+    },
+    {
+      "title": "Varargs, erased generics and safe array handling",
+      "prerequisites": [
+        "java.generics.invariance-and-arrays",
+        "unchecked-warning-proof"
+      ],
+      "core": "A parameterized varargs argument is backed by an array whose runtime type may not enforce its generic element promise. A safe varargs method neither writes incompatible array contents nor leaks that mutable array to untrusted clients.",
+      "rules": [
+        "Heap pollution arises if a variable of a parameterized type points to a value that violates its declared parameterization.",
+        "@SafeVarargs is a promise by the author; the annotation suppresses warnings but does not make an unsafe body safe.",
+        "Check that a varargs method does not expose its array or store values of the wrong parameterized type.",
+        "Prefer Collection or List inputs when a varargs API complicates proof of safety."
+      ],
+      "nuance": [
+        "A non-reifiable generic varargs warning is relevant even when the method signature looks type-safe.",
+        "Storing an array into a field or returning it can invalidate the non-escape proof.",
+        "Heap pollution may produce ClassCastException later in a different method, making diagnosis difficult."
+      ],
+      "misconception": "Adding @SafeVarargs to an arbitrary generic varargs method and treating it as a fix.",
+      "scene": "A batch operation aggregates Lists of event IDs and needs a safe entry point.",
+      "note_id": "EJ6-032",
+      "source_unit_id": "EJ-ITEM-032",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 167,
+      "pdf_page_end_exclusive": 172,
+      "source_body_sha256": "99c13f000a0b763c55e0f95bb5f3c6bce57f7cbc431ebd00c27df2318e6090be",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Targeted item-level authored synthesis, not a certified exhaustive paragraph-level audit."
+    },
+    {
+      "title": "Typesafe heterogeneous maps using type tokens",
+      "prerequisites": [
+        "java.generics.generic-methods",
+        "runtime-type-information"
+      ],
+      "core": "When values have unrelated types, place a type parameter on a token key such as Class<T> rather than parameterizing the entire container. Use key.cast at retrieval and validate insertion when accepting untrusted raw maps.",
+      "rules": [
+        "Map<Class<?>,Object> can hold heterogeneous values but a generic accessor links a Class<T> key to a T result.",
+        "Class<T>.cast checks the runtime class at lookup and can enforce key-value consistency.",
+        "Raw Class misuse can still corrupt such a map; consider checked insertion and boundary validation.",
+        "Parameterized type tokens have limits because List<String>.class does not exist under erasure."
+      ],
+      "nuance": [
+        "A nonnull value may be a subtype of the key type and still pass Class.cast.",
+        "Annotation-style bounded tokens may express a bounded key space where only certain token types are valid.",
+        "Custom typed keys (e.g. Column<T>) can generalize beyond Class key identity."
+      ],
+      "misconception": "Believing Map<Class<?>,Object> alone enforces matching key/value types.",
+      "scene": "An interview grading context stores independent metadata such as Duration, Locale and AttemptId without unsafe casts at call sites.",
+      "note_id": "EJ6-033",
+      "source_unit_id": "EJ-ITEM-033",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 172,
+      "pdf_page_end_exclusive": 178,
+      "source_body_sha256": "ef8668aa8e6f5fee8214bca4118b1799bccb30d65bf37d399989f94bcb378cb7",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "confidence": "technical-draft-needs-peer-review",
+      "note_scope": "Targeted item-level authored synthesis, not a certified exhaustive paragraph-level audit."
+    }
+  ]
+}

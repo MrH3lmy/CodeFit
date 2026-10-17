@@ -1,0 +1,66 @@
+{
+  "schema": "codefit-v0.9-private-source-validation",
+  "source_version": "effective-java-3rd-2018-text-native",
+  "item_count": 5,
+  "body_hashes_verified": 5,
+  "targeted_signals_matched": 25,
+  "full_private_spans_read": 5,
+  "checks": [
+    {
+      "source_unit_id": "EJ-ITEM-044",
+      "pdf_page_start": 220,
+      "pdf_page_end_exclusive": 224,
+      "complete_span_read": true,
+      "body_chars": 10567,
+      "sha256_verified": true,
+      "signal_probe_matches": 5,
+      "independent_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-045",
+      "pdf_page_start": 224,
+      "pdf_page_end_exclusive": 231,
+      "complete_span_read": true,
+      "body_chars": 16756,
+      "sha256_verified": true,
+      "signal_probe_matches": 5,
+      "independent_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-046",
+      "pdf_page_start": 231,
+      "pdf_page_end_exclusive": 237,
+      "complete_span_read": true,
+      "body_chars": 14586,
+      "sha256_verified": true,
+      "signal_probe_matches": 5,
+      "independent_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-047",
+      "pdf_page_start": 237,
+      "pdf_page_end_exclusive": 243,
+      "complete_span_read": true,
+      "body_chars": 12601,
+      "sha256_verified": true,
+      "signal_probe_matches": 5,
+      "independent_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-048",
+      "pdf_page_start": 243,
+      "pdf_page_end_exclusive": 248,
+      "complete_span_read": true,
+      "body_chars": 10681,
+      "sha256_verified": true,
+      "signal_probe_matches": 5,
+      "independent_review": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "limitations": "Full text source spans read, locator and body hashes checked. No independent semantic or educational approval; source text excluded."
+}

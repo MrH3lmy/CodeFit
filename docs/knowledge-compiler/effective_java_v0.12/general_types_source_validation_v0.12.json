@@ -1,0 +1,72 @@
+{
+  "schema": "codefit-general-types-source-validation/v0.12",
+  "items_checked": 5,
+  "complete_sections_read": 5,
+  "body_hashes_verified": 5,
+  "targeted_source_signals_matched": 25,
+  "checks": [
+    {
+      "source_unit_id": "EJ-ITEM-060",
+      "pdf_page_start": 291,
+      "pdf_page_end_exclusive": 294,
+      "source_body_chars": 4935,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "technical_signal_checks": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-061",
+      "pdf_page_start": 294,
+      "pdf_page_end_exclusive": 297,
+      "source_body_chars": 7136,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "technical_signal_checks": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-062",
+      "pdf_page_start": 297,
+      "pdf_page_end_exclusive": 300,
+      "source_body_chars": 5699,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "technical_signal_checks": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-063",
+      "pdf_page_start": 300,
+      "pdf_page_end_exclusive": 301,
+      "source_body_chars": 2303,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "technical_signal_checks": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-064",
+      "pdf_page_start": 301,
+      "pdf_page_end_exclusive": 303,
+      "source_body_chars": 4849,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "technical_signal_checks": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "author_validation_only": true,
+  "publisher_text_exported": false,
+  "limitations": "Digest and short signal matching do not amount to independently approved semantic correctness."
+}

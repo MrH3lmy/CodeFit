@@ -1,0 +1,32 @@
+{
+  "schema": "codefit-knowledge-coverage/v0.3",
+  "status": "DRAFT_NOT_RELEASED",
+  "sources": 5,
+  "major_units_discovered": 504,
+  "native_pdf_bookmarks": 1334,
+  "source_atoms_from_bookmarks": 1095,
+  "major_source_atoms": 504,
+  "nested_bookmark_atoms": 591,
+  "pdf_pages_structurally_scanned": 4704,
+  "pdf_pages_total": 4704,
+  "pages_without_extractable_text": 484,
+  "image_bearing_pages": 1544,
+  "effective_java_image_only_pages": 458,
+  "verified_example_visual_pages_effective_java": [
+    445,
+    456,
+    651
+  ],
+  "draft_capsules": 14,
+  "draft_missions": 59,
+  "distinct_major_units_linked_to_drafts": 92,
+  "draft_mapping_percent_of_major_units": 18.25,
+  "source_units_independently_reviewed": 0,
+  "production_mastery_graders": 0,
+  "verified_book_semantic_coverage_percent": 0,
+  "java21_fact_checks_passed": 26,
+  "python_unit_tests_passed": 18,
+  "prior_java21_equality_checks_passed": 11,
+  "notice": "Page presence and major-unit mapping are NOT knowledge/mastery coverage; source paragraphs, unbookmarked interview questions, code images, and all lesson correctness require further review.",
+  "original_PDFs_or_excerpts_committed": false
+}

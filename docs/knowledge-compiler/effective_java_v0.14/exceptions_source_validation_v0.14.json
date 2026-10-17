@@ -1,0 +1,71 @@
+{
+  "schema": "codefit-exceptions-source-validation/v0.14",
+  "items_checked": 5,
+  "complete_sections_read": 5,
+  "body_hashes_verified": 5,
+  "targeted_signals_matched": 25,
+  "checks": [
+    {
+      "source_unit_id": "EJ-ITEM-070",
+      "pdf_page_start": 317,
+      "pdf_page_end_exclusive": 319,
+      "body_chars": 5687,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-071",
+      "pdf_page_start": 319,
+      "pdf_page_end_exclusive": 321,
+      "body_chars": 4499,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-072",
+      "pdf_page_start": 321,
+      "pdf_page_end_exclusive": 323,
+      "body_chars": 5138,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-073",
+      "pdf_page_start": 323,
+      "pdf_page_end_exclusive": 325,
+      "body_chars": 4143,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-074",
+      "pdf_page_start": 325,
+      "pdf_page_end_exclusive": 327,
+      "body_chars": 4356,
+      "hash_verified": true,
+      "locator_verified": true,
+      "complete_section_read": true,
+      "technical_signals_checked": 5,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "independent_semantic_review": false,
+  "limitations": "Author identity and targeted source checks, not independent semantic verification. Publisher paragraphs and book code excluded."
+}

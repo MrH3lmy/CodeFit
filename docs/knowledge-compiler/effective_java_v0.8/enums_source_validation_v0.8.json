@@ -1,0 +1,84 @@
+{
+  "schema": "codefit-effective-java-v8-enums-extra-source-signals",
+  "item_count": 8,
+  "source_hashes_reverified": 8,
+  "targeted_anchor_checks": 34,
+  "pdf_page_count": 413,
+  "source_version_verified": true,
+  "coverage_interpretation": "Full item spans were loaded and short signal probes matched. This does not establish independent claim-by-claim review.",
+  "all_independently_reviewed": false,
+  "item_checks": [
+    {
+      "unit": "EJ-ITEM-034",
+      "source_hash_verified": true,
+      "locator_verified": true,
+      "targeted_signal_matches": 5,
+      "full_item_span_loaded": true,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-035",
+      "source_hash_verified": true,
+      "locator_verified": true,
+      "targeted_signal_matches": 4,
+      "full_item_span_loaded": true,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-036",
+      "source_hash_verified": true,
+      "locator_verified": true,
+      "targeted_signal_matches": 4,
+      "full_item_span_loaded": true,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-037",
+      "source_hash_verified": true,
+      "locator_verified": true,
+      "targeted_signal_matches": 4,
+      "full_item_span_loaded": true,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-038",
+      "source_hash_verified": true,
+      "locator_verified": true,
+      "targeted_signal_matches": 4,
+      "full_item_span_loaded": true,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-039",
+      "source_hash_verified": true,
+      "locator_verified": true,
+      "targeted_signal_matches": 5,
+      "full_item_span_loaded": true,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-040",
+      "source_hash_verified": true,
+      "locator_verified": true,
+      "targeted_signal_matches": 4,
+      "full_item_span_loaded": true,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-041",
+      "source_hash_verified": true,
+      "locator_verified": true,
+      "targeted_signal_matches": 4,
+      "full_item_span_loaded": true,
+      "independently_reviewed": false,
+      "publisher_text_exported": false
+    }
+  ]
+}

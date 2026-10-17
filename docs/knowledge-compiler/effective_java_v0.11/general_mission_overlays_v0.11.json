@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-general-programming-mission-overlays/v0.11",
+  "missions": [
+    {
+      "mission_id": "EJ11-055-Q1",
+      "note_id": "EJ11-055",
+      "source_unit_id": "EJ-ITEM-055",
+      "stage": "predict",
+      "original_quest_brief": "A fraud-rule lookup returns Optional.of(found) or Optional.empty(). Predict when orElse(expensiveFallback()) and orElseGet(this::expensiveFallback) invoke the fallback, plus behavior on null Optional returns.",
+      "rubric_criteria": [
+        "Eager versus lazy fallback",
+        "No null Optional",
+        "Explicit normal absence"
+      ],
+      "negative_controls": [
+        "eager-fallback",
+        "null-optional"
+      ],
+      "replaces_draft_id": "EJ4-055-01",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-055-Q2",
+      "note_id": "EJ11-055",
+      "source_unit_id": "EJ-ITEM-055",
+      "stage": "debug",
+      "original_quest_brief": "A checkout service returns Optional<List<Alert>> for a successful query and sometimes null from an Optional-returning method. Redesign absence, empty-list and remote-failure signals without hiding exceptions.",
+      "rubric_criteria": [
+        "Distinguishes valid empty vs missing",
+        "No null Optional return",
+        "Failure remains explicit"
+      ],
+      "negative_controls": [
+        "optional-collection-smell",
+        "silent-network-failure"
+      ],
+      "replaces_draft_id": "EJ4-055-02",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-055-Q3",
+      "note_id": "EJ11-055",
+      "source_unit_id": "EJ-ITEM-055",
+      "stage": "build",
+      "original_quest_brief": "Implement a policy lookup with Optional<Policy>, lazy fallback generation, and an OptionalInt numeric lookup; test empty, present, null input and that expensive defaults run only when required.",
+      "rubric_criteria": [
+        "Correct factory choice",
+        "Lazy fallback instrumentation",
+        "Primitive absence tests"
+      ],
+      "negative_controls": [
+        "null-factory-input",
+        "eager-default"
+      ],
+      "replaces_draft_id": "EJ4-055-03",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-055-Q4",
+      "note_id": "EJ11-055",
+      "source_unit_id": "EJ-ITEM-055",
+      "stage": "defend",
+      "original_quest_brief": "A high-frequency API proposes replacing nullable results with Optional for every field and collection, claiming guaranteed better throughput. Evaluate readability, representation costs, API intent and the measurements needed.",
+      "rubric_criteria": [
+        "Contextual absence semantics",
+        "Avoids unsupported performance claims",
+        "Recognizes selective Optional fields"
+      ],
+      "negative_controls": [
+        "boxed-primitive-overhead",
+        "premature-optimization"
+      ],
+      "replaces_draft_id": "EJ4-055-04",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-056-Q1",
+      "note_id": "EJ11-056",
+      "source_unit_id": "EJ-ITEM-056",
+      "stage": "predict",
+      "original_quest_brief": "Given a generic public paging API with an unescaped angle bracket, a missing type parameter tag and duplicate method summaries, predict documentation failures versus readability issues.",
+      "rubric_criteria": [
+        "Doclint versus semantic risk",
+        "Correct tag purpose",
+        "Summary uniqueness"
+      ],
+      "negative_controls": [
+        "raw-angle-bracket",
+        "missing-type-param"
+      ],
+      "replaces_draft_id": "EJ4-056-01",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-056-Q2",
+      "note_id": "EJ11-056",
+      "source_unit_id": "EJ-ITEM-056",
+      "stage": "debug",
+      "original_quest_brief": "A documented query promises null on no data while the code returns an empty list and mutation throws UnsupportedOperationException. Repair the public contract and add tests before publishing.",
+      "rubric_criteria": [
+        "Docs and implementation align",
+        "Mutability documented",
+        "No accidental API guarantee"
+      ],
+      "negative_controls": [
+        "null-vs-empty",
+        "undocumented-mutation"
+      ],
+      "replaces_draft_id": "EJ4-056-02",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-056-Q3",
+      "note_id": "EJ11-056",
+      "source_unit_id": "EJ-ITEM-056",
+      "stage": "build",
+      "original_quest_brief": "Write an original documented public RangeView<T> API and package documentation covering @param, @return, @throws, @param <T>, immutability and example-safe {@code}; run Java 21 javadoc doclint and inspect HTML.",
+      "rubric_criteria": [
+        "Javadoc tool completes",
+        "Contract includes edge cases",
+        "HTML renders readable"
+      ],
+      "negative_controls": [
+        "missing-tag",
+        "html-escape"
+      ],
+      "replaces_draft_id": "EJ4-056-03",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-056-Q4",
+      "note_id": "EJ11-056",
+      "source_unit_id": "EJ-ITEM-056",
+      "stage": "defend",
+      "original_quest_brief": "A pull request copies Java 9-era Javadoc command-line flags and asserts doclint passing is enough to ship a concurrency-sensitive API. Establish evidence and approval boundaries.",
+      "rubric_criteria": [
+        "Current JDK version verified",
+        "Docs checked against executable behavior",
+        "Concurrency guarantee requires design proof"
+      ],
+      "negative_controls": [
+        "obsolete-switch",
+        "doclint-not-semantic"
+      ],
+      "replaces_draft_id": "EJ4-056-04",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-057-Q1",
+      "note_id": "EJ11-057",
+      "source_unit_id": "EJ-ITEM-057",
+      "stage": "predict",
+      "original_quest_brief": "Two independent ingestion loops use similarly named iterators; the second accidentally tests the first exhausted iterator. Explain why the erroneous program compiles with outer declarations and how loop-local names change diagnostics.",
+      "rubric_criteria": [
+        "Traces stale iterator",
+        "Identifies lexical scope",
+        "Suggests loop-limited declaration"
+      ],
+      "negative_controls": [
+        "stale-iterator",
+        "silent-zero-rows"
+      ],
+      "replaces_draft_id": "EJ4-057-01",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-057-Q2",
+      "note_id": "EJ11-057",
+      "source_unit_id": "EJ-ITEM-057",
+      "stage": "debug",
+      "original_quest_brief": "A reconciliation function declares an output iterator and expensive page limit before authorization succeeds, then reuses both after a retry. Refactor for minimal scope while preserving checked exceptions.",
+      "rubric_criteria": [
+        "No work before authorization",
+        "Localizes mutable state",
+        "Correct checked-exception boundary"
+      ],
+      "negative_controls": [
+        "premature-initialization",
+        "cached-stale-limit"
+      ],
+      "replaces_draft_id": "EJ4-057-02",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-057-Q3",
+      "note_id": "EJ11-057",
+      "source_unit_id": "EJ-ITEM-057",
+      "stage": "build",
+      "original_quest_brief": "Implement two independent paginated scans with separately scoped loop variables and an immutable per-pass total; test empty and populated pages and ensure no stale cursor is consulted.",
+      "rubric_criteria": [
+        "Correct loop scopes",
+        "Correct totals on distinct pages",
+        "No mutable cross-pass iterator"
+      ],
+      "negative_controls": [
+        "empty-first-page",
+        "stale-cursor"
+      ],
+      "replaces_draft_id": "EJ4-057-03",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-057-Q4",
+      "note_id": "EJ11-057",
+      "source_unit_id": "EJ-ITEM-057",
+      "stage": "defend",
+      "original_quest_brief": "A style rule proposes replacing every for loop with while loops and hoisting all state for debugging convenience. Defend concise intentional scopes and identify exceptions.",
+      "rubric_criteria": [
+        "Discusses observability without exposing state",
+        "Recognizes necessary wider scope",
+        "Avoids dogmatic refactoring"
+      ],
+      "negative_controls": [
+        "scope-leak",
+        "mutable-bound"
+      ],
+      "replaces_draft_id": "EJ4-057-04",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-058-Q1",
+      "note_id": "EJ11-058",
+      "source_unit_id": "EJ-ITEM-058",
+      "stage": "predict",
+      "original_quest_brief": "A risk-rule generator combines three regions and two severity levels. Predict output size when an outer iterator is mistakenly advanced for every inner element, then compare with nested enhanced-for.",
+      "rubric_criteria": [
+        "Correct Cartesian product count",
+        "Explains wrong advancement",
+        "Correct iteration boundaries"
+      ],
+      "negative_controls": [
+        "outer-advance",
+        "silent-truncation"
+      ],
+      "replaces_draft_id": "EJ4-058-01",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-058-Q2",
+      "note_id": "EJ11-058",
+      "source_unit_id": "EJ-ITEM-058",
+      "stage": "debug",
+      "original_quest_brief": "A listener cleanup loop removes elements directly from an ArrayList inside enhanced-for and sometimes throws ConcurrentModificationException. Replace with removeIf or a supported iterator removal policy.",
+      "rubric_criteria": [
+        "No structural modification trap",
+        "Supported deletion mechanism",
+        "Concurrent update policy noted"
+      ],
+      "negative_controls": [
+        "direct-list-remove",
+        "unsupported-iterator-remove"
+      ],
+      "replaces_draft_id": "EJ4-058-02",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-058-Q3",
+      "note_id": "EJ11-058",
+      "source_unit_id": "EJ-ITEM-058",
+      "stage": "build",
+      "original_quest_brief": "Implement a deterministic region×severity work-plan enumerator using nested enhanced-for, plus a separately indexed two-list zip that handles different lengths explicitly.",
+      "rubric_criteria": [
+        "All cross-product pairs",
+        "Zip length contract",
+        "No shared cursor state"
+      ],
+      "negative_controls": [
+        "unequal-zip",
+        "outer-cursor-crossing"
+      ],
+      "replaces_draft_id": "EJ4-058-03",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-058-Q4",
+      "note_id": "EJ11-058",
+      "source_unit_id": "EJ-ITEM-058",
+      "stage": "defend",
+      "original_quest_brief": "A teammate wants enhanced-for everywhere including in-place indexed updates, event deletion and synchronized array traversal. Identify valid exceptions and propose tests.",
+      "rubric_criteria": [
+        "Distinguishes positional operations",
+        "Valid deletion policy",
+        "Explains iteration performance caveat"
+      ],
+      "negative_controls": [
+        "mutation-while-iterating",
+        "parallel-iterator-drift"
+      ],
+      "replaces_draft_id": "EJ4-058-04",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-059-Q1",
+      "note_id": "EJ11-059",
+      "source_unit_id": "EJ-ITEM-059",
+      "stage": "predict",
+      "original_quest_brief": "A promotional token service uses Math.abs(nextInt()) % n and a test replay uses a random source without a fixed seed. Predict overflow/bias, security and reproducibility failures.",
+      "rubric_criteria": [
+        "Recognizes nonuniform mapping",
+        "Distinguishes cryptographic use",
+        "Explains reproducible seed"
+      ],
+      "negative_controls": [
+        "integer-min-value",
+        "noncryptographic-token"
+      ],
+      "replaces_draft_id": "EJ4-059-01",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-059-Q2",
+      "note_id": "EJ11-059",
+      "source_unit_id": "EJ-ITEM-059",
+      "stage": "debug",
+      "original_quest_brief": "A high-throughput worker chooses ThreadLocalRandom for password reset tokens and implements its own stream byte-copy loop without proper resource ownership. Replace both with appropriate platform contracts.",
+      "rubric_criteria": [
+        "Uses cryptographic API",
+        "Defines resource ownership",
+        "Handles I/O failures"
+      ],
+      "negative_controls": [
+        "guessable-token",
+        "unclosed-resource"
+      ],
+      "replaces_draft_id": "EJ4-059-02",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-059-Q3",
+      "note_id": "EJ11-059",
+      "source_unit_id": "EJ-ITEM-059",
+      "stage": "build",
+      "original_quest_brief": "Build an original bounded deterministic test-event selector using RandomGenerator seeded for reproducibility, and a separate SecureRandom-backed token source; test bounds, determinism and distinct roles without assuming security-output repeatability.",
+      "rubric_criteria": [
+        "Range contract",
+        "Deterministic unit test",
+        "Crypto use separated"
+      ],
+      "negative_controls": [
+        "biased-modulo",
+        "fixed-secure-seed"
+      ],
+      "replaces_draft_id": "EJ4-059-03",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ11-059-Q4",
+      "note_id": "EJ11-059",
+      "source_unit_id": "EJ-ITEM-059",
+      "stage": "defend",
+      "original_quest_brief": "An optimization proposal cites a 2018 laptop benchmark and introduces a custom random allocator plus byte-transfer code on Java 21. Specify library audit, workload benchmark and threat model before approving.",
+      "rubric_criteria": [
+        "Current library fit",
+        "Workload evidence over folklore",
+        "Security and API maintenance tradeoffs"
+      ],
+      "negative_controls": [
+        "historic-speed-claim",
+        "handrolled-rng"
+      ],
+      "replaces_draft_id": "EJ4-059-04",
+      "grader_plan": "Original conceptual rubric only; held-out production learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

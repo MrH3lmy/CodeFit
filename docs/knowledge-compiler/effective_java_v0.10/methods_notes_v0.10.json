@@ -1,0 +1,195 @@
+{
+  "schema": "codefit-methods-notes/v0.10",
+  "notes": [
+    {
+      "title": "Enforce input contracts before state can become invalid",
+      "prerequisites": [
+        "public API contracts",
+        "exceptions",
+        "state invariants",
+        "failure atomicity"
+      ],
+      "core": "State the legitimate input domain explicitly. Reject invalid parameters at the boundary, especially when an argument is retained for deferred use, without adding arbitrary restrictions or expensive redundant pre-scans.",
+      "rules": [
+        "Use Objects.requireNonNull for required references and document the externally observable null contract.",
+        "Choose a documented invalid-argument exception that matches the abstraction; distinguish malformed ranges, indexes, and null references.",
+        "Validate constructor inputs and deferred callbacks before changing state or publishing objects.",
+        "Use Objects.checkIndex/checkFromToIndex/checkFromIndexSize for their applicable half-open and length-based integer ranges; do not mistake them for arbitrary inclusive-range validators.",
+        "Assertions in internal helpers document programmer invariants but are disabled by default; never substitute them for public input validation.",
+        "Avoid duplicate expensive work when the computation reliably and promptly validates with the specified exception and cannot compromise state."
+      ],
+      "nuance": [
+        "Validate offset and size together using overflow-safe arithmetic rather than offset + size when int overflow can hide a bad range.",
+        "Exception translation is suitable if a delegated operation rejects an invalid parameter using an exception inconsistent with the published contract.",
+        "Fail-fast validation is distinct from trying to prevalidate every possible I/O or concurrency outcome.",
+        "A non-null value may still violate a domain invariant such as negative amount, unknown account or invalid currency code.",
+        "requireNonNullElse and requireNonNullElseGet (available in Java 21) are fallback policies, not substitutions when null should be rejected."
+      ],
+      "misconception": "Because internal assertion checks passed locally, they will protect an exported API when assertions are disabled in production.",
+      "production_context": "An installment-plan constructor validates amount and currency before making an immutable rule object; the range-query endpoint rejects impossible indices without changing stored state.",
+      "java21_delta": "Java 21 retains Objects.requireNonNull and Java 9-introduced range checking APIs; no reliance on enabled assertions or unsupported inclusive-end semantics.",
+      "note_id": "EJ10-049",
+      "source_unit_id": "EJ-ITEM-049",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 248,
+      "pdf_page_end_exclusive": 252,
+      "source_body_sha256": "f014d19fcbae8e1f83d2b57b37b09bcb94d3d11ef34c11d2d4e12e6462a585ca",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis. Full item sections were read; independent claim-by-claim review not done."
+    },
+    {
+      "title": "Make method signatures hard to misuse and easy to compose",
+      "prerequisites": [
+        "interface substitution",
+        "records",
+        "enums",
+        "method naming"
+      ],
+      "core": "An API signature is an error-prevention mechanism: keep names consistent, keep parameter groups short and meaningful, and expose the weakest useful types rather than one concrete implementation.",
+      "rules": [
+        "Use recognizable verbs with consistent package conventions and keep each convenience method justified by real usage.",
+        "Avoid long lists of same-typed parameters that can be silently transposed; represent a cohesive concept as a named immutable value.",
+        "Use smaller orthogonal operations when composition is clearer than one gigantic method.",
+        "For many optional inputs, consider a request object or staged builder with a single validated execution boundary.",
+        "Accept Map/List or other suitable interfaces instead of forcing HashMap/ArrayList at the signature.",
+        "Prefer a small enum over an ambiguous boolean switch unless the method name itself makes the boolean unambiguous."
+      ],
+      "nuance": [
+        "The suggested small parameter count is a design heuristic, not a compiler-enforced limit.",
+        "A record groups parameters concisely in Java 21, but the compact constructor still needs invariants and public field-name compatibility thought.",
+        "A builder can create invalid intermediate states; validate before execution and avoid leaking partial operations.",
+        "Excess convenience overloads increase API surface, overload ambiguity and compatibility burden.",
+        "Java 21 SequencedCollection may help order-aware contracts but should not be used if ordinary Collection expresses the requirement."
+      ],
+      "misconception": "A method with many primitive or String parameters is safe because each call compiles and the IDE shows the argument labels.",
+      "production_context": "A refund request uses an immutable MoneyAmount plus a RefundMode enum; a reconciliation report accepts Map rather than requiring a specific implementation.",
+      "java21_delta": "Java 21 records and sealed types offer concise parameters and modes beyond the book-era API toolkit, without changing the core advice on cohesion and interface types.",
+      "note_id": "EJ10-051",
+      "source_unit_id": "EJ-ITEM-051",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 257,
+      "pdf_page_end_exclusive": 259,
+      "source_body_sha256": "7c382864c90713d481beb5cd9854122298050d77ecb2e922853c064b348827b1",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis. Full item sections were read; independent claim-by-claim review not done."
+    },
+    {
+      "title": "Avoid overload surprises: static signatures versus dynamic overrides",
+      "prerequisites": [
+        "static overload selection",
+        "virtual dispatch",
+        "autoboxing",
+        "functional interfaces"
+      ],
+      "core": "Method overload selection uses compile-time argument types, whereas instance overriding dispatches on runtime receiver type. Design public overloads so these distinct rules never create surprising domain behavior.",
+      "rules": [
+        "Do not expect overload selection to perform runtime subclass classification; use one polymorphic operation or an explicit type test when required.",
+        "Prefer different method names to same-arity overloads whose argument sets overlap.",
+        "Treat overloads involving primitives, boxed wrappers and generic collections as possible behavioral traps.",
+        "Avoid overloads with different functional-interface targets in the same position, particularly with implicit lambdas or method references.",
+        "When compatibility forces overlapping overloads, delegate toward one canonical implementation and preserve equivalent behavior on common inputs.",
+        "A Java constructor cannot be overridden; use descriptive static factories if multiple construction routes are confusing."
+      ],
+      "nuance": [
+        "A cast or explicit target type can change overload selection without changing the runtime object.",
+        "A null literal can be ambiguous between unrelated reference overloads; named methods avoid the trap.",
+        "List.remove(int) and List.remove(Object) differ by index and value; a boxed Integer argument matters.",
+        "Interface default methods and static method overloads still obey their distinct resolution rules; test the actual selected contract.",
+        "Pattern matching for instanceof in Java 21 can simplify explicit type dispatch but is not magic runtime overload selection."
+      ],
+      "misconception": "The most specific runtime subtype determines which overloaded method is invoked, just like overriding.",
+      "production_context": "An event router originally exposes overloaded register for incompatible handler interfaces; the corrected router names subscriptions by contract and dispatches event subtypes through polymorphism.",
+      "java21_delta": "Java 21 pattern matching and lambdas add expressive code but overload resolution remains statically driven; current javac warnings and ambiguous-target checks still matter.",
+      "note_id": "EJ10-052",
+      "source_unit_id": "EJ-ITEM-052",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 259,
+      "pdf_page_end_exclusive": 266,
+      "source_body_sha256": "fa326c716108c4a067abf366cd1f7e66b62d6452569eb513776216d01117974a",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis. Full item sections were read; independent claim-by-claim review not done."
+    },
+    {
+      "title": "Use varargs only when variable arity is the contract",
+      "prerequisites": [
+        "array creation",
+        "method signatures",
+        "heap pollution",
+        "overloading"
+      ],
+      "core": "A varargs parameter is an array-based call convenience, not an assurance of non-empty input or zero allocation. Make required arguments regular parameters and use specialized fast paths only when measurement warrants them.",
+      "rules": [
+        "Design a method requiring one input as first plus rest... to reject zero-argument calls at compile time.",
+        "Document whether zero values and a null supplied array have meaning; varargs calls can pass a null array explicitly.",
+        "Beware of argument-array creation and possible allocations when calling variable-arity APIs on hot paths.",
+        "Do not introduce a cluster of fixed-arity overloads based on hypothetical performance; measure representative workload first.",
+        "Handle generic varargs with heap-pollution warnings carefully and apply @SafeVarargs only when the implementation is actually safe.",
+        "Avoid unsafe writes to arrays that represent parameterized types and avoid exposing the mutable varargs array."
+      ],
+      "nuance": [
+        "Fixed-arity overload dispatch may outrank a varargs match and can change behavior unexpectedly.",
+        "Calls passing an array directly can avoid an extra packed-varargs array, depending on overload and compilation path; do not promise an allocation count.",
+        "Java 21 List.of allows zero or many inputs but rejects null elements; that behavior is separate from varargs arity.",
+        "An explicit first element ensures at least one argument statically, but the first reference might still be null and require validation.",
+        "Static factory and constructor APIs often benefit from named collection alternatives if varargs makes validation ambiguous."
+      ],
+      "misconception": "Using T... automatically ensures at least one value and costs the same as ordinary fixed parameters.",
+      "production_context": "A reconciliation batch request requires one transaction ID plus optional others, and hot-path routing overloads are added only after realistic allocation profiling.",
+      "java21_delta": "Java 21 keeps varargs packing rules and @SafeVarargs safeguards; avoid treating a benchmark from the Java 9 era as a portable allocation or speed guarantee.",
+      "note_id": "EJ10-053",
+      "source_unit_id": "EJ-ITEM-053",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 266,
+      "pdf_page_end_exclusive": 268,
+      "source_body_sha256": "3da497a28bf652c0173f0cdbeb7f586c0574d33b4f3cb2306804c55436c1ac10",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis. Full item sections were read; independent claim-by-claim review not done."
+    },
+    {
+      "title": "Use empty container results to make absence safe and consistent",
+      "prerequisites": [
+        "Collection contract",
+        "arrays",
+        "immutability",
+        "API nullability"
+      ],
+      "core": "For a valid query yielding zero elements, return an empty collection or array rather than a null sentinel; callers can iterate and compose operations without a hidden null branch.",
+      "rules": [
+        "Return an empty List, Set, Map or zero-length array for successful empty results instead of null.",
+        "Choose mutability explicitly: List.of() and Collections.emptyList() are immutable, while a fresh ArrayList supports mutation.",
+        "Avoid exposing internal mutable collections or arrays when snapshot semantics are required; copy defensively even on nonempty results.",
+        "For typed arrays, toArray(new T[0]) or toArray(T[]::new) give proper element types; profile any optimization claims.",
+        "Do not assume an empty collection is the same as an absent resource, failed lookup or denied operation—use distinct domain outcomes for those.",
+        "Maintain the documented empty-result contract consistently across pagination, filtered searches and optional query fields."
+      ],
+      "nuance": [
+        "A shared empty immutable container can be reused safely; an empty mutable singleton would allow callers to corrupt each other.",
+        "The behavior of toArray(new T[0]) is useful in modern Java; pre-sizing is not a universal performance win or universal loss.",
+        "Java 21 Stream.toList() also returns an unmodifiable list; it is not interchangeable with every mutable collection result.",
+        "Collections.emptyList() allows a typed empty view without array allocation but does not imply a particular implementation.",
+        "For Optional<List<T>>, empty Optional can indicate no aggregate and present empty List can indicate an aggregate with zero elements—separate policy decisions."
+      ],
+      "misconception": "Returning null for no matches is a zero-cost optimization and consumers will reliably remember every null check.",
+      "production_context": "A merchant transaction search returns an immutable empty list for a valid filter with no rows while a missing merchant is a separate not-found outcome.",
+      "java21_delta": "Java 21 List.of, List.copyOf, Collection.toArray(IntFunction), Stream.toList and records support clean empty-result contracts; do not use performance folklore as a correctness argument.",
+      "note_id": "EJ10-054",
+      "source_unit_id": "EJ-ITEM-054",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 268,
+      "pdf_page_end_exclusive": 270,
+      "source_body_sha256": "282ef81bba1501a6422d4e9d352a2c0f072623408e38d6e4f5bce3fbea6d188b",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis. Full item sections were read; independent claim-by-claim review not done."
+    }
+  ]
+}

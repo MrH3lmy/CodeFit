@@ -1,0 +1,200 @@
+{
+  "schema": "codefit-general-programming-notes/v0.11",
+  "notes": [
+    {
+      "title": "Use Optional for a meaningful, non-exceptional missing value",
+      "prerequisites": [
+        "nullability contracts",
+        "exceptions",
+        "generics",
+        "streams"
+      ],
+      "core": "Represent an ordinary possibly-absent result with a non-null Optional return when callers genuinely need to choose an absence policy; keep collections and failed operations as separate contracts.",
+      "rules": [
+        "An Optional-returning function must never itself return null; use empty(), of() or ofNullable() according to the input contract.",
+        "Favor orElseGet for expensive fallback work: orElse evaluates its fallback expression even when a value exists.",
+        "Use map, flatMap, filter and stream to compose presence-aware operations without unsafe get() calls.",
+        "Prefer an empty collection/array for a successful zero-result query, not an Optional wrapping the collection as a default design.",
+        "Use OptionalInt, OptionalLong and OptionalDouble where primitive absence has useful meaning and avoid unnecessary boxed Optional<Integer>.",
+        "Treat exceptional failures and absent normal results differently, and document which cases correspond to each."
+      ],
+      "nuance": [
+        "Returning Optional is a design trade-off with possible allocation and indirection costs; measure before optimizing, and never claim universal speed advantages.",
+        "An Optional is usually not a suitable key or value in a collection: it can create two meanings of absent and complicate lookups.",
+        "Optional as an object field is occasionally justified by complex domain modeling, not categorically forbidden.",
+        "Optional.orElseThrow() without a supplier is available in Java 21; this does not make get() safe on empty containers.",
+        "Optional.map converts a null mapper result to an empty Optional; flatMap expects a non-null Optional result and can reject null.",
+        "An Optional return may force clients to address absence, but Java permits intentionally ignoring it; code review still matters."
+      ],
+      "misconception": "An Optional wrapper automatically makes every null and missing-data scenario safe, including collections and internal fields.",
+      "production_context": "A fraud-scoring cache returns Optional<RiskRule> for an unknown rule ID, an empty List for a valid query with no matches, and an explicit error for a failed remote lookup.",
+      "java21_delta": "Java 21 provides no-arg orElseThrow(), Optional.stream() and primitive optional specializations; absence semantics from the Java 9-era text still apply. Benchmark allocation claims on the current JDK.",
+      "note_id": "EJ11-055",
+      "source_unit_id": "EJ-ITEM-055",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 270,
+      "pdf_page_end_exclusive": 275,
+      "source_body_sha256": "48f072b854e247b441a0bb6f80b0b12028d848c735da2626cbcc5b78ddb58fd6",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis from complete private item section. Author verification only; no independent claim-by-claim review."
+    },
+    {
+      "title": "Publish API contracts that can survive implementation changes",
+      "prerequisites": [
+        "Javadoc basics",
+        "exception contracts",
+        "generic types",
+        "public API design"
+      ],
+      "core": "Document the observable behavior of every exported API element, including preconditions, return meaning, failure policy and concurrency assumptions; validate both generated HTML and its rendering.",
+      "rules": [
+        "Give public types and methods distinct concise summary lines that describe the contract instead of internal implementation details.",
+        "Document every public method parameter, return value and relevant thrown exception, including invalid input preconditions.",
+        "Document generic type parameters and public enum constants; use package-info.java and module-info.java when appropriate.",
+        "Use {@code} for literal source snippets and {@literal} for prose containing HTML-sensitive characters, and inspect the generated HTML.",
+        "Explain thread-safety, mutability, optional absence and serialization contracts when clients need to know them.",
+        "When inheritance is deliberately supported, document extension hooks and self-use behavior separately from the client contract."
+      ],
+      "nuance": [
+        "Java 21 Javadoc generates HTML5 by default; do not reproduce historic -html5 switches as mandatory current guidance.",
+        "Javadoc doclint can detect many broken links/tags but cannot prove behavioral promises are correct; compare documentation to tests.",
+        "Java 21 supports @implSpec and other inline documentation tags; check rendering with the installed tool rather than trusting old Java 9 configuration advice.",
+        "Contract descriptions need not promise internal algorithm or time complexity unless those are intentional public guarantees.",
+        "A public default constructor cannot receive its own explicit source comment; define a documented constructor if construction semantics matter.",
+        "Inherited docs can reduce repetition but should be checked against subtype-specific preconditions and behavior."
+      ],
+      "misconception": "A clean Javadoc build guarantees that the API behavior, errors and compatibility guarantees are documented accurately.",
+      "production_context": "An exported alert-pagination API documents inclusive/exclusive bounds, empty-result behavior, ownership of returned lists, exceptions and whether it is safe to call concurrently.",
+      "java21_delta": "Java 21 Javadoc defaults to HTML5 and supports doclint and modern standard tags; the book’s Java 9-era generator switches and defaults must not be copied uncritically.",
+      "note_id": "EJ11-056",
+      "source_unit_id": "EJ-ITEM-056",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 275,
+      "pdf_page_end_exclusive": 282,
+      "source_body_sha256": "6f7288c6a0e818efe4f1aef24495a821dd029f273d56c1c75acc6fabb7cefe91",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis from complete private item section. Author verification only; no independent claim-by-claim review."
+    },
+    {
+      "title": "Keep values visible only within their meaningful lifetime",
+      "prerequisites": [
+        "Java blocks",
+        "loop structure",
+        "local variable initialization",
+        "control flow"
+      ],
+      "core": "Narrow the lexical scope of temporary state by declaring it close to first use, preferring initialized locals and loop-bound variables, so a name cannot accidentally influence an unrelated operation.",
+      "rules": [
+        "Initialize local variables where practical at first use instead of declaring them at method entry.",
+        "Use for-loop or enhanced-for variables local to the loop when state is not needed after iteration.",
+        "Split independent work into focused methods when unrelated locals remain visible too long.",
+        "Use a standard indexed loop only when index, replacement or synchronized traversal is truly required.",
+        "Do not cache loop bounds that can change during traversal; only hoist values proven stable.",
+        "Use try-with-resources for closable resource lifetime, while acknowledging that a surrounding catch block can require an outer result declaration."
+      ],
+      "nuance": [
+        "A narrow lexical scope is not the same as object lifetime or thread safety; a captured mutable reference may still escape.",
+        "Java 21 pattern variables have flow-sensitive scopes; don’t assume they can be reused outside valid branches.",
+        "The local var keyword infers a static type and does not weaken lexical scope; clear initializer types still matter.",
+        "Early initialization can be harmful when an operation must first establish a precondition or a resource should open later.",
+        "A loop bound can be cached when stable and expensive, but never if doing so changes semantics of a mutable collection.",
+        "Separate return/error paths may naturally keep values in distinct scopes without forcing pointless extra blocks."
+      ],
+      "misconception": "A variable declared at the top of a method is safer because every branch can reach it.",
+      "production_context": "Two sequential paginated event scans must not accidentally consult the first scan’s exhausted iterator or cached limit when deciding whether a second scan has records.",
+      "java21_delta": "Java 21 var and flow-scoped instanceof pattern variables complement the old declare-near-use rule; loop-bound scoping and definite assignment remain enforced.",
+      "note_id": "EJ11-057",
+      "source_unit_id": "EJ-ITEM-057",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 282,
+      "pdf_page_end_exclusive": 285,
+      "source_body_sha256": "91370a8393a0ce32499058d216fe870eeda5ac77bb58f8f1227ef2416e6e4eff",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis from complete private item section. Author verification only; no independent claim-by-claim review."
+    },
+    {
+      "title": "Iterate by element when index control adds no value",
+      "prerequisites": [
+        "Iterable and Iterator",
+        "arrays and collections",
+        "mutation semantics",
+        "nested loops"
+      ],
+      "core": "Use enhanced-for over Iterable values or arrays when only elements are needed; reserve explicit iterators or indexes for mutation, coordinated iteration and positional operations.",
+      "rules": [
+        "Use enhanced-for for ordinary read-only iteration over collections and arrays, especially nested independent axes.",
+        "Do not advance a nested outer iterator from an inner loop; preserve outer element for the entire inner traversal.",
+        "Prefer removeIf for predicate-based destructive filtering when the collection supports it, otherwise use Iterator.remove safely.",
+        "Use a ListIterator or index when changing positions or replacing elements; enhanced-for is not an element replacement API.",
+        "When aligning two sequences element-by-element, use explicit iterators or indexes and decide what unequal lengths mean.",
+        "Expose Iterable for domain containers that support safe traversal, even if they do not implement Collection."
+      ],
+      "nuance": [
+        "Enhanced-for does not guarantee thread safety or permit arbitrary structural modification during iteration.",
+        "An Iterator.remove operation is not supported by every iterator; check the concrete collection contract.",
+        "Java 21 SequencedCollection and reversed views offer order-related conveniences but do not make two independent iterables zip automatically.",
+        "A stream does not implement Iterable; choose an adapter or a different API shape if language-level enhanced-for is required.",
+        "An indexed loop remains appropriate when indexes carry domain semantics or are needed for in-place array transformation.",
+        "Performance equivalence across all custom Iterable implementations is not guaranteed; profile particular implementations if hot."
+      ],
+      "misconception": "Enhanced-for always permits safe removal or replacement and can naturally zip two collections of different lengths.",
+      "production_context": "A payment processor combines regions with alert severities using two independent enhanced-for loops, but uses an explicit Iterator to remove expired listeners.",
+      "java21_delta": "Java 21 preserves enhanced-for over Iterable and arrays, adds sequenced-collection APIs, and still does not make Stream directly Iterable.",
+      "note_id": "EJ11-058",
+      "source_unit_id": "EJ-ITEM-058",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 285,
+      "pdf_page_end_exclusive": 288,
+      "source_body_sha256": "b4413556893107f27bd59a49b7ae25bea45f6329859195610cee55042d6d3fc5",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis from complete private item section. Author verification only; no independent claim-by-claim review."
+    },
+    {
+      "title": "Prefer tested JDK facilities over ad-hoc utility reinvention",
+      "prerequisites": [
+        "java.util",
+        "exception and I/O contracts",
+        "random bounds",
+        "concurrency basics"
+      ],
+      "core": "Search the JDK for established solutions before writing custom utility algorithms; check contracts, security requirements and current JDK capabilities rather than carrying over outdated library recommendations.",
+      "rules": [
+        "Prefer a standard bounded random-number API over modulo/Math.abs approximations that can overflow or bias results.",
+        "Use SecureRandom for security-sensitive tokens and salts; convenience pseudo-random generators are not cryptographic.",
+        "Use established collection, I/O, time and concurrency APIs when their contracts meet domain needs.",
+        "Consult current Java 21 API documentation for behavior and version availability before choosing a utility.",
+        "Avoid custom code merely because the existing API name is unfamiliar; write adapters to express domain-specific constraints.",
+        "Evaluate high-quality third-party libraries when the JDK does not fit, including compatibility, licensing and security maintenance."
+      ],
+      "nuance": [
+        "Java 21 introduces java.util.random.RandomGenerator families and bounded overloads; select algorithm based on context rather than claiming one legacy generator universally fastest.",
+        "ThreadLocalRandom is appropriate for ordinary concurrent non-cryptographic random values, but never for authentication secrets.",
+        "SplittableRandom is designed for splittable pseudorandom streams; parallel execution does not guarantee stable ordering or reproducibility.",
+        "InputStream.transferTo moves bytes but does not close input/output streams; resource ownership and close failures remain caller responsibilities.",
+        "Even a standard API can violate a domain assumption (nulls, modification, thread safety, output ownership); verify its documented contract.",
+        "A cryptographic provider has additional entropy and lifecycle considerations; reproducibility tests should use deterministic PRNGs, not assert SecureRandom output."
+      ],
+      "misconception": "If a utility is already part of java.util, it must be both cryptographically secure and optimal for every workload.",
+      "production_context": "A voucher generator uses SecureRandom for unguessable redemption tokens, while a load-test simulator uses a seeded non-security PRNG and a bounded API for deterministic replay.",
+      "java21_delta": "Java 21 offers RandomGenerator factory APIs and additional standard utilities beyond the Java 9-era book; never repeat publication-era speed ratios or blanket Random-versus-ThreadLocalRandom guidance as universal modern facts.",
+      "note_id": "EJ11-059",
+      "source_unit_id": "EJ-ITEM-059",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 288,
+      "pdf_page_end_exclusive": 291,
+      "source_body_sha256": "0431b6d69cd1011ed2260c785532738403639d30611563deff1c2af3d56dc2f1",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis from complete private item section. Author verification only; no independent claim-by-claim review."
+    }
+  ]
+}

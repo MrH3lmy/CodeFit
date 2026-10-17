@@ -1,0 +1,195 @@
+{
+  "schema": "codefit-exceptions-notes/v0.14",
+  "notes": [
+    {
+      "title": "Choose checked exceptions for actionable recovery, runtime exceptions for contract violations",
+      "prerequisites": [
+        "Java checked exceptions",
+        "RuntimeException and Error",
+        "exception propagation",
+        "API preconditions"
+      ],
+      "core": "Categorize failures by the response that a reasonable caller can take. Checked exceptions advertise an expected and actionable exceptional recovery path. Runtime exceptions normally signal a programming error or violated precondition. Errors are generally not recoverable application conditions.",
+      "rules": [
+        "Use checked exceptions for conditions outside the caller’s direct control when the caller has a realistic, meaningful recovery action; provide enough structured context for that action.",
+        "Use IllegalArgumentException, IllegalStateException, NullPointerException or another suitable runtime contract error when an API precondition/invariant is violated by the programmer.",
+        "Never catch Error as ordinary business-failure handling; VM failures and linkage errors should normally propagate to supervision/restart policy.",
+        "Keep a documented distinction between a normal absence outcome, a recoverable exceptional condition, and a bug.",
+        "Avoid blanket catch(Exception) or a generic return code that erases whether retry, correction, or escalation is appropriate.",
+        "Design recoverability at the API boundary, not by declaring every potentially failed operation a checked exception."
+      ],
+      "nuance": [
+        "A network or remote-service outage can have recoverable cases, but a caller who cannot reasonably act should not be forced into a meaningless checked catch.",
+        "Runtime exceptions can arise from environment or implementation faults as well as caller mistakes; the design category is guidance, not a universal causal diagnosis.",
+        "An unchecked exception is not inherently ignorable; include operational telemetry, error mapping and causality across boundaries.",
+        "Do not disguise fatal errors such as OutOfMemoryError as routine transactions to retry repeatedly.",
+        "Java 21 sealed result hierarchies can represent expected business outcomes; they are not a universal replacement for genuinely exceptional failures."
+      ],
+      "misconception": "Every failure should be checked so that every caller can catch it—or every failure should be unchecked so that callers are never bothered.",
+      "production_context": "A payout adapter distinguishes invalid amount (contract error), a temporarily unavailable settlement endpoint (potentially recoverable transport exception), and an unsupported JVM/runtime condition (not a business outcome).",
+      "java21_delta": "Java 21 preserves the checked/unchecked distinction; modern sealed results and records can model ordinary states without converting unexpected faults into successful responses.",
+      "note_id": "EJ14-070",
+      "source_unit_id": "EJ-ITEM-070",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 317,
+      "pdf_page_end_exclusive": 319,
+      "source_body_sha256": "5f51afeee2da6ddca8ba8344aa29d4c63ab50d35a16aa2fc619df7c3eb53d8b6",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis after complete private section reading. No independent semantic review or learner approval."
+    },
+    {
+      "title": "Keep checked exceptions scarce and useful, not ceremonial",
+      "prerequisites": [
+        "checked exception call-chain effects",
+        "Optional versus exceptions",
+        "retry policies",
+        "API evolution"
+      ],
+      "core": "A checked exception has value only when clients can reasonably recover or are meaningfully required to consider a failed operation. Do not add a checked type merely to force repetitive pass-through or empty catch blocks.",
+      "rules": [
+        "Before adding checked throws, identify what a caller can actually do and how the exception helps choose that recovery.",
+        "For ordinary missing values from a valid query, prefer a documented empty result or Optional rather than a checked no-result exception when absence is normal.",
+        "Consider splitting a risky operation into a pure condition test and state-changing action only when doing so is safe against races and external state changes.",
+        "Use a structured result or an unchecked abstraction-specific failure when checked handling would be boilerplate with no actionable response.",
+        "Preserve an unavoidable recoverable I/O exception where handling retry/cancel/alternate resource is a real client obligation.",
+        "Do not suppress causes or silently return defaults merely to eliminate a checked throws clause."
+      ],
+      "nuance": [
+        "Test-then-act may introduce a time-of-check/time-of-use race; a filesystem existence check cannot guarantee the subsequent open succeeds.",
+        "Unchecked does not mean acceptable to ignore; observability, backoff and appropriate user feedback remain important.",
+        "Adding a checked exception to a widely implemented public interface may impose extensive source compatibility work.",
+        "An Optional value is for ordinary absence, not for replacing connection failures, authorization denial or timeout errors.",
+        "A truly checked exception is valuable when recoverability is substantial even though it makes APIs and lambda use more verbose."
+      ],
+      "misconception": "Removing throws from an API automatically improves correctness, even when the operation can fail for reasons callers must address.",
+      "production_context": "A merchant lookup returns Optional<Merchant> for an unknown merchant; a separate network request can report a checked failure when the caller must choose retry, fallback or cancellation.",
+      "java21_delta": "Java 21 retains checked exception enforcement and Optional APIs; modern record/sealed results allow typed domain responses but do not make I/O and concurrency races disappear.",
+      "note_id": "EJ14-071",
+      "source_unit_id": "EJ-ITEM-071",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 319,
+      "pdf_page_end_exclusive": 321,
+      "source_body_sha256": "32865762e340af450a6a9246d8f1169a9f68cdde9afd6435510f61b2f8e9d529",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis after complete private section reading. No independent semantic review or learner approval."
+    },
+    {
+      "title": "Prefer familiar standard exceptions whose contracts fit the failure",
+      "prerequisites": [
+        "IllegalArgumentException",
+        "IllegalStateException",
+        "NullPointerException",
+        "collections exceptions"
+      ],
+      "core": "Reuse the standard Java exception vocabulary so callers can interpret failures consistently without importing a one-off type for every minor contract violation.",
+      "rules": [
+        "Use IllegalArgumentException for an unacceptable non-null argument and NullPointerException for a required reference that is null when the API uses that convention.",
+        "Use IllegalStateException when the receiver has a state that disallows the requested operation, independently of the value of the argument.",
+        "Use IndexOutOfBoundsException for invalid positional indices and UnsupportedOperationException when an operation is intentionally unavailable.",
+        "Use ConcurrentModificationException only for appropriate detected invalid concurrent modifications, not as a universal concurrency-error label.",
+        "Reuse these standard exceptions in public contracts unless a distinct domain exception adds material recovery information.",
+        "Avoid throwing a broad Exception, RuntimeException or Throwable when a precise standard category exists."
+      ],
+      "nuance": [
+        "NullPointerException is often automatically produced by JVM dereference; explicit Objects.requireNonNull improves failure locality for public contracts.",
+        "A failed optimistic database version check may merit a domain conflict result rather than pretending it is a Java collection ConcurrentModificationException.",
+        "UnsupportedOperationException is about a deliberately unsupported operation, not an overload for temporary service unavailability.",
+        "NoSuchElementException is suitable where an API contract requires an element but none exists; an ordinary query may prefer Optional instead.",
+        "Standard exception reuse is about meaning and API predictability, not hard-coded exact message text or an invented exception hierarchy."
+      ],
+      "misconception": "Any RuntimeException is an equivalent signal to callers, so using generic RuntimeException everywhere is sufficient.",
+      "production_context": "A reconciliation query rejects negative offsets with IndexOutOfBoundsException, a closed uploader rejects submissions with IllegalStateException, and a read-only view refuses mutation with UnsupportedOperationException.",
+      "java21_delta": "Java 21 preserves these standard exception families and offers Objects bounds checks for index contracts; failure semantics must still match the actual public API.",
+      "note_id": "EJ14-072",
+      "source_unit_id": "EJ-ITEM-072",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 321,
+      "pdf_page_end_exclusive": 323,
+      "source_body_sha256": "24eb150be2506ec3d412e06ae524b5ca59d3efebc978a57996861b83c2dcb7fc",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis after complete private section reading. No independent semantic review or learner approval."
+    },
+    {
+      "title": "Translate lower-level exceptions only when the abstraction warrants it",
+      "prerequisites": [
+        "exception abstraction levels",
+        "cause chains",
+        "exception constructors",
+        "delegation"
+      ],
+      "core": "Public APIs should expose failures meaningful in their own abstraction. Translate an alien lower-level exception into a fitting higher-level type when necessary, preserving the original cause and avoiding speculative wrapping of every failure.",
+      "rules": [
+        "Map a lower-level failure to a higher-level exception when the dependency-specific type misrepresents the public method’s contract.",
+        "Preserve the root cause using an appropriate cause constructor or initCause so diagnostics can identify the original source.",
+        "Avoid broad catch-and-wrap of every RuntimeException because it conceals bugs and creates misleading domain failure categories.",
+        "Favor designing the lower-level operation to prevent the alien exception where a cleaner interface can do so.",
+        "Keep source-specific failures out of cross-layer APIs when caller isolation and compatibility benefit, but do not erase their diagnostic detail.",
+        "Use the abstraction’s documented nullability, absence and validation contract instead of blindly translating programming errors."
+      ],
+      "nuance": [
+        "NoSuchElementException from an iterator may translate to IndexOutOfBoundsException for a positional list API, depending on its documented contract.",
+        "An exception wrapper should avoid duplicating sensitive data in public messages while still preserving bounded diagnostics.",
+        "A nested cause chain is useful only if upper layers deliberately communicate the correct failure category to the caller.",
+        "A checked lower-level exception can be wrapped in a domain checked or runtime exception depending on the higher-level recoverability requirement.",
+        "Preventing invalid state at the lower layer can be better than adding another translation catch around every operation."
+      ],
+      "misconception": "Catching every exception and rethrowing a generic service exception is always good abstraction hygiene.",
+      "production_context": "A merchant ledger adapter maps an out-of-range storage cursor into its documented paging exception and retains the storage-side cause for internal diagnostics, without recategorizing unrelated programming failures.",
+      "java21_delta": "Java 21 supports standard Throwable cause chains and typed exceptions; current records/sealed results may model normal alternatives, but error translation still needs contract review.",
+      "note_id": "EJ14-073",
+      "source_unit_id": "EJ-ITEM-073",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 323,
+      "pdf_page_end_exclusive": 325,
+      "source_body_sha256": "3973f1f3bb4a35b43b5df19e0157f57f6ba9a32df6ddff0c2c9257ecf32d37b4",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis after complete private section reading. No independent semantic review or learner approval."
+    },
+    {
+      "title": "Document checked and unchecked exception contracts deliberately",
+      "prerequisites": [
+        "Javadoc @throws",
+        "checked throws clauses",
+        "public API compatibility",
+        "generated documentation"
+      ],
+      "core": "Exception behavior is part of a public contract. Document important checked and unchecked failures, their exact preconditions and recovery intent so callers can use APIs correctly, and verify that code and Javadoc agree.",
+      "rules": [
+        "Declare each checked exception that a method can propagate through its public checked contract instead of hiding it behind a vague catch.",
+        "Document important unchecked exceptions with @throws in Javadoc, including meaningful null, range and illegal-state preconditions.",
+        "Document specific circumstances for each failure; names alone do not tell callers what they must avoid or recover from.",
+        "Keep comments consistent with actual thrown types; verify important branches with executable contract tests.",
+        "Avoid a single ambiguous @throws Exception or redundant throws clause that conceals a caller-actionable distinction.",
+        "Use generated Javadoc/doclint to catch syntax and missing-tag problems, while recognizing that clean tooling cannot prove semantic accuracy."
+      ],
+      "nuance": [
+        "Unchecked exceptions need not appear in a Java throws clause; this does not exempt significant API failure behavior from documentation.",
+        "An implementation may internally catch or translate a checked exception, so document what can actually escape the public boundary.",
+        "Javadoc inheritance and @implSpec should be checked for changes in overrides and subclass-specific behavioral contracts.",
+        "A public checked throws change can break source clients and lambdas; review compatibility before widening an API.",
+        "Privacy/security rules still apply to error messages: do not document unstable internal messages or leak raw secrets in diagnostics."
+      ],
+      "misconception": "Only checked exceptions need documentation because the compiler handles those, and doclint passing proves the implementation matches the prose.",
+      "production_context": "A Java 21 API for ledger statements documents IOException for recoverable remote reads, NullPointerException for required keys and IndexOutOfBoundsException for invalid offsets, with tests and generated HTML.",
+      "java21_delta": "Java 21 Javadoc supports @throws, @implSpec, links and doclint; generated HTML output still requires human semantic inspection and version-aware tool settings.",
+      "note_id": "EJ14-074",
+      "source_unit_id": "EJ-ITEM-074",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 325,
+      "pdf_page_end_exclusive": 327,
+      "source_body_sha256": "341f6ed801795bd44c705398cf2d9e91696d3012e61d228ee9962dc1b60fd81b",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed synthesis after complete private section reading. No independent semantic review or learner approval."
+    }
+  ]
+}

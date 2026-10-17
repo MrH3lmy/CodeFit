@@ -1,0 +1,14 @@
+{
+  "source_locator_and_digest_matching": true,
+  "new_items": 8,
+  "source_spans_hashed_private": 8,
+  "targeted_signals": 32,
+  "java21_new_runtime_checks": 42,
+  "javac_new_negative_rejections": 10,
+  "python_suite_ran": 45,
+  "python_historical_test_class_skipped": 1,
+  "peer_reviewed_items": 0,
+  "player_graders": 0,
+  "body_text_publication": false,
+  "fingerprint_values_not_published": true
+}

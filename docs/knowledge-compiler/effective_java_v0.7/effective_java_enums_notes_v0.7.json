@@ -1,0 +1,674 @@
+{
+  "schema": "codefit/effective-java-enums-annotations-notes/v0.7",
+  "notes": [
+    {
+      "title": "Enums as a type-safe, behavior-bearing domain model",
+      "prerequisites": [
+        "java.classes",
+        "java.static-final",
+        "java.value-semantics"
+      ],
+      "objectives": [
+        "Replace unrelated numeric or string flags with domain enum types",
+        "Choose fields, per-constant polymorphism or a mandatory strategy for varying behavior",
+        "Distinguish identifier name, presentation string and external stable code"
+      ],
+      "synthesis": "An enum is an instance-controlled reference type with a fixed declaration set. The domain type prevents cross-domain values at compilation and can carry immutable data and methods. Constant-specific implementations force deliberate implementation of abstract behavior; a nested strategy enum can make policy selection mandatory without repeating implementations.",
+      "nuances": [
+        "Enum constructors execute before normal static fields are initialized; build reverse lookup maps in later static initialization, not by registering in constant constructors.",
+        "values() follows declaration order; using its position as persistence or protocol identity is unsafe.",
+        "Changing a constant name can break name-based deserialization and Enum.valueOf; custom toString is a presentation mechanism, not an alternate identifier.",
+        "A strategy enum can prevent the silent default branch bug when a new constant uses an existing policy."
+      ],
+      "mistakes": [
+        "Mixing transaction status int constants from separate domains",
+        "Using default switch behavior as a silent policy fallback",
+        "Persisting enum ordinal in a database",
+        "Using toString() output as the implicit wire key"
+      ],
+      "version": "Core behavior available since Java 5; Java 21 exhaustive switch expressions can improve missing-case detection, but evolving an enum across separately compiled code still needs compatibility tests.",
+      "interview": "Refactor a payment state machine: typed state transitions, unknown external inputs, wire-code stability and safe addition of a state.",
+      "demo": "A renewal status adds SUSPENDED; the old default strategy silently treats it as APPROVED. Redesign to require an explicit state-specific policy.",
+      "cross": [
+        "EJ-ITEM-003",
+        "EJ-ITEM-017",
+        "EJ-ITEM-035",
+        "EJ-ITEM-038"
+      ],
+      "note_id": "EJ7-034",
+      "source_unit_id": "EJ-ITEM-034",
+      "edition": "Effective Java, 3rd ed. (2018)",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 178,
+      "pdf_page_end_exclusive": 189,
+      "source_status": "TARGETED_DEEP_AUTHOR_READING__NOT_INDEPENDENTLY_REVIEWED",
+      "java21_behavior_status": "SEPARATELY_TESTED_LANGUAGE_FIXTURES__NOT_FULL_NOTE_VERIFICATION",
+      "cross_book_hypotheses": [
+        {
+          "source": "ocp17",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_coding_problems",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_mistakes",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "interview_guide",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        }
+      ],
+      "source_relationships": [
+        {
+          "unit": "EJ-ITEM-003",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-017",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-035",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-038",
+          "relation": "prerequisite-or-reinforcement"
+        }
+      ],
+      "example_copied_from_source": false,
+      "independent_review": false,
+      "learner_ready": false,
+      "mastery_eligible": false,
+      "readiness": "AUTHOR_DRAFT__BLOCKED_ON_REVIEW_AND_GRADER",
+      "explain_variant_unscored": "Explain to a junior engineer why the failure in A renewal status adds SUSPENDED; the old default strategy silently treats it as APPROVED. Redesign to require an explicit state-specific policy. occurs, including one counterexample.",
+      "boss_variant_unscored": "Unseen incident: A renewal status adds SUSPENDED; the old default strategy silently treats it as APPROVED. Redesign to require an explicit state-specific policy. Propose a testable migration with rollback and identify a change that would falsify your assumption."
+    },
+    {
+      "title": "Keep domain codes and counts independent of enum ordinal",
+      "prerequisites": [
+        "java.enums"
+      ],
+      "objectives": [
+        "Separate declaration order from a persistent domain value",
+        "Support duplicate domain values and sparse codes"
+      ],
+      "synthesis": "ordinal() represents declaration position for enum infrastructure, not business meaning. An explicit final field makes mapping stable under enum reordering and permits more than one constant to share a property or leave gaps.",
+      "nuances": [
+        "An explicit code alone is not a complete compatibility plan: changing it also breaks persisted consumers.",
+        "EnumMap/EnumSet may use internal ordinals; application logic should not mimic their private implementation."
+      ],
+      "mistakes": [
+        "Saving ordinal in a table then reordering declarations",
+        "Assuming sparse identifiers require dummy enum members"
+      ],
+      "version": "Same rule on Java 5 through Java 21.",
+      "interview": "Migrate legacy integer statuses without changing historical rows; make unknown codes explicit.",
+      "demo": "Merchant tiers 10, 20 and 40 are reordered; a positional mapper silently changes account limits.",
+      "cross": [
+        "EJ-ITEM-034",
+        "EJ-ITEM-037"
+      ],
+      "note_id": "EJ7-035",
+      "source_unit_id": "EJ-ITEM-035",
+      "edition": "Effective Java, 3rd ed. (2018)",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 189,
+      "pdf_page_end_exclusive": 190,
+      "source_status": "TARGETED_DEEP_AUTHOR_READING__NOT_INDEPENDENTLY_REVIEWED",
+      "java21_behavior_status": "SEPARATELY_TESTED_LANGUAGE_FIXTURES__NOT_FULL_NOTE_VERIFICATION",
+      "cross_book_hypotheses": [
+        {
+          "source": "ocp17",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_coding_problems",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_mistakes",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "interview_guide",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        }
+      ],
+      "source_relationships": [
+        {
+          "unit": "EJ-ITEM-034",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-037",
+          "relation": "prerequisite-or-reinforcement"
+        }
+      ],
+      "example_copied_from_source": false,
+      "independent_review": false,
+      "learner_ready": false,
+      "mastery_eligible": false,
+      "readiness": "AUTHOR_DRAFT__BLOCKED_ON_REVIEW_AND_GRADER",
+      "explain_variant_unscored": "Explain to a junior engineer why the failure in Merchant tiers 10, 20 and 40 are reordered; a positional mapper silently changes account limits. occurs, including one counterexample.",
+      "boss_variant_unscored": "Unseen incident: Merchant tiers 10, 20 and 40 are reordered; a positional mapper silently changes account limits. Propose a testable migration with rollback and identify a change that would falsify your assumption."
+    },
+    {
+      "title": "Model enum combinations with EnumSet",
+      "prerequisites": [
+        "java.enums",
+        "java.collections.set"
+      ],
+      "objectives": [
+        "Express permission combinations without int masks",
+        "Understand mutability and generic Set-facing API design"
+      ],
+      "synthesis": "EnumSet is an efficient typed set of constants from exactly one enum class. It supports normal set operations while avoiding arbitrary bit-width and cross-domain flag errors. Public APIs can accept Set<E> and use EnumSet internally.",
+      "nuances": [
+        "EnumSet is mutable. Collections.unmodifiableSet returns an unmodifiable view, not a defensive snapshot; copy before wrapping if callers may retain and mutate source.",
+        "EnumSet.noneOf(Class<E>) is useful for an empty set with a known element type; EnumSet.copyOf an empty non-EnumSet collection cannot infer that element type.",
+        "No arbitrary 32/64 flag width limitation in the API; physical representation differs for larger enum types."
+      ],
+      "mistakes": [
+        "Checking bit mask values as if they were strongly typed permissions",
+        "Sharing a mutable EnumSet across request boundaries",
+        "Treating unmodifiable views as immutable snapshots"
+      ],
+      "version": "Java 21 retains mutable EnumSet; do not treat the book’s Java 9 forward-looking note about native immutable EnumSet as a guaranteed later feature.",
+      "interview": "Audit permissions parser and thread safety for a role-based access policy.",
+      "demo": "Authorization flags accumulate through shared mutable EnumSet exposed by a configuration cache.",
+      "cross": [
+        "EJ-ITEM-034",
+        "EJ-ITEM-050",
+        "EJ-ITEM-064"
+      ],
+      "note_id": "EJ7-036",
+      "source_unit_id": "EJ-ITEM-036",
+      "edition": "Effective Java, 3rd ed. (2018)",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 190,
+      "pdf_page_end_exclusive": 192,
+      "source_status": "TARGETED_DEEP_AUTHOR_READING__NOT_INDEPENDENTLY_REVIEWED",
+      "java21_behavior_status": "SEPARATELY_TESTED_LANGUAGE_FIXTURES__NOT_FULL_NOTE_VERIFICATION",
+      "cross_book_hypotheses": [
+        {
+          "source": "ocp17",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_coding_problems",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_mistakes",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "interview_guide",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        }
+      ],
+      "source_relationships": [
+        {
+          "unit": "EJ-ITEM-034",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-050",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-064",
+          "relation": "prerequisite-or-reinforcement"
+        }
+      ],
+      "example_copied_from_source": false,
+      "independent_review": false,
+      "learner_ready": false,
+      "mastery_eligible": false,
+      "readiness": "AUTHOR_DRAFT__BLOCKED_ON_REVIEW_AND_GRADER",
+      "explain_variant_unscored": "Explain to a junior engineer why the failure in Authorization flags accumulate through shared mutable EnumSet exposed by a configuration cache. occurs, including one counterexample.",
+      "boss_variant_unscored": "Unseen incident: Authorization flags accumulate through shared mutable EnumSet exposed by a configuration cache. Propose a testable migration with rollback and identify a change that would falsify your assumption."
+    },
+    {
+      "title": "Index enum-keyed data with EnumMap instead of ordinals",
+      "prerequisites": [
+        "java.enums",
+        "java.collections.map",
+        "java.generics"
+      ],
+      "objectives": [
+        "Replace parallel ordinal-indexed arrays and unsafe casts",
+        "Model single and nested enum-keyed lookups",
+        "Choose explicit semantics for missing entries"
+      ],
+      "synthesis": "EnumMap maps a known enum key type to values while hiding ordinal-indexed implementation details. For a pair of enum dimensions, use nested EnumMap where appropriate. This avoids handwritten offsets, unsafe generic-array casts and fragile declaration-order coupling.",
+      "nuances": [
+        "Collectors.groupingBy without a supplied map factory does not promise EnumMap; a three-argument collector can select EnumMap explicitly.",
+        "A grouping result may omit a key for which no rows exist; prepopulate the desired empty groups if consumers require total coverage.",
+        "An absent transition should have an explicit representation (e.g., Optional or a named result); do not blindly propagate null through state-machine logic.",
+        "EnumMap permits null values but not null keys; null means an unknown or invalid enum identity, not a valid map bucket."
+      ],
+      "mistakes": [
+        "Using state.ordinal() as an array index",
+        "Assuming groupingBy yields all enum values",
+        "Confusing undefined transition with a defined no-op transition"
+      ],
+      "version": "EnumMap and nested maps work on Java 21; Java 21 switch expressions may be preferable for small total state mappings with compiler-enforced cases.",
+      "interview": "Design a lifecycle-transition engine that makes forbidden transitions observable and safely expands to a fourth state.",
+      "demo": "A newly added payment phase changes the indexes of a cached two-dimensional transition table.",
+      "cross": [
+        "EJ-ITEM-035",
+        "EJ-ITEM-033",
+        "EJ-ITEM-046"
+      ],
+      "note_id": "EJ7-037",
+      "source_unit_id": "EJ-ITEM-037",
+      "edition": "Effective Java, 3rd ed. (2018)",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 192,
+      "pdf_page_end_exclusive": 197,
+      "source_status": "TARGETED_DEEP_AUTHOR_READING__NOT_INDEPENDENTLY_REVIEWED",
+      "java21_behavior_status": "SEPARATELY_TESTED_LANGUAGE_FIXTURES__NOT_FULL_NOTE_VERIFICATION",
+      "cross_book_hypotheses": [
+        {
+          "source": "ocp17",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_coding_problems",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_mistakes",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "interview_guide",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        }
+      ],
+      "source_relationships": [
+        {
+          "unit": "EJ-ITEM-035",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-033",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-046",
+          "relation": "prerequisite-or-reinforcement"
+        }
+      ],
+      "example_copied_from_source": false,
+      "independent_review": false,
+      "learner_ready": false,
+      "mastery_eligible": false,
+      "readiness": "AUTHOR_DRAFT__BLOCKED_ON_REVIEW_AND_GRADER",
+      "explain_variant_unscored": "Explain to a junior engineer why the failure in A newly added payment phase changes the indexes of a cached two-dimensional transition table. occurs, including one counterexample.",
+      "boss_variant_unscored": "Unseen incident: A newly added payment phase changes the indexes of a cached two-dimensional transition table. Propose a testable migration with rollback and identify a change that would falsify your assumption."
+    },
+    {
+      "title": "Extend enum-like operations through an interface contract",
+      "prerequisites": [
+        "java.enums",
+        "java.interfaces",
+        "java.generics.bounds"
+      ],
+      "objectives": [
+        "Explain why enum inheritance is disallowed",
+        "Build an interface implemented by separate enum families",
+        "Decide between bounded Class tokens and a flexible Collection of operations"
+      ],
+      "synthesis": "An enum cannot extend another enum, but distinct enum types can implement a common behavior interface. APIs typed to the interface can accept new plugin operations. A bounded Class<T extends Enum<T> & Capability> supports traversing one enum family; a Collection<? extends Capability> supports mixing families.",
+      "nuances": [
+        "An interface does not automatically provide a unified values() over all implementors.",
+        "EnumSet and EnumMap are restricted to a single concrete enum class; mixing plugin enum types requires another collection representation.",
+        "Separate enum implementations do not inherit common fields; use interface defaults or helper composition when justified.",
+        "A plugin API must handle trust and registration boundaries separately; adding an interface does not make arbitrary plugin execution safe."
+      ],
+      "mistakes": [
+        "Trying enum Extended extends Base",
+        "Assuming all interface implementations can be gathered via Enum.values",
+        "Accepting one enum implementation type instead of contract in extensible API"
+      ],
+      "version": "Works since Java 5; Java 21 sealed interfaces intentionally restrict implementations, so avoid sealing a truly extensible plugin contract.",
+      "interview": "Design a pluggable reconciliation rule set using third-party Enum implementations without altering the built-in enum.",
+      "demo": "An API expects BasicRule only; deployment plugin implements ExtendedRule, and invocations fail to compile despite identical execute signatures.",
+      "cross": [
+        "EJ-ITEM-020",
+        "EJ-ITEM-031",
+        "EJ-ITEM-033",
+        "EJ-ITEM-034"
+      ],
+      "note_id": "EJ7-038",
+      "source_unit_id": "EJ-ITEM-038",
+      "edition": "Effective Java, 3rd ed. (2018)",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 197,
+      "pdf_page_end_exclusive": 201,
+      "source_status": "TARGETED_DEEP_AUTHOR_READING__NOT_INDEPENDENTLY_REVIEWED",
+      "java21_behavior_status": "SEPARATELY_TESTED_LANGUAGE_FIXTURES__NOT_FULL_NOTE_VERIFICATION",
+      "cross_book_hypotheses": [
+        {
+          "source": "ocp17",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_coding_problems",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_mistakes",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "interview_guide",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        }
+      ],
+      "source_relationships": [
+        {
+          "unit": "EJ-ITEM-020",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-031",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-033",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-034",
+          "relation": "prerequisite-or-reinforcement"
+        }
+      ],
+      "example_copied_from_source": false,
+      "independent_review": false,
+      "learner_ready": false,
+      "mastery_eligible": false,
+      "readiness": "AUTHOR_DRAFT__BLOCKED_ON_REVIEW_AND_GRADER",
+      "explain_variant_unscored": "Explain to a junior engineer why the failure in An API expects BasicRule only; deployment plugin implements ExtendedRule, and invocations fail to compile despite identical execute signatures. occurs, including one counterexample.",
+      "boss_variant_unscored": "Unseen incident: An API expects BasicRule only; deployment plugin implements ExtendedRule, and invocations fail to compile despite identical execute signatures. Propose a testable migration with rollback and identify a change that would falsify your assumption."
+    },
+    {
+      "title": "Annotations provide explicit metadata contracts, not name magic",
+      "prerequisites": [
+        "java.annotations",
+        "java.reflection",
+        "java.exceptions"
+      ],
+      "objectives": [
+        "Choose retention and target for framework-discovered metadata",
+        "Implement repeatable annotation discovery correctly",
+        "Validate reflection invocation shape and exception behavior"
+      ],
+      "synthesis": "An explicit annotation expresses an intention that a naming prefix cannot enforce. A runtime scanner needs RUNTIME retention, suitable target restrictions and correct reflective checks. Repeating an annotation uses a container, so query with getAnnotationsByType rather than relying on isAnnotationPresent for both single and repeated forms.",
+      "nuances": [
+        "A method annotation does not enforce zero parameters, static access or public visibility by itself; an engine must validate invocation constraints.",
+        "InvocationTargetException wraps failures from invoked methods; distinguish user exception from scanner misuse.",
+        "Repeatable annotation container retention and target must be compatible with the repeated annotation.",
+        "isAnnotationPresent on the repeatable type can miss a repeated instance stored inside its container.",
+        "A Class<? extends Throwable> parameter enforces a type bound at compile time, while the referenced class may still be absent at runtime."
+      ],
+      "mistakes": [
+        "Collecting methods by name prefix",
+        "Forgetting RUNTIME retention",
+        "Relying on isAnnotationPresent alone for repeated annotations",
+        "Treating the existence of an annotation as a validated executable test"
+      ],
+      "version": "Repeatable annotations exist since Java 8; on Java 21 getAnnotationsByType handles direct and contained repeatable annotations, and inherited behavior depends on target, @Inherited and reflection API.",
+      "interview": "Build a small annotation-driven job-discovery layer with precise failure reporting and safe boundaries.",
+      "demo": "A unit-test scanner finds one @Fault but silently skips two repeated @Fault annotations on another method.",
+      "cross": [
+        "EJ-ITEM-027",
+        "EJ-ITEM-033",
+        "EJ-ITEM-040"
+      ],
+      "note_id": "EJ7-039",
+      "source_unit_id": "EJ-ITEM-039",
+      "edition": "Effective Java, 3rd ed. (2018)",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 201,
+      "pdf_page_end_exclusive": 209,
+      "source_status": "TARGETED_DEEP_AUTHOR_READING__NOT_INDEPENDENTLY_REVIEWED",
+      "java21_behavior_status": "SEPARATELY_TESTED_LANGUAGE_FIXTURES__NOT_FULL_NOTE_VERIFICATION",
+      "cross_book_hypotheses": [
+        {
+          "source": "ocp17",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_coding_problems",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_mistakes",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "interview_guide",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        }
+      ],
+      "source_relationships": [
+        {
+          "unit": "EJ-ITEM-027",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-033",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-040",
+          "relation": "prerequisite-or-reinforcement"
+        }
+      ],
+      "example_copied_from_source": false,
+      "independent_review": false,
+      "learner_ready": false,
+      "mastery_eligible": false,
+      "readiness": "AUTHOR_DRAFT__BLOCKED_ON_REVIEW_AND_GRADER",
+      "explain_variant_unscored": "Explain to a junior engineer why the failure in A unit-test scanner finds one @Fault but silently skips two repeated @Fault annotations on another method. occurs, including one counterexample.",
+      "boss_variant_unscored": "Unseen incident: A unit-test scanner finds one @Fault but silently skips two repeated @Fault annotations on another method. Propose a testable migration with rollback and identify a change that would falsify your assumption."
+    },
+    {
+      "title": "Use @Override as a compile-time intent check",
+      "prerequisites": [
+        "java.overloading",
+        "java.inheritance",
+        "java.equals"
+      ],
+      "objectives": [
+        "Distinguish overload from override with compiler feedback",
+        "Apply @Override consistently to superclass and interface methods"
+      ],
+      "synthesis": "@Override makes the compiler check that a declared instance method really overrides or implements a supertype declaration. This catches signature drift, especially accidental equals overloads and interface contract mismatches, before they become latent bugs.",
+      "nuances": [
+        "An accidental equals(MyType) overload is not Object.equals(Object) and leaves collections using identity equality.",
+        "The annotation is legal for interface implementations; it is optional but helpful for concrete required abstract methods.",
+        "Static methods hide rather than override; private methods are not overridable.",
+        "@Override verifies the override relationship, not the correctness of the implementation or equals/hashCode contract."
+      ],
+      "mistakes": [
+        "Writing equals(Transaction) while expecting HashSet de-duplication",
+        "Assuming override annotation provides semantic correctness",
+        "Suppressing compiler error by removing annotation rather than fixing signature"
+      ],
+      "version": "Java 21 compiles @Override on interface implementation and default-method overrides; review modern record-generated methods separately when custom equals is introduced.",
+      "interview": "Identify a production deduplication bug caused by overload and explain what annotations would and would not catch.",
+      "demo": "A payment event key defines equals(PaymentKey) but HashSet size increases on every retry.",
+      "cross": [
+        "EJ-ITEM-010",
+        "EJ-ITEM-011",
+        "EJ-ITEM-052"
+      ],
+      "note_id": "EJ7-040",
+      "source_unit_id": "EJ-ITEM-040",
+      "edition": "Effective Java, 3rd ed. (2018)",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 209,
+      "pdf_page_end_exclusive": 212,
+      "source_status": "TARGETED_DEEP_AUTHOR_READING__NOT_INDEPENDENTLY_REVIEWED",
+      "java21_behavior_status": "SEPARATELY_TESTED_LANGUAGE_FIXTURES__NOT_FULL_NOTE_VERIFICATION",
+      "cross_book_hypotheses": [
+        {
+          "source": "ocp17",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_coding_problems",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_mistakes",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "interview_guide",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        }
+      ],
+      "source_relationships": [
+        {
+          "unit": "EJ-ITEM-010",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-011",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-052",
+          "relation": "prerequisite-or-reinforcement"
+        }
+      ],
+      "example_copied_from_source": false,
+      "independent_review": false,
+      "learner_ready": false,
+      "mastery_eligible": false,
+      "readiness": "AUTHOR_DRAFT__BLOCKED_ON_REVIEW_AND_GRADER",
+      "explain_variant_unscored": "Explain to a junior engineer why the failure in A payment event key defines equals(PaymentKey) but HashSet size increases on every retry. occurs, including one counterexample.",
+      "boss_variant_unscored": "Unseen incident: A payment event key defines equals(PaymentKey) but HashSet size increases on every retry. Propose a testable migration with rollback and identify a change that would falsify your assumption."
+    },
+    {
+      "title": "Marker interface versus marker annotation: compile-time type boundary",
+      "prerequisites": [
+        "java.interfaces",
+        "java.annotations",
+        "java.type-safety"
+      ],
+      "objectives": [
+        "Choose a type-level capability marker when APIs need it as a parameter bound",
+        "Use an annotation for methods, fields or framework metadata"
+      ],
+      "synthesis": "A marker interface has no methods but introduces a type the compiler can enforce as a parameter or generic bound. A marker annotation adds metadata without making the annotated object assignable to a Java interface. Select based on whether the API must restrict acceptable instance types or merely tag an element.",
+      "nuances": [
+        "Serializable is a marker interface but ObjectOutputStream.writeObject accepts Object; the library API does not take advantage of the marker type to reject an invalid caller at compile time.",
+        "A marker interface can extend a particular parent interface to narrow the set of admissible implementations.",
+        "Marker annotations can target methods, packages or other program elements impossible to represent as implemented types.",
+        "An interface with no new methods can still refine inherited behavioral contracts, so empty does not automatically mean mere marker."
+      ],
+      "mistakes": [
+        "Expecting a @Signed annotation to satisfy a method parameter of type Signed",
+        "Claiming marker interfaces are obsolete in an annotation-heavy ecosystem",
+        "Assuming Serializable prevents runtime serialization failures"
+      ],
+      "version": "Java 21 sealed marker hierarchies can deliberately restrict membership; this is a domain design choice not part of Java 5-era marker semantics.",
+      "interview": "Define a trusted-delivery capability for a typed API, and separately a method-level audit annotation.",
+      "demo": "A dispatch function accepts Object and checks annotations at runtime despite the intent to accept only verified event types.",
+      "cross": [
+        "EJ-ITEM-020",
+        "EJ-ITEM-022",
+        "EJ-ITEM-039"
+      ],
+      "note_id": "EJ7-041",
+      "source_unit_id": "EJ-ITEM-041",
+      "edition": "Effective Java, 3rd ed. (2018)",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 212,
+      "pdf_page_end_exclusive": 214,
+      "source_status": "TARGETED_DEEP_AUTHOR_READING__NOT_INDEPENDENTLY_REVIEWED",
+      "java21_behavior_status": "SEPARATELY_TESTED_LANGUAGE_FIXTURES__NOT_FULL_NOTE_VERIFICATION",
+      "cross_book_hypotheses": [
+        {
+          "source": "ocp17",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_coding_problems",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "java_mistakes",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        },
+        {
+          "source": "interview_guide",
+          "relation": "candidate-topic-mapping",
+          "verified_against_book": false
+        }
+      ],
+      "source_relationships": [
+        {
+          "unit": "EJ-ITEM-020",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-022",
+          "relation": "prerequisite-or-reinforcement"
+        },
+        {
+          "unit": "EJ-ITEM-039",
+          "relation": "prerequisite-or-reinforcement"
+        }
+      ],
+      "example_copied_from_source": false,
+      "independent_review": false,
+      "learner_ready": false,
+      "mastery_eligible": false,
+      "readiness": "AUTHOR_DRAFT__BLOCKED_ON_REVIEW_AND_GRADER",
+      "explain_variant_unscored": "Explain to a junior engineer why the failure in A dispatch function accepts Object and checks annotations at runtime despite the intent to accept only verified event types. occurs, including one counterexample.",
+      "boss_variant_unscored": "Unseen incident: A dispatch function accepts Object and checks annotations at runtime despite the intent to accept only verified event types. Propose a testable migration with rollback and identify a change that would falsify your assumption."
+    }
+  ]
+}

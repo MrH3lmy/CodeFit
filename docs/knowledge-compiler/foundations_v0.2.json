@@ -1,0 +1,356 @@
+{
+  "schema": "codefit-foundations-draft/v0.2",
+  "pedagogy": "Beginner-first micro-to-deep scaffolding; do not infer independent mastery from guided correct answers.",
+  "copyright": "Original paraphrase and mission prompts only; no publisher passages, exercise text, solutions or illustrative code copied.",
+  "readiness": {
+    "learner_release": false,
+    "mastery": false,
+    "technical_review": false,
+    "graders_implemented": false
+  },
+  "capsules": [
+    {
+      "knowledge_id": "java.foundations.program-execution",
+      "sequence": 1,
+      "source_unit_ids": [
+        "OCP-CH-001",
+        "OCP-CH-003",
+        "IG-CH-005"
+      ],
+      "prerequisites": [],
+      "learning_goal": "Run, compile and interpret a simple Java program; separate compile errors from runtime behavior.",
+      "original_explanation": "A Java 17 program normally compiles source to bytecode, then the JVM executes it; beginner scaffolds should hide boilerplate temporarily without misrepresenting what actually runs.",
+      "assessment_targets": [
+        "Correct one unfamiliar compile error",
+        "Predict two-line output order"
+      ],
+      "mission_blueprints": [
+        {
+          "id": "FOUND-01-01",
+          "type": "predict_and_explain",
+          "original_prompt_blueprint": "Predict program output",
+          "assessment_family": "foundations-01-predict",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-01-02",
+          "type": "spot_and_fix_bug",
+          "original_prompt_blueprint": "Fix missing statement terminator",
+          "assessment_family": "foundations-01-debug",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-01-03",
+          "type": "write_and_test",
+          "original_prompt_blueprint": "Make a small two-line status report",
+          "assessment_family": "foundations-01-build",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-01-04",
+          "type": "unseen_integrated_challenge",
+          "original_prompt_blueprint": "Remove a duplicate printed status without disturbing other output",
+          "assessment_family": "foundations-01-boss",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        }
+      ],
+      "status": "DRAFT_SOURCE_LINKED_NOT_REVIEWED"
+    },
+    {
+      "knowledge_id": "java.foundations.types-and-arithmetic",
+      "sequence": 2,
+      "source_unit_ids": [
+        "OCP-CH-002",
+        "JCP-P-026",
+        "EJ-ITEM-060",
+        "EJ-ITEM-061",
+        "JM-M-027",
+        "JM-M-028"
+      ],
+      "prerequisites": [
+        "java.foundations.program-execution"
+      ],
+      "learning_goal": "Explain primitive arithmetic, integer truncation, overflow, widening and why binary floats should not be the default for exact monetary totals.",
+      "original_explanation": "5 / 2 is evaluated using integer division before assignment. Widening after an overflowing int multiplication does not undo the overflow. Monetary decimal operations need explicit precision and rounding rules.",
+      "assessment_targets": [
+        "Predict mixed arithmetic expressions",
+        "Repair overflowing int multiplication",
+        "Justify a decimal-money policy"
+      ],
+      "mission_blueprints": [
+        {
+          "id": "FOUND-02-01",
+          "type": "predict_and_explain",
+          "original_prompt_blueprint": "Predict integer and floating-point arithmetic",
+          "assessment_family": "foundations-02-predict",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-02-02",
+          "type": "spot_and_fix_bug",
+          "original_prompt_blueprint": "Find hidden overflow in a larger assignment",
+          "assessment_family": "foundations-02-debug",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-02-03",
+          "type": "write_and_test",
+          "original_prompt_blueprint": "Implement safe quantity arithmetic",
+          "assessment_family": "foundations-02-build",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-02-04",
+          "type": "unseen_integrated_challenge",
+          "original_prompt_blueprint": "Design a checkout total with stated rounding",
+          "assessment_family": "foundations-02-boss",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        }
+      ],
+      "status": "DRAFT_SOURCE_LINKED_NOT_REVIEWED"
+    },
+    {
+      "knowledge_id": "java.foundations.expressions-and-conditions",
+      "sequence": 3,
+      "source_unit_ids": [
+        "OCP-CH-002",
+        "OCP-CH-004",
+        "JM-M-001",
+        "JM-M-002",
+        "JM-M-003",
+        "JM-M-008"
+      ],
+      "prerequisites": [
+        "java.foundations.types-and-arithmetic"
+      ],
+      "learning_goal": "Translate rules into conditions, recognize short-circuit and precedence bugs, and defend boundary checks.",
+      "original_explanation": "Conditions have executable order and short-circuit behavior; not every right-hand operand runs. Branches require true, false and boundary test cases.",
+      "assessment_targets": [
+        "Predict evaluated clauses",
+        "Repair false-positive validation",
+        "Propose representative branch tests"
+      ],
+      "mission_blueprints": [
+        {
+          "id": "FOUND-03-01",
+          "type": "predict_and_explain",
+          "original_prompt_blueprint": "Predict short circuit behavior",
+          "assessment_family": "foundations-03-predict",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-03-02",
+          "type": "spot_and_fix_bug",
+          "original_prompt_blueprint": "Locate String concatenation in arithmetic",
+          "assessment_family": "foundations-03-debug",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-03-03",
+          "type": "write_and_test",
+          "original_prompt_blueprint": "Implement an eligibility predicate",
+          "assessment_family": "foundations-03-build",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-03-04",
+          "type": "unseen_integrated_challenge",
+          "original_prompt_blueprint": "Fix a checkout validation hole",
+          "assessment_family": "foundations-03-boss",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        }
+      ],
+      "status": "DRAFT_SOURCE_LINKED_NOT_REVIEWED"
+    },
+    {
+      "knowledge_id": "java.foundations.loops-and-methods",
+      "sequence": 4,
+      "source_unit_ids": [
+        "OCP-CH-003",
+        "OCP-CH-004",
+        "JM-M-018",
+        "JM-M-019",
+        "JM-M-021",
+        "IG-CH-005",
+        "IG-CH-007"
+      ],
+      "prerequisites": [
+        "java.foundations.expressions-and-conditions"
+      ],
+      "learning_goal": "Trace loops and method contracts; recognize progress/termination obligations and basic linear complexity.",
+      "original_explanation": "A loop needs an invariant, update and termination condition. An algorithm's asymptotic cost follows input-dependent operations, not a single timing measurement.",
+      "assessment_targets": [
+        "Trace zero/one/many cases",
+        "Fix a non-progressing or wrongly directed loop",
+        "Explain O(n) array scanning"
+      ],
+      "mission_blueprints": [
+        {
+          "id": "FOUND-04-01",
+          "type": "predict_and_explain",
+          "original_prompt_blueprint": "Trace loop accumulator changes",
+          "assessment_family": "foundations-04-predict",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-04-02",
+          "type": "spot_and_fix_bug",
+          "original_prompt_blueprint": "Find wrong-direction loop",
+          "assessment_family": "foundations-04-debug",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-04-03",
+          "type": "write_and_test",
+          "original_prompt_blueprint": "Implement first-out-of-stock search",
+          "assessment_family": "foundations-04-build",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-04-04",
+          "type": "unseen_integrated_challenge",
+          "original_prompt_blueprint": "Repair nonterminating inventory scan",
+          "assessment_family": "foundations-04-boss",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        }
+      ],
+      "status": "DRAFT_SOURCE_LINKED_NOT_REVIEWED"
+    },
+    {
+      "knowledge_id": "java.foundations.strings-and-unicode",
+      "sequence": 5,
+      "source_unit_ids": [
+        "OCP-CH-008",
+        "JCP-P-001",
+        "JCP-P-002",
+        "JCP-P-011",
+        "JCP-P-018",
+        "JM-M-045",
+        "JM-M-052",
+        "IG-CH-010"
+      ],
+      "prerequisites": [
+        "java.foundations.loops-and-methods"
+      ],
+      "learning_goal": "Reason about String values, character counting and the declared limitations of text algorithms.",
+      "original_explanation": "A Java char is a UTF-16 code unit, not always a user-perceived character. Declare whether problems measure units, Unicode code points or grapheme clusters. String.equals is a value comparison; == tests identity.",
+      "assessment_targets": [
+        "Contrast logical and reference equality",
+        "Solve an ASCII text-counting exercise",
+        "Recognize an inadequately specified Unicode requirement"
+      ],
+      "mission_blueprints": [
+        {
+          "id": "FOUND-05-01",
+          "type": "predict_and_explain",
+          "original_prompt_blueprint": "Predict String comparisons",
+          "assessment_family": "foundations-05-predict",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-05-02",
+          "type": "spot_and_fix_bug",
+          "original_prompt_blueprint": "Fix empty-string character counter",
+          "assessment_family": "foundations-05-debug",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-05-03",
+          "type": "write_and_test",
+          "original_prompt_blueprint": "Implement first nonrepeating ASCII character",
+          "assessment_family": "foundations-05-build",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-05-04",
+          "type": "unseen_integrated_challenge",
+          "original_prompt_blueprint": "Redesign a Unicode identifier validator",
+          "assessment_family": "foundations-05-boss",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        }
+      ],
+      "status": "DRAFT_SOURCE_LINKED_NOT_REVIEWED"
+    },
+    {
+      "knowledge_id": "java.foundations.objects-and-immutability",
+      "sequence": 6,
+      "source_unit_ids": [
+        "OCP-CH-005",
+        "OCP-CH-014",
+        "JCP-P-047",
+        "JCP-P-049",
+        "JCP-P-050",
+        "EJ-ITEM-017",
+        "EJ-ITEM-050",
+        "JM-M-055",
+        "JM-M-060",
+        "IG-CH-006"
+      ],
+      "prerequisites": [
+        "java.foundations.strings-and-unicode"
+      ],
+      "learning_goal": "Model value objects, guard mutable state by defensive copying and explain why final references alone do not confer deep immutability.",
+      "original_explanation": "Java final prevents reassignment of a field reference but may not prevent mutation of the referenced object. Value equality, stable hash codes, and alias protection must be designed explicitly.",
+      "assessment_targets": [
+        "Detect mutable alias escaping a class",
+        "Repair an object requiring defensive copies",
+        "Defend an immutable value key"
+      ],
+      "mission_blueprints": [
+        {
+          "id": "FOUND-06-01",
+          "type": "predict_and_explain",
+          "original_prompt_blueprint": "Predict effect of mutating a final referenced List",
+          "assessment_family": "foundations-06-predict",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-06-02",
+          "type": "spot_and_fix_bug",
+          "original_prompt_blueprint": "Locate leaked mutable internal collection",
+          "assessment_family": "foundations-06-debug",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-06-03",
+          "type": "write_and_test",
+          "original_prompt_blueprint": "Build safe immutable configuration value",
+          "assessment_family": "foundations-06-build",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        },
+        {
+          "id": "FOUND-06-04",
+          "type": "unseen_integrated_challenge",
+          "original_prompt_blueprint": "Fix mutable-key payment deduplication",
+          "assessment_family": "foundations-06-boss",
+          "positive_and_negative_tests_required": true,
+          "verified_mastery_eligible": false
+        }
+      ],
+      "status": "DRAFT_SOURCE_LINKED_NOT_REVIEWED"
+    }
+  ]
+}

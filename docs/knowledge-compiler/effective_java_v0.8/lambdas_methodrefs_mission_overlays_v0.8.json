@@ -1,0 +1,173 @@
+{
+  "schema": "codefit-lambdas-methodrefs-mission-overlays/v0.8",
+  "missions": [
+    {
+      "mission_id": "EJ8-042-Q1",
+      "note_id": "EJ8-042",
+      "source_unit_id": "EJ-ITEM-042",
+      "stage": "predict",
+      "original_quest_brief": "A lambda and an anonymous callback both reference this inside an instance method. Predict which object each refers to and what changes if a captured local is reassigned.",
+      "rubric_criteria": [
+        "Identifies lexical this",
+        "Identifies anonymous receiver",
+        "Explains effectively-final compile rejection"
+      ],
+      "negative_controls": [
+        "this-binding",
+        "mutable-capture"
+      ],
+      "replaces_draft_id": "EJ4-042-01",
+      "grader_plan": "Design only; separate reviewed Java21 held-out grader NOT IMPLEMENTED",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ8-042-Q2",
+      "note_id": "EJ8-042",
+      "source_unit_id": "EJ-ITEM-042",
+      "stage": "debug",
+      "original_quest_brief": "A routing comparator is declared through a raw List and loses type inference; another lambda embeds a long mutable retry workflow. Repair both designs.",
+      "rubric_criteria": [
+        "Restores generic target type",
+        "Extracts named behavior for complexity",
+        "Keeps lambda pure or bounded"
+      ],
+      "negative_controls": [
+        "raw-list",
+        "oversized-lambda"
+      ],
+      "replaces_draft_id": "EJ4-042-02",
+      "grader_plan": "Design only; separate reviewed Java21 held-out grader NOT IMPLEMENTED",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ8-042-Q3",
+      "note_id": "EJ8-042",
+      "source_unit_id": "EJ-ITEM-042",
+      "stage": "build",
+      "original_quest_brief": "Implement a typed risk-rule dispatcher using Predicate<Event> lambdas for simple rules and a named object for a stateful rule, with edge-case tests.",
+      "rubric_criteria": [
+        "Correct target typing",
+        "Clear separation of simple and complex behavior",
+        "Deterministic edge cases"
+      ],
+      "negative_controls": [
+        "null-input-policy",
+        "stateful-rule"
+      ],
+      "replaces_draft_id": "EJ4-042-03",
+      "grader_plan": "Design only; separate reviewed Java21 held-out grader NOT IMPLEMENTED",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ8-042-Q4",
+      "note_id": "EJ8-042",
+      "source_unit_id": "EJ-ITEM-042",
+      "stage": "defend",
+      "original_quest_brief": "Compare a lambda, an anonymous class and a private static nested class for a callback that must be documented, versioned and potentially serialized.",
+      "rubric_criteria": [
+        "Covers type limitations",
+        "Explains this/capture differences",
+        "Rejects fragile lambda serialization"
+      ],
+      "negative_controls": [
+        "serialization-compatibility",
+        "complex-behavior"
+      ],
+      "replaces_draft_id": "EJ4-042-04",
+      "grader_plan": "Design only; separate reviewed Java21 held-out grader NOT IMPLEMENTED",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ8-043-Q1",
+      "note_id": "EJ8-043",
+      "source_unit_id": "EJ-ITEM-043",
+      "stage": "predict",
+      "original_quest_brief": "For a parser utility, a fixed formatter instance and a record constructor, classify static, bound, unbound and constructor references and infer their input arity.",
+      "rubric_criteria": [
+        "Correctly classifies receiver binding",
+        "Matches target arity",
+        "Explains construction behavior"
+      ],
+      "negative_controls": [
+        "bound-vs-unbound",
+        "constructor-target"
+      ],
+      "replaces_draft_id": "EJ4-043-01",
+      "grader_plan": "Design only; separate reviewed Java21 held-out grader NOT IMPLEMENTED",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ8-043-Q2",
+      "note_id": "EJ8-043",
+      "source_unit_id": "EJ-ITEM-043",
+      "stage": "debug",
+      "original_quest_brief": "A refactor changes a lambda that fetches a replaceable service each call into a bound method reference. Explain why hot-swapping stops working.",
+      "rubric_criteria": [
+        "Identifies early receiver binding",
+        "Restores late lookup if needed",
+        "Tests changed-service behavior"
+      ],
+      "negative_controls": [
+        "receiver-replacement",
+        "null-receiver"
+      ],
+      "replaces_draft_id": "EJ4-043-02",
+      "grader_plan": "Design only; separate reviewed Java21 held-out grader NOT IMPLEMENTED",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ8-043-Q3",
+      "note_id": "EJ8-043",
+      "source_unit_id": "EJ-ITEM-043",
+      "stage": "build",
+      "original_quest_brief": "Implement a typed event transformation using static parsing, unbound trimming, constructor reference and counter merge, with empty and invalid-input cases.",
+      "rubric_criteria": [
+        "Typed functional targets",
+        "Equivalent behavior to clear lambdas",
+        "Explicit invalid-input handling"
+      ],
+      "negative_controls": [
+        "empty-stream",
+        "invalid-parse"
+      ],
+      "replaces_draft_id": "EJ4-043-03",
+      "grader_plan": "Design only; separate reviewed Java21 held-out grader NOT IMPLEMENTED",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ8-043-Q4",
+      "note_id": "EJ8-043",
+      "source_unit_id": "EJ-ITEM-043",
+      "stage": "defend",
+      "original_quest_brief": "Choose between a named method reference and an inline lambda for a compliance predicate whose argument names clarify business meaning.",
+      "rubric_criteria": [
+        "Prioritizes readability over length",
+        "Addresses overload and target typing",
+        "States when extraction is warranted"
+      ],
+      "negative_controls": [
+        "overloaded-target",
+        "semantic-clarity"
+      ],
+      "replaces_draft_id": "EJ4-043-04",
+      "grader_plan": "Design only; separate reviewed Java21 held-out grader NOT IMPLEMENTED",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

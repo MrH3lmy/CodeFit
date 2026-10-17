@@ -1,0 +1,196 @@
+{
+  "schema": "codefit-general-types-notes/v0.12",
+  "notes": [
+    {
+      "title": "Model exact quantities with decimal or integral representations",
+      "prerequisites": [
+        "binary floating-point representation",
+        "BigDecimal",
+        "integer overflow",
+        "monetary domain policies"
+      ],
+      "core": "Treat binary floating point as approximate; for ledger amounts and decimal policies use integer minor units with checked bounds or decimal arithmetic with explicit input and rounding contracts.",
+      "rules": [
+        "Represent integral minor units with long when supported by currency scale and safe arithmetic ranges; validate the currency and fraction scale at boundaries.",
+        "Use BigDecimal(String) or BigDecimal.valueOf(double) intentionally; avoid BigDecimal(double) when intending the human decimal spelling of a binary float.",
+        "Prefer compareTo for numeric decimal order; equals considers the representation scale, so 1.0 and 1.00 may compare equal but not be equal objects.",
+        "Never silently round a decimal division: specify scale and RoundingMode when a nonterminating quotient is possible.",
+        "Use Math.addExact, Math.multiplyExact or dedicated checked-bound routines when fixed-width integer overflow must fail rather than wrap.",
+        "Do not assume floating-point arithmetic becomes exact by rounding only the printed output; the errors can affect branching and cumulative decisions."
+      ],
+      "nuance": [
+        "Not all domains need exact decimal results: approximate scientific measurements and statistical models often appropriately use double.",
+        "BigDecimal remains sensitive to origin and scale; valueOf(double) first reflects Double.toString, not the original real number or decimal user intent.",
+        "Different currencies may require differing legal minor units, rounding rules and settlement boundaries, and integer cents cannot encode every asset.",
+        "Division without an explicit MathContext or terminating expansion may throw ArithmeticException rather than return an approximate answer.",
+        "Microbenchmark claims about decimal versus integer performance should be tested against the deployed JDK and business constraints."
+      ],
+      "misconception": "Double is safe for a ledger if the UI rounds to two digits at the end.",
+      "production_context": "A multi-currency billing pipeline carries typed CurrencyCode and long scaled amounts for supported currencies, using BigDecimal and an explicit rounding policy for calculated fees.",
+      "java21_delta": "Java 21 preserves BigDecimal scale, compareTo, valueOf, and Math exact arithmetic APIs; benchmark modern JDK behavior before choosing a performance-sensitive representation.",
+      "note_id": "EJ12-060",
+      "source_unit_id": "EJ-ITEM-060",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 291,
+      "pdf_page_end_exclusive": 294,
+      "source_body_sha256": "415034204b606b94a33210dea5a9cd55ca4db64310bd9acdc21df5afe707d7e9",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis grounded in complete private source section; semantic/educational independent approval pending."
+    },
+    {
+      "title": "Choose primitive and boxed numeric values by contract",
+      "prerequisites": [
+        "autoboxing",
+        "nullability",
+        "object identity",
+        "primitive specialization"
+      ],
+      "core": "Prefer primitive types for ordinary numeric computation; use wrappers deliberately only when nullability, generics or reference semantics require them, avoiding identity comparisons and implicit unboxing hazards.",
+      "rules": [
+        "Use int/long/double/boolean instead of wrappers when absence is not part of the API and collection/generic storage is not required.",
+        "Compare wrapper contents with equals, primitive comparison methods or an explicit unboxed value; avoid == to test numeric equality of distinct wrapper references.",
+        "Document whether a boxed parameter can be null; null unboxing can throw NullPointerException even when the eventual expression looks numeric.",
+        "Choose Comparator.comparingInt or Integer.compare for integer comparator contracts; do not subtract arbitrary ints because subtraction can overflow.",
+        "Use primitive operators and streams when allocation profiling justifies it; avoid repeatedly boxing and unboxing inside hot loops.",
+        "Keep wrapper null as a distinct domain state where needed; reject, default, or represent optional absence explicitly before computing."
+      ],
+      "nuance": [
+        "Wrapper caches are implementation/version details unsuitable as a numeric-equality rule; a passing == comparison within a small range proves nothing.",
+        "Autounboxing can happen inside ternary expressions and arithmetic mixed with wrappers, which may hide a null failure.",
+        "Java generics do not accept primitive type arguments (List<int>), so wrapper types remain necessary in ordinary generic collections.",
+        "A primitive OptionalInt can describe an optional primitive result without encoding absence as a boxed null.",
+        "Java21 value-oriented wrapper guidance does not give identity stability; never synchronize on wrappers or require unique wrapper identities."
+      ],
+      "misconception": "Autoboxing makes Integer and int interchangeable, including null and object identity.",
+      "production_context": "A transaction counter uses primitive long state and Long.compare for ordering; an optional imported numeric field is validated before conversion to primitive counters.",
+      "java21_delta": "Java 21 continues boxing/unboxing and wrapper caching behavior with warnings against identity-sensitive use of value-based wrapper objects; prefer primitive specializations on hot paths.",
+      "note_id": "EJ12-061",
+      "source_unit_id": "EJ-ITEM-061",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 294,
+      "pdf_page_end_exclusive": 297,
+      "source_body_sha256": "e25b94c7d255f7d42a5c7a48cca75f7aa221f0a12d03eda6b52b2b77431cdc64",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis grounded in complete private source section; semantic/educational independent approval pending."
+    },
+    {
+      "title": "Represent domain values and capabilities with actual types",
+      "prerequisites": [
+        "records",
+        "enums",
+        "parsing boundary",
+        "ThreadLocal",
+        "security capabilities"
+      ],
+      "core": "Use strings for text and boundary serialization, not as unchecked stand-ins for money, state, structured aggregates or keys granting access to a capability.",
+      "rules": [
+        "Parse external strings once into validated domain types: enums, numeric values, immutable records or identifiers, and reject unknown values deliberately.",
+        "Do not concatenate fields with homemade separators to represent an aggregate; delimiters may occur in data and parsing contracts can drift.",
+        "Use typed opaque references for capabilities or per-context storage; a user-selected string key should not authorize access to an unrelated namespace.",
+        "Represent operational status with a closed enum or sealed domain result when appropriate, not unvalidated magic string protocols throughout core code.",
+        "Use a record or class with clear equals/hashCode and defensive policies for composite keys rather than fragile string concatenation.",
+        "Keep interoperation and log strings at explicit boundaries, avoiding unvalidated raw strings that leak into domain API internals."
+      ],
+      "nuance": [
+        "Protocol and persistence formats are often legitimately string-valued; not every string should be replaced by a custom type.",
+        "A record is a concise value aggregate in Java21 but will not automatically validate security/currency/id constraints.",
+        "ThreadLocal provides typed storage by reference identity per thread, but thread pools demand remove or scoped lifecycle to avoid retaining stale values.",
+        "A typed key prevents accidental collisions, not malicious authorization bypass by itself; enforce access checks at the trust boundary.",
+        "Enum.name() and toString() are not universal stable wire contracts; use explicit codes when external compatibility matters."
+      ],
+      "misconception": "A separator-delimited String is as robust as a record and a string token is a secure capability.",
+      "production_context": "An audit trail uses a validated AuditKey record and typed status enum; request context uses a private ThreadLocal key cleaned up after each pooled worker operation.",
+      "java21_delta": "Java 21 records and sealed types make typed aggregates and state models concise; ThreadLocal remains usable but virtual-thread/context-lifecycle decisions require separate review.",
+      "note_id": "EJ12-062",
+      "source_unit_id": "EJ-ITEM-062",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 297,
+      "pdf_page_end_exclusive": 300,
+      "source_body_sha256": "450db8262360b1d6bfbd048623af28c0dc12b286c070fddd7fa19dfb50705f6a",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis grounded in complete private source section; semantic/educational independent approval pending."
+    },
+    {
+      "title": "Accumulate long strings without repeated immutable copying",
+      "prerequisites": [
+        "String immutability",
+        "StringBuilder",
+        "algorithmic complexity",
+        "benchmarking"
+      ],
+      "core": "A short fixed expression with + remains readable; for loops accumulating a potentially large number of fragments, append into a StringBuilder, stream or writer instead of repeatedly constructing intermediate strings.",
+      "rules": [
+        "Use a local StringBuilder when building a potentially long dynamically sized result over repeated iterations.",
+        "Allow straightforward + for small bounded concatenations; Java compilers optimize many single-expression concatenations.",
+        "Preserve ordering, separators and null policies when replacing a concatenation loop with an accumulator.",
+        "For huge outputs consider streaming to an Appendable, BufferedWriter or another consumer rather than materializing all data in memory.",
+        "Optionally pre-size a builder using safe, measured size estimates and check integer overflow for massive constructions.",
+        "Benchmark realistic repeated-concatenation workloads on Java 21 rather than repeating old fixed speedup ratios."
+      ],
+      "nuance": [
+        "StringBuilder is mutable and generally not suitable as a shared unsynchronized mutable buffer; keep its lifetime local.",
+        "Java21 uses modern invokedynamic string concatenation strategies for many expressions, but does not guarantee that x += fragment inside a loop avoids repeated copying.",
+        "String.join or Collectors.joining may be appropriate with clear separator rules, though they too materialize output.",
+        "Do not prematurely allocate extremely large buffers from unchecked item count times estimated width.",
+        "For short output, clarity often outweighs allocation differences; do not claim a particular asymptotic cost for every optimizer implementation without measurement."
+      ],
+      "misconception": "Modern string concatenation optimization makes repeated + inside loops equivalent to a single builder across all workloads.",
+      "production_context": "A billing export streams rows to a Writer; small status labels use + while medium-sized audit summaries use a local StringBuilder with explicit delimiters.",
+      "java21_delta": "Java 21 string concatenation internals have evolved since the Java 9-era publication; validate performance empirically but preserve the immutable-copying design concern.",
+      "note_id": "EJ12-063",
+      "source_unit_id": "EJ-ITEM-063",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 300,
+      "pdf_page_end_exclusive": 301,
+      "source_body_sha256": "d748e0357b9a878288cf8a6e491b234c33518484ebbab1aaf3deb96cb8b5b653",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis grounded in complete private source section; semantic/educational independent approval pending."
+    },
+    {
+      "title": "Code to interface contracts without losing semantics",
+      "prerequisites": [
+        "interfaces",
+        "collections",
+        "behavioral subtyping",
+        "iteration order"
+      ],
+      "core": "Declare clients, variables and return types with the most appropriate interface or abstract contract so implementations can vary, while preserving all requirements not expressed by the interface alone.",
+      "rules": [
+        "Use Set, Map, List, Collection or domain interfaces when clients need only their documented operations rather than one concrete class.",
+        "Preserve observable ordering, null handling, mutability and concurrency semantics when substituting implementations—even if interfaces compile unchanged.",
+        "Use concrete classes when no meaningful interface exists, particularly immutable value types and certain framework contracts.",
+        "Select the least specific type that actually supports the required behavior; use a base class where a class-based framework has no usable interface.",
+        "Avoid leaking HashMap, ArrayList or other concrete collection types through fields and method signatures without domain justification.",
+        "Test substitution using boundary behavior: predictable order, duplicate suppression, permitted nulls and output ownership."
+      ],
+      "nuance": [
+        "Set does not promise iteration order: LinkedHashSet and TreeSet carry additional semantics that a plain HashSet replacement may violate.",
+        "Java21 SequencedSet offers explicit first/last and order-related operations; it does not mean any Set can truthfully be treated as sequenced.",
+        "Map.of and List.of are unmodifiable and reject nulls; they are not behaviorally equivalent to arbitrary mutable concrete implementations.",
+        "An EnumMap needs enum keys; selecting it may improve certain behaviors but cannot substitute for all Map types.",
+        "A domain-specific interface should not exist solely to conceal simple immutable value objects such as String or BigInteger."
+      ],
+      "misconception": "If both implementations satisfy the same interface, changing them cannot affect program behavior.",
+      "production_context": "A routing table exposes Map<Region,Policy> and relies on explicit ordered iteration only where a SequencedMap or ordered domain contract is promised, never on unspecified HashMap traversal.",
+      "java21_delta": "Java 21 adds SequencedCollection, SequencedSet and SequencedMap, which help express ordered contracts when they are actually required.",
+      "note_id": "EJ12-064",
+      "source_unit_id": "EJ-ITEM-064",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 301,
+      "pdf_page_end_exclusive": 303,
+      "source_body_sha256": "ff45b3c0cd8d2171889baf7381e38cdb2bf9cd5db48528fe094f0affbaef5af5",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis grounded in complete private source section; semantic/educational independent approval pending."
+    }
+  ]
+}

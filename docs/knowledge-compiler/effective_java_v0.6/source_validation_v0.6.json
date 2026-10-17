@@ -1,0 +1,74 @@
+{
+  "schema": "codefit-source-v6-generics-signals",
+  "item_count": 8,
+  "source_hashes_reverified": 8,
+  "targeted_anchor_checks": 32,
+  "coverage_interpretation": "Source paragraphs accessible and signature phrases matched, NOT independent semantic audit.",
+  "all_independently_reviewed": false,
+  "item_checks": [
+    {
+      "unit": "EJ-ITEM-026",
+      "source_hash_verified": true,
+      "signal_matches": 4,
+      "verified_source_locator": true,
+      "private_source_text_exported": false,
+      "independently_reviewed": false
+    },
+    {
+      "unit": "EJ-ITEM-027",
+      "source_hash_verified": true,
+      "signal_matches": 4,
+      "verified_source_locator": true,
+      "private_source_text_exported": false,
+      "independently_reviewed": false
+    },
+    {
+      "unit": "EJ-ITEM-028",
+      "source_hash_verified": true,
+      "signal_matches": 4,
+      "verified_source_locator": true,
+      "private_source_text_exported": false,
+      "independently_reviewed": false
+    },
+    {
+      "unit": "EJ-ITEM-029",
+      "source_hash_verified": true,
+      "signal_matches": 4,
+      "verified_source_locator": true,
+      "private_source_text_exported": false,
+      "independently_reviewed": false
+    },
+    {
+      "unit": "EJ-ITEM-030",
+      "source_hash_verified": true,
+      "signal_matches": 4,
+      "verified_source_locator": true,
+      "private_source_text_exported": false,
+      "independently_reviewed": false
+    },
+    {
+      "unit": "EJ-ITEM-031",
+      "source_hash_verified": true,
+      "signal_matches": 4,
+      "verified_source_locator": true,
+      "private_source_text_exported": false,
+      "independently_reviewed": false
+    },
+    {
+      "unit": "EJ-ITEM-032",
+      "source_hash_verified": true,
+      "signal_matches": 4,
+      "verified_source_locator": true,
+      "private_source_text_exported": false,
+      "independently_reviewed": false
+    },
+    {
+      "unit": "EJ-ITEM-033",
+      "source_hash_verified": true,
+      "signal_matches": 4,
+      "verified_source_locator": true,
+      "private_source_text_exported": false,
+      "independently_reviewed": false
+    }
+  ]
+}

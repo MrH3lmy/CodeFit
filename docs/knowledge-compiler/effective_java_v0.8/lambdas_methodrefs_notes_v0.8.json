@@ -1,0 +1,78 @@
+{
+  "schema": "codefit-lambdas-methodrefs-notes/v0.8",
+  "notes": [
+    {
+      "title": "Small function objects with lambdas and explicit context",
+      "prerequisites": [
+        "functional interfaces",
+        "generic type inference",
+        "anonymous classes",
+        "lexical scope"
+      ],
+      "core": "Use lambdas for short behaviors assigned to a single-abstract-method interface, preserving readable target types and concise business rules. Prefer a named method or class when logic becomes complex, requires independent object identity, or needs a non-functional base type.",
+      "rules": [
+        "A lambda requires a target functional interface; it cannot directly instantiate an abstract class or a multi-abstract-method interface.",
+        "Keep generic parameterization at the API boundary so lambda parameter and result types can be inferred safely.",
+        "A lambda’s this is lexically bound to its enclosing instance, whereas an anonymous class has its own this.",
+        "Captured local variables must be final or effectively final; this does not make captured mutable objects thread-safe.",
+        "Use a named method or constant-specific class body when enum behavior needs complex logic or instance state unavailable during enum constant construction.",
+        "Do not use serialized lambda implementation details as a stable cross-version wire format."
+      ],
+      "nuance": [
+        "A functional interface can contain default/static methods without losing its single abstract method property.",
+        "A short lambda can be less clear than a named method if business intent is hidden in nested expressions.",
+        "Java 21 records, switch expressions and pattern matching can simplify code inside a lambda, but do not remove target typing or capture rules.",
+        "An anonymous class remains useful for abstract classes, interfaces with multiple abstract methods, or code that needs the function object itself."
+      ],
+      "misconception": "A lambda is merely a shorter anonymous class with identical this, inheritance and serialization semantics.",
+      "production_context": "A retry-policy router stores concise predicate rules and uses named policy objects when rule evaluation requires diagnostics or mutable lifecycle.",
+      "java21_delta": "Java 21 adds modern syntax inside lambdas but retains Java 8-era target typing, lexical this, effectively-final capture and functional-interface restrictions.",
+      "note_id": "EJ8-042",
+      "source_unit_id": "EJ-ITEM-042",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 214,
+      "pdf_page_end_exclusive": 218,
+      "source_body_sha256": "9375c951cf41d9d8c262dbe130101d8cf5bd020e2a3bb134f9af7bbf5f83e284",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Source-informed original item-level draft, not independent paragraph-level semantic review."
+    },
+    {
+      "title": "Method references as readable adapters, not a blanket replacement",
+      "prerequisites": [
+        "functional interfaces",
+        "lambda target typing",
+        "method overloads"
+      ],
+      "core": "Use a method reference when it exposes a named operation more clearly than a lambda. Distinguish static, bound instance, unbound instance, class-constructor and array-constructor references, and rely on the functional target signature to determine invocation arguments.",
+      "rules": [
+        "Choose a method reference when the method name explains the behavior better than redundant lambda parameters.",
+        "Keep a lambda when parameter names document intent or a reference would obscure the receiver and arguments.",
+        "A bound instance reference captures a particular receiver; an unbound instance reference receives its receiver as a functional argument.",
+        "Constructor and array-constructor references act as factories with target-compatible signatures.",
+        "Check overload resolution, null receivers and target types rather than assuming syntactic brevity guarantees correctness.",
+        "Extract complex lambda bodies into a named method before considering a method reference."
+      ],
+      "nuance": [
+        "Static method references can often replace pure arithmetic or parsing lambdas, but not arbitrary reordered arguments without an adapter.",
+        "A bound method reference evaluates its receiver expression when the reference is created; a lambda can defer receiver evaluation.",
+        "Method references and lambdas can have different clarity even when their runtime behavior is equivalent.",
+        "Java 21 method-reference target typing remains sensitive to overloaded method signatures and generic inference."
+      ],
+      "misconception": "Method references are always shorter, safer and semantically identical to every visually similar lambda.",
+      "production_context": "A reconciliation pipeline parses external codes, constructs typed events and merges counters using named conversion functions.",
+      "java21_delta": "Java 21 retains the five reference forms and target typing described in Java 8-era APIs; new language syntax does not eliminate overload/receiver subtleties.",
+      "note_id": "EJ8-043",
+      "source_unit_id": "EJ-ITEM-043",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 218,
+      "pdf_page_end_exclusive": 220,
+      "source_body_sha256": "efa0f21c689d27db8b5fa1b25c40b5a7342fd0cfd25ce6be4b7c2e999f2bf361",
+      "source_review": "DEEP_AUTHOR_SOURCE_READING__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Source-informed original item-level draft, not independent paragraph-level semantic review."
+    }
+  ]
+}

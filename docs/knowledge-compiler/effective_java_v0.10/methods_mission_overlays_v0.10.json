@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-methods-mission-overlays/v0.10",
+  "missions": [
+    {
+      "mission_id": "EJ10-049-Q1",
+      "note_id": "EJ10-049",
+      "source_unit_id": "EJ-ITEM-049",
+      "stage": "predict",
+      "original_quest_brief": "For a ledger lookup receiving null account, negative offset, out-of-range length, and a zero-length window at the end, predict which requests are valid and when they must fail.",
+      "rubric_criteria": [
+        "Null and range behavior",
+        "Half-open range rules",
+        "Failure precedes mutations"
+      ],
+      "negative_controls": [
+        "null-account",
+        "overflow-range"
+      ],
+      "replaces_draft_id": "EJ4-049-01",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-049-Q2",
+      "note_id": "EJ10-049",
+      "source_unit_id": "EJ-ITEM-049",
+      "stage": "debug",
+      "original_quest_brief": "An immutable transfer configuration stores an invalid strategy and crashes only on the first event; a second function validates after a balance decrement. Move checks to the correct boundary.",
+      "rubric_criteria": [
+        "Constructor validation",
+        "Preserves state on failure",
+        "Appropriate documented exceptions"
+      ],
+      "negative_controls": [
+        "deferred-null",
+        "partial-write"
+      ],
+      "replaces_draft_id": "EJ4-049-02",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-049-Q3",
+      "note_id": "EJ10-049",
+      "source_unit_id": "EJ-ITEM-049",
+      "stage": "build",
+      "original_quest_brief": "Build a non-mutating slice factory with Objects range checks, explicit domain validation, and boundary tests for zero length, negative indices and large ints.",
+      "rubric_criteria": [
+        "Valid half-open windows",
+        "Overflow safety",
+        "Clear error contracts"
+      ],
+      "negative_controls": [
+        "index-overflow",
+        "inclusive-end-confusion"
+      ],
+      "replaces_draft_id": "EJ4-049-03",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-049-Q4",
+      "note_id": "EJ10-049",
+      "source_unit_id": "EJ-ITEM-049",
+      "stage": "defend",
+      "original_quest_brief": "Decide whether a bulk sort needs an up-front comparability walk; explain when implicit validation is acceptable and how to handle wrong exception types.",
+      "rubric_criteria": [
+        "No needless pre-scan",
+        "Failure atomicity considered",
+        "Exception-contract fidelity"
+      ],
+      "negative_controls": [
+        "expensive-precheck",
+        "unchecked-partial-state"
+      ],
+      "replaces_draft_id": "EJ4-049-04",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-051-Q1",
+      "note_id": "EJ10-051",
+      "source_unit_id": "EJ-ITEM-051",
+      "stage": "predict",
+      "original_quest_brief": "A route method accepts seven String arguments including two IDs and three codes. Predict which swaps compile undetected and how a typed record would change call-site safety.",
+      "rubric_criteria": [
+        "Detects same-type transposition",
+        "Recognizes compile-time limits",
+        "Considers record validation"
+      ],
+      "negative_controls": [
+        "swapped-ids",
+        "swapped-currencies"
+      ],
+      "replaces_draft_id": "EJ4-051-01",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-051-Q2",
+      "note_id": "EJ10-051",
+      "source_unit_id": "EJ-ITEM-051",
+      "stage": "debug",
+      "original_quest_brief": "A public API takes HashMap<String,Integer>, a boolean flag named mode, and multiple synonyms for submit(). Repair substitutability and ambiguity.",
+      "rubric_criteria": [
+        "Map interface accepted",
+        "Readable mode contract",
+        "Reduced redundant entry points"
+      ],
+      "negative_controls": [
+        "concrete-parameter",
+        "boolean-blindness"
+      ],
+      "replaces_draft_id": "EJ4-051-02",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-051-Q3",
+      "note_id": "EJ10-051",
+      "source_unit_id": "EJ-ITEM-051",
+      "stage": "build",
+      "original_quest_brief": "Design an immutable CaptureRequest with validated identifiers, monetary units and one mode enum; expose a coherent, short processing signature.",
+      "rubric_criteria": [
+        "Record or value grouping",
+        "Validation at boundary",
+        "Documented modes"
+      ],
+      "negative_controls": [
+        "mixed-identifiers",
+        "invalid-value-construction"
+      ],
+      "replaces_draft_id": "EJ4-051-03",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-051-Q4",
+      "note_id": "EJ10-051",
+      "source_unit_id": "EJ-ITEM-051",
+      "stage": "defend",
+      "original_quest_brief": "Compare splitting operations, introducing a parameter object, and a staged builder for a seven-parameter reporting API. Justify usage, compatibility, and validation timing.",
+      "rubric_criteria": [
+        "Trade-offs explicit",
+        "API discoverability",
+        "Backward compatibility plan"
+      ],
+      "negative_controls": [
+        "unnecessary-builder",
+        "over-fragmentation"
+      ],
+      "replaces_draft_id": "EJ4-051-04",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-052-Q1",
+      "note_id": "EJ10-052",
+      "source_unit_id": "EJ-ITEM-052",
+      "stage": "predict",
+      "original_quest_brief": "A variable statically typed Collection holds a Set, and two classify overloads accept Set and Collection. Predict which body executes; contrast with an overridden instance method.",
+      "rubric_criteria": [
+        "Static overload selection",
+        "Dynamic override dispatch",
+        "Role of explicit cast"
+      ],
+      "negative_controls": [
+        "static-vs-runtime",
+        "cast-changes-overload"
+      ],
+      "replaces_draft_id": "EJ4-052-01",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-052-Q2",
+      "note_id": "EJ10-052",
+      "source_unit_id": "EJ-ITEM-052",
+      "stage": "debug",
+      "original_quest_brief": "A List<Integer> loses the wrong element because remove(int) was chosen; a callback API has ambiguous lambda overloads. Give safe fixes without weakening types.",
+      "rubric_criteria": [
+        "Distinguishes index from value",
+        "Disambiguates functional contract",
+        "Tests behavior not just compilation"
+      ],
+      "negative_controls": [
+        "autoboxing-remove",
+        "lambda-ambiguity"
+      ],
+      "replaces_draft_id": "EJ4-052-02",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-052-Q3",
+      "note_id": "EJ10-052",
+      "source_unit_id": "EJ-ITEM-052",
+      "stage": "build",
+      "original_quest_brief": "Implement descriptive subscribeToAlert and subscribeToAudit APIs replacing two overloaded functional signatures, plus tests proving no ambiguous call sites.",
+      "rubric_criteria": [
+        "Named stable operations",
+        "Correct callback target",
+        "Deterministic dispatch"
+      ],
+      "negative_controls": [
+        "method-reference-ambiguity",
+        "null-overload"
+      ],
+      "replaces_draft_id": "EJ4-052-03",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-052-Q4",
+      "note_id": "EJ10-052",
+      "source_unit_id": "EJ-ITEM-052",
+      "stage": "defend",
+      "original_quest_brief": "An established public class cannot remove old overloads. Propose safe delegation and deprecation options, including behavioral equivalence when both signatures accept the same input.",
+      "rubric_criteria": [
+        "Binary compatibility",
+        "Behavioral equivalence",
+        "Migration plan"
+      ],
+      "negative_controls": [
+        "overload-behavior-drift",
+        "silent-source-break"
+      ],
+      "replaces_draft_id": "EJ4-052-04",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-053-Q1",
+      "note_id": "EJ10-053",
+      "source_unit_id": "EJ-ITEM-053",
+      "stage": "predict",
+      "original_quest_brief": "Compare invoke(), invoke(first), and invoke((String[])null) for a first-plus-rest API versus a varargs-only API. Distinguish compile-time from runtime failures.",
+      "rubric_criteria": [
+        "Zero-arity rules",
+        "Null-array distinction",
+        "Required-first semantics"
+      ],
+      "negative_controls": [
+        "zero-arguments",
+        "null-array"
+      ],
+      "replaces_draft_id": "EJ4-053-01",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-053-Q2",
+      "note_id": "EJ10-053",
+      "source_unit_id": "EJ-ITEM-053",
+      "stage": "debug",
+      "original_quest_brief": "A generic varargs collector stores its arguments in an Object[] and later returns the wrong type; diagnose heap pollution and repair the contract.",
+      "rubric_criteria": [
+        "Explains reifiable-array issue",
+        "No unsafe escaped array",
+        "Correct safety annotation"
+      ],
+      "negative_controls": [
+        "heap-pollution",
+        "unchecked-varargs"
+      ],
+      "replaces_draft_id": "EJ4-053-02",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-053-Q3",
+      "note_id": "EJ10-053",
+      "source_unit_id": "EJ-ITEM-053",
+      "stage": "build",
+      "original_quest_brief": "Build an original batch-ID aggregator with one mandatory String and optional String... values, nonnull validation and immutable output.",
+      "rubric_criteria": [
+        "At least one static argument",
+        "Null handling",
+        "Does not expose caller array"
+      ],
+      "negative_controls": [
+        "null-first",
+        "null-rest-array"
+      ],
+      "replaces_draft_id": "EJ4-053-03",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-053-Q4",
+      "note_id": "EJ10-053",
+      "source_unit_id": "EJ-ITEM-053",
+      "stage": "defend",
+      "original_quest_brief": "Review a proposal adding five overloads merely to avoid varargs allocation; request benchmark evidence and compatibility analysis before accepting it.",
+      "rubric_criteria": [
+        "Measurement-driven decision",
+        "Overload selection risk",
+        "Maintainability versus cost"
+      ],
+      "negative_controls": [
+        "no-benchmark",
+        "ambiguous-fixed-arity"
+      ],
+      "replaces_draft_id": "EJ4-053-04",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-054-Q1",
+      "note_id": "EJ10-054",
+      "source_unit_id": "EJ-ITEM-054",
+      "stage": "predict",
+      "original_quest_brief": "A search function returns null for zero rows and another returns List.of(). Predict for-each, isEmpty and add behavior, and distinguish missing resource from empty result.",
+      "rubric_criteria": [
+        "Iteration safety",
+        "Immutable empty mutation rejection",
+        "Domain absence versus emptiness"
+      ],
+      "negative_controls": [
+        "null-result",
+        "immutable-add"
+      ],
+      "replaces_draft_id": "EJ4-054-01",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-054-Q2",
+      "note_id": "EJ10-054",
+      "source_unit_id": "EJ-ITEM-054",
+      "stage": "debug",
+      "original_quest_brief": "A report API returns a cached mutable singleton empty List then callers add rows and cross-contaminate responses. Replace with an appropriate empty result contract.",
+      "rubric_criteria": [
+        "Eliminates shared mutation",
+        "Preserves snapshot safety",
+        "Documents mutability"
+      ],
+      "negative_controls": [
+        "shared-mutable-empty",
+        "client-mutation"
+      ],
+      "replaces_draft_id": "EJ4-054-02",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-054-Q3",
+      "note_id": "EJ10-054",
+      "source_unit_id": "EJ-ITEM-054",
+      "stage": "build",
+      "original_quest_brief": "Implement a transaction search returning defensive immutable List and typed array variants; test empty, nonempty, null-element and mutation cases.",
+      "rubric_criteria": [
+        "No null empties",
+        "Typed empty arrays",
+        "Immutable or defensive contracts"
+      ],
+      "negative_controls": [
+        "empty-array",
+        "null-element"
+      ],
+      "replaces_draft_id": "EJ4-054-03",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ10-054-Q4",
+      "note_id": "EJ10-054",
+      "source_unit_id": "EJ-ITEM-054",
+      "stage": "defend",
+      "original_quest_brief": "Compare empty list, Optional<List<T>> and not-found status for a query; defend semantics, compatibility and measured allocation trade-offs.",
+      "rubric_criteria": [
+        "Separates resource absence",
+        "Consistent caller experience",
+        "No premature optimization"
+      ],
+      "negative_controls": [
+        "sentinel-null",
+        "unmeasured-allocation"
+      ],
+      "replaces_draft_id": "EJ4-054-04",
+      "grader_plan": "Original conceptual rubric only; separate reviewed held-out grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

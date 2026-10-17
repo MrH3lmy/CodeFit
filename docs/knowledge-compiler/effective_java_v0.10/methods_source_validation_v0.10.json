@@ -1,0 +1,70 @@
+{
+  "schema": "codefit-methods-source-validation/v0.10",
+  "item_count": 5,
+  "full_private_spans_read": 5,
+  "body_hashes_verified": 5,
+  "targeted_signals_matched": 25,
+  "checks": [
+    {
+      "unit": "EJ-ITEM-049",
+      "pdf_page_start": 248,
+      "pdf_page_end_exclusive": 252,
+      "body_chars": 8406,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signal_matches": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-051",
+      "pdf_page_start": 257,
+      "pdf_page_end_exclusive": 259,
+      "body_chars": 5633,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signal_matches": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-052",
+      "pdf_page_start": 259,
+      "pdf_page_end_exclusive": 266,
+      "body_chars": 15719,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signal_matches": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-053",
+      "pdf_page_start": 266,
+      "pdf_page_end_exclusive": 268,
+      "body_chars": 4053,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signal_matches": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "unit": "EJ-ITEM-054",
+      "pdf_page_start": 268,
+      "pdf_page_end_exclusive": 270,
+      "body_chars": 4283,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signal_matches": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "limitations": "Private complete source spans were inspected and digests/short anchors checked. This is author validation only, not independent technical or instructional review. No publisher text exported."
+}

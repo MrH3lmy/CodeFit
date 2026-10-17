@@ -1,0 +1,89 @@
+{
+  "schema": "codefit-javac-negative-enums-v0.8",
+  "count": 16,
+  "all_expected_rejections": true,
+  "release": "21",
+  "cases": [
+    {
+      "id": "unrelated_enum_assignment",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "unrelated_enum_identity_comparison",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "enum_subclassing_forbidden",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "ordinal_not_enum_value",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "mixed_enumset_types",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "enumset_non_enum_parameter",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "enummap_non_enum_key",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "enummap_wrong_enum_key",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "bounded_enum_class_non_enum",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "repeatable_container_wrong_value",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "method_annotation_applied_to_field",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "typed_annotation_argument_wrong_class",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "override_wrong_equals_parameter",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "override_typo_default_method",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "marker_type_rejects_plain_command",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    },
+    {
+      "id": "annotation_does_not_implement_marker",
+      "compiler_rejected": true,
+      "expected_invalid": true
+    }
+  ],
+  "interpretation": "Compile-time language contracts only; not production learner graders."
+}

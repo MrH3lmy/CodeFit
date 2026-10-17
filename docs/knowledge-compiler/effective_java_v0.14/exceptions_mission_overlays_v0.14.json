@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-exceptions-mission-overlays/v0.14",
+  "missions": [
+    {
+      "mission_id": "EJ14-070-Q1",
+      "note_id": "EJ14-070",
+      "source_unit_id": "EJ-ITEM-070",
+      "stage": "predict",
+      "original_quest_brief": "For a transfer client, classify negative amount, temporary remote unavailability, an empty successful search and a VM linkage failure. Predict which deserve validation, a recoverable checked boundary, a normal result or an Error path.",
+      "rubric_criteria": [
+        "Correct caller-action classification",
+        "Normal absence separated from failure",
+        "No catching Error as success"
+      ],
+      "negative_controls": [
+        "invalid-amount",
+        "fatal-error-swallowed"
+      ],
+      "replaces_draft_id": "EJ4-070-01",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-070-Q2",
+      "note_id": "EJ14-070",
+      "source_unit_id": "EJ-ITEM-070",
+      "stage": "debug",
+      "original_quest_brief": "A payout wrapper catches Throwable and returns RECEIVED for every exception. Diagnose why both programming bugs and infrastructure errors are masked and redesign the error contract without double-paying.",
+      "rubric_criteria": [
+        "No swallowed VM/programming failures",
+        "Recovery pathway is actionable",
+        "Idempotent retry decision explicit"
+      ],
+      "negative_controls": [
+        "catch-throwable",
+        "success-on-failure"
+      ],
+      "replaces_draft_id": "EJ4-070-02",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-070-Q3",
+      "note_id": "EJ14-070",
+      "source_unit_id": "EJ-ITEM-070",
+      "stage": "build",
+      "original_quest_brief": "Create a Java 21 transfer-validation layer that rejects invalid arguments with an appropriate runtime exception and exposes a dedicated checked retryable transport failure from a separately owned I/O boundary.",
+      "rubric_criteria": [
+        "Distinct exception families",
+        "Checked recovery handled or declared",
+        "Failure atomicity and deterministic tests"
+      ],
+      "negative_controls": [
+        "checked-unhandled",
+        "invalid-input-accepted"
+      ],
+      "replaces_draft_id": "EJ4-070-03",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-070-Q4",
+      "note_id": "EJ14-070",
+      "source_unit_id": "EJ-ITEM-070",
+      "stage": "defend",
+      "original_quest_brief": "Evaluate whether a transient gateway timeout belongs in a checked API, a runtime adapter exception, or a typed retry outcome, considering whether each caller can actually recover.",
+      "rubric_criteria": [
+        "Audience-specific recoverability",
+        "Contract evolution costs",
+        "Preserves the causal failure"
+      ],
+      "negative_controls": [
+        "checked-everywhere",
+        "runtime-everywhere"
+      ],
+      "replaces_draft_id": "EJ4-070-04",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-071-Q1",
+      "note_id": "EJ14-071",
+      "source_unit_id": "EJ-ITEM-071",
+      "stage": "predict",
+      "original_quest_brief": "A customer lookup returns an empty result while a remote service is down. Decide which case can be represented with Optional and which must remain a failure; predict the impact of test-then-act during concurrent updates.",
+      "rubric_criteria": [
+        "Normal absence correctly modeled",
+        "Transport failure not concealed",
+        "Identifies time-of-check race"
+      ],
+      "negative_controls": [
+        "failure-as-empty",
+        "check-then-use"
+      ],
+      "replaces_draft_id": "EJ4-071-01",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-071-Q2",
+      "note_id": "EJ14-071",
+      "source_unit_id": "EJ-ITEM-071",
+      "stage": "debug",
+      "original_quest_brief": "A Spring integration catches IOException, logs nothing, and returns Optional.empty() for all outages. Separate legitimate no-match from unavailability and explain why changing the checked signature alone is insufficient.",
+      "rubric_criteria": [
+        "Honest observable outcome",
+        "Cause retained for diagnostics",
+        "No silent retries or successes"
+      ],
+      "negative_controls": [
+        "hidden-outage",
+        "empty-catch"
+      ],
+      "replaces_draft_id": "EJ4-071-02",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-071-Q3",
+      "note_id": "EJ14-071",
+      "source_unit_id": "EJ-ITEM-071",
+      "stage": "build",
+      "original_quest_brief": "Build a tiny search facade with Optional for a normal miss and an explicit checked IOException at an I/O boundary; implement caller retry-or-stop logic with deterministic fake dependencies.",
+      "rubric_criteria": [
+        "No accidental successful default",
+        "Recovery policy documented",
+        "No race-prone existence precheck"
+      ],
+      "negative_controls": [
+        "lost-checked-failure",
+        "incorrect-absence"
+      ],
+      "replaces_draft_id": "EJ4-071-03",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-071-Q4",
+      "note_id": "EJ14-071",
+      "source_unit_id": "EJ-ITEM-071",
+      "stage": "defend",
+      "original_quest_brief": "Review adding a new checked exception to an interface implemented by several plugins. Explain how to evaluate recoverability, compatibility and alternatives while keeping remote faults distinguishable.",
+      "rubric_criteria": [
+        "Caller recovery evidence",
+        "Source compatibility analysis",
+        "Appropriate escape hatch"
+      ],
+      "negative_controls": [
+        "new-throws-without-client",
+        "conversion-to-null"
+      ],
+      "replaces_draft_id": "EJ4-071-04",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-072-Q1",
+      "note_id": "EJ14-072",
+      "source_unit_id": "EJ-ITEM-072",
+      "stage": "predict",
+      "original_quest_brief": "An API receives a null request ID, a negative index, or an unsupported mutation, while a separate closed session is invoked. Choose the most appropriate standard exception and explain why.",
+      "rubric_criteria": [
+        "Distinct null/index/state contracts",
+        "Unsupported-operation semantics",
+        "No generic RuntimeException fallback"
+      ],
+      "negative_controls": [
+        "incorrect-exception-family",
+        "state-vs-argument"
+      ],
+      "replaces_draft_id": "EJ4-072-01",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-072-Q2",
+      "note_id": "EJ14-072",
+      "source_unit_id": "EJ-ITEM-072",
+      "stage": "debug",
+      "original_quest_brief": "A custom InvalidEverythingException is thrown for nulls, bounds, and a closed connector. Replace it with meaningful standard exceptions and regression tests without changing legitimate success behavior.",
+      "rubric_criteria": [
+        "Exception choice matches failure",
+        "Callers can react reliably",
+        "No erased causes"
+      ],
+      "negative_controls": [
+        "custom-exception-everywhere",
+        "wrong-index-type"
+      ],
+      "replaces_draft_id": "EJ4-072-02",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-072-Q3",
+      "note_id": "EJ14-072",
+      "source_unit_id": "EJ-ITEM-072",
+      "stage": "build",
+      "original_quest_brief": "Implement a bounded read-only Integer page view that validates offset/count, rejects mutation, and refuses operations once closed; exercise null, bounds, close and unsupported branches.",
+      "rubric_criteria": [
+        "Stable standard exception types",
+        "Boundary and overflow checks",
+        "No accidental mutable access"
+      ],
+      "negative_controls": [
+        "unchecked-offset-overflow",
+        "mutable-view"
+      ],
+      "replaces_draft_id": "EJ4-072-03",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-072-Q4",
+      "note_id": "EJ14-072",
+      "source_unit_id": "EJ-ITEM-072",
+      "stage": "defend",
+      "original_quest_brief": "Compare adding a new RuntimeException subclass for every validation error versus standard JDK exceptions and one domain exception for a genuinely distinct recovery signal.",
+      "rubric_criteria": [
+        "Public vocabulary clarity",
+        "Meaningful domain exception criterion",
+        "Client compatibility"
+      ],
+      "negative_controls": [
+        "generic-all-failures",
+        "exception-proliferation"
+      ],
+      "replaces_draft_id": "EJ4-072-04",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-073-Q1",
+      "note_id": "EJ14-073",
+      "source_unit_id": "EJ-ITEM-073",
+      "stage": "predict",
+      "original_quest_brief": "A public paging API delegates to an iterator and raises NoSuchElementException on a bad index. Predict the correct client-facing exception and whether the original failure should remain inspectable.",
+      "rubric_criteria": [
+        "Abstraction-appropriate category",
+        "Cause retention",
+        "No change for valid paths"
+      ],
+      "negative_controls": [
+        "alien-exception-leak",
+        "lost-cause"
+      ],
+      "replaces_draft_id": "EJ4-073-01",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-073-Q2",
+      "note_id": "EJ14-073",
+      "source_unit_id": "EJ-ITEM-073",
+      "stage": "debug",
+      "original_quest_brief": "A service catches RuntimeException and wraps it as InvalidOrderException, including for null dereferences and database failures. Separate expected translation from unrelated bugs and preserve the cause.",
+      "rubric_criteria": [
+        "Narrow catch boundary",
+        "No bug masking",
+        "Causal evidence"
+      ],
+      "negative_controls": [
+        "broad-wrap",
+        "cause-lost"
+      ],
+      "replaces_draft_id": "EJ4-073-02",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-073-Q3",
+      "note_id": "EJ14-073",
+      "source_unit_id": "EJ-ITEM-073",
+      "stage": "build",
+      "original_quest_brief": "Implement a pageAt(index) adapter on top of an Iterator that throws IndexOutOfBoundsException on invalid position and chains a genuine NoSuchElementException from the underlying contract.",
+      "rubric_criteria": [
+        "Correct external type",
+        "Root cause available",
+        "Boundary tests incl. empty input"
+      ],
+      "negative_controls": [
+        "wrong-public-exception",
+        "cause-not-chained"
+      ],
+      "replaces_draft_id": "EJ4-073-03",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-073-Q4",
+      "note_id": "EJ14-073",
+      "source_unit_id": "EJ-ITEM-073",
+      "stage": "defend",
+      "original_quest_brief": "Evaluate whether translating an I/O timeout into a domain exception improves API stability while preserving retry semantics, diagnostics and the distinction from invalid parameters.",
+      "rubric_criteria": [
+        "Recovery semantics remain",
+        "Abstraction and trust boundary",
+        "No double translation or leakage"
+      ],
+      "negative_controls": [
+        "all-errors-translated",
+        "timeout-as-bad-input"
+      ],
+      "replaces_draft_id": "EJ4-073-04",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-074-Q1",
+      "note_id": "EJ14-074",
+      "source_unit_id": "EJ-ITEM-074",
+      "stage": "predict",
+      "original_quest_brief": "A Java 21 method declares throws IOException but Javadoc describes a NullPointerException and no checked failure. Predict what javac requires and what a doclint pass cannot validate.",
+      "rubric_criteria": [
+        "Checked contract distinguished",
+        "Unchecked documentation value",
+        "Doclint limitations"
+      ],
+      "negative_controls": [
+        "unchecked-ignored",
+        "docs-not-implementation"
+      ],
+      "replaces_draft_id": "EJ4-074-01",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-074-Q2",
+      "note_id": "EJ14-074",
+      "source_unit_id": "EJ-ITEM-074",
+      "stage": "debug",
+      "original_quest_brief": "A public API throws two different checked failures but documents only “may fail”, and silently changes an IllegalArgumentException into IllegalStateException. Repair the contract and tests.",
+      "rubric_criteria": [
+        "Per-exception conditions",
+        "Correct exposed exception types",
+        "Backward compatibility assessment"
+      ],
+      "negative_controls": [
+        "generic-throws",
+        "mismatched-contract"
+      ],
+      "replaces_draft_id": "EJ4-074-02",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-074-Q3",
+      "note_id": "EJ14-074",
+      "source_unit_id": "EJ-ITEM-074",
+      "stage": "build",
+      "original_quest_brief": "Write a small documented public Java 21 report fetcher with one declared checked I/O failure and two documented unchecked precondition failures; compile, generate Javadoc with doclint and test the branches.",
+      "rubric_criteria": [
+        "Valid Javadoc generation",
+        "Specific @throws documentation",
+        "Executable behavior matches"
+      ],
+      "negative_controls": [
+        "missing-throws-tag",
+        "wrong-runtime-type"
+      ],
+      "replaces_draft_id": "EJ4-074-03",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ14-074-Q4",
+      "note_id": "EJ14-074",
+      "source_unit_id": "EJ-ITEM-074",
+      "stage": "defend",
+      "original_quest_brief": "Review whether every RuntimeException, including internal implementation bugs, should be promised in the public API documentation. Set a stable documented boundary without concealing meaningful failures.",
+      "rubric_criteria": [
+        "Client-meaningful failure scope",
+        "No unmaintainable internal promises",
+        "Evidence from tests and peer review"
+      ],
+      "negative_controls": [
+        "overdocument-bugs",
+        "underdocument-preconditions"
+      ],
+      "replaces_draft_id": "EJ4-074-04",
+      "grader_plan": "Original design only; independent held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

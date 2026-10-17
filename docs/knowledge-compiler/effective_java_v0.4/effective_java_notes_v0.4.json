@@ -1,0 +1,907 @@
+{
+  "copyright": "Original explanatory notes only; no book passages, copied code, diagrams or private source locators.",
+  "notes": [
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming every factory invocation necessarily creates a distinct object.",
+      "note_id": "EJ-NOTE-001",
+      "original_concept_label": "Named creation and controlled instance construction",
+      "original_learning_synthesis": "Compare a public constructor with a descriptive factory, including ability to reuse objects or select a return subtype. Balance discoverability and inheritance restrictions.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-001",
+      "unseen_interview_scenario": "Design a retry-policy creation API with two named valid creation modes."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using an overloaded constructor with many similar numeric arguments and no validation.",
+      "note_id": "EJ-NOTE-002",
+      "original_concept_label": "Optional-parameter construction",
+      "original_learning_synthesis": "A builder can preserve readable choices and coherent validation when many optional parameters make telescoping constructors opaque. A builder introduces its own implementation cost.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-002",
+      "unseen_interview_scenario": "Build a configurable notification request with three required and several optional parameters."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Relying on a private constructor alone as a universal guarantee.",
+      "note_id": "EJ-NOTE-003",
+      "original_concept_label": "Singleton lifetime and serialization",
+      "original_learning_synthesis": "A singleton API must consider construction paths beyond ordinary callers, including serialization and reflective access. Enum-based singletons are a strong option when their limitations fit.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-003",
+      "unseen_interview_scenario": "Defend a stateless formatter singleton under reflection and serialization constraints."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming omission of constructors prevents object creation.",
+      "note_id": "EJ-NOTE-004",
+      "original_concept_label": "Utility-class instantiation control",
+      "original_learning_synthesis": "An explicit private constructor communicates that an all-static utility class is not meant to be instantiated, unlike an implicit public default constructor.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-004",
+      "unseen_interview_scenario": "Turn a parsing helper into a noninstantiable utility class."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Confusing a constant configuration value with a changeable collaborator.",
+      "note_id": "EJ-NOTE-005",
+      "original_concept_label": "Dependency injection and dependency ownership",
+      "original_learning_synthesis": "Pass variable or replaceable dependencies through a constructor, factory or appropriate injection boundary rather than hardwire them into the consumer.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-005",
+      "unseen_interview_scenario": "Make an order validator testable using an injected fraud-rule provider."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Interpreting object reuse as a rule to cache every mutable object.",
+      "note_id": "EJ-NOTE-006",
+      "original_concept_label": "Avoid needless allocation pragmatically",
+      "original_learning_synthesis": "Prefer sensible reuse of expensive immutable objects and avoid boxing or repeated computation on critical paths, but do not build custom pools for cheap objects without evidence.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-006",
+      "unseen_interview_scenario": "Refactor a repeatedly compiled validation pattern in a batch loop."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming garbage collection prevents every application-level memory leak.",
+      "note_id": "EJ-NOTE-007",
+      "original_concept_label": "Unintended object retention",
+      "original_learning_synthesis": "GC can reclaim only unreachable objects; self-managed arrays, listener registries and caches may retain obsolete references until explicitly cleared or bounded.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-007",
+      "unseen_interview_scenario": "Find a resource-retention bug in a request-cache eviction path."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Treating a cleaner callback as dependable transaction completion.",
+      "note_id": "EJ-NOTE-008",
+      "original_concept_label": "Resource cleanup cannot rely on finalization",
+      "original_learning_synthesis": "Finalizers and cleaners are unsuitable as primary cleanup mechanisms because execution timing and guarantees are weak. Model explicit closure and use try-with-resources where suitable.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-008",
+      "unseen_interview_scenario": "Identify why a file-backed operation leaks resources after a thrown exception."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Ignoring a primary operation failure when cleanup also throws.",
+      "note_id": "EJ-NOTE-009",
+      "original_concept_label": "Deterministic resource cleanup",
+      "original_learning_synthesis": "try-with-resources makes closure explicit and handles suppressed closing failures better than fragile nested-finally boilerplate when AutoCloseable applies.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-009",
+      "unseen_interview_scenario": "Repair a two-resource import pipeline and explain suppressed exceptions."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Allowing two independently equal objects to compare differently depending on argument order.",
+      "note_id": "EJ-NOTE-010",
+      "original_concept_label": "Symmetric and transitive value equality",
+      "original_learning_synthesis": "When implementing equals, preserve equivalence-relation properties; subclasses that add value fields can easily break symmetry or transitivity in comparisons.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-010",
+      "unseen_interview_scenario": "Find an asymmetric equality bug across two payment-event value types."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Treating matching hash codes as sufficient evidence for equals.",
+      "note_id": "EJ-NOTE-011",
+      "original_concept_label": "Consistent hashing for equal values",
+      "original_learning_synthesis": "If value-based equality is overridden, compatible hashCode is required so equality-based collection lookups remain valid. Hash collisions are legal and do not prove equality.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-011",
+      "unseen_interview_scenario": "Repair an order-key HashMap that misses a logically equal lookup key."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Treating a debugging string as a safe serialized data contract.",
+      "note_id": "EJ-NOTE-012",
+      "original_concept_label": "Useful text representation",
+      "original_learning_synthesis": "An object's toString output should be useful for diagnosis, document the stable promise if part of public API, and avoid exposing sensitive fields.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-012",
+      "unseen_interview_scenario": "Improve log visibility of a failed request without leaking secrets."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Shallow-copying a mutable member and expecting isolation.",
+      "note_id": "EJ-NOTE-013",
+      "original_concept_label": "Cloning trade-offs",
+      "original_learning_synthesis": "clone and Cloneable have fragile conventions; explicit copying or factories often provide clearer, safer object-copy behavior, especially for mutable components.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-013",
+      "unseen_interview_scenario": "Replace unsafe clone logic for a ruleset with defensively copied lists."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Implementing compareTo by subtraction with possible overflow.",
+      "note_id": "EJ-NOTE-014",
+      "original_concept_label": "Total ordering contracts",
+      "original_learning_synthesis": "Comparable defines an ordering relation whose mathematical properties matter; review consistency with equals and numerical comparison overflow.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-014",
+      "unseen_interview_scenario": "Sort transfer limits safely and explain duplicate handling in sorted collections."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Making every method public to simplify testing.",
+      "note_id": "EJ-NOTE-015",
+      "original_concept_label": "Minimal accessibility",
+      "original_learning_synthesis": "Keep classes, fields and helpers as inaccessible as practical to preserve implementation flexibility and protect invariants.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-015",
+      "unseen_interview_scenario": "Reduce surface area of an internal payments parsing component."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Providing public writable state in a reusable API.",
+      "note_id": "EJ-NOTE-016",
+      "original_concept_label": "Encapsulation through fields and methods",
+      "original_learning_synthesis": "Export methods rather than mutable public fields from public classes to retain invariants and allow later representation changes.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-016",
+      "unseen_interview_scenario": "Refactor an exposed mutable risk score to enforce validity."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Exposing mutable arrays or collections from an otherwise final class.",
+      "note_id": "EJ-NOTE-017",
+      "original_concept_label": "Immutable object design",
+      "original_learning_synthesis": "Construct immutable values with no externally mutable representation, no escaped mutable components and disciplined construction; final fields alone are not deep immutability.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-017",
+      "unseen_interview_scenario": "Design an immutable payment-routing configuration with defensive boundaries."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Extending a collection and accidentally double-counting operations.",
+      "note_id": "EJ-NOTE-018",
+      "original_concept_label": "Prefer composition to unsafe subclass reuse",
+      "original_learning_synthesis": "Inheritance between unrelated implementation classes introduces fragility when superclass internals or self-calls change; composition delegates deliberately instead.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-018",
+      "unseen_interview_scenario": "Instrument an order collection without depending on internal call structure."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming an unfinalized public method is necessarily a supported override hook.",
+      "note_id": "EJ-NOTE-019",
+      "original_concept_label": "Inheritance as a documented extension contract",
+      "original_learning_synthesis": "Design for subclass override points intentionally and document how overridable methods are used internally, or prohibit inheritance; fragile unknown self-use is dangerous.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-019",
+      "unseen_interview_scenario": "Audit extension points in a framework's abstract request handler."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Creating an interface for every implementation even without a meaningful contract.",
+      "note_id": "EJ-NOTE-020",
+      "original_concept_label": "Interfaces and implementation freedom",
+      "original_learning_synthesis": "Interfaces allow multiple implementations and support flexible APIs; abstract classes remain useful for common behavior with controlled extension policies.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-020",
+      "unseen_interview_scenario": "Select an abstraction for interchangeable merchant-notification transports."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming default methods are harmless for all existing classes.",
+      "note_id": "EJ-NOTE-021",
+      "original_concept_label": "Interface evolution compatibility",
+      "original_learning_synthesis": "Adding interface methods can break client implementations or change behavior unexpectedly; default methods require careful compatibility and specification review.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-021",
+      "unseen_interview_scenario": "Design an API evolution for a shared retry strategy interface."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using an interface just to import public constants into many classes.",
+      "note_id": "EJ-NOTE-022",
+      "original_concept_label": "Interfaces establish contracts, not constant namespaces",
+      "original_learning_synthesis": "Implementing an interface should declare a meaningful supported type. Use constants as members of appropriate classes or enums rather than exposing a constants-only interface.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-022",
+      "unseen_interview_scenario": "Improve a merchant status-code API polluted by constants interfaces."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Keeping a broad mutable class with a discriminator and many irrelevant null fields.",
+      "note_id": "EJ-NOTE-023",
+      "original_concept_label": "Replace tagged objects with polymorphic hierarchy",
+      "original_learning_synthesis": "Tagged unions with inactive fields and type switches can express multiple shapes awkwardly; hierarchies or suitably constrained sums can model variants more safely.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-023",
+      "unseen_interview_scenario": "Refactor two payment notification kinds into explicit types."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming every nested class must retain access to an instance of the outer type.",
+      "note_id": "EJ-NOTE-024",
+      "original_concept_label": "Static member classes and implicit outer references",
+      "original_learning_synthesis": "Make a nested member class static when it does not require an enclosing instance to avoid unintended retention and confusing coupling.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-024",
+      "unseen_interview_scenario": "Investigate retained request contexts caused by inner callback instances."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Treating multiple package-private top-level types as a harmless organization shortcut.",
+      "note_id": "EJ-NOTE-025",
+      "original_concept_label": "Single top-level type per compilation unit",
+      "original_learning_synthesis": "Avoid multiple top-level declarations in the same file where source ordering and duplicate names can make compilation unpredictable.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-025",
+      "unseen_interview_scenario": "Separate two competing helper definitions and explain compilation behavior."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using List instead of List<?> for read-only unknown-element inspection.",
+      "note_id": "EJ-NOTE-026",
+      "original_concept_label": "Parameterized type safety",
+      "original_learning_synthesis": "Avoid raw generic types that erase compile-time safety and permit latent failures; use appropriate wildcard forms if the element type is unknown.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-026",
+      "unseen_interview_scenario": "Repair an unsafe plugin result aggregation API."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Applying class-wide SuppressWarnings instead of validating a narrow cast.",
+      "note_id": "EJ-NOTE-027",
+      "original_concept_label": "Unchecked diagnostic handling",
+      "original_learning_synthesis": "Eliminate unchecked operations when possible; isolate unavoidable verified casts and document the basis rather than suppress warnings broadly.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-027",
+      "unseen_interview_scenario": "Contain a legacy deserialization cast in an audited adapter."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming List<Child> can be assigned to List<Parent>.",
+      "note_id": "EJ-NOTE-028",
+      "original_concept_label": "Arrays versus generics",
+      "original_learning_synthesis": "Arrays covary and perform runtime store checks, while generic parameterizations are invariant and generally checked at compile time; prefer lists for flexible APIs.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-028",
+      "unseen_interview_scenario": "Repair a heterogeneous event-processing collection API."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Implementing a reusable stack using Object references and casts at every call site.",
+      "note_id": "EJ-NOTE-029",
+      "original_concept_label": "Parameterize your own reusable generic types",
+      "original_learning_synthesis": "A genuinely generic container can enforce type safety for clients without unchecked casts, while compatible migration requires attention to raw usage.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-029",
+      "unseen_interview_scenario": "Make a type-safe retry-result stack with no unchecked client casts."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using Object return types for a function that has a precise type relationship.",
+      "note_id": "EJ-NOTE-030",
+      "original_concept_label": "Generic methods and type inference",
+      "original_learning_synthesis": "Generic utility methods express relationships between parameter and return types; factories can sometimes use inference to make call sites simpler.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-030",
+      "unseen_interview_scenario": "Create a reusable pair-construction utility retaining compile-time type information."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using invariant parameters for an API that only reads a subtype source.",
+      "note_id": "EJ-NOTE-031",
+      "original_concept_label": "Variance and PECS",
+      "original_learning_synthesis": "Bounded wildcards let APIs express which operations consume values and which produce them; producer-extends and consumer-super are useful guideposts, not a substitute for type review.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-031",
+      "unseen_interview_scenario": "Design a typed event-copy operation accepting subtype producers."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Adding @SafeVarargs to silence warnings on a method that writes into a generic varargs array unsafely.",
+      "note_id": "EJ-NOTE-032",
+      "original_concept_label": "Safe generics plus varargs",
+      "original_learning_synthesis": "Non-reifiable generic varargs arrays permit heap pollution; restrict operations, avoid exposing parameter arrays, and justify @SafeVarargs only on provably safe implementations.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-032",
+      "unseen_interview_scenario": "Review a batch builder API accepting generic varargs for heap-pollution risks."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Conflating one generic type parameter on the container with the type of each individual entry.",
+      "note_id": "EJ-NOTE-033",
+      "original_concept_label": "Heterogeneous typesafe key containers",
+      "original_learning_synthesis": "A keyed container can use class tokens to associate different value types to their own runtime classes, while remaining explicit about erasure and unchecked boundaries.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-033",
+      "unseen_interview_scenario": "Design a typed request-metadata container with multiple distinct typed attributes."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using unrelated integer constants that can be mixed accidentally.",
+      "note_id": "EJ-NOTE-034",
+      "original_concept_label": "Enum types versus int constants",
+      "original_learning_synthesis": "Enums encode a fixed set of valid values as types rather than magic integers, supporting readable comparisons and type-safe method contracts.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-034",
+      "unseen_interview_scenario": "Replace a payment-state integer namespace with a checked domain enum."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Serializing ordinal() into an external event payload.",
+      "note_id": "EJ-NOTE-035",
+      "original_concept_label": "Never persist enum ordinal as business identity",
+      "original_learning_synthesis": "Enum ordinal represents declaration position, not stable business data; attach explicit fields for stable codes or domain attributes.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-035",
+      "unseen_interview_scenario": "Add explicit stable codes to an evolving merchant risk enum."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Building permission sets by OR-ing unrelated integer bit flags.",
+      "note_id": "EJ-NOTE-036",
+      "original_concept_label": "EnumSet and type-safe sets of flags",
+      "original_learning_synthesis": "EnumSet can represent combinations of a single enum's members without handwritten bit masks and unsafe integer mixing.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-036",
+      "unseen_interview_scenario": "Implement supported checkout channels with a typed set of enum flags."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Creating a dense array indexed by enum ordinals with no explicit unknown-state handling.",
+      "note_id": "EJ-NOTE-037",
+      "original_concept_label": "EnumMap instead of ordinal-indexed arrays",
+      "original_learning_synthesis": "An EnumMap keys values by the enum itself, avoiding fragile index dependencies and preserving a clear mapping contract.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-037",
+      "unseen_interview_scenario": "Group order types into policies keyed by domain enum."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Trying to subclass an existing enum to append values.",
+      "note_id": "EJ-NOTE-038",
+      "original_concept_label": "Extensible operation families",
+      "original_learning_synthesis": "An enum cannot be subclassed, but an interface implemented by enums can offer plugin-like operation families when carefully designed.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-038",
+      "unseen_interview_scenario": "Design extensible rate-formula operators with an interface and enum implementations."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Selecting test methods solely by name prefix and silently missing renamed tests.",
+      "note_id": "EJ-NOTE-039",
+      "original_concept_label": "Annotations versus method-name conventions",
+      "original_learning_synthesis": "Annotations attach explicit semantic metadata to program elements and allow tooling to verify requirements independently of brittle naming patterns.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-039",
+      "unseen_interview_scenario": "Redesign a command handler discovery mechanism using annotations."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Believing a similarly named overload automatically overrides an inherited method.",
+      "note_id": "EJ-NOTE-040",
+      "original_concept_label": "Override declaration protection",
+      "original_learning_synthesis": "Use @Override to make method overriding intent compiler-checked and catch subtle signature mistakes.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-040",
+      "unseen_interview_scenario": "Detect a misleading service callback method that was never overriding."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming all marker metadata should be an annotation even when APIs must require a capability type.",
+      "note_id": "EJ-NOTE-041",
+      "original_concept_label": "Marker interface as a capability type",
+      "original_learning_synthesis": "A marker interface defines a type-level property usable in method signatures; choose it over a marker annotation only when typing benefits justify it.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-041",
+      "unseen_interview_scenario": "Decide between annotation and marker interface for exportable domain objects."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming anonymous inner class this behavior is identical to lambda this behavior.",
+      "note_id": "EJ-NOTE-042",
+      "original_concept_label": "Lambdas for concise function objects",
+      "original_learning_synthesis": "Use lambdas for stateless function objects where target-type semantics are clear, and choose readable names or methods when logic grows complex.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-042",
+      "unseen_interview_scenario": "Replace a trivial anonymous comparator with a safe lambda."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Blindly replacing expressive multi-step lambdas with opaque method references.",
+      "note_id": "EJ-NOTE-043",
+      "original_concept_label": "Method references for direct delegation",
+      "original_learning_synthesis": "Prefer method references where their meaning is clearer than an equivalent lambda; a named lambda may remain clearer when argument adaptation matters.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-043",
+      "unseen_interview_scenario": "Simplify typed stream mapping callbacks with appropriate method references."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Creating bespoke one-method interfaces that duplicate platform functional contracts without need.",
+      "note_id": "EJ-NOTE-044",
+      "original_concept_label": "Leverage standard functional interfaces",
+      "original_learning_synthesis": "Prefer existing Predicate, Function, Consumer, Supplier and related standard variants for APIs when they express the intended contract.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-044",
+      "unseen_interview_scenario": "Design an event filter interface compatible with Java functional utilities."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Converting complex stateful control flow to a deeply nested stream chain.",
+      "note_id": "EJ-NOTE-045",
+      "original_concept_label": "Streams are a tool, not a default",
+      "original_learning_synthesis": "Compare clear loop-based implementations to stream pipelines; streams favor operations naturally expressed as transformations but obscure logic if overused.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-045",
+      "unseen_interview_scenario": "Refactor a reconciliation pipeline while retaining readable failure branches."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using a shared mutable accumulator from parallel stream callbacks.",
+      "note_id": "EJ-NOTE-046",
+      "original_concept_label": "Avoid side effects in stream stages",
+      "original_learning_synthesis": "Prefer transformations and collectors without mutation of shared external state; side-effect-heavy forEach can undermine clarity and parallel safety.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-046",
+      "unseen_interview_scenario": "Fix incorrect totals in a stream-based settlement summarizer."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Returning a one-shot Stream when clients need to iterate twice.",
+      "note_id": "EJ-NOTE-047",
+      "original_concept_label": "Return type suited to consumer needs",
+      "original_learning_synthesis": "A Collection often gives callers flexible iteration or stream usage; return Stream primarily when laziness/very large generation is essential and resource lifetime is clear.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-047",
+      "unseen_interview_scenario": "Design results API for a small bounded list versus lazy unbounded event feed."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming parallel automatically makes a slow query faster.",
+      "note_id": "EJ-NOTE-048",
+      "original_concept_label": "Parallel streams require evidence",
+      "original_learning_synthesis": "Parallel streams can be counterproductive or incorrect depending on workload, splitting, state and order; benchmark realistic tasks and check data safety first.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-048",
+      "unseen_interview_scenario": "Evaluate whether a log aggregation stream benefits from parallel execution."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Accepting invalid input then failing much later with an obscure exception.",
+      "note_id": "EJ-NOTE-049",
+      "original_concept_label": "Validate preconditions at public boundaries",
+      "original_learning_synthesis": "Check important parameter restrictions early and document them; avoid redundant work when a lower layer reliably supplies necessary validation.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-049",
+      "unseen_interview_scenario": "Harden a monetary installment builder's currency and quantity parameters."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Wrapping a mutable input with an unmodifiable view and assuming snapshot semantics.",
+      "note_id": "EJ-NOTE-050",
+      "original_concept_label": "Defensive copying of untrusted mutable inputs",
+      "original_learning_synthesis": "Make copies at sensitive object boundaries before validation/use to prevent external mutation; expose no mutable internals accidentally.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-050",
+      "unseen_interview_scenario": "Secure a webhook signature verifier against changing request data."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Creating many same-type parameters without semantic distinction or validation.",
+      "note_id": "EJ-NOTE-051",
+      "original_concept_label": "Readable and predictable API signatures",
+      "original_learning_synthesis": "Choose clear method names, restrained parameters, useful overload counts and interface types for input where appropriate.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-051",
+      "unseen_interview_scenario": "Redesign a reconciliation query method with too many boolean switches."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming the most-specific overload is selected based on the runtime class of an argument.",
+      "note_id": "EJ-NOTE-052",
+      "original_concept_label": "Overloading resolution surprises",
+      "original_learning_synthesis": "Overload resolution is decided by compile-time parameter types rather than dynamic runtime element types; prefer different names for semantically different operations.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-052",
+      "unseen_interview_scenario": "Debug different outputs of overloaded audit handlers when input is declared Collection."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Adding varargs to a hot-path method without thinking about allocation or ambiguity.",
+      "note_id": "EJ-NOTE-053",
+      "original_concept_label": "Varargs zero-element and allocation semantics",
+      "original_learning_synthesis": "Varargs allows flexible call sites but creates array semantics and corner cases for zero args; require at least one parameter explicitly when the API needs it.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-053",
+      "unseen_interview_scenario": "Design a bulk billing API that requires at least one invoice."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Returning null to mean no results from a search method without contract need.",
+      "note_id": "EJ-NOTE-054",
+      "original_concept_label": "Empty collections over null sentinels",
+      "original_learning_synthesis": "Return empty collections or arrays instead of null when absence naturally means no elements; this simplifies callers and reduces null-specific bugs.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-054",
+      "unseen_interview_scenario": "Simplify a merchant lookup endpoint that currently returns null lists."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Returning null from a method whose return contract is Optional.",
+      "note_id": "EJ-NOTE-055",
+      "original_concept_label": "Optional is a return-type decision",
+      "original_learning_synthesis": "Use Optional to represent an intentionally absent result when it improves caller clarity; avoid gratuitous Optional wrapping of collections and performance-sensitive primitive values.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-055",
+      "unseen_interview_scenario": "Choose a customer lookup return type and show correct caller handling."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming method signatures alone explain side effects and error handling.",
+      "note_id": "EJ-NOTE-056",
+      "original_concept_label": "Public API documentation is part of contract",
+      "original_learning_synthesis": "Document behavior, parameters, return values, exceptional conditions and API invariants using accurate Javadoc that stays synchronized with implementations.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-056",
+      "unseen_interview_scenario": "Specify an idempotent retry API with usage and failure Javadoc."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Reusing a mutable temporary variable far beyond the block where it is needed.",
+      "note_id": "EJ-NOTE-057",
+      "original_concept_label": "Keep local variables in narrow scope",
+      "original_learning_synthesis": "Declare locals close to first use and minimize lifetimes to ease comprehension and prevent accidental reuse across contexts.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-057",
+      "unseen_interview_scenario": "Refactor a parsing pipeline with cross-branch temporary state."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using enhanced for-loop removal and triggering concurrent modification.",
+      "note_id": "EJ-NOTE-058",
+      "original_concept_label": "Prefer safe element iteration",
+      "original_learning_synthesis": "Use for-each for ordinary collection/array traversal to avoid index mistakes, and use explicit iterators when mutation or special traversal control requires them.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-058",
+      "unseen_interview_scenario": "Repair a batch list traversal that incorrectly deletes elements."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Reinventing a bounded random generation or array copy with known biases.",
+      "note_id": "EJ-NOTE-059",
+      "original_concept_label": "Use tested library building blocks",
+      "original_learning_synthesis": "Standard library functionality often handles subtle correctness and edge cases better than home-grown equivalents; understand APIs before replacing them.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-059",
+      "unseen_interview_scenario": "Replace an unsafe homemade random sampling helper with a standard library API."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Charging a currency amount using unqualified double arithmetic.",
+      "note_id": "EJ-NOTE-060",
+      "original_concept_label": "Exact decimal arithmetic",
+      "original_learning_synthesis": "Binary floating-point types generally do not model exact decimal money; use decimal arithmetic or integer minor units with explicitly defined scale and rounding.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-060",
+      "unseen_interview_scenario": "Implement discount totals that do not accumulate binary floating error."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using == on boxed integers to compare numeric values.",
+      "note_id": "EJ-NOTE-061",
+      "original_concept_label": "Boxing, identity and null traps",
+      "original_learning_synthesis": "Boxed primitives differ from primitives in nullability, identity, allocation and numeric conversion; prefer primitives unless reference semantics are necessary.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-061",
+      "unseen_interview_scenario": "Diagnose a null-unboxing exception in a payment count calculation."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Passing arbitrary String values between unrelated business concepts.",
+      "note_id": "EJ-NOTE-062",
+      "original_concept_label": "Use domain types instead of generic strings",
+      "original_learning_synthesis": "Stringly typed representations for status, currency, URLs and structured identifiers lose compile-time checks and invite confusion.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-062",
+      "unseen_interview_scenario": "Replace payment state and currency textual flags with explicit domain values."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Constructing a massive log body with += inside a large loop.",
+      "note_id": "EJ-NOTE-063",
+      "original_concept_label": "Avoid quadratic concatenation in accumulation loops",
+      "original_learning_synthesis": "Repeated concatenation of growing strings can create excessive copying; builders or joining utilities are suitable for repeated aggregation.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-063",
+      "unseen_interview_scenario": "Improve a batch export builder while preserving formatting."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Accepting a concrete ArrayList parameter when List is the true contract.",
+      "note_id": "EJ-NOTE-064",
+      "original_concept_label": "Program to interface-based contracts",
+      "original_learning_synthesis": "Use appropriate interface types for references and method declarations so callers remain decoupled from particular implementations.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-064",
+      "unseen_interview_scenario": "Make a validation processor support both immutable and mutable List inputs."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Invoking arbitrary methods reflectively instead of designing a typed extension point.",
+      "note_id": "EJ-NOTE-065",
+      "original_concept_label": "Prefer type-safe interfaces to reflective dispatch",
+      "original_learning_synthesis": "Reflection can bypass compile-time checking and increase complexity; expose an interface contract and confine unavoidable reflection to a narrow boundary.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-065",
+      "unseen_interview_scenario": "Introduce an interface for dynamically registered payment connectors."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Introducing a native dependency solely for an imagined performance gain.",
+      "note_id": "EJ-NOTE-066",
+      "original_concept_label": "JNI carries maintenance and safety costs",
+      "original_learning_synthesis": "Native calls can be necessary for platform facilities or mature native libraries, but add portability, debugging and memory-safety complexity.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-066",
+      "unseen_interview_scenario": "Evaluate whether a JVM service really needs JNI for checksum computation."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Micro-optimizing an insignificant method while ignoring database latency.",
+      "note_id": "EJ-NOTE-067",
+      "original_concept_label": "Measure before optimizing",
+      "original_learning_synthesis": "Prioritize correctness and clear design; measure bottlenecks with trustworthy profiles before special-casing implementation details.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-067",
+      "unseen_interview_scenario": "Choose which of three real service bottlenecks merits an optimization PR."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Applying inconsistent casing to exported methods and treating it as insignificant.",
+      "note_id": "EJ-NOTE-068",
+      "original_concept_label": "Naming conventions communicate contracts",
+      "original_learning_synthesis": "Keep class, method, variable and constant names consistent with Java conventions and the domain to reduce review and API misuse.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-068",
+      "unseen_interview_scenario": "Rename a confusing service API without changing behavior."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using exceptions to terminate ordinary list traversal.",
+      "note_id": "EJ-NOTE-069",
+      "original_concept_label": "Exceptions are not routine control flow",
+      "original_learning_synthesis": "Use conditions or iteration protocols for common expected branches; exceptions describe exceptional failures and should not silently replace normal termination logic.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-069",
+      "unseen_interview_scenario": "Refactor a malformed batch parse loop without swallowing failures."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Using checked exceptions as a blanket rule for all failures.",
+      "note_id": "EJ-NOTE-070",
+      "original_concept_label": "Checked versus unchecked failure boundaries",
+      "original_learning_synthesis": "Use checked exceptions where callers can reasonably recover and runtime exceptions for programming misuse; classify according to the abstraction, not only the origin.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-070",
+      "unseen_interview_scenario": "Design exception taxonomy for recoverable provider timeout versus invalid arguments."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Declaring checked exceptions for unreachable or routine conditions and forcing boilerplate everywhere.",
+      "note_id": "EJ-NOTE-071",
+      "original_concept_label": "Checked exceptions impose caller burden",
+      "original_learning_synthesis": "If mandatory checked handling makes a widely used API cumbersome, assess whether an alternative return shape or unchecked exception better represents rare failures.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-071",
+      "unseen_interview_scenario": "Choose a failure contract for optional cache reads in a low-latency path."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Creating multiple new exception classes that duplicate IllegalArgumentException semantics.",
+      "note_id": "EJ-NOTE-072",
+      "original_concept_label": "Reuse meaningful standard exception categories",
+      "original_learning_synthesis": "Standard exceptions convey established semantics familiar to callers; define custom exception types only when unique information or handling warrants them.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-072",
+      "unseen_interview_scenario": "Refine a parser's invalid-state and bad-argument failures."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Leaking an internal storage exception as a service-domain contract.",
+      "note_id": "EJ-NOTE-073",
+      "original_concept_label": "Translate low-level exceptions at abstraction boundaries",
+      "original_learning_synthesis": "Expose failures meaningful to your API layer; preserve causes when translation is justified, and avoid translating blindly.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-073",
+      "unseen_interview_scenario": "Map datastore consistency failure into a documented repository exception."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Publishing a payment API without mentioning invalid currency and null handling.",
+      "note_id": "EJ-NOTE-074",
+      "original_concept_label": "Document checked and unchecked exceptions",
+      "original_learning_synthesis": "Javadoc should describe checked thrown types and important unchecked precondition violations so clients can use APIs correctly.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-074",
+      "unseen_interview_scenario": "Specify documented failure behavior for an installment-selection method."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Throwing uninformative generic failures that discard key context.",
+      "note_id": "EJ-NOTE-075",
+      "original_concept_label": "Error detail messages carry debugging context",
+      "original_learning_synthesis": "An exception should capture relevant input and operation state helpful for diagnosis while avoiding sensitive data exposure.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-075",
+      "unseen_interview_scenario": "Improve a reconciliation exception with safe request identity and invariant details."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Updating an account ledger then throwing before its companion balance adjustment.",
+      "note_id": "EJ-NOTE-076",
+      "original_concept_label": "Preserve invariant state after failures",
+      "original_learning_synthesis": "A failed operation should avoid leaving externally visible partial mutation where practical; validate before changes or use rollback/copy techniques according to the invariant.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-076",
+      "unseen_interview_scenario": "Repair an order state transition that leaves partial state after validation failure."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Treating empty catch(Throwable) as legitimate resilience.",
+      "note_id": "EJ-NOTE-077",
+      "original_concept_label": "Never silently swallow important exceptions",
+      "original_learning_synthesis": "Handle errors meaningfully or propagate them; an empty catch hides defects, corrupts progress and misleads callers.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-077",
+      "unseen_interview_scenario": "Find a swallowed persistence failure that falsely marks a payout complete."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Replacing synchronized increment with volatile int++.",
+      "note_id": "EJ-NOTE-078",
+      "original_concept_label": "Visibility plus atomicity of shared mutation",
+      "original_learning_synthesis": "Synchronization protects both mutual exclusion and visibility; volatile alone cannot turn compound read-modify-write operations into atomic transactions.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-078",
+      "unseen_interview_scenario": "Fix duplicate withdrawal approvals caused by concurrent read-check-write."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Invoking a network callback while holding a global state lock.",
+      "note_id": "EJ-NOTE-079",
+      "original_concept_label": "Avoid holding locks across external code",
+      "original_learning_synthesis": "Excessive locking harms performance and risks liveness issues, especially when calling unknown or overridable code while holding a lock.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-079",
+      "unseen_interview_scenario": "Refactor a notification listener dispatch to avoid callback-under-lock."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Starting one unmanaged thread for every incoming API call.",
+      "note_id": "EJ-NOTE-080",
+      "original_concept_label": "Prefer task abstractions to hand-managed threads",
+      "original_learning_synthesis": "Use executor and task interfaces for structured work scheduling rather than ad hoc thread lifecycle management, with explicit cancellation and resource policy.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-080",
+      "unseen_interview_scenario": "Design bounded asynchronous settlement evaluation using an executor."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Treating notify as a reliable replacement for a blocking queue.",
+      "note_id": "EJ-NOTE-081",
+      "original_concept_label": "Concurrency utilities over manual waiting",
+      "original_learning_synthesis": "Prefer higher-level concurrent collections, latches, queues and executors where appropriate; hand-written wait/notify protocols carry subtle condition and notification hazards.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-081",
+      "unseen_interview_scenario": "Build a bounded producer-consumer pipeline with a blocking queue."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming users can infer concurrency guarantees from synchronized methods alone.",
+      "note_id": "EJ-NOTE-082",
+      "original_concept_label": "Document synchronization contract",
+      "original_learning_synthesis": "Thread safety is a key part of class behavior; label instances thread-safe, conditionally thread-safe or not thread-safe and explain client obligations.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-082",
+      "unseen_interview_scenario": "Write accurate concurrency contract for a mutable in-memory cache."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Unsafely lazily publishing a mutable singleton to racing threads.",
+      "note_id": "EJ-NOTE-083",
+      "original_concept_label": "Lazy initialization when justified",
+      "original_learning_synthesis": "Lazy init trades startup cost for extra state and synchronization complexity; ensure safe publication if shared and avoid the pattern when eager initialization is simpler.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-083",
+      "unseen_interview_scenario": "Choose initialization strategy for a shared pricing rule index."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Fixing a race condition by adding Thread.sleep delays.",
+      "note_id": "EJ-NOTE-084",
+      "original_concept_label": "Avoid scheduler-dependent correctness",
+      "original_learning_synthesis": "Concurrency behavior must not rely on fair thread scheduling or time sleeps; use coordination primitives and deterministic signals to establish ordering.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-084",
+      "unseen_interview_scenario": "Replace flaky two-worker concurrency test timing with explicit latches."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Deserializing an untrusted network byte stream directly into objects.",
+      "note_id": "EJ-NOTE-085",
+      "original_concept_label": "Avoid unsafe native object deserialization",
+      "original_learning_synthesis": "Java built-in serialization is a risky default for untrusted data; use safer interchange representations and tight input controls where appropriate.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-085",
+      "unseen_interview_scenario": "Redesign an event-ingestion API to use a validated message schema."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming implements Serializable is a free convenience feature.",
+      "note_id": "EJ-NOTE-086",
+      "original_concept_label": "Serialization is a major compatibility/security promise",
+      "original_learning_synthesis": "Making a class serializable commits to a protocol and exposes long-lived invariants, object graphs and attack surface; do not opt in casually.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-086",
+      "unseen_interview_scenario": "Evaluate whether an immutable domain event should support Java serialization."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Allowing a transient implementation optimization to become a permanent on-wire schema.",
+      "note_id": "EJ-NOTE-087",
+      "original_concept_label": "Design deliberate external serialized forms",
+      "original_learning_synthesis": "Default object structure might expose unstable implementation details; when native serialization is unavoidable, deliberately define a durable serialized representation.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-087",
+      "unseen_interview_scenario": "Define versioned serialization strategy for a legacy linked-structure."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming constructor validation runs for every deserialized instance.",
+      "note_id": "EJ-NOTE-088",
+      "original_concept_label": "Validate untrusted input while deserializing",
+      "original_learning_synthesis": "A readObject implementation must defensively copy and validate invariants to avoid construction bypass and unsafe object graphs.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-088",
+      "unseen_interview_scenario": "Harden a legacy money range object against malformed serialized fields."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming private constructor alone prevents extra instances after deserialization.",
+      "note_id": "EJ-NOTE-089",
+      "original_concept_label": "Singleton serialization instance control",
+      "original_learning_synthesis": "readResolve can help preserve singleton instance identity when Java serialization is required, but enums usually provide simpler guarantees for applicable singleton types.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-089",
+      "unseen_interview_scenario": "Fix an old registry singleton that duplicates after serialize/deserialize."
+    },
+    {
+      "independent_review": "NOT_DONE",
+      "learner_misconception": "Assuming every deserialized field combination respects constructor invariants.",
+      "note_id": "EJ-NOTE-090",
+      "original_concept_label": "Serialization proxy for preserving invariants",
+      "original_learning_synthesis": "A serialization proxy can reconstruct an invariant-checked immutable value and limit exposed representation where serialization is required, with costs and constraints.",
+      "release_state": "DO_NOT_SHIP",
+      "source_unit_id": "EJ-ITEM-090",
+      "unseen_interview_scenario": "Evaluate a safe snapshot approach for a legacy immutable money type."
+    }
+  ],
+  "review_status": "DRAFT_FIRST_PASS",
+  "schema": "codefit-original-effective-java-notes/v0.4"
+}

@@ -1,0 +1,195 @@
+{
+  "schema": "codefit-streams-notes/v0.9",
+  "notes": [
+    {
+      "title": "Select functional APIs by contract, not just matching shapes",
+      "prerequisites": [
+        "target typing",
+        "generics",
+        "lambda composition",
+        "boxing costs"
+      ],
+      "core": "Expose the smallest familiar functional signature that conveys intent. Standard interfaces improve interoperability, while domain-specific contracts justify named interfaces with validation, documentation, and default composition operations.",
+      "rules": [
+        "Start with Function, Predicate, Consumer, Supplier, UnaryOperator, BinaryOperator and the needed Bi* variants; match arity and return shape precisely.",
+        "Prefer IntPredicate, ToLongFunction, IntUnaryOperator or related primitive specializations on hot numeric paths rather than reflexive boxed Function<Integer,Integer>.",
+        "Declare a custom functional interface when the contract is domain-specific, requires a checked exception, unusual arity, or useful default operations.",
+        "Annotate bespoke single-abstract-method contracts with @FunctionalInterface to detect accidental abstract-method additions.",
+        "Do not overload an API with alternative functional interface parameter types when the same lambda could fit more than one overload.",
+        "Do not capture a not-yet-constructed object from its own constructor/factory lambda; pass required context as an explicit argument."
+      ],
+      "nuance": [
+        "A standard interface may be structurally compatible yet underspecify a domain contract such as comparison ordering or durable side effects.",
+        "A primitive specialization can remove boxing, but benchmark allocation and throughput where this matters; interface choice alone is not proof of speed.",
+        "Checked exceptions need explicit adapters or a named contract; do not silently hide checked failure inside unchecked wrappers.",
+        "default/static methods do not add new abstract obligations to functional interface shape; methods equivalent to public Object members do not count.",
+        "Java 21 has more Stream operations and APIs than the publication-era book; verify current API candidates before inventing abstractions."
+      ],
+      "misconception": "If two SAM signatures match, their names, contracts, overload behavior and boxing costs are interchangeable.",
+      "production_context": "An alerting pipeline takes an IntPredicate for numeric thresholds, Predicate<Alert> for semantic filters, and a named RetryDecision contract for documented escalation rules.",
+      "java21_delta": "Java 21 retains @FunctionalInterface, target typing and overload ambiguity. Use Java 21 JDK docs for modern specializations and APIs; avoid freezing the book-era interface inventory.",
+      "note_id": "EJ9-044",
+      "source_unit_id": "EJ-ITEM-044",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 220,
+      "pdf_page_end_exclusive": 224,
+      "source_body_sha256": "dab195902f9a6960c847dc4af10dbb442711253ba4ab4d28081af7c89dbaebc7",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original item-level synthesis, not independent claim-by-claim review."
+    },
+    {
+      "title": "Streams are a readability tool, not a universal loop replacement",
+      "prerequisites": [
+        "laziness",
+        "terminal operations",
+        "collections",
+        "resource closing"
+      ],
+      "core": "Use short, intention-revealing stream pipelines for bulk transformations; keep stateful, control-flow-heavy or diagnostic tasks in loops or named helpers. Streams evaluate lazily and are consumable only once.",
+      "rules": [
+        "Intermediate operations do not execute in the absence of a terminal operation; avoid relying on map or peek for side effects.",
+        "Prefer a named transformation to nested lambda machinery that hides intent, input types, ordering or failure handling.",
+        "Keep early exit, labeled break, mutable local coordination and complex checked-exception paths in explicit loops where clearer.",
+        "Use flatMap when each input yields zero-to-many results rather than accidentally producing nested streams.",
+        "Close I/O-backed streams with try-with-resources; neither collect nor count automatically closes file descriptors.",
+        "Use typed primitive streams with care: String.chars() yields UTF-16 code units as int, not Unicode code points or characters as a char stream."
+      ],
+      "nuance": [
+        "A terminal short-circuit may skip upstream operations; do not use pipeline side effects to enforce must-run audit actions.",
+        "A stream cannot be consumed twice; return a supplier if you need repeated traversals from a regenerable source.",
+        "toList() returns an unmodifiable List in Java 21; Collectors.toList() does not promise a specific implementation or mutability.",
+        "For supplementary Unicode characters use codePoints() when processing code points, not chars() blindly.",
+        "Efficiency and clarity can favor a hybrid design: bounded loop for accumulation, stream for post-processing."
+      ],
+      "misconception": "Replacing every loop with one stream chain always reduces complexity and preserves control flow.",
+      "production_context": "A merchant settlement import reads a bounded file once, closes the file stream, groups valid rows with a named key function, and reports failures explicitly.",
+      "java21_delta": "Java 21 Stream.toList, mapMulti, takeWhile/dropWhile and newer collectors differ from Java 8/9 descriptions; use version-aware return-mutation tests.",
+      "note_id": "EJ9-045",
+      "source_unit_id": "EJ-ITEM-045",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 224,
+      "pdf_page_end_exclusive": 231,
+      "source_body_sha256": "59af6afe44e771266b655dbefd55e468eed7e986bb6d9baf6ef2269f64a5c3f9",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original item-level synthesis, not independent claim-by-claim review."
+    },
+    {
+      "title": "Make stream reductions data transformations rather than hidden mutations",
+      "prerequisites": [
+        "collectors",
+        "associativity",
+        "lambda purity",
+        "map collisions"
+      ],
+      "core": "Favor stateless non-interfering mapper/reducer functions and designed collectors. Make duplicate-key decisions, ordering, grouping and mutability explicit rather than using forEach to update shared maps.",
+      "rules": [
+        "Prefer groupingBy, mapping and downstream counting to imperative mutations from forEach.",
+        "Specify duplicate-key policy with toMap merge function when collisions are possible; two-argument toMap rejects duplicates.",
+        "Use associative reducers and compatible combiners for a reduction that may run in parallel.",
+        "Keep record creation, auditing and external requests outside intermediate stream operations unless semantics explicitly permit side effects.",
+        "Choose toCollection when output type/mutability is contractually important; avoid depending on unspecified collector map/list implementations.",
+        "Use joining for textual aggregation when delimiters and escaping requirements are explicit; it is not automatically a CSV serializer."
+      ],
+      "nuance": [
+        "A collector can be mutable internally and still be correct; \"side-effect-free\" concerns user-supplied functions interfering with stream source or shared state.",
+        "toMap merge functions may run in varying combination orders on unordered or parallel streams; nonassociative last-write-wins is not generally deterministic.",
+        "groupingByConcurrent and toConcurrentMap offer concurrent accumulation behavior but do not imply ordering or universal performance wins.",
+        "Collectors.toUnmodifiableList rejects null elements, whereas Stream.toList may contain null; APIs should state null policy.",
+        "Collectors.counting is usually useful downstream; direct stream.count handles a single entire stream."
+      ],
+      "misconception": "A parallel stream and a shared HashMap updated in forEach are equivalent to a collector.",
+      "production_context": "A transaction-reconciliation service aggregates statuses with deterministic duplicate handling and publishes idempotent updates only after collecting the result.",
+      "java21_delta": "Java 21 Stream.toList and unmodifiable collectors have distinct null/mutability contracts; standard collectors evolved since the book.",
+      "note_id": "EJ9-046",
+      "source_unit_id": "EJ-ITEM-046",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 231,
+      "pdf_page_end_exclusive": 237,
+      "source_body_sha256": "09115741339c9a7c3b1c0ac290a830b31ab65d0514d1d5f993bc29d467d26a4e",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original item-level synthesis, not independent claim-by-claim review."
+    },
+    {
+      "title": "Sequence APIs should accommodate traversal and streaming without surprise costs",
+      "prerequisites": [
+        "Collection vs Iterable",
+        "Stream single-use",
+        "API compatibility",
+        "lazy sources"
+      ],
+      "core": "Return a Collection when finite feasible elements can be materialized or represented safely as a collection, enabling both for-each and streaming. Favor Stream or Iterable when laziness, huge cardinality or resource ownership makes Collection misleading.",
+      "rules": [
+        "Prefer Collection or an appropriate List/Set when callers need both enhanced for iteration and stream pipelines.",
+        "Avoid materializing huge or potentially unbounded sequences solely to satisfy a Collection signature.",
+        "If a sequence has expensive or undefined contains/size operations, a Stream or Iterable may be a more honest API.",
+        "Document ownership and closure for resource-backed Stream returns; a caller should know who closes and when.",
+        "Do not return a consumed stream or imply that one Stream instance supports repeat traversal.",
+        "For lazy collection views, preserve size/contains/get contracts and guard against integer overflow or mutable backing-state surprises."
+      ],
+      "nuance": [
+        "Collection.size() is capped at int; extremely large virtual sequences may require alternate interfaces or saturated size semantics.",
+        "Collection.stream() is a convenient bridge, but an Iterable alone needs StreamSupport or a dedicated adapter.",
+        "Array-backed and specialized collections may be fine for primitives or performance-sensitive cases.",
+        "Java 21 SequencedCollection adds encounter-order operations for certain collections; it does not make Stream a Collection.",
+        "A returned List of slices may retain a large original backing List, impacting memory lifetime even without copying."
+      ],
+      "misconception": "Returning Stream from every public sequence API automatically supports both stream and for-each users.",
+      "production_context": "A paginated ledger API returns a small immutable List for a response page and a closeable Stream only for an internal cursor-backed export.",
+      "java21_delta": "Stream still does not extend Iterable in Java 21. SequencedCollection is new, but resource-backed and unbounded return-type decisions remain.",
+      "note_id": "EJ9-047",
+      "source_unit_id": "EJ-ITEM-047",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 237,
+      "pdf_page_end_exclusive": 243,
+      "source_body_sha256": "e9bf39e768b6a78b974dfd4a0297630a9de12b001cca3f552a05c725e3b55464",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original item-level synthesis, not independent claim-by-claim review."
+    },
+    {
+      "title": "Parallel streams require proven correctness and measured speedup",
+      "prerequisites": [
+        "spliterators",
+        "associativity",
+        "fork-join",
+        "benchmark methodology"
+      ],
+      "core": "Treat parallel() as a speculative performance change: prove the pipeline remains correct, has sufficient work per splittable unit, and beats a measured sequential baseline under production-like contention.",
+      "rules": [
+        "Do not automatically parallelize unsplittable/infinite or heavily short-circuiting pipelines; they may severely degrade or stall.",
+        "Require stateless non-interfering work and associative reductions; mutable shared counters break safety.",
+        "Use forEachOrdered if encounter-order output is required, understanding its parallel overhead.",
+        "Measure real latency/throughput at representative input sizes and concurrent load, not a single cold timing.",
+        "Consider spliterator splitting efficiency, locality, blocking tasks and common fork-join pool interference.",
+        "Specify workload thresholds and fallback strategy; a parallel run may lose to sequential for small batches."
+      ],
+      "nuance": [
+        "A correctly parallelizable reduction can still be slower because scheduling, combining, allocation or cache misses dominate.",
+        "findAny may return different matching elements on parallel streams; findFirst preserves encounter order at potential cost.",
+        "A parallel forEach does not promise encounter order; a nonconcurrent collection should not be mutated from multiple callbacks.",
+        "The example timings and CPU percentages in the publication are machine/workload observations, not guaranteed Java 21 results.",
+        "Benchmark a realistic deployment alongside other fork-join workloads; one pipeline can disturb unrelated requests."
+      ],
+      "misconception": "Adding parallel() guarantees a faster pipeline and preserves iteration order by default.",
+      "production_context": "A nightly risk analysis tests a pure CPU-intensive aggregation sequentially and in parallel with workload controls; the API server path stays sequential until verified.",
+      "java21_delta": "Java 21 fork-join scheduling, hardware, JDK implementations and vectorization differ from the book-era environment; no fixed speedup or CPU figure is portable.",
+      "note_id": "EJ9-048",
+      "source_unit_id": "EJ-ITEM-048",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 243,
+      "pdf_page_end_exclusive": 248,
+      "source_body_sha256": "312c1ae06419fabd7bb4d7ee745087c8dae8196083f0e3897f915e3be0ae876d",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original item-level synthesis, not independent claim-by-claim review."
+    }
+  ]
+}

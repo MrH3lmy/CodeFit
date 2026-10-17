@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-general-reflection-exceptions-mission-overlays/v0.13",
+  "missions": [
+    {
+      "mission_id": "EJ13-065-Q1",
+      "note_id": "EJ13-065",
+      "source_unit_id": "EJ-ITEM-065",
+      "stage": "predict",
+      "original_quest_brief": "A configured class exists but does not implement PaymentConnector. Predict Class.forName, asSubclass, reflective constructor lookup, and the point at which failure must surface.",
+      "rubric_criteria": [
+        "Distinguishes discovery from type check",
+        "Explains runtime ClassCastException",
+        "No unchecked generic cast as proof"
+      ],
+      "negative_controls": [
+        "class-not-subtype",
+        "missing-constructor"
+      ],
+      "replaces_draft_id": "EJ4-065-01",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-065-Q2",
+      "note_id": "EJ13-065",
+      "source_unit_id": "EJ-ITEM-065",
+      "stage": "debug",
+      "original_quest_brief": "A plugin loader accepts arbitrary FQCNs and calls private constructors via setAccessible, then uses Method.invoke for every payment. Redesign trusted creation and typed dispatch.",
+      "rubric_criteria": [
+        "Trusted provider policy",
+        "Constrained reflective boundary",
+        "Typed invocation with clear failure"
+      ],
+      "negative_controls": [
+        "untrusted-class",
+        "module-access"
+      ],
+      "replaces_draft_id": "EJ4-065-02",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-065-Q3",
+      "note_id": "EJ13-065",
+      "source_unit_id": "EJ-ITEM-065",
+      "stage": "build",
+      "original_quest_brief": "Implement a small allowlisted Java21 handler factory that reflectively creates only known public implementations and returns Handler; test unknown alias, missing constructor, and constructor failure.",
+      "rubric_criteria": [
+        "Allowlist enforced",
+        "Interface checked",
+        "Exceptions mapped without ignoring root cause"
+      ],
+      "negative_controls": [
+        "wrong-type",
+        "constructor-throws"
+      ],
+      "replaces_draft_id": "EJ4-065-03",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-065-Q4",
+      "note_id": "EJ13-065",
+      "source_unit_id": "EJ-ITEM-065",
+      "stage": "defend",
+      "original_quest_brief": "Compare explicit factories, ServiceLoader and direct reflection for a plugin architecture that must work across versions. State module openness, testability and performance measurement requirements.",
+      "rubric_criteria": [
+        "Appropriate discovery mechanism",
+        "JPMS compatibility",
+        "No unmeasured speed assertion"
+      ],
+      "negative_controls": [
+        "reflection-everywhere",
+        "service-registration"
+      ],
+      "replaces_draft_id": "EJ4-065-04",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-066-Q1",
+      "note_id": "EJ13-066",
+      "source_unit_id": "EJ-ITEM-066",
+      "stage": "predict",
+      "original_quest_brief": "A transaction parser makes one JNI call per character instead of one batch call. Predict the added boundary/lifecycle risks without claiming a fixed speed ratio.",
+      "rubric_criteria": [
+        "Crossing cost explained",
+        "Copying and ownership",
+        "No invented benchmark"
+      ],
+      "negative_controls": [
+        "fine-grained-jni",
+        "speed-without-evidence"
+      ],
+      "replaces_draft_id": "EJ4-066-01",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-066-Q2",
+      "note_id": "EJ13-066",
+      "source_unit_id": "EJ-ITEM-066",
+      "stage": "debug",
+      "original_quest_brief": "A native checksum adapter retains direct-buffer pointers after Java releases them and shows off-heap growth while heap charts stay flat. Identify safe lifetime and instrumentation controls.",
+      "rubric_criteria": [
+        "Native lifetime contract",
+        "Off-heap monitoring",
+        "Fail-fast bounds"
+      ],
+      "negative_controls": [
+        "use-after-free",
+        "heap-only-metric"
+      ],
+      "replaces_draft_id": "EJ4-066-02",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-066-Q3",
+      "note_id": "EJ13-066",
+      "source_unit_id": "EJ-ITEM-066",
+      "stage": "build",
+      "original_quest_brief": "Design a Java-only NativeCodec interface adapter with a guarded unsupported-provider path, input validation and deterministic fallback; document tests for a future actual JNI implementation without loading native code.",
+      "rubric_criteria": [
+        "No unsafe native execution",
+        "Explicit compatibility/fallback",
+        "Contracts cover sizes and exceptions"
+      ],
+      "negative_controls": [
+        "null-pointer-policy",
+        "unsupported-architecture"
+      ],
+      "replaces_draft_id": "EJ4-066-03",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-066-Q4",
+      "note_id": "EJ13-066",
+      "source_unit_id": "EJ-ITEM-066",
+      "stage": "defend",
+      "original_quest_brief": "Assess a proposal to port a Java hashing helper to JNI purely on microbenchmark assumptions. Specify profiling evidence, portability matrix and operational ownership.",
+      "rubric_criteria": [
+        "Realistic benchmark",
+        "Platform/security cost",
+        "Rollback plan"
+      ],
+      "negative_controls": [
+        "benchmark-folklore",
+        "missing-platform"
+      ],
+      "replaces_draft_id": "EJ4-066-04",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-067-Q1",
+      "note_id": "EJ13-067",
+      "source_unit_id": "EJ-ITEM-067",
+      "stage": "predict",
+      "original_quest_brief": "A checkout trace shows high CPU, high queue wait and a fast isolated math helper. Rank what the evidence can and cannot establish about the critical path.",
+      "rubric_criteria": [
+        "Separates wait from compute",
+        "Does not infer causation",
+        "Names missing measurements"
+      ],
+      "negative_controls": [
+        "cpu-latency-assumption",
+        "hot-method-guess"
+      ],
+      "replaces_draft_id": "EJ4-067-01",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-067-Q2",
+      "note_id": "EJ13-067",
+      "source_unit_id": "EJ-ITEM-067",
+      "stage": "debug",
+      "original_quest_brief": "A refactor removes allocations in a leaf method but increases p99 due to a lock and changes a public response type. Propose measurement and API-safe remediation.",
+      "rubric_criteria": [
+        "Preserve compatibility",
+        "Tail-latency measurement",
+        "Lock contention diagnosis"
+      ],
+      "negative_controls": [
+        "mean-vs-p99",
+        "api-break"
+      ],
+      "replaces_draft_id": "EJ4-067-02",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-067-Q3",
+      "note_id": "EJ13-067",
+      "source_unit_id": "EJ-ITEM-067",
+      "stage": "build",
+      "original_quest_brief": "Create a deterministic before/after comparison harness for two functionally equivalent lookup algorithms with correctness checks, elapsed time and allocation annotations; explicitly avoid fixed speedup assertions.",
+      "rubric_criteria": [
+        "Equal outputs",
+        "Controlled dataset",
+        "Clearly labeled measurement limitations"
+      ],
+      "negative_controls": [
+        "timing-assertion",
+        "different-work"
+      ],
+      "replaces_draft_id": "EJ4-067-03",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-067-Q4",
+      "note_id": "EJ13-067",
+      "source_unit_id": "EJ-ITEM-067",
+      "stage": "defend",
+      "original_quest_brief": "Review a proposal to switch a service to native code for 5% projected gains without profiles. Decide the evidence and rollback criteria before approval.",
+      "rubric_criteria": [
+        "Evidence threshold",
+        "System-level effects",
+        "Maintenance/security tradeoff"
+      ],
+      "negative_controls": [
+        "unprofiled-change",
+        "no-rollback"
+      ],
+      "replaces_draft_id": "EJ4-067-04",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-068-Q1",
+      "note_id": "EJ13-068",
+      "source_unit_id": "EJ-ITEM-068",
+      "stage": "predict",
+      "original_quest_brief": "A record field has accessor status() while a bean field uses getStatus(). Predict reflection method availability and why JSON binding might differ.",
+      "rubric_criteria": [
+        "Record accessor naming",
+        "Bean convention distinction",
+        "Framework-specific behavior unassumed"
+      ],
+      "negative_controls": [
+        "get-status-on-record",
+        "serializer-assumption"
+      ],
+      "replaces_draft_id": "EJ4-068-01",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-068-Q2",
+      "note_id": "EJ13-068",
+      "source_unit_id": "EJ-ITEM-068",
+      "stage": "debug",
+      "original_quest_brief": "A team renames public getAmount() to amount(), changes a constant Map and accidentally breaks older Java clients. Identify compatibility and immutability concerns.",
+      "rubric_criteria": [
+        "Binary/source compatibility",
+        "Static-final mutability distinction",
+        "Migration strategy"
+      ],
+      "negative_controls": [
+        "public-rename",
+        "mutable-constant"
+      ],
+      "replaces_draft_id": "EJ4-068-02",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-068-Q3",
+      "note_id": "EJ13-068",
+      "source_unit_id": "EJ-ITEM-068",
+      "stage": "build",
+      "original_quest_brief": "Define original record, enum, static factory and bean examples with idiomatic Java21 names, and test reflected accessor names and immutable constant behavior.",
+      "rubric_criteria": [
+        "Correct Java naming",
+        "Accurate bean/record accessors",
+        "Real immutable state"
+      ],
+      "negative_controls": [
+        "wrong-reflection-name",
+        "mutability-leak"
+      ],
+      "replaces_draft_id": "EJ4-068-03",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-068-Q4",
+      "note_id": "EJ13-068",
+      "source_unit_id": "EJ-ITEM-068",
+      "stage": "defend",
+      "original_quest_brief": "Evaluate a lint rule mandating getX for all readers and uppercase all static final references; make a scoped rule respecting framework contracts.",
+      "rubric_criteria": [
+        "Convention rationale",
+        "Documented exceptions",
+        "Automation without breaking API"
+      ],
+      "negative_controls": [
+        "blind-getter-rule",
+        "all-caps-mutable"
+      ],
+      "replaces_draft_id": "EJ4-068-04",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-069-Q1",
+      "note_id": "EJ13-069",
+      "source_unit_id": "EJ-ITEM-069",
+      "stage": "predict",
+      "original_quest_brief": "An iterator consumer calls next() repeatedly until NoSuchElementException. Predict what happens when a nested helper throws the same exception unexpectedly, and contrast with hasNext.",
+      "rubric_criteria": [
+        "Error masking",
+        "Normal end condition",
+        "Failure propagation"
+      ],
+      "negative_controls": [
+        "nested-no-such-element",
+        "exception-as-loop"
+      ],
+      "replaces_draft_id": "EJ4-069-01",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-069-Q2",
+      "note_id": "EJ13-069",
+      "source_unit_id": "EJ-ITEM-069",
+      "stage": "debug",
+      "original_quest_brief": "A concurrent queue checks !isEmpty() then calls remove(); workers race and sometimes throw. Redesign the operation using a single poll with explicit no-item outcome.",
+      "rubric_criteria": [
+        "Identifies TOCTOU",
+        "Atomic poll semantics",
+        "No swallowed exceptions"
+      ],
+      "negative_controls": [
+        "check-then-act",
+        "broad-catch"
+      ],
+      "replaces_draft_id": "EJ4-069-02",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-069-Q3",
+      "note_id": "EJ13-069",
+      "source_unit_id": "EJ-ITEM-069",
+      "stage": "build",
+      "original_quest_brief": "Implement a safe deterministic drain of an ArrayDeque using poll, and an iterator-based scan with hasNext; verify empty and nonempty behavior and deliberate failure propagation.",
+      "rubric_criteria": [
+        "Normal absence outcome",
+        "Exactly-once consumption",
+        "Exceptional failure not masked"
+      ],
+      "negative_controls": [
+        "empty-queue",
+        "hidden-error"
+      ],
+      "replaces_draft_id": "EJ4-069-03",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ13-069-Q4",
+      "note_id": "EJ13-069",
+      "source_unit_id": "EJ-ITEM-069",
+      "stage": "defend",
+      "original_quest_brief": "Compare a state predicate, Optional result and queue poll under single-threaded and concurrent semantics; justify exception contracts without performance folklore.",
+      "rubric_criteria": [
+        "Race analysis",
+        "Absence result choice",
+        "Contract predictability"
+      ],
+      "negative_controls": [
+        "time-of-check-race",
+        "exception-benchmark"
+      ],
+      "replaces_draft_id": "EJ4-069-04",
+      "grader_plan": "Design only; held-out learner grader not built or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

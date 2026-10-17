@@ -1,0 +1,107 @@
+{
+  "schema": "codefit-general-expected-javac-rejections/v0.11",
+  "count": 14,
+  "all_rejected": true,
+  "cases": [
+    {
+      "id": "optional_of_wrong_generic_type",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "optional_primitive_type_mismatch",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "orelseget_requires_supplier",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "orelsethrow_requires_supplier",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "optional_map_wrong_result_type",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "for_index_not_visible_after_loop",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "pattern_binding_not_visible_after_if",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "enhanced_for_requires_array_or_iterable",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "stream_not_directly_iterable",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "iterator_not_iterable",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "random_generator_wrong_bound_type",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "random_nextbytes_requires_bytearray",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "transfer_to_returns_long",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    },
+    {
+      "id": "typed_optional_not_direct_integer",
+      "expected_invalid": true,
+      "compiler_rejected": true,
+      "java_release": 21,
+      "original_author_fixture": true
+    }
+  ],
+  "grader_verified": false,
+  "limitations": "Static compiler misuse checks only; not adversarial learner grading."
+}

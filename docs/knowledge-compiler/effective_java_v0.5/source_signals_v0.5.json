@@ -1,0 +1,73 @@
+{
+  "all_item_hashes_match": true,
+  "item_checks": [
+    {
+      "all_present": true,
+      "independent_review_done": false,
+      "signal_checks": 4,
+      "source_span_sha256_matches": true,
+      "source_text_excerpt_exported": false,
+      "source_unit_id": "EJ-ITEM-001"
+    },
+    {
+      "all_present": true,
+      "independent_review_done": false,
+      "signal_checks": 4,
+      "source_span_sha256_matches": true,
+      "source_text_excerpt_exported": false,
+      "source_unit_id": "EJ-ITEM-002"
+    },
+    {
+      "all_present": true,
+      "independent_review_done": false,
+      "signal_checks": 4,
+      "source_span_sha256_matches": true,
+      "source_text_excerpt_exported": false,
+      "source_unit_id": "EJ-ITEM-009"
+    },
+    {
+      "all_present": true,
+      "independent_review_done": false,
+      "signal_checks": 5,
+      "source_span_sha256_matches": true,
+      "source_text_excerpt_exported": false,
+      "source_unit_id": "EJ-ITEM-010"
+    },
+    {
+      "all_present": true,
+      "independent_review_done": false,
+      "signal_checks": 4,
+      "source_span_sha256_matches": true,
+      "source_text_excerpt_exported": false,
+      "source_unit_id": "EJ-ITEM-011"
+    },
+    {
+      "all_present": true,
+      "independent_review_done": false,
+      "signal_checks": 4,
+      "source_span_sha256_matches": true,
+      "source_text_excerpt_exported": false,
+      "source_unit_id": "EJ-ITEM-017"
+    },
+    {
+      "all_present": true,
+      "independent_review_done": false,
+      "signal_checks": 5,
+      "source_span_sha256_matches": true,
+      "source_text_excerpt_exported": false,
+      "source_unit_id": "EJ-ITEM-018"
+    },
+    {
+      "all_present": true,
+      "independent_review_done": false,
+      "signal_checks": 4,
+      "source_span_sha256_matches": true,
+      "source_text_excerpt_exported": false,
+      "source_unit_id": "EJ-ITEM-050"
+    }
+  ],
+  "number_of_items_checked": 8,
+  "schema": "codefit-source-signals/v0.5",
+  "source_review_level": "TARGETED_SOURCE_SIGNALS_AND_AUTHOR_INSPECTION__NOT_INDEPENDENT_REVIEW",
+  "source_signal_checks": 34
+}

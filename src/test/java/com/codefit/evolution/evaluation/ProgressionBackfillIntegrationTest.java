@@ -69,6 +69,7 @@ class ProgressionBackfillIntegrationTest {
             s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_update");
             s.execute("DROP TRIGGER IF EXISTS evolution_reward_milestone_baseline_immutable_delete");
             s.execute("DROP TABLE IF EXISTS evolution_reward_milestone_baseline");
+            s.execute("DROP TABLE evolution_reward_effort_scan");
             s.execute("DELETE FROM schema_migrations WHERE version=21");
             s.execute("DROP TRIGGER evolution_reward_state_immutable_update");
             s.execute("DROP TRIGGER evolution_reward_state_immutable_delete");
@@ -77,7 +78,7 @@ class ProgressionBackfillIntegrationTest {
             s.execute("DROP TABLE evolution_reward_entitlements");
             s.execute("DROP TABLE evolution_reward_state");
             s.execute("DROP TABLE evolution_reward_preferences");
-            s.execute("DELETE FROM schema_migrations WHERE version=20");
+            s.execute("DELETE FROM schema_migrations WHERE version IN(20,22)");
         }
         DatabaseConfig.initialize();
 

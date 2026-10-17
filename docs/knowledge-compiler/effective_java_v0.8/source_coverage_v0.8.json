@@ -1,0 +1,34 @@
+{
+  "schema": "codefit-knowledge-coverage/v0.8-partial-handoff",
+  "parent_checkpoint": "v0.7",
+  "source_books": 5,
+  "major_units_structurally_discovered": 504,
+  "effective_java_text_extracted_items": 90,
+  "effective_java_deep_author_drafts": 26,
+  "effective_java_new_deep_items": [
+    42,
+    43
+  ],
+  "effective_java_enhanced_existing_items": [
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41
+  ],
+  "effective_java_revised_mission_overlays_total": 104,
+  "distinct_draft_mission_slots_total": 419,
+  "new_distinct_mission_slots": 0,
+  "python_tests_passed": 76,
+  "java21_runtime_assertions_passed": 291,
+  "java21_expected_compilation_rejections_passed": 42,
+  "independently_reviewed_items": 0,
+  "production_learner_graders": 0,
+  "verified_learner_mastery": 0,
+  "private_zip_drive_verified": false,
+  "public_handoff_complete": false,
+  "release_eligible": false
+}

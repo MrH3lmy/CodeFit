@@ -1,0 +1,81 @@
+{
+  "schema": "codefit-v0.9-javac-negative",
+  "count": 12,
+  "all_expected_rejections": true,
+  "release": "SOURCE_AUTHOR_ASSERTIONS_ONLY",
+  "cases": [
+    {
+      "case": "SAM_wrong_argument_type",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "SAM_two_abstract_methods",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "SAM_wrong_bi_arity",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "SAM_wrong_supplier_arity",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "SAM_non_boolean_predicate",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "stream_not_iterable",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "stream_generic_collection",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "void_terminal_no_stream",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "collector_toMap_requires_value",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "primitive_stream_wrong_collect",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "stream_not_direct_iterable",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    },
+    {
+      "case": "long_sum_not_int",
+      "rejected": true,
+      "expected": "compile-time contract violation",
+      "publisher_source": false
+    }
+  ],
+  "limitations": "These are self-authored intentionally invalid snippets, not false-answer learner grading or security tests."
+}

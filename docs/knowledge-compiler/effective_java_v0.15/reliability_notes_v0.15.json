@@ -1,0 +1,196 @@
+{
+  "schema": "codefit-reliability-notes/v0.15",
+  "notes": [
+    {
+      "title": "Capture actionable failure context without disclosing secrets",
+      "prerequisites": [
+        "exception messages",
+        "stack traces",
+        "privacy and log hygiene",
+        "domain bounds"
+      ],
+      "core": "Exception detail messages are developer diagnostics: capture the relevant invalid value, permitted boundary and operation context so investigators can distinguish failure modes, but never copy credentials, secrets or regulated payloads into exceptions or logs.",
+      "rules": [
+        "For a rejected range, retain the index and valid bounds or a stable non-sensitive error code instead of only saying invalid.",
+        "Capture relevant causal parameters and invariant state at the point of failure; do not rely on being able to reproduce the input later.",
+        "Keep exception detail messages concise and oriented to developers, rather than substituting them for localized client-facing errors.",
+        "Never place raw authentication tokens, passwords, full customer documents or cryptographic keys in exception messages or toString.",
+        "Offer typed exception construction with safe structured values when repeated failure types need consistent diagnostic context.",
+        "Preserve cause chains and trace/correlation IDs only after redaction and cardinality/retention review; avoid logging the same exception repeatedly."
+      ],
+      "nuance": [
+        "A dangerous raw input can be better represented by its length or classification rather than its literal value.",
+        "Stack traces and metrics may be exported across trust boundaries; exception messages are not inherently private.",
+        "Message strings are not a stable machine-readable API; downstream classification should use typed exception fields or explicit codes.",
+        "An exception constructor should not unexpectedly throw while formatting its diagnostic data.",
+        "A precise bound in a message does not itself ensure that sensitive metadata is approved for telemetry."
+      ],
+      "misconception": "The safest error is just “failed”, or conversely all input values should be logged because debugging requires them.",
+      "production_context": "A ledger pagination failure records a safe page offset, allowed range and trace ID but never writes a session token or customer identity into the error detail.",
+      "java21_delta": "Java 21 retains Throwable messages and cause chains; modern structured logging still requires explicit redaction and approved retention boundaries.",
+      "note_id": "EJ15-075",
+      "source_unit_id": "EJ-ITEM-075",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 327,
+      "pdf_page_end_exclusive": 329,
+      "source_body_sha256": "02fc7033ef24ce7667123d794bd5175a70c5c8970b64b581b962734b998fc7ba",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis after complete private source reading; independent technical and educational approval pending."
+    },
+    {
+      "title": "Preserve state invariants on failed operations",
+      "prerequisites": [
+        "failure atomicity",
+        "mutation order",
+        "validation",
+        "transaction boundaries"
+      ],
+      "core": "An operation should ordinarily leave its receiver in its original well-defined state if it fails: validate up front, compute before mutation, publish a fully prepared copy atomically, or explicitly define and test a compensation protocol where atomicity is impossible.",
+      "rules": [
+        "Validate public inputs and ranges before changing mutable state so errors cannot leave partially updated fields.",
+        "Move calculations that may throw before the first mutation when those calculations do not depend on the mutated state.",
+        "Prepare an immutable snapshot or temporary working copy and publish it only after all intended checks and transformations succeed.",
+        "Use transaction semantics when the unit of work spans a transactional store, and document which side effects a rollback cannot undo.",
+        "Where failure atomicity cannot be afforded, document the post-failure validity guarantee and provide a well-specified recovery or reconciliation step.",
+        "Test both success and every failure point, including overflow, callbacks and concurrent state transitions."
+      ],
+      "nuance": [
+        "A Java in-memory snapshot can prevent partial object mutation but does not roll back email, network or payment effects.",
+        "A volatile snapshot reference establishes publication visibility but does not automatically make multi-step external commits atomic.",
+        "Copy-then-publish has allocation and contention costs; choose based on invariants and profile rather than dogma.",
+        "Concurrent actors require a linearization or conflict policy beyond individual method failure atomicity.",
+        "Compensating actions in a distributed Saga may fail, so reconciliation and idempotency are separate obligations."
+      ],
+      "misconception": "If a method eventually throws an exception, the JVM automatically rolls back all modifications it performed.",
+      "production_context": "A merchant-credit configuration is validated and copied into a prepared immutable snapshot before swapping the active version; remote settlement is handled by idempotency and reconciliation, not a fictional in-memory rollback.",
+      "java21_delta": "Java 21 record/value models and AtomicReference updates can support immutable snapshot publication; external side effects still require domain-specific transactional design.",
+      "note_id": "EJ15-076",
+      "source_unit_id": "EJ-ITEM-076",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 329,
+      "pdf_page_end_exclusive": 331,
+      "source_body_sha256": "743421081df5347a8a20f5859767d3056d771c7747ec752c32c74351faa96869",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis after complete private source reading; independent technical and educational approval pending."
+    },
+    {
+      "title": "Handle exceptions with an observable policy, never silent dismissal",
+      "prerequisites": [
+        "checked and unchecked exceptions",
+        "error observability",
+        "fallback policy",
+        "interruption"
+      ],
+      "core": "Every caught exception requires an intentional response: recover with a proven safe fallback, translate and preserve its cause, propagate it, or document why ignoring a specifically bounded cleanup failure is harmless. Empty generic catch blocks hide errors and destroy evidence.",
+      "rules": [
+        "Never catch an exception just to continue silently; explicit exception policy should be visible in code and tests.",
+        "Only use a fallback if the domain guarantees that the fallback preserves correctness and does not falsely claim a completed side effect.",
+        "Propagate or translate unexpected failures with the cause intact; do not turn infrastructure timeouts into ordinary empty responses.",
+        "Document narrowly justified suppression of secondary cleanup failures and consider reporting at an appropriate diagnostic level.",
+        "Preserve the thread interruption signal when catching InterruptedException if termination/cancellation is not being propagated immediately.",
+        "Avoid catching Throwable or Error for routine business flow, and ensure recovery loops are bounded."
+      ],
+      "nuance": [
+        "Try-with-resources adds cleanup failures as suppressed exceptions and generally retains the primary cause.",
+        "A timeout during a nonessential suggestion step may use a documented safe default, unlike a payment-capture timeout.",
+        "Blindly logging and rethrowing at every layer can multiply alerts; choose an owning observability boundary.",
+        "An ignored cleanup exception may be acceptable only when no correctness or resource-integrity obligation depends on successful cleanup.",
+        "Java virtual threads support interruption and cancellation; a swallowed interrupt can obstruct structured task shutdown."
+      ],
+      "misconception": "Since the system keeps running after an empty catch, the exception was harmless.",
+      "production_context": "A reconciliation job propagates a gateway failure rather than marking the transfer settled; an optional cosmetic enrichment step may use a documented stale snapshot after a bounded timeout.",
+      "java21_delta": "Java 21 try-with-resources, interruption and virtual-thread cancellation make explicit recovery and cleanup semantics important; no runtime automatically validates a silent fallback.",
+      "note_id": "EJ15-077",
+      "source_unit_id": "EJ-ITEM-077",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 331,
+      "pdf_page_end_exclusive": 332,
+      "source_body_sha256": "4edd49134422171623306b958d4cf7aa9937ac794f33ad21fa797d2122aa80c4",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis after complete private source reading; independent technical and educational approval pending."
+    },
+    {
+      "title": "Synchronize shared mutable state for both visibility and atomic transitions",
+      "prerequisites": [
+        "Java memory model",
+        "happens-before",
+        "volatile",
+        "synchronized",
+        "atomic classes"
+      ],
+      "core": "Shared mutable state needs a defined visibility and concurrency contract. Use synchronized operations or suitable atomic/concurrent classes for compound transitions, and volatile for visibility of independent reads/writes where compound read-modify-write is not required.",
+      "rules": [
+        "Establish happens-before relationships with a shared lock, volatile access or concurrency utilities; atomic primitive reads alone do not establish timely visibility.",
+        "Use volatile for a stop flag or immutable snapshot publication, but do not treat volatile++ as an atomic counter increment.",
+        "Use AtomicInteger/AtomicLong or a lock for compound counters; synchronize related invariants under the same policy.",
+        "Prefer immutable message passing and concurrent collections over unrelated mutable fields shared between workers.",
+        "Do not use Thread.stop to cancel tasks; use interruption or explicit cooperative stop with documented propagation.",
+        "Test state transitions, contention and shutdown, while recognizing deterministic tests alone cannot prove absence of all races."
+      ],
+      "nuance": [
+        "An AtomicReference holding an immutable snapshot protects publication, not automatically coordination of two external side effects.",
+        "ConcurrentHashMap atomic compute operations and simple get-then-put sequences have different guarantees.",
+        "A lock protects invariants only when all accesses that participate in those invariants follow the same locking discipline.",
+        "Java 21 virtual threads change thread management costs but not the Java memory model.",
+        "LongAdder is useful for contended metrics, not a drop-in linearizable precise counter snapshot in all algorithms."
+      ],
+      "misconception": "Because boolean reads or int assignments are atomic, no synchronization is needed for communication or compound updates.",
+      "production_context": "A distributed payment adapter stores a volatile immutable configuration snapshot and updates account-level in-memory counters with AtomicLong, while using durable idempotency for cross-service correctness.",
+      "java21_delta": "Java 21 virtual threads and modern atomic/concurrent primitives retain ordinary JMM visibility and synchronization rules; do not confuse low-cost threads with automatic thread safety.",
+      "note_id": "EJ15-078",
+      "source_unit_id": "EJ-ITEM-078",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 332,
+      "pdf_page_end_exclusive": 338,
+      "source_body_sha256": "657bb9b7b5749148e3cab1c95eb675f2ded3e2518d584ac00e2baf8420bcd4c1",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis after complete private source reading; independent technical and educational approval pending."
+    },
+    {
+      "title": "Keep unknown callbacks outside synchronization boundaries",
+      "prerequisites": [
+        "locks and reentrancy",
+        "callbacks",
+        "deadlocks",
+        "concurrent collections"
+      ],
+      "core": "Protect the smallest necessary shared state transition with a lock and invoke external or overridable code only after leaving the synchronized region. Snapshot listeners under the lock, then notify outside it; avoid assuming unknown callbacks are fast, safe or nonblocking.",
+      "rules": [
+        "Never call an untrusted listener, overridable hook or client-supplied function while holding an internal monitor when possible.",
+        "Take an immutable observer snapshot inside a synchronized block and dispatch notifications only after releasing the lock.",
+        "Choose CopyOnWriteArrayList when listener churn is low relative to notification reads, evaluating allocation costs.",
+        "Document whether callbacks can subscribe/unsubscribe during a notification and which event snapshot they observe.",
+        "Keep synchronized critical sections short to reduce lock contention, deadlock opportunities and unexpected blocking.",
+        "If callbacks must be asynchronous, specify ordering, delivery failure and backpressure; moving work to a thread pool alone is not an outbox."
+      ],
+      "nuance": [
+        "A synchronized callback may reenter the same monitor and mutate a live iteration, producing surprising behavior despite reentrant monitors.",
+        "A snapshot-based callback delivery policy does not guarantee exactly-once delivery or transactionality with database state.",
+        "CopyOnWriteArrayList iterators are snapshot-based but copying on every mutation can be expensive for high-churn registrations.",
+        "External callbacks may block indefinitely or call into another lock, inducing deadlocks; design timeouts and policy only where safe.",
+        "Virtual-thread pinning/monitor behavior depends on the JDK version; do not claim all synchronized use is harmless or universally expensive."
+      ],
+      "misconception": "An internal synchronized block makes any arbitrary observer callback safe, because only one thread can be inside it.",
+      "production_context": "A settlement event dispatcher snapshots registered subscribers under its private monitor and invokes handlers afterward; durable delivery uses a separate outbox and retries.",
+      "java21_delta": "Java 21 provides CopyOnWriteArrayList and virtual threads; callback escape from monitors and explicit delivery semantics remain essential independent of scheduling model.",
+      "note_id": "EJ15-079",
+      "source_unit_id": "EJ-ITEM-079",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 338,
+      "pdf_page_end_exclusive": 344,
+      "source_body_sha256": "50fd4b19c10f9ff21ab7431cdd2f50598b20645e12ab8c4d2fea48a67d2201c8",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original author synthesis after complete private source reading; independent technical and educational approval pending."
+    }
+  ]
+}

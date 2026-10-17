@@ -1,0 +1,678 @@
+{
+  "schema": "codefit-effective-java-enums-annotations-enhanced-mission-overlays/v0.8",
+  "missions": [
+    {
+      "mission_id": "EJ8-034-Q1",
+      "note_id": "EJ8-034",
+      "source_unit_id": "EJ-ITEM-034",
+      "stage": "predict",
+      "original_quest_brief": "Given two unrelated enum types with the same constant name and an enum with a custom label, predict legal assignments, name(), toString(), and valueOf() results.",
+      "rubric_criteria": [
+        "Distinguishes type identity from shared spelling",
+        "Distinguishes declared name from custom display",
+        "Identifies compile-time mismatch"
+      ],
+      "negative_controls": [
+        "wrong-enum-assignment",
+        "custom-label-valueOf"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-034-01",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-034-Q2",
+      "note_id": "EJ8-034",
+      "source_unit_id": "EJ-ITEM-034",
+      "stage": "debug",
+      "original_quest_brief": "A payment routing service stores action.ordinal() in a database and uses valueOf() on human-readable labels. Diagnose failures after reordering and a label change.",
+      "rubric_criteria": [
+        "Identifies unstable ordinal persistence",
+        "Proposes explicit stable code and lookup",
+        "Handles unknown input without silent fallback"
+      ],
+      "negative_controls": [
+        "reordered-enum",
+        "unknown-external-code"
+      ],
+      "grader_plan": "Human-reviewed bug-analysis rubric",
+      "replaces_draft_id": "EJ4-034-02",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-034-Q3",
+      "note_id": "EJ8-034",
+      "source_unit_id": "EJ-ITEM-034",
+      "stage": "build",
+      "original_quest_brief": "Implement SettlementAction with explicit external codes, per-action validation, a total lookup returning Optional, and a test for unknown codes and changed declaration order.",
+      "rubric_criteria": [
+        "Valid codes resolve uniquely",
+        "Every action owns or chooses its validation",
+        "Unknown code is explicit",
+        "No ordinal persistence"
+      ],
+      "negative_controls": [
+        "unknown-code",
+        "duplicate-external-code"
+      ],
+      "grader_plan": "Java21 candidate grader design; smoke fixtures are NOT a player grader",
+      "replaces_draft_id": "EJ4-034-03",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-034-Q4",
+      "note_id": "EJ8-034",
+      "source_unit_id": "EJ-ITEM-034",
+      "stage": "defend",
+      "original_quest_brief": "Compare enum-specific methods, strategy objects, and an external switch for a growing settlement protocol where clients are deployed independently.",
+      "rubric_criteria": [
+        "Names closed-world assumption",
+        "Explains policy ownership and evolution",
+        "Identifies binary/source compatibility tests"
+      ],
+      "negative_controls": [
+        "old-client-new-enum",
+        "external-policy-ownership"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-034-04",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-035-Q1",
+      "note_id": "EJ8-035",
+      "source_unit_id": "EJ-ITEM-035",
+      "stage": "predict",
+      "original_quest_brief": "A risk enum has sparse scores 10, 40, 40, 90 and is reordered. Predict which of score(), ordinal(), and name() change.",
+      "rubric_criteria": [
+        "Scores stay explicit",
+        "Ordinal changes with order",
+        "Names are not scores"
+      ],
+      "negative_controls": [
+        "reorder",
+        "duplicate-score"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-035-01",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-035-Q2",
+      "note_id": "EJ8-035",
+      "source_unit_id": "EJ-ITEM-035",
+      "stage": "debug",
+      "original_quest_brief": "An API deserializes stored integers using values()[storedCode]. Show why legacy rows break after a new enum value is inserted.",
+      "rubric_criteria": [
+        "Identifies index/code confusion",
+        "Introduces validated code lookup",
+        "Protects historical records"
+      ],
+      "negative_controls": [
+        "sparse-code",
+        "out-of-range"
+      ],
+      "grader_plan": "Human-reviewed bug-analysis rubric",
+      "replaces_draft_id": "EJ4-035-02",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-035-Q3",
+      "note_id": "EJ8-035",
+      "source_unit_id": "EJ-ITEM-035",
+      "stage": "build",
+      "original_quest_brief": "Implement RiskDecision with stable externalCode and score, two equal scores, a reverse lookup and tests for missing and deprecated codes.",
+      "rubric_criteria": [
+        "Independent code/score",
+        "No ordinal dependence",
+        "Unknown handled explicitly"
+      ],
+      "negative_controls": [
+        "duplicate-score",
+        "missing-code"
+      ],
+      "grader_plan": "Java21 candidate grader design; smoke fixtures are NOT a player grader",
+      "replaces_draft_id": "EJ4-035-03",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-035-Q4",
+      "note_id": "EJ8-035",
+      "source_unit_id": "EJ-ITEM-035",
+      "stage": "defend",
+      "original_quest_brief": "Explain why a private ordinal-indexed structure might be justified inside EnumMap while the same index is unacceptable as a public wire contract.",
+      "rubric_criteria": [
+        "Differentiates internal representation from external API",
+        "Covers enum evolution",
+        "Names migration strategy"
+      ],
+      "negative_controls": [
+        "internal-vs-external",
+        "schema-evolution"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-035-04",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-036-Q1",
+      "note_id": "EJ8-036",
+      "source_unit_id": "EJ-ITEM-036",
+      "stage": "predict",
+      "original_quest_brief": "Predict EnumSet union, intersection and empty-set behavior; explain why a Set<Permission> parameter accepts a regular HashSet.",
+      "rubric_criteria": [
+        "Correct set algebra",
+        "Accepts interface implementations",
+        "Recognizes same-enum restriction"
+      ],
+      "negative_controls": [
+        "empty-set",
+        "mixed-enum"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-036-01",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-036-Q2",
+      "note_id": "EJ8-036",
+      "source_unit_id": "EJ-ITEM-036",
+      "stage": "debug",
+      "original_quest_brief": "A policy getter returns Collections.unmodifiableSet(internalEnumSet) while the service later mutates the backing set. Explain why callers see changes.",
+      "rubric_criteria": [
+        "Differentiates view and snapshot",
+        "Copies before wrapping",
+        "Avoids internal mutation leak"
+      ],
+      "negative_controls": [
+        "live-view",
+        "defensive-copy"
+      ],
+      "grader_plan": "Human-reviewed bug-analysis rubric",
+      "replaces_draft_id": "EJ4-036-02",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-036-Q3",
+      "note_id": "EJ8-036",
+      "source_unit_id": "EJ-ITEM-036",
+      "stage": "build",
+      "original_quest_brief": "Implement immutable permission snapshots backed by an internal EnumSet, plus union/intersection operations and a >64-constant compatibility fixture.",
+      "rubric_criteria": [
+        "No mutable reference escape",
+        "Correct bulk operations",
+        "Handles empty and jumbo enums"
+      ],
+      "negative_controls": [
+        "empty-permissions",
+        "sixty-five-flags"
+      ],
+      "grader_plan": "Java21 candidate grader design; smoke fixtures are NOT a player grader",
+      "replaces_draft_id": "EJ4-036-03",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-036-Q4",
+      "note_id": "EJ8-036",
+      "source_unit_id": "EJ-ITEM-036",
+      "stage": "defend",
+      "original_quest_brief": "Compare a legacy long bitmask protocol with EnumSet at the service boundary, including versioned translation and unknown bits.",
+      "rubric_criteria": [
+        "Separates wire mapping from internal set",
+        "Explains >64-bit evolution",
+        "Defines unknown-bit policy"
+      ],
+      "negative_controls": [
+        "unknown-bits",
+        "versioned-mapping"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-036-04",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-037-Q1",
+      "note_id": "EJ8-037",
+      "source_unit_id": "EJ-ITEM-037",
+      "stage": "predict",
+      "original_quest_brief": "For an empty batch and a batch missing one status, compare prefilled EnumMap groups with groupingBy into EnumMap.",
+      "rubric_criteria": [
+        "Explains absent vs empty groups",
+        "Knows mapFactory does not prefill",
+        "Preserves declared enum order"
+      ],
+      "negative_controls": [
+        "empty-batch",
+        "unobserved-key"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-037-01",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-037-Q2",
+      "note_id": "EJ8-037",
+      "source_unit_id": "EJ-ITEM-037",
+      "stage": "debug",
+      "original_quest_brief": "A transition table uses source.ordinal()*N+target.ordinal() and silently routes a new status incorrectly. Replace index math with typed nested keys.",
+      "rubric_criteria": [
+        "Identifies ordinal coupling",
+        "Handles missing transitions",
+        "Avoids unchecked array casts"
+      ],
+      "negative_controls": [
+        "added-status",
+        "missing-transition"
+      ],
+      "grader_plan": "Human-reviewed bug-analysis rubric",
+      "replaces_draft_id": "EJ4-037-02",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-037-Q3",
+      "note_id": "EJ8-037",
+      "source_unit_id": "EJ-ITEM-037",
+      "stage": "build",
+      "original_quest_brief": "Implement a typed EnumMap grouping function and a nested EnumMap transition validator with absent-state tests.",
+      "rubric_criteria": [
+        "All required groups preinitialized",
+        "Legal transitions explicit",
+        "Illegal transitions handled without NPE"
+      ],
+      "negative_controls": [
+        "empty-input",
+        "illegal-pair"
+      ],
+      "grader_plan": "Java21 candidate grader design; smoke fixtures are NOT a player grader",
+      "replaces_draft_id": "EJ4-037-03",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-037-Q4",
+      "note_id": "EJ8-037",
+      "source_unit_id": "EJ-ITEM-037",
+      "stage": "defend",
+      "original_quest_brief": "Compare EnumMap, HashMap, and two-dimensional arrays for a sparse state machine with frequent new statuses.",
+      "rubric_criteria": [
+        "Discusses type safety and evolution",
+        "Explains sparsity and complexity",
+        "States ordering caveats"
+      ],
+      "negative_controls": [
+        "sparse-map",
+        "enum-order"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-037-04",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-038-Q1",
+      "note_id": "EJ8-038",
+      "source_unit_id": "EJ-ITEM-038",
+      "stage": "predict",
+      "original_quest_brief": "Predict which APIs accept two distinct enums implementing the same interface: Rule, EnumSet, bounded Class<E>, or Collection<? extends Rule>.",
+      "rubric_criteria": [
+        "Distinguishes interface substitutability",
+        "Recognizes enum-family bounds",
+        "Rejects mixed EnumSet"
+      ],
+      "negative_controls": [
+        "mixed-enum",
+        "bounded-class"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-038-01",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-038-Q2",
+      "note_id": "EJ8-038",
+      "source_unit_id": "EJ-ITEM-038",
+      "stage": "debug",
+      "original_quest_brief": "A plugin API accepts BasicRule rather than Rule, blocking partner-defined enum checks. Repair the signature without erasing type safety.",
+      "rubric_criteria": [
+        "Generalizes to interface",
+        "Preserves typed iteration",
+        "Rejects unsafe casts"
+      ],
+      "negative_controls": [
+        "extension-enum",
+        "non-enum-rule"
+      ],
+      "grader_plan": "Human-reviewed bug-analysis rubric",
+      "replaces_draft_id": "EJ4-038-02",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-038-Q3",
+      "note_id": "EJ8-038",
+      "source_unit_id": "EJ-ITEM-038",
+      "stage": "build",
+      "original_quest_brief": "Create ValidationRule with two independent enum implementations and execute a mixed collection plus a bounded enum-class executor.",
+      "rubric_criteria": [
+        "Both enum families work",
+        "Class token bound correct",
+        "No raw types"
+      ],
+      "negative_controls": [
+        "mixed-family",
+        "non-enum-implementation"
+      ],
+      "grader_plan": "Java21 candidate grader design; smoke fixtures are NOT a player grader",
+      "replaces_draft_id": "EJ4-038-03",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-038-Q4",
+      "note_id": "EJ8-038",
+      "source_unit_id": "EJ-ITEM-038",
+      "stage": "defend",
+      "original_quest_brief": "Choose between an open interface, a sealed interface, and a closed enum for a regulated plugin platform.",
+      "rubric_criteria": [
+        "Names security vs extensibility trade-off",
+        "Addresses discovery and compatibility",
+        "Explains enum-set limitation"
+      ],
+      "negative_controls": [
+        "untrusted-plugin",
+        "closed-vs-open"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-038-04",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-039-Q1",
+      "note_id": "EJ8-039",
+      "source_unit_id": "EJ-ITEM-039",
+      "stage": "predict",
+      "original_quest_brief": "A method has two repeatable @AuditCase annotations. Predict results of isAnnotationPresent and getAnnotationsByType; contrast one annotation.",
+      "rubric_criteria": [
+        "Understands container encoding",
+        "Correct reflection API",
+        "Handles single and repeated"
+      ],
+      "negative_controls": [
+        "one-annotation",
+        "two-annotations"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-039-01",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-039-Q2",
+      "note_id": "EJ8-039",
+      "source_unit_id": "EJ-ITEM-039",
+      "stage": "debug",
+      "original_quest_brief": "An audit runner ignores methods annotated twice and executes a non-static method with null receiver. Fix discovery and signature validation.",
+      "rubric_criteria": [
+        "Uses getAnnotationsByType",
+        "Validates static/no-arg/accessibility",
+        "Separates invocation errors"
+      ],
+      "negative_controls": [
+        "repeated-case",
+        "invalid-signature"
+      ],
+      "grader_plan": "Human-reviewed bug-analysis rubric",
+      "replaces_draft_id": "EJ4-039-02",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-039-Q3",
+      "note_id": "EJ8-039",
+      "source_unit_id": "EJ-ITEM-039",
+      "stage": "build",
+      "original_quest_brief": "Implement runtime-retained @AuditCase, compatible @AuditCases container, and a reflection scanner that counts annotations and rejects invalid methods.",
+      "rubric_criteria": [
+        "Runtime retention and target",
+        "Single/repeated retrieval",
+        "Explicit invalid-method diagnostic"
+      ],
+      "negative_controls": [
+        "no-annotation",
+        "invalid-method"
+      ],
+      "grader_plan": "Java21 candidate grader design; smoke fixtures are NOT a player grader",
+      "replaces_draft_id": "EJ4-039-03",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-039-Q4",
+      "note_id": "EJ8-039",
+      "source_unit_id": "EJ-ITEM-039",
+      "stage": "defend",
+      "original_quest_brief": "Compare naming conventions, runtime annotations and compile-time processors for enforcing compliance checks in a CI pipeline.",
+      "rubric_criteria": [
+        "Covers typo safety",
+        "Separates compile-time and runtime guarantees",
+        "Discusses deployment tooling"
+      ],
+      "negative_controls": [
+        "processor-missing",
+        "retention-policy"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-039-04",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-040-Q1",
+      "note_id": "EJ8-040",
+      "source_unit_id": "EJ-ITEM-040",
+      "stage": "predict",
+      "original_quest_brief": "A key defines equals(Key) and hashCode but not equals(Object). Predict HashSet deduplication and explain why a direct key.equals(key) call misleads.",
+      "rubric_criteria": [
+        "Correct overload dispatch",
+        "Identifies identity equality",
+        "Explains hashCode insufficiency"
+      ],
+      "negative_controls": [
+        "typed-call",
+        "object-dispatch"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-040-01",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-040-Q2",
+      "note_id": "EJ8-040",
+      "source_unit_id": "EJ-ITEM-040",
+      "stage": "debug",
+      "original_quest_brief": "A developer adds @Override to equals(Key) and compilation fails. Repair the signature and equality contract without removing @Override.",
+      "rubric_criteria": [
+        "Uses equals(Object)",
+        "Preserves symmetry and null behavior",
+        "Aligns hashCode"
+      ],
+      "negative_controls": [
+        "bad-signature",
+        "hash-lookup"
+      ],
+      "grader_plan": "Human-reviewed bug-analysis rubric",
+      "replaces_draft_id": "EJ4-040-02",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-040-Q3",
+      "note_id": "EJ8-040",
+      "source_unit_id": "EJ-ITEM-040",
+      "stage": "build",
+      "original_quest_brief": "Implement immutable LedgerKey with correct equals/hashCode and a default-interface method override, with Set and Map tests.",
+      "rubric_criteria": [
+        "Distinct instances deduplicate",
+        "Correct hash lookup",
+        "Interface override compiles"
+      ],
+      "negative_controls": [
+        "null-comparison",
+        "distinct-keys"
+      ],
+      "grader_plan": "Java21 candidate grader design; smoke fixtures are NOT a player grader",
+      "replaces_draft_id": "EJ4-040-03",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-040-Q4",
+      "note_id": "EJ8-040",
+      "source_unit_id": "EJ-ITEM-040",
+      "stage": "defend",
+      "original_quest_brief": "Compare a record key and a custom class key for evolving event identity semantics and persistence.",
+      "rubric_criteria": [
+        "Addresses field equality policy",
+        "Explains generated vs manual equality",
+        "Names backward compatibility risks"
+      ],
+      "negative_controls": [
+        "identity-change",
+        "record-choice"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-040-04",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-041-Q1",
+      "note_id": "EJ8-041",
+      "source_unit_id": "EJ-ITEM-041",
+      "stage": "predict",
+      "original_quest_brief": "Given @Reviewed on a class and an empty ApprovedCommand interface, predict which values can be passed to submit(ApprovedCommand).",
+      "rubric_criteria": [
+        "Explains compile-time assignability",
+        "Distinguishes metadata from type",
+        "Does not infer annotation enforcement"
+      ],
+      "negative_controls": [
+        "annotated-only",
+        "implements-marker"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-041-01",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-041-Q2",
+      "note_id": "EJ8-041",
+      "source_unit_id": "EJ-ITEM-041",
+      "stage": "debug",
+      "original_quest_brief": "A security-sensitive API accepts Command and reflectively checks an annotation too late. Redesign a typed boundary and discuss runtime trust validation.",
+      "rubric_criteria": [
+        "Uses marker type where appropriate",
+        "Retains validation at boundary",
+        "Avoids trusting marker alone"
+      ],
+      "negative_controls": [
+        "untrusted-implementation",
+        "late-check"
+      ],
+      "grader_plan": "Human-reviewed bug-analysis rubric",
+      "replaces_draft_id": "EJ4-041-02",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-041-Q3",
+      "note_id": "EJ8-041",
+      "source_unit_id": "EJ-ITEM-041",
+      "stage": "build",
+      "original_quest_brief": "Define Command, AuthorizedCommand extends Command, and submit(AuthorizedCommand); use a separate @AuditEndpoint annotation on methods.",
+      "rubric_criteria": [
+        "Compile-time rejection of ordinary Command",
+        "Correct type hierarchy",
+        "Method annotation reflection works"
+      ],
+      "negative_controls": [
+        "plain-command",
+        "method-annotation"
+      ],
+      "grader_plan": "Java21 candidate grader design; smoke fixtures are NOT a player grader",
+      "replaces_draft_id": "EJ4-041-03",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ8-041-Q4",
+      "note_id": "EJ8-041",
+      "source_unit_id": "EJ-ITEM-041",
+      "stage": "defend",
+      "original_quest_brief": "Compare marker interface, marker annotation and sealed marker interface for an SDK with external plugins.",
+      "rubric_criteria": [
+        "Explains type-check benefit",
+        "Explains annotation tooling",
+        "Addresses sealed extensibility and runtime trust"
+      ],
+      "negative_controls": [
+        "third-party-plugin",
+        "sealed-contract"
+      ],
+      "grader_plan": "Human-reviewed reasoning rubric",
+      "replaces_draft_id": "EJ4-041-04",
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT",
+      "grader_verified": false,
+      "mastery_eligible": false
+    }
+  ]
+}

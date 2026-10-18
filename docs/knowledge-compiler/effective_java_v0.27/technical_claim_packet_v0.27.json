@@ -1,0 +1,485 @@
+{
+  "approval_count": 0,
+  "instructions": "Independently verify each claim using authorized source and original reproducible evidence. Do not quote publisher material into public artifacts. Signature proof alone does not grant approval.",
+  "required_decision": "ACCEPT | REJECT | NEEDS_REVISION",
+  "review_role": "technical",
+  "schema": "codefit-review-delivery/v0.27",
+  "subjects": [
+    {
+      "author_claim": "A superclass constructor can dynamically dispatch to an overriding method before subclass fields receive their explicit initialization.",
+      "claim_tag": "super-constructor-dispatch",
+      "independent_challenge": "Explain why an explicitly initialized final subclass field may still be observed with its default value during base construction.",
+      "item_id": "EJ-ITEM-019",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          114,
+          119
+        ],
+        "source_body_sha256": "c3a46c3ba773c926a69709b8c2ea23dd2e49f6f833247687fa970fedc3a261d6"
+      },
+      "subject_id": "EJ22-019-C1",
+      "subject_sha256": "efa09975cf5bc01d4c84a80c2cce462179761abc8526d32541f8cff1eb865abd"
+    },
+    {
+      "author_claim": "A superclass operation that calls an overridable method makes that call sequence observable to subclasses, possibly doubling instrumentation.",
+      "claim_tag": "self-use-contract",
+      "independent_challenge": "Distinguish subclass hook calls from direct caller operations; demonstrate an override that changes counting.",
+      "item_id": "EJ-ITEM-019",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          114,
+          119
+        ],
+        "source_body_sha256": "c3a46c3ba773c926a69709b8c2ea23dd2e49f6f833247687fa970fedc3a261d6"
+      },
+      "subject_id": "EJ22-019-C2",
+      "subject_sha256": "0a2c0d52cdfe6c222c4d72249c22a946800176043daec5fc8f442ae1b83bbd86"
+    },
+    {
+      "author_claim": "A protected extension hook is part of a supported inheritance contract and cannot be treated as a freely changeable implementation detail.",
+      "claim_tag": "protected-api",
+      "independent_challenge": "Identify what the superclass must document about invocation order, errors and thread context.",
+      "item_id": "EJ-ITEM-019",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          114,
+          119
+        ],
+        "source_body_sha256": "c3a46c3ba773c926a69709b8c2ea23dd2e49f6f833247687fa970fedc3a261d6"
+      },
+      "subject_id": "EJ22-019-C3",
+      "subject_sha256": "327b942b906c06ccdd5964d2e067fc5b7fac73d6e93d985e3b0bb7a414fd6d3e"
+    },
+    {
+      "author_claim": "A final class prohibits subclassing; sealed types restrict authorized subtype declarations but do not themselves document safe override protocols.",
+      "claim_tag": "closed-extension",
+      "independent_challenge": "Test a final extension rejection, then explain why sealed alone cannot make an unsafe virtual constructor call safe.",
+      "item_id": "EJ-ITEM-019",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          114,
+          119
+        ],
+        "source_body_sha256": "c3a46c3ba773c926a69709b8c2ea23dd2e49f6f833247687fa970fedc3a261d6"
+      },
+      "subject_id": "EJ22-019-C4",
+      "subject_sha256": "ab890877080a04d5690466e4ebe1f018047e272e3c09955fd2901d04755afd29"
+    },
+    {
+      "author_claim": "A Java class may implement multiple independent interfaces while extending one superclass.",
+      "claim_tag": "multiple-capabilities",
+      "independent_challenge": "Build a class retaining a required base type and two capability interfaces.",
+      "item_id": "EJ-ITEM-020",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          120,
+          124
+        ],
+        "source_body_sha256": "06ee3d879b12b13b64f2d1a7d31d9b94166dae91909a983dd65dcbf465185856"
+      },
+      "subject_id": "EJ22-020-C1",
+      "subject_sha256": "f462e711d7d8d27c69ef99d12d89b7e69d5ffb25cdc013d4d9b93528b852bc4d"
+    },
+    {
+      "author_claim": "An interface cannot provide a default implementation of equals(Object) overriding the Object-method signature.",
+      "claim_tag": "object-default-limit",
+      "independent_challenge": "Compile a deliberately illegal interface and distinguish abstract redeclaration from default implementation.",
+      "item_id": "EJ-ITEM-020",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          120,
+          124
+        ],
+        "source_body_sha256": "06ee3d879b12b13b64f2d1a7d31d9b94166dae91909a983dd65dcbf465185856"
+      },
+      "subject_id": "EJ22-020-C2",
+      "subject_sha256": "e65a5e67526a652f332c95d7759ff968763fe7f113023b5d1f80c0c8b5251378"
+    },
+    {
+      "author_claim": "Inheriting conflicting unrelated interface defaults requires an explicit resolution in the implementing class.",
+      "claim_tag": "default-conflict",
+      "independent_challenge": "Prove a conflict is rejected without an override and resolved with one.",
+      "item_id": "EJ-ITEM-020",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          120,
+          124
+        ],
+        "source_body_sha256": "06ee3d879b12b13b64f2d1a7d31d9b94166dae91909a983dd65dcbf465185856"
+      },
+      "subject_id": "EJ22-020-C3",
+      "subject_sha256": "dd93c723c6b0d4fa1f231ddc40d52ace3e117c141cb71bc8a6a1cf8c17748771"
+    },
+    {
+      "author_claim": "A skeletal implementation can offer shared state and method implementations while interfaces keep capabilities open to other implementation lineages.",
+      "claim_tag": "skeletal-state",
+      "independent_challenge": "Distinguish an optional skeletal helper from a mandatory base class.",
+      "item_id": "EJ-ITEM-020",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          120,
+          124
+        ],
+        "source_body_sha256": "06ee3d879b12b13b64f2d1a7d31d9b94166dae91909a983dd65dcbf465185856"
+      },
+      "subject_id": "EJ22-020-C4",
+      "subject_sha256": "29bec932ee0f5c94403cabb5ac341ac09b35f09e75ef99527c8bfc1352714f94"
+    },
+    {
+      "author_claim": "Synchronizing each primitive operation separately does not establish atomicity for a default compound operation invoking several primitives.",
+      "claim_tag": "primitive-locks",
+      "independent_challenge": "Require an interleaving argument; distinguish per-call lock possession from an enclosing batch lock.",
+      "item_id": "EJ-ITEM-021",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          125,
+          127
+        ],
+        "source_body_sha256": "f089b35220eb4126a480b5a0e471bbe8bef605df3f1aba76c60d4b55c462c5d5"
+      },
+      "subject_id": "EJ22-021-C1",
+      "subject_sha256": "6379a99e812a50ae99b30fa774406689d25250d1c8dcc2be965925e4187e806c"
+    },
+    {
+      "author_claim": "A missing whole-batch lock establishes lack of a guarantee, not proof that a concrete race happened.",
+      "claim_tag": "no-race-proof",
+      "independent_challenge": "Demand a schedule or counterexample trace before asserting an observed race.",
+      "item_id": "EJ-ITEM-021",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          125,
+          127
+        ],
+        "source_body_sha256": "f089b35220eb4126a480b5a0e471bbe8bef605df3f1aba76c60d4b55c462c5d5"
+      },
+      "subject_id": "EJ22-021-C2",
+      "subject_sha256": "b8bf9710fded3775682239a32795209b755d730e06eb6c0cb1bce84f25bdb1f9"
+    },
+    {
+      "author_claim": "Adding a default method can violate behavioral assumptions of an existing interface implementation even when its source still compiles.",
+      "claim_tag": "wrapper-compatibility",
+      "independent_challenge": "Inspect a wrapper rather than asserting every standard JDK implementation is affected.",
+      "item_id": "EJ-ITEM-021",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          125,
+          127
+        ],
+        "source_body_sha256": "f089b35220eb4126a480b5a0e471bbe8bef605df3f1aba76c60d4b55c462c5d5"
+      },
+      "subject_id": "EJ22-021-C3",
+      "subject_sha256": "e74fd787c8858c56b3d2febef3944ba52afb5a1db500befc93eebd15c5f54b2c"
+    },
+    {
+      "author_claim": "An interface default may be overridden by an implementing class to restore a required behavioral invariant.",
+      "claim_tag": "default-resolution",
+      "independent_challenge": "Contrast inherited implementation and an explicit synchronized batch override.",
+      "item_id": "EJ-ITEM-021",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          125,
+          127
+        ],
+        "source_body_sha256": "f089b35220eb4126a480b5a0e471bbe8bef605df3f1aba76c60d4b55c462c5d5"
+      },
+      "subject_id": "EJ22-021-C4",
+      "subject_sha256": "555c30e02edde3bc98310b17beeb7fa4e336c22b21ec2e02f120e623653d4190"
+    },
+    {
+      "author_claim": "Implementing a constants-only interface introduces constant names into the implementing type’s inherited API surface.",
+      "claim_tag": "constant-interface-pollution",
+      "independent_challenge": "Examine name exposure without claiming that interface constants become mutable instance fields.",
+      "item_id": "EJ-ITEM-022",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          128,
+          129
+        ],
+        "source_body_sha256": "a2a65e2ad1e88850d83082f112954811be72a726e87af9ec2038bfe891e33259"
+      },
+      "subject_id": "EJ22-022-C1",
+      "subject_sha256": "f0d8057121a14ca4e4728612f5f56a9b5df1bebc2efc9e078574b44498e0048c"
+    },
+    {
+      "author_claim": "Fields declared in an interface are implicitly public, static and final; implementations cannot assign to them.",
+      "claim_tag": "interface-fields-static",
+      "independent_challenge": "Compile a rejected attempted assignment and separate type design from mutability.",
+      "item_id": "EJ-ITEM-022",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          128,
+          129
+        ],
+        "source_body_sha256": "a2a65e2ad1e88850d83082f112954811be72a726e87af9ec2038bfe891e33259"
+      },
+      "subject_id": "EJ22-022-C2",
+      "subject_sha256": "6a56f891bb1d64efb77f4ffca77ae08e10394eba4c0c96f36f086754e046a8b4"
+    },
+    {
+      "author_claim": "Enums provide stable typed identities; an int constants holder does not provide the same type discrimination.",
+      "claim_tag": "enum-type-safety",
+      "independent_challenge": "Explain a stable outcome enum without promoting every numeric configuration setting to enum status.",
+      "item_id": "EJ-ITEM-022",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          128,
+          129
+        ],
+        "source_body_sha256": "a2a65e2ad1e88850d83082f112954811be72a726e87af9ec2038bfe891e33259"
+      },
+      "subject_id": "EJ22-022-C3",
+      "subject_sha256": "a4eaa8ab16aa6a496bde607e5754146c34ce488458d581baaa35617b5e064b1a"
+    },
+    {
+      "author_claim": "A changing financial threshold belongs in validated runtime policy rather than in hard-coded enum constants.",
+      "claim_tag": "mutable-business-threshold",
+      "independent_challenge": "Give a rollback-sensitive policy example and state why a static configuration enum would be inappropriate.",
+      "item_id": "EJ-ITEM-022",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          128,
+          129
+        ],
+        "source_body_sha256": "a2a65e2ad1e88850d83082f112954811be72a726e87af9ec2038bfe891e33259"
+      },
+      "subject_id": "EJ22-022-C4",
+      "subject_sha256": "2cd4e0ba4166c6c95447a637017e3a32ac1e0960a47b30f37bdd509af38ca17a"
+    },
+    {
+      "author_claim": "A tagged class can admit combinations of tag and fields that are invalid for a particular variant.",
+      "claim_tag": "tagged-invalid-states",
+      "independent_challenge": "Construct an inconsistent state; compare with variant-specific representations.",
+      "item_id": "EJ-ITEM-023",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          130,
+          132
+        ],
+        "source_body_sha256": "1f506742f2e23760073afac77e1fd33f5a79184af24ed2aed69da2a7266d0730"
+      },
+      "subject_id": "EJ22-023-C1",
+      "subject_sha256": "a50f5d9808fc4adf547d95473caeb89eecfe6d01b93bd449463a7c428c448fde"
+    },
+    {
+      "author_claim": "A sealed hierarchy limits permitted subtypes but does not automatically validate field values in permitted record implementations.",
+      "claim_tag": "sealed-does-not-validate",
+      "independent_challenge": "Instantiate an invalid unvalidated record and prove an explicit canonical constructor rejects it.",
+      "item_id": "EJ-ITEM-023",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          130,
+          132
+        ],
+        "source_body_sha256": "1f506742f2e23760073afac77e1fd33f5a79184af24ed2aed69da2a7266d0730"
+      },
+      "subject_id": "EJ22-023-C2",
+      "subject_sha256": "3bc39c6a7cb83d6e0684df23cc8d22f8e891b3410058ddb3617f91a25008e2f1"
+    },
+    {
+      "author_claim": "A record holding a mutable array is not deeply immutable merely because its component fields are final.",
+      "claim_tag": "records-shallow",
+      "independent_challenge": "Demonstrate array aliasing and propose defensive copying on input/output.",
+      "item_id": "EJ-ITEM-023",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          130,
+          132
+        ],
+        "source_body_sha256": "1f506742f2e23760073afac77e1fd33f5a79184af24ed2aed69da2a7266d0730"
+      },
+      "subject_id": "EJ22-023-C3",
+      "subject_sha256": "4bce5fa92867fa810721df0f9d88dda6819d051145be627677a6f515a87afe87"
+    },
+    {
+      "author_claim": "A Java 21 switch over a known sealed hierarchy may be exhaustively checked, while missing a permitted variant can fail compilation.",
+      "claim_tag": "switch-exhaustiveness",
+      "independent_challenge": "Run a nonexhaustive switch negative fixture without implying exhaustive cases validate fields.",
+      "item_id": "EJ-ITEM-023",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          130,
+          132
+        ],
+        "source_body_sha256": "1f506742f2e23760073afac77e1fd33f5a79184af24ed2aed69da2a7266d0730"
+      },
+      "subject_id": "EJ22-023-C4",
+      "subject_sha256": "53ef49a3946362e2def00fdfa638df6ad47ffd45e6d84bc4e5ff32edb0422f11"
+    },
+    {
+      "author_claim": "A nonstatic member-class constructor requires an enclosing instance in this Java 21 language and compiler setup.",
+      "claim_tag": "enclosing-construction",
+      "independent_challenge": "Reflect over constructor parameters, separately from fields on the created instance.",
+      "item_id": "EJ-ITEM-024",
+      "java_baseline": "Java 21; cross-compiler details must be checked independently",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          133,
+          135
+        ],
+        "source_body_sha256": "752d666b7af34a32d5557f9b27a852f6f67d3a2be96111870046557746ba6fa1"
+      },
+      "subject_id": "EJ22-024-C1",
+      "subject_sha256": "c53c7b5ac070e1ce379cfd54dbb8472a4c2f917d86e1806b82bdb575e14f0000"
+    },
+    {
+      "author_claim": "The tested Java 21 javac can omit an unused synthetic outer-instance field on a nonstatic member class.",
+      "claim_tag": "elided-outer-field",
+      "independent_challenge": "Reflect over an unused-owner member class; do not universalize this implementation optimization.",
+      "item_id": "EJ-ITEM-024",
+      "java_baseline": "Java 21; cross-compiler details must be checked independently",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          133,
+          135
+        ],
+        "source_body_sha256": "752d666b7af34a32d5557f9b27a852f6f67d3a2be96111870046557746ba6fa1"
+      },
+      "subject_id": "EJ22-024-C2",
+      "subject_sha256": "9af35e7c57a425c940cbe5bac4bf746806be13f2e2a1e626da47b00c8aa0b9d0"
+    },
+    {
+      "author_claim": "A nonstatic member class that actually accesses enclosing instance state retains a reference in the tested Java 21 compiler output.",
+      "claim_tag": "captured-owner-field",
+      "independent_challenge": "Demonstrate a real outer access and inspect fields; avoid using GC timings as proof.",
+      "item_id": "EJ-ITEM-024",
+      "java_baseline": "Java 21; cross-compiler details must be checked independently",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          133,
+          135
+        ],
+        "source_body_sha256": "752d666b7af34a32d5557f9b27a852f6f67d3a2be96111870046557746ba6fa1"
+      },
+      "subject_id": "EJ22-024-C3",
+      "subject_sha256": "5bcb1608dadd3fce2a791dd11531c72aa4a8d39854aa545e1fe9be0c23a3edf6"
+    },
+    {
+      "author_claim": "A static member class does not require an implicit owner instance to be constructed.",
+      "claim_tag": "static-no-owner",
+      "independent_challenge": "Contrast constructor signatures, not only source spelling.",
+      "item_id": "EJ-ITEM-024",
+      "java_baseline": "Java 21; cross-compiler details must be checked independently",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          133,
+          135
+        ],
+        "source_body_sha256": "752d666b7af34a32d5557f9b27a852f6f67d3a2be96111870046557746ba6fa1"
+      },
+      "subject_id": "EJ22-024-C4",
+      "subject_sha256": "7ca61edcfe21029fa679d1413923c3dae6c52f5b75c2795a19cdd3d1a98fce0a"
+    },
+    {
+      "author_claim": "Java permits distinct package-private top-level classes to share one compilation unit.",
+      "claim_tag": "multiple-package-private",
+      "independent_challenge": "Positive-compile two distinct package-private types together.",
+      "item_id": "EJ-ITEM-025",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          136,
+          137
+        ],
+        "source_body_sha256": "c63c9e7f0ad966b630fd956ff4d5bcff2fe603caf22e9becd96e306492b0a70c"
+      },
+      "subject_id": "EJ22-025-C1",
+      "subject_sha256": "c878087b4206dc145c66dd0a9ea04358715760d2e722b0540964bf4ffd3cebbc"
+    },
+    {
+      "author_claim": "A public top-level class must be declared in a compilation unit named for that class under ordinary javac source-file compilation.",
+      "claim_tag": "public-filename",
+      "independent_challenge": "Negative-compile a public type in a mismatching filename.",
+      "item_id": "EJ-ITEM-025",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          136,
+          137
+        ],
+        "source_body_sha256": "c63c9e7f0ad966b630fd956ff4d5bcff2fe603caf22e9becd96e306492b0a70c"
+      },
+      "subject_id": "EJ22-025-C2",
+      "subject_sha256": "344c0bdebdb5e49fbe909315fc089220033941763057e0f525f999706e3f47e5"
+    },
+    {
+      "author_claim": "Duplicate top-level declarations with the same fully qualified name are rejected when compiled together.",
+      "claim_tag": "duplicate-class",
+      "independent_challenge": "Distinguish duplicate class from merely colocated distinct classes.",
+      "item_id": "EJ-ITEM-025",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          136,
+          137
+        ],
+        "source_body_sha256": "c63c9e7f0ad966b630fd956ff4d5bcff2fe603caf22e9becd96e306492b0a70c"
+      },
+      "subject_id": "EJ22-025-C3",
+      "subject_sha256": "59d61453193a21c084a4ab7dcd250a17096b43c892c00d916509c02f061312c8"
+    },
+    {
+      "author_claim": "One top-level type per source file is a maintainability convention, not a universal Java grammar requirement.",
+      "claim_tag": "source-hygiene",
+      "independent_challenge": "Explain why recommending a convention differs from claiming a compile-time ban.",
+      "item_id": "EJ-ITEM-025",
+      "java_baseline": "Java 21",
+      "review_status": "PENDING_EXTERNAL_TECHNICAL_REVIEW",
+      "source_locator": {
+        "pdf_pages_1_based": [
+          136,
+          137
+        ],
+        "source_body_sha256": "c63c9e7f0ad966b630fd956ff4d5bcff2fe603caf22e9becd96e306492b0a70c"
+      },
+      "subject_id": "EJ22-025-C4",
+      "subject_sha256": "f8715f5e2b6244741d71a46488b70d869754b89c84fb23ceb29a60b5162346f8"
+    }
+  ]
+}

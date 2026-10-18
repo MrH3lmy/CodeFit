@@ -1,0 +1,170 @@
+{
+  "schema": "codefit-internal-technical-challenge/v0.21",
+  "baseline": "v0.20",
+  "reviewer_class": "AUTHOR_INTERNAL_ADVERSARIAL_CHALLENGE__NOT_INDEPENDENT",
+  "source_fingerprint_verified": true,
+  "source_spans_reread": 7,
+  "missions_inspected": 28,
+  "note_corrections": 1,
+  "mission_rubric_replacements": 6,
+  "distinct_mission_slots_added": 0,
+  "distinct_mission_slots_total": 419,
+  "deep_notes_total": 90,
+  "mission_overlays_total_unchanged": 360,
+  "independently_approved_notes": 0,
+  "independently_approved_missions": 0,
+  "mastery_eligible": false,
+  "release_eligible": false,
+  "items": [
+    {
+      "source_unit_id": "EJ-ITEM-019",
+      "source_body_sha256_matches": true,
+      "source_pdf_page_start": 114,
+      "source_pdf_page_end_exclusive": 120,
+      "full_span_read_for_internal_challenge": true,
+      "severity": "CHECKED_NO_CORRECTION",
+      "finding": "The constructor-dispatch and self-use contract are distinct hazards; tests should not conflate field initialization with field visibility.",
+      "challenge_requirements": [
+        "Test virtual dispatch during parent construction",
+        "Count override self-use separately"
+      ],
+      "mission_stage_ids": [
+        "EJ20-019-Q1",
+        "EJ20-019-Q2",
+        "EJ20-019-Q3",
+        "EJ20-019-Q4"
+      ],
+      "external_independent_technical_approval": false,
+      "external_pedagogical_approval": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-020",
+      "source_body_sha256_matches": true,
+      "source_pdf_page_start": 120,
+      "source_pdf_page_end_exclusive": 125,
+      "full_span_read_for_internal_challenge": true,
+      "severity": "CHECKED_NO_CORRECTION",
+      "finding": "Interfaces may be combined with an existing class hierarchy; default/Object method restrictions need explicit compile tests.",
+      "challenge_requirements": [
+        "Compile two capabilities alongside a superclass",
+        "Reject interface default equals(Object)"
+      ],
+      "mission_stage_ids": [
+        "EJ20-020-Q1",
+        "EJ20-020-Q2",
+        "EJ20-020-Q3",
+        "EJ20-020-Q4"
+      ],
+      "external_independent_technical_approval": false,
+      "external_pedagogical_approval": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-021",
+      "source_body_sha256_matches": true,
+      "source_pdf_page_start": 125,
+      "source_pdf_page_end_exclusive": 128,
+      "full_span_read_for_internal_challenge": true,
+      "severity": "RUBRIC_CLARIFICATION",
+      "finding": "Locking each primitive call is weaker than synchronizing a compound default method. Compatibility must be analyzed per legacy wrapper rather than assuming all JDK wrappers fail.",
+      "challenge_requirements": [
+        "Show primitive locks are held",
+        "Do not claim compound atomicity without whole-call lock"
+      ],
+      "mission_stage_ids": [
+        "EJ20-021-Q1",
+        "EJ20-021-Q2",
+        "EJ20-021-Q3",
+        "EJ20-021-Q4"
+      ],
+      "external_independent_technical_approval": false,
+      "external_pedagogical_approval": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-022",
+      "source_body_sha256_matches": true,
+      "source_pdf_page_start": 128,
+      "source_pdf_page_end_exclusive": 130,
+      "full_span_read_for_internal_challenge": true,
+      "severity": "RUBRIC_CLARIFICATION",
+      "finding": "Constant interfaces leak an implementation choice; a currency threshold may be runtime configuration, not an enum constant.",
+      "challenge_requirements": [
+        "Show inherited public name",
+        "Distinguish typed static identity from mutable business policy"
+      ],
+      "mission_stage_ids": [
+        "EJ20-022-Q1",
+        "EJ20-022-Q2",
+        "EJ20-022-Q3",
+        "EJ20-022-Q4"
+      ],
+      "external_independent_technical_approval": false,
+      "external_pedagogical_approval": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-023",
+      "source_body_sha256_matches": true,
+      "source_pdf_page_start": 130,
+      "source_pdf_page_end_exclusive": 133,
+      "full_span_read_for_internal_challenge": true,
+      "severity": "RUBRIC_CLARIFICATION",
+      "finding": "A sealed interface controls permitted implementation types, not valid field values. Records are shallowly immutable; explicit validation and defensive ownership are separate requirements.",
+      "challenge_requirements": [
+        "Construct invalid unvalidated record to disprove automatic invariants",
+        "Show validated record rejecting invalid value",
+        "Show mutable array alias"
+      ],
+      "mission_stage_ids": [
+        "EJ20-023-Q1",
+        "EJ20-023-Q2",
+        "EJ20-023-Q3",
+        "EJ20-023-Q4"
+      ],
+      "external_independent_technical_approval": false,
+      "external_pedagogical_approval": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-024",
+      "source_body_sha256_matches": true,
+      "source_pdf_page_start": 133,
+      "source_pdf_page_end_exclusive": 136,
+      "full_span_read_for_internal_challenge": true,
+      "severity": "MATERIAL_JAVA21_CORRECTION",
+      "finding": "The v0.20 author note states every nonstatic member class retains its enclosing instance, even without an access. Under the verified Java 21 javac, an unused enclosing-reference field may be elided. Nonstatic construction still requires the enclosing instance, but long-lived memory retention requires actual references.",
+      "challenge_requirements": [
+        "Assert a nonstatic unused-inner constructor has an enclosing-instance parameter",
+        "Assert unused-inner class has no outer-reference field in this javac",
+        "Assert outer-reading inner retains the synthetic reference",
+        "Do not use GC timing as a deterministic validation oracle"
+      ],
+      "mission_stage_ids": [
+        "EJ20-024-Q1",
+        "EJ20-024-Q2",
+        "EJ20-024-Q3",
+        "EJ20-024-Q4"
+      ],
+      "external_independent_technical_approval": false,
+      "external_pedagogical_approval": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-025",
+      "source_body_sha256_matches": true,
+      "source_pdf_page_start": 136,
+      "source_pdf_page_end_exclusive": 138,
+      "full_span_read_for_internal_challenge": true,
+      "severity": "CHECKED_NO_CORRECTION",
+      "finding": "One-top-level-type-per-file is a design convention, not a language prohibition for multiple package-private top-level types. Duplicate FQNs and mismatched public filenames are separate compile errors.",
+      "challenge_requirements": [
+        "Positive compile multiple distinct package-private classes in one compilation unit",
+        "Reject duplicate top-level declarations across files"
+      ],
+      "mission_stage_ids": [
+        "EJ20-025-Q1",
+        "EJ20-025-Q2",
+        "EJ20-025-Q3",
+        "EJ20-025-Q4"
+      ],
+      "external_independent_technical_approval": false,
+      "external_pedagogical_approval": false
+    }
+  ]
+}

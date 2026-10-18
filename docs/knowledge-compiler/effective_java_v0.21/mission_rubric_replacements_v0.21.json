@@ -1,0 +1,146 @@
+{
+  "schema": "codefit-review-rubric-replacements/v0.21",
+  "missions": [
+    {
+      "mission_id": "EJ20-021-Q1",
+      "note_id": "EJ20-021",
+      "source_unit_id": "EJ-ITEM-021",
+      "stage": "predict",
+      "original_quest_brief": "Predict which locks are held for an inherited default two-step operation when its primitive operations each synchronize internally; distinguish per-call synchronization from compound atomicity.",
+      "rubric_criteria": [
+        "Track lock acquisition at each primitive boundary",
+        "State no enclosing whole-batch lock is implied",
+        "Do not infer an actual race without a concurrent schedule"
+      ],
+      "negative_controls": [
+        "per-item-lock-means-atomic-batch",
+        "default-method-automatically-synchronizes-wrapper"
+      ],
+      "replaces_draft_id": "EJ4-021-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "INTERNAL_REVIEW_REPLACEMENT__AWAITING_INDEPENDENT_APPROVAL",
+      "review_revision": "v0.21",
+      "replaces_mission_overlay_id": "EJ20-021-Q1"
+    },
+    {
+      "mission_id": "EJ20-022-Q3",
+      "note_id": "EJ20-022",
+      "source_unit_id": "EJ-ITEM-022",
+      "stage": "build",
+      "original_quest_brief": "Build a typed static protocol enum and a noninstantiable constants holder, but keep changing currency limits as validated runtime configuration rather than hard-coded enum constants.",
+      "rubric_criteria": [
+        "Reserve enums for stable identities",
+        "Isolate numeric constants where static and stable",
+        "Use runtime policy/value types for changing business thresholds"
+      ],
+      "negative_controls": [
+        "enums-are-required-for-changing-limits",
+        "constant-interface-is-good-sdk-contract"
+      ],
+      "replaces_draft_id": "EJ4-022-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "INTERNAL_REVIEW_REPLACEMENT__AWAITING_INDEPENDENT_APPROVAL",
+      "review_revision": "v0.21",
+      "replaces_mission_overlay_id": "EJ20-022-Q3"
+    },
+    {
+      "mission_id": "EJ20-023-Q1",
+      "note_id": "EJ20-023",
+      "source_unit_id": "EJ-ITEM-023",
+      "stage": "predict",
+      "original_quest_brief": "Predict that a sealed record subtype can still contain invalid amounts unless an explicit canonical constructor validates them; compare invalid tagged states with validated alternatives.",
+      "rubric_criteria": [
+        "Sealed controls subtype membership, not record field values",
+        "Unvalidated record constructor can accept invalid domain values",
+        "Canonical constructor or validated factory rejects bad values"
+      ],
+      "negative_controls": [
+        "sealed-automatically-validates-fields",
+        "records-are-valid-by-declaration"
+      ],
+      "replaces_draft_id": "EJ4-023-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "INTERNAL_REVIEW_REPLACEMENT__AWAITING_INDEPENDENT_APPROVAL",
+      "review_revision": "v0.21",
+      "replaces_mission_overlay_id": "EJ20-023-Q1"
+    },
+    {
+      "mission_id": "EJ20-023-Q3",
+      "note_id": "EJ20-023",
+      "source_unit_id": "EJ-ITEM-023",
+      "stage": "build",
+      "original_quest_brief": "Build original sealed payment outcomes with validated record constructors, defensive ownership of mutable members, and an exhaustive Java 21 switch; test invalid and null inputs separately.",
+      "rubric_criteria": [
+        "Validate each variant’s own invariants",
+        "Explain shallow record immutability and avoid aliasing",
+        "Make intended null semantics explicit",
+        "Compile exhaustive switch over permitted variants"
+      ],
+      "negative_controls": [
+        "record-arrays-are-deeply-immutable",
+        "sealed-constructor-invariants-implicit"
+      ],
+      "replaces_draft_id": "EJ4-023-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "INTERNAL_REVIEW_REPLACEMENT__AWAITING_INDEPENDENT_APPROVAL",
+      "review_revision": "v0.21",
+      "replaces_mission_overlay_id": "EJ20-023-Q3"
+    },
+    {
+      "mission_id": "EJ20-024-Q1",
+      "note_id": "EJ20-024",
+      "source_unit_id": "EJ-ITEM-024",
+      "stage": "predict",
+      "original_quest_brief": "Predict when Java 21 javac emits an enclosing-reference field for a nonstatic member class, contrasting a class that never reads outer state with one that does; distinguish class-file layout from language-level construction.",
+      "rubric_criteria": [
+        "Enclosing instance remains required to construct nonstatic member",
+        "JDK 21 javac may omit unused synthetic outer-reference field",
+        "Actual captured outer reference can retain the owner",
+        "Avoid universal synthetic-field claims"
+      ],
+      "negative_controls": [
+        "every-inner-has-this-dollar-zero-field",
+        "constructor-parameter-guarantees-retention"
+      ],
+      "replaces_draft_id": "EJ4-024-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "INTERNAL_REVIEW_REPLACEMENT__AWAITING_INDEPENDENT_APPROVAL",
+      "review_revision": "v0.21",
+      "replaces_mission_overlay_id": "EJ20-024-Q1"
+    },
+    {
+      "mission_id": "EJ20-024-Q3",
+      "note_id": "EJ20-024",
+      "source_unit_id": "EJ-ITEM-024",
+      "stage": "build",
+      "original_quest_brief": "Build static and nonstatic task variants; inspect Java 21 class-file fields and constructor signatures deterministically, then explain when real outer-state use causes retention without relying on garbage-collection timing.",
+      "rubric_criteria": [
+        "Use reflection or javap to inspect bytecode/fields",
+        "Keep owner-state dependencies explicit",
+        "Distinguish no-capture inner from outer-reading inner",
+        "Do not mark flaky WeakReference GC behavior as proof"
+      ],
+      "negative_controls": [
+        "gc-collected-in-x-ms-proves-no-reference",
+        "all-nonstatic-inners-keep-owner-alive"
+      ],
+      "replaces_draft_id": "EJ4-024-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "INTERNAL_REVIEW_REPLACEMENT__AWAITING_INDEPENDENT_APPROVAL",
+      "review_revision": "v0.21",
+      "replaces_mission_overlay_id": "EJ20-024-Q3"
+    }
+  ]
+}

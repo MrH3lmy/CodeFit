@@ -35,6 +35,8 @@ import com.codefit.service.RunLimits;
 import com.codefit.service.RunResult;
 import com.codefit.service.SolvingCheckpointPreferenceService;
 import com.codefit.ui.NavigationService;
+import com.codefit.ui.RouteLifecycle;
+import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
@@ -82,7 +84,7 @@ import java.util.Optional;
  * seconds can ever be lost to an unclean shutdown, and a paused session simply stops ticking rather
  * than needing timestamp-diffing logic that would have to account for the app being closed entirely.
  */
-public class ProblemSolvingWorkspaceController extends BaseController {
+public class ProblemSolvingWorkspaceController extends BaseController implements RouteLifecycle {
 
     @FXML private Label titleLabel;
     @FXML private Label subtitleLabel;
@@ -173,7 +175,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     private RunCancellationToken currentCancellationToken;
     private JavaExecutionCoordinator.Operation currentJavaOperation;
     private PauseTransition javaAutosaveDebounce;
-    private boolean loadingJavaDraft;
+    private boolean loadingJavaDraft, disposed;
 
     private Long problemId;
     private String problemUrl;
@@ -238,6 +240,27 @@ public class ProblemSolvingWorkspaceController extends BaseController {
         }
         setStatus(javaRunStatusLabel, "Wait for the current Java operation to finish, or cancel it, before leaving this workspace.");
         return false;
+    }
+
+    @Override
+    public void requestLeave(Runnable ready) {
+        if (!disposed && javaAutosaveDebounce != null
+                && javaAutosaveDebounce.getStatus() == Animation.Status.RUNNING) {
+            javaAutosaveDebounce.stop();
+            autosaveJavaDraft();
+        }
+        ready.run();
+    }
+
+    @Override
+    public void dispose() {
+        disposed = true;
+        if (javaAutosaveDebounce != null) {
+            javaAutosaveDebounce.stop();
+        }
+        if (timer != null) {
+            timer.stop();
+        }
     }
 
     @Override
@@ -317,7 +340,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     }
 
     private void scheduleJavaAutosave() {
-        if (loadingJavaDraft || problemId == null) {
+        if (loadingJavaDraft || disposed || problemId == null) {
             return;
         }
         javaAutosaveDebounce.stop();
@@ -325,7 +348,7 @@ public class ProblemSolvingWorkspaceController extends BaseController {
     }
 
     private void autosaveJavaDraft() {
-        if (problemId == null) {
+        if (disposed || problemId == null) {
             return;
         }
         javaWorkspaceService.saveDraft(problemId, javaClassNameField.getText(), javaSourceArea.getText(),

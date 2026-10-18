@@ -1,6 +1,7 @@
 package com.codefit.controller;
 
 import com.codefit.model.JavaTestCase;
+import com.codefit.model.JavaSolutionDraft;
 import com.codefit.model.Problem;
 import com.codefit.service.CompileOutcome;
 import com.codefit.service.JavaExecutionCoordinator;
@@ -29,6 +30,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -55,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @ExtendWith(IsolatedDatabaseExtension.class)
 @ResourceLock(IsolatedDatabaseExtension.DATABASE_RESOURCE)
 class ProblemSolvingWorkspaceJavaRunnerBusyStateTest {
+    private final List<ProblemSolvingWorkspaceController> controllers = new ArrayList<>();
 
     @BeforeAll
     static void requireFxToolkit() {
@@ -65,8 +68,14 @@ class ProblemSolvingWorkspaceJavaRunnerBusyStateTest {
      *  operation (directly or via the real background-thread run methods) and doesn't itself release
      *  it would otherwise leave every later test unable to acquire the coordinator at all. */
     @AfterEach
-    void releaseAnyStillActiveOperation() {
+    void disposeControllersAndReleaseAnyStillActiveOperation() throws Exception {
         JavaExecutionCoordinator.cancelActiveAndAwait(5, TimeUnit.SECONDS);
+        if (!controllers.isEmpty()) {
+            runOnFxThreadAndWait(() -> {
+                controllers.forEach(ProblemSolvingWorkspaceController::dispose);
+                controllers.clear();
+            });
+        }
     }
 
     private ProblemSolvingWorkspaceController loadController() throws Exception {
@@ -100,7 +109,9 @@ class ProblemSolvingWorkspaceJavaRunnerBusyStateTest {
         if (failure.get() != null) {
             fail("Failed to load problem-solving-workspace.fxml", failure.get());
         }
-        return controllerRef.get();
+        ProblemSolvingWorkspaceController controller = controllerRef.get();
+        controllers.add(controller);
+        return controller;
     }
 
     @Test
@@ -350,6 +361,54 @@ class ProblemSolvingWorkspaceJavaRunnerBusyStateTest {
             });
             assertTrue(anyNeverRanToCompletion, "at least one queued test case must never have run to completion once the batch was cancelled");
         });
+    }
+
+    @Test
+    void disposingMultipleWorkspacesCancelsPendingAutosaves() throws Exception {
+        ProblemSolvingWorkspaceController first = loadController();
+        ProblemSolvingWorkspaceController second = loadController();
+        long firstProblemId = readProblemId(first);
+        long secondProblemId = readProblemId(second);
+
+        runOnFxThreadAndWait(() -> {
+            ((TextArea) readField(first, "javaSourceArea")).setText("pending first draft");
+            ((TextArea) readField(second, "javaSourceArea")).setText("pending second draft");
+            first.dispose();
+            second.dispose();
+        });
+
+        Thread.sleep(1_000);
+        JavaSolutionWorkspaceService service = new JavaSolutionWorkspaceService();
+        assertEquals(JavaSolutionDraft.template(firstProblemId).getSourceCode(),
+                service.loadDraft(firstProblemId).getSourceCode());
+        assertEquals(JavaSolutionDraft.template(secondProblemId).getSourceCode(),
+                service.loadDraft(secondProblemId).getSourceCode());
+    }
+
+    @Test
+    void javaDraftStillAutosavesAfterDebounce() throws Exception {
+        ProblemSolvingWorkspaceController controller = loadController();
+        long problemId = readProblemId(controller);
+
+        runOnFxThreadAndWait(() ->
+                ((TextArea) readField(controller, "javaSourceArea")).setText("normally autosaved draft"));
+
+        waitUntil(() -> "normally autosaved draft".equals(
+                        new JavaSolutionWorkspaceService().loadDraft(problemId).getSourceCode()),
+                5, "the Java draft debounce to save the latest edit");
+    }
+
+    @Test
+    void leavingWorkspaceFlushesPendingDraftBeforeDisposal() throws Exception {
+        ProblemSolvingWorkspaceController controller = loadController();
+        long problemId = readProblemId(controller);
+
+        runOnFxThreadAndWait(() -> {
+            ((TextArea) readField(controller, "javaSourceArea")).setText("saved when leaving");
+            controller.requestLeave(controller::dispose);
+        });
+
+        assertEquals("saved when leaving", new JavaSolutionWorkspaceService().loadDraft(problemId).getSourceCode());
     }
 
     // --- reflection plumbing (mirrors SettingsControllerImportBusyStateTest) -------------------

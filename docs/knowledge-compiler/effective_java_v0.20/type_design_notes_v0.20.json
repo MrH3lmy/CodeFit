@@ -1,0 +1,243 @@
+{
+  "schema": "codefit-type-design-notes/v0.20",
+  "notes": [
+    {
+      "note_id": "EJ20-019",
+      "source_unit_id": "EJ-ITEM-019",
+      "title": "Treat inheritance as a published compatibility protocol, not free reuse",
+      "core": "An extensible superclass publishes two contracts: the behavior a caller sees and the fragile interaction points a subclass can override. Constructor dispatch, protected extension hooks, and self-use must be designed, documented, and adversarially subclass-tested. For ordinary value or service implementations with no deliberate extension protocol, prefer closed construction and interface-based wrappers.",
+      "rules": [
+        "Never dispatch to an overridable instance method from a superclass constructor, directly or indirectly.",
+        "List self-use of overridable hooks in the inheritance specification, including ordering, callbacks and thread context.",
+        "Treat protected members as enduring API commitments; test their necessity with unlike subclasses.",
+        "When inheritance is not a supported feature, make a concrete class final or restrict constructors behind factories.",
+        "Prefer composition and a delegating facade for logging, metering, throttling or cross-cutting policy.",
+        "If extension is supported, test subclass override behavior across all superclass public operations.",
+        "Avoid introducing serializable/cloneable initialization hazards into extensible base classes."
+      ],
+      "nuance": [
+        "Final fields of an extension may still be at default values when the base constructor dispatches to it.",
+        "A template method is intentional and documented self-use, not a blanket ban on dynamic dispatch.",
+        "A final class blocks inheritance; a sealed class limits permitted subclasses but does not by itself specify override behavior.",
+        "A protected extension hook makes internal sequencing observable to extensions.",
+        "Documented hook invocation order can inhibit future algorithm optimizations.",
+        "A private final helper can separate external override behavior from internal calls, but only if this design is intentional."
+      ],
+      "misconception": "A protected method can be changed freely because it is implementation-only, and overrides are always initialized before any dispatch.",
+      "production_context": "Payment-rule provider framework: expose a narrow policy interface and a final dispatcher; if extension is necessary, make hooks explicit and test adversarial callback ordering.",
+      "java21_delta": "Java 21 sealed classes and records add deliberate closure choices; a sealed permits list is not a substitute for designing or documenting overridable-hook guarantees.",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 114,
+      "pdf_page_end_exclusive": 120,
+      "source_body_sha256": "c3a46c3ba773c926a69709b8c2ea23dd2e49f6f833247687fa970fedc3a261d6",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent claim and teaching reviews pending."
+    },
+    {
+      "note_id": "EJ20-020",
+      "source_unit_id": "EJ-ITEM-020",
+      "title": "Define capabilities through interfaces and reuse through optional skeletal implementations",
+      "core": "Interface-first contracts separate what clients can rely on from an implementation lineage. Classes can adopt multiple capabilities even when they already extend another base class. Default methods can provide behavior composed from primitives, while optional skeletal implementation classes provide state or Object-method implementations that an interface cannot directly supply.",
+      "rules": [
+        "Define the business capability as an interface so unrelated implementations can opt in.",
+        "Keep primitive interface operations small and independently specified.",
+        "Document default method preconditions and how they call overridable primitive operations.",
+        "Offer an optional abstract base implementation only when it meaningfully reduces repeated mechanics.",
+        "Do not provide a default method that overrides an Object method such as equals.",
+        "Do not force plugin clients to inherit your abstract class in order to implement the capability.",
+        "Test both direct implementers and skeletal-base subclasses against the same behavioral contract."
+      ],
+      "nuance": [
+        "Default methods do not create per-instance fields.",
+        "Two conflicting inherited default implementations may require explicit resolution.",
+        "An abstract base limits clients with existing superclasses, even when the base is mostly empty.",
+        "A skeletal helper class can centralize equals/hashCode because interface defaults cannot override Object methods.",
+        "A default that depends on a primitive method may inherit implementation-specific invariant weaknesses.",
+        "Java 21 interfaces can declare private helper methods, but instance fields are still not permitted."
+      ],
+      "misconception": "Interfaces cannot share any behavior, so every consumer must extend the supplied abstract implementation.",
+      "production_context": "Merchant webhook consumers expose retryable delivery as a capability while an optional abstract adapter implements standard metrics and bounded retry scaffolding.",
+      "java21_delta": "Java 21 supports private interface methods and default methods, but still prohibits Object-method defaults and multiple class inheritance; do not assume newer syntax removes that boundary.",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 120,
+      "pdf_page_end_exclusive": 125,
+      "source_body_sha256": "06ee3d879b12b13b64f2d1a7d31d9b94166dae91909a983dd65dcbf465185856",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent claim and teaching reviews pending."
+    },
+    {
+      "note_id": "EJ20-021",
+      "source_unit_id": "EJ-ITEM-021",
+      "title": "Treat newly introduced default interface methods as migrations requiring invariant review",
+      "core": "Adding a default method may preserve compilation but alter observable behavior of preexisting implementations. General-purpose defaults cannot know custom locks, tracking, transactions or thread-confinement rules. Compatibility review must examine real legacy adapters, their invariants and the full call path, rather than equating successful compilation with safe API evolution.",
+      "rules": [
+        "Test new default methods against every known implementation category, not just the reference adapter.",
+        "Identify synchronization, transaction, caching and auditing invariants held by existing implementations.",
+        "Consider retaining a new operation in a separate optional capability interface instead of modifying the original.",
+        "Document the newly added default method and its interaction with existing primitive operations.",
+        "Test wrappers that delegate and synchronize individual methods but do not override the new default.",
+        "Reject binary-compatible changes that silently violate semantic invariants.",
+        "Use multiple independent implementers and clients before finalizing interface shape."
+      ],
+      "nuance": [
+        "A default can call a primitive operation correctly but still bypass an outer wrapper lock.",
+        "A new abstract interface method breaks implementers differently than a new default method.",
+        "The JDK collection wrappers have specific overrides today; old third-party libraries may not.",
+        "Methods can be inherited with name conflicts from multiple parent interfaces.",
+        "A new default may change overload resolution or semantics without changing a downstream source file.",
+        "A static or sealed utility does not automatically repair foreign implementations."
+      ],
+      "misconception": "Adding a default operation is always backward compatible if the repository compiles without errors.",
+      "production_context": "A remote payments client interface gains a batch-cancel default; a legacy decorator requires a single lock around the whole batch and loses its invariant if the default loops without it.",
+      "java21_delta": "Java 21 still executes inherited interface defaults; API evolution needs behavior tests against third-party wrappers. Modern JDK collection wrappers may override methods that historical libraries omitted.",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 125,
+      "pdf_page_end_exclusive": 128,
+      "source_body_sha256": "f089b35220eb4126a480b5a0e471bbe8bef605df3f1aba76c60d4b55c462c5d5",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent claim and teaching reviews pending."
+    },
+    {
+      "note_id": "EJ20-022",
+      "source_unit_id": "EJ-ITEM-022",
+      "title": "Interfaces represent usable contracts, not named buckets of constants",
+      "core": "Implementing an interface communicates a capability or substitutable type. Using interfaces only to inherit constant names leaks internal implementation choices into a public type hierarchy and propagates inherited names to subclasses. Export constants as members of the relevant domain type, a meaningful enum, or a final noninstantiable utility, depending on ownership and type safety.",
+      "rules": [
+        "Require a meaningful instance type contract before declaring an interface.",
+        "Do not implement an interface only to avoid qualifying constant names.",
+        "Keep constants with the domain API they describe when that association is clear.",
+        "Prefer enums for a closed set of related distinct named values.",
+        "Use a final utility holder with private constructor for unrelated reusable scalar constants.",
+        "Avoid exposing accidental implementation details in class API and descendant namespaces.",
+        "Be aware that static imports improve convenience but do not alter type relationships."
+      ],
+      "nuance": [
+        "An interface may legitimately declare constants associated with its capability.",
+        "Static final fields declared in an interface are implicitly public static final.",
+        "Changing a public superclass implemented-interface list can be a binary/API compatibility concern.",
+        "A marker interface defines a type property even without methods; it is not necessarily a constants antipattern.",
+        "An enum gives stronger identity than a group of public int constants.",
+        "Compile-time constant inlining introduces additional deployment compatibility considerations."
+      ],
+      "misconception": "Any zero-method interface is wrong, and implementing a constants-only interface is harmless shorthand.",
+      "production_context": "A card-processing SDK currently makes every handler implement PricingConstants; move fee parameters to a named immutable policy configuration and stable limit names to a utility.",
+      "java21_delta": "Java 21 records and enums may encapsulate typed policy configuration, but no modern feature makes a constants-only inheritance relationship into a meaningful capability.",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 128,
+      "pdf_page_end_exclusive": 130,
+      "source_body_sha256": "a2a65e2ad1e88850d83082f112954811be72a726e87af9ec2038bfe891e33259",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent claim and teaching reviews pending."
+    },
+    {
+      "note_id": "EJ20-023",
+      "source_unit_id": "EJ-ITEM-023",
+      "title": "Represent behavioral alternatives as distinct types instead of sprawling tagged state",
+      "core": "A tagged union encoded as a single mutable class mixes fields that are invalid for some variants and relies on repeated conditionals to select behavior. A properly designed hierarchy places common operations in a shared type while each subtype owns only its valid state. For closed alternatives, Java 21 sealed interfaces with records and exhaustive switch can offer a compact algebraic model when consumers need to inspect variants.",
+      "rules": [
+        "Identify behavior that changes with the tag and move each implementation to the appropriate subtype.",
+        "Give each subtype a constructor that enforces only its own valid fields.",
+        "Choose a sealed hierarchy when the domain has a deliberate finite set of alternatives.",
+        "Use polymorphic dispatch when callers only need a common behavior; avoid repeated type switches.",
+        "Evaluate a tagged representation when interop or serialization demands an external discriminator.",
+        "Avoid mixing state and optional fields for variants that cannot share invariants.",
+        "Test invalid variant construction and behavior dispatch per subtype."
+      ],
+      "nuance": [
+        "Java 21 switch pattern matching over sealed hierarchies supports compile-time exhaustiveness under appropriate conditions.",
+        "Sealed alternatives are less open to third-party extension than ordinary interfaces.",
+        "Records are shallowly immutable; nested arrays and collections still need ownership protection.",
+        "DTO deserialization formats may keep wire tags even if domain objects form a hierarchy.",
+        "A closed set of alternatives supports exhaustiveness but can require widespread recompilation after a new permitted subtype.",
+        "A switch over enum states remains suitable for some pure control flows and does not always warrant a hierarchy."
+      ],
+      "misconception": "A discriminator field with unrelated optional fields is equally type safe because every method has a default case.",
+      "production_context": "Checkout outcomes are Authorized, Declined or Retryable; replace a nullable monolithic outcome with three validated Java 21 record variants and a sealed parent.",
+      "java21_delta": "Java 21 finalizes switch pattern matching and supports sealed types and records, providing another precise alternative to open abstract classes envisioned in Java 9-era material.",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 130,
+      "pdf_page_end_exclusive": 133,
+      "source_body_sha256": "1f506742f2e23760073afac77e1fd33f5a79184af24ed2aed69da2a7266d0730",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent claim and teaching reviews pending."
+    },
+    {
+      "note_id": "EJ20-024",
+      "source_unit_id": "EJ-ITEM-024",
+      "title": "Avoid accidental outer-instance retention by choosing nested class lifetime intentionally",
+      "core": "A nonstatic member class retains an enclosing instance even if its own methods do not refer to it. This can keep a large component reachable through a long-lived listener or task. A static member class has no implicit enclosing instance; when state is required, pass only the narrow dependency. Genuine adapters that use owner state can remain nonstatic, while short function objects often become lambdas.",
+      "rules": [
+        "Prefer a static member class when its behavior does not need an enclosing object.",
+        "Make captured dependencies explicit rather than relying on hidden outer references.",
+        "Use nonstatic inner adapters when each instance genuinely operates on its owner.",
+        "Avoid unbounded callbacks or scheduled tasks that unintentionally retain the service graph.",
+        "Test object lifetime and reference reachability without relying on nondeterministic GC timing.",
+        "Treat public nested-class staticness and constructor signatures as compatibility decisions.",
+        "Use short lambdas for stateless functional behavior, accounting for captured variables and this semantics."
+      ],
+      "nuance": [
+        "Java 21 lambdas capture referenced state and may retain large objects just as an inner class can.",
+        "A static nested class can access outer private static members without enclosing instance.",
+        "Local and anonymous classes differ from static member classes in naming, scope and construction.",
+        "A nonstatic inner class can be created with an explicit outer instance and has distinct construction bytecode.",
+        "An implicit outer reference is about object lifetime, not a guarantee of an observable leak in every case.",
+        "Member class type names remain nested even when declared static, which affects binary compatibility."
+      ],
+      "misconception": "Moving code into a nested class never changes retention because both inner and static nested classes are scoped by the outer class.",
+      "production_context": "A webhook retry queue stores callbacks for hours; a forgotten nonstatic nested retry job retains a heavy service instance and all its caches.",
+      "java21_delta": "Java 21 lambdas and modern asynchronous APIs provide compact callbacks, but captures must still be audited for unintended owner retention.",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 133,
+      "pdf_page_end_exclusive": 136,
+      "source_body_sha256": "752d666b7af34a32d5557f9b27a852f6f67d3a2be96111870046557746ba6fa1",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent claim and teaching reviews pending."
+    },
+    {
+      "note_id": "EJ20-025",
+      "source_unit_id": "EJ-ITEM-025",
+      "title": "Make top-level type-to-source mapping unambiguous for deterministic builds",
+      "core": "Multiple unrelated top-level declarations in one compilation unit can create source lookup ambiguity, duplicate-type hazards and surprising dependence on compiler input order. A predictable build associates each meaningful top-level type with its own named file; small helper types that serve only one owner can instead be private static nested classes, which also improve visibility control.",
+      "rules": [
+        "Put every top-level class or interface in its own conventionally named source file.",
+        "Avoid duplicate top-level fully qualified names across different source inputs.",
+        "Prefer a private static nested helper when the type exists only to support one owner.",
+        "Verify compilation in a clean directory with explicit source roots and deterministic build inputs.",
+        "Do not treat successful incremental compilation as proof that ambiguous sources are safe.",
+        "Check source generation outputs and annotation processor directories for duplicate definitions.",
+        "Keep package declarations and emitted class names unambiguous for modular build tooling."
+      ],
+      "nuance": [
+        "Java allows multiple package-private top-level declarations within a source file, but the permission is not a best-practice endorsement.",
+        "Only one public top-level class per compilation unit can match the filename constraints.",
+        "Duplicate declarations can fail during compilation when both files are explicitly included.",
+        "When implicit source discovery is involved, the order and selection of inputs can affect outcomes.",
+        "Nested helper classes also create generated class files but retain a single declared outer source owner.",
+        "Build-cache correctness and incremental compilation depend on reliable source-to-type tracking."
+      ],
+      "misconception": "If a file has at most one public class, any extra package-private top-level declarations are guaranteed harmless.",
+      "production_context": "A generated integration SDK and a handwritten adapter both define the same helper type; clean CI detects the duplicate that an incremental IDE session hid.",
+      "java21_delta": "Java 21 named-module source layouts and modern build tools benefit from one-owner-per-source conventions; avoid confusing a Java 21 unnamed class preview feature with this production guideline.",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 136,
+      "pdf_page_end_exclusive": 138,
+      "source_body_sha256": "c63c9e7f0ad966b630fd956ff4d5bcff2fe603caf22e9becd96e306492b0a70c",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent claim and teaching reviews pending."
+    }
+  ]
+}

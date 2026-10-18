@@ -1,0 +1,39 @@
+{
+  "schema": "codefit-exhaustive-author-calibration/v0.23",
+  "missions": 3,
+  "structured_answer_combinations": 135,
+  "total_assessments_run": 270,
+  "all_assertions_pass": true,
+  "original_author_cases_only": true,
+  "independent_or_learner_holdout": false,
+  "executes_user_code": false,
+  "contains_answer_keys": false,
+  "production_grader": false,
+  "mastery_eligible": false,
+  "cases": [
+    {
+      "mission_id": "EJ20-021-Q1",
+      "enumerated_cases": 27,
+      "perfect_cases": 1,
+      "nonperfect_cases": 26,
+      "all_expected_scores_verified": true,
+      "stable_across_json_key_order": true
+    },
+    {
+      "mission_id": "EJ20-023-Q1",
+      "enumerated_cases": 27,
+      "perfect_cases": 1,
+      "nonperfect_cases": 26,
+      "all_expected_scores_verified": true,
+      "stable_across_json_key_order": true
+    },
+    {
+      "mission_id": "EJ20-024-Q1",
+      "enumerated_cases": 81,
+      "perfect_cases": 1,
+      "nonperfect_cases": 80,
+      "all_expected_scores_verified": true,
+      "stable_across_json_key_order": true
+    }
+  ]
+}

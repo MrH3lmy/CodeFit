@@ -1,0 +1,22 @@
+{
+  "schema": "codefit-offline-calibration-summary/v0.22",
+  "missions": 3,
+  "cases_total": 39,
+  "synthetic_positive_cases": 3,
+  "synthetic_negative_cases": 6,
+  "invalid_envelopes_rejected": 30,
+  "all_case_assertions_passed": true,
+  "executes_user_supplied_code": false,
+  "runs_in_isolated_sandbox": false,
+  "contains_actual_learner_submissions": false,
+  "independent_review": false,
+  "mastery_eligible": false,
+  "release_eligible": false,
+  "limitations": [
+    "Closed-world structured choice only; not a program/code grader.",
+    "Answers and synthetic cases were authored by the same party; not independent or real learner evaluation.",
+    "Does not enforce OS/VM isolation, CPU limits, no-network, filesystem isolation or grader anti-tampering.",
+    "Only measures envelope validation and deterministic scoring; no pedagogical validity or unseen proficiency.",
+    "Private keys and held-out cases are deliberately excluded from public GitHub handoff."
+  ]
+}

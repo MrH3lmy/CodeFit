@@ -12,7 +12,7 @@ provenance-aware observations, exact mappings and bounded local ingestion for #2
 source/evidence completion and recovery for #214. [EV-04 baseline and mastery estimates](mastery-estimation.md)
 now provide conservative, versioned per-skill interpretations for #212.
 [EV-07 adaptation](adaptive-quest-policy.md) adds deterministic next actions and durable learner controls
-for #215. [EV-08 Player System](player-system-ui.md) connects those boundaries through an offline JavaFX UI for #216; rewards and observed learning outcomes remain future work. The original audit describes the pre-Evolution baseline;
+for #215. [EV-08 Player System](player-system-ui.md) connects those boundaries through an offline JavaFX UI for #216; merged #240 adds reward entitlements, while learning outcomes remain unverified. The original audit describes the pre-Evolution baseline;
 implementation status and verification are recorded per slice. This is not evidence of learning gains.
 
 CodeFit should help learners solve unfamiliar real problems better. Activity, XP, card familiarity,
@@ -34,7 +34,8 @@ and a passed local test are useful signals with different meanings; none alone p
 | #215 ordered adaptive policy, coherent decisions, learner controls and UI handoff | [Adaptive quest policy](adaptive-quest-policy.md), [verification](adaptive-quest-verification.md) |
 | #216 JavaFX Player System, authorized workspace, journal and recovery | [Player System](player-system-ui.md), [verification](player-system-verification.md) |
 | #214 staged evaluation, checks, evidence, recovery, privacy and limits | [Challenge evaluation](challenge-evaluation.md), [verification](challenge-evaluation-verification.md) |
-| #218 preregistered feasibility protocol, held-out outcomes, privacy and decision gates | [Learning validation protocol](learning-validation-protocol.md) |
+| #218 proposed feasibility protocol, held-out outcomes, privacy and decision gates (no pilot executed) | [Learning validation protocol](learning-validation-protocol.md) |
+| #243 pre-implementation audit, bounded author fixtures, equivalence preparation and residual execution blockers | [Pilot readiness gaps](pilot-readiness-gap-analysis.md), [assessment readiness](pilot-assessment-readiness.md) |
 
 Read the audit before the ADR and contracts. Numerical thresholds in the lifecycle are a deliberately
 conservative, versioned starting policy, to be tested in #212/#215 and evaluated in #218; they are

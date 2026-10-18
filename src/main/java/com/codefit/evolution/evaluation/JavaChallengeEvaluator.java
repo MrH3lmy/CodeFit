@@ -225,10 +225,11 @@ public class JavaChallengeEvaluator {
         if (artifact == null
                 || artifact.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 200000)
             throw new IllegalArgumentException("Bounded local source required");
-        if (spec.runner() != Runner.JAVA21_MAIN
+        if (!Set.of(Cohort.BASELINE, Cohort.PRACTICE).contains(spec.cohort())
+                || spec.runner() != Runner.JAVA21_MAIN
                 || JavaTrainingPack.challenges().stream().noneMatch(spec::equals))
             throw new IllegalStateException(
-                    "Practice execution is only available for installed Java challenges");
+                    "Practice execution is only available for installed baseline/practice Java challenges");
         assets.validate(spec);
         if (!runner.isAvailable())
             throw new IllegalStateException("Local Java 21 compiler/runner unavailable");

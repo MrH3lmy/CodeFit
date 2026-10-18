@@ -1,0 +1,26 @@
+class Exercise {
+    private final java.util.Map<String, Integer> claims = new java.util.HashMap<>();
+    private int free = 12;
+
+    public synchronized boolean claim(String job, int units) {
+        if (units <= 0 || units > free || claims.containsKey(job)) return false;
+        claims.put(job, units);
+        free -= units;
+        return true;
+    }
+
+    public synchronized int release(String job) {
+        Integer units = claims.remove(job);
+        if (units == null) return 0;
+        free += units;
+        return units;
+    }
+
+    public synchronized int free() { return free; }
+
+    public synchronized int allocated() {
+        int total = 0;
+        for (int units : claims.values()) total += units;
+        return total;
+    }
+}

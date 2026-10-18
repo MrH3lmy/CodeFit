@@ -1,0 +1,315 @@
+{
+  "schema": "codefit-external-review-action-queue/v0.29",
+  "source": "v0.27 independently reviewable packets",
+  "review_count": 34,
+  "approved_count": 0,
+  "owner_action": "Enroll actual independent reviewers via out-of-band trusted identities; authorize private source access; collect independently reproduced evidence and signed decisions; manually adjudicate.",
+  "entries": [
+    {
+      "subject_id": "EJ22-019-C1",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-019-C2",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-019-C3",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-019-C4",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-020-C1",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-020-C2",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-020-C3",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-020-C4",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-021-C1",
+      "role": "technical",
+      "priority": "P0",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-021-C2",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-021-C3",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-021-C4",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-022-C1",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-022-C2",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-022-C3",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-022-C4",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-023-C1",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-023-C2",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-023-C3",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-023-C4",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-024-C1",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-024-C2",
+      "role": "technical",
+      "priority": "P0",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-024-C3",
+      "role": "technical",
+      "priority": "P0",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-024-C4",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-025-C1",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-025-C2",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-025-C3",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ22-025-C4",
+      "role": "technical",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ20-021-Q1",
+      "role": "pedagogy",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ20-022-Q3",
+      "role": "pedagogy",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ20-023-Q1",
+      "role": "pedagogy",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ20-023-Q3",
+      "role": "pedagogy",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ20-024-Q1",
+      "role": "pedagogy",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    },
+    {
+      "subject_id": "EJ20-024-Q3",
+      "role": "pedagogy",
+      "priority": "P1",
+      "state": "AWAITING_INDEPENDENT_REVIEW",
+      "reviewer_assignment": "NONE",
+      "owner_adjudication": "NOT_PERFORMED",
+      "approved": false
+    }
+  ]
+}

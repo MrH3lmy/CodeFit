@@ -1,0 +1,16 @@
+{
+  "schema": "codefit-private-review-ledger-security-v0.28",
+  "new_author_tests_passed": 29,
+  "sqlite_atomic_replay_protection_tested": true,
+  "private_owner_local_file_permissions_tested": true,
+  "roster_and_source_pins_enforced": true,
+  "signed_review_decisions_received_from_real_reviewers": 0,
+  "external_reviewer_enrollments": 0,
+  "independent_claim_approvals": 0,
+  "independent_pedagogy_approvals": 0,
+  "owner_adjudications": 0,
+  "production_java_grader": false,
+  "mastery_eligible": false,
+  "is_security_audit": false,
+  "limitations": "Local SQLite prototype; synthetic signers only; no cross-host replay guarantee, independent identity validation or human adjudication."
+}

@@ -53,3 +53,86 @@ review remain explicit in the equivalence matrix.
 
 Linked residual issues and exact verification evidence are added after implementation. This initial
 matrix remains the record of what was known before code changes.
+
+## Implementation completion record
+
+The audit above was committed first in `3195e30`, before implementing the slice.
+[Assessment readiness](pilot-assessment-readiness.md) now supplies the original unpublished form,
+exact behavior/check/declared-invariant comparison, installed inventory, digests and inspectable
+reference/mutant rationale. `AssessmentFormReadiness` is read-only; `PilotAssessmentForms` is an
+author loader, not publication. The installed evaluator cannot grade this unregistered candidate.
+
+The confirmed direct practice gap is fixed in `JavaChallengeEvaluator.practice`: it now rejects
+installed post/transfer/retention forms before runner discovery, matching the existing
+`ChallengePresentationService.beginPractice`/`PlayerSystemService.practice` restriction. Running the
+new boundary tests against the original production method reproduced **4 failures out of 6**, one
+per held-out form reaching forbidden runner discovery. The corrected method passes all six. Neither
+existing ordinary baseline/practice admission nor evaluation policy is weakened.
+
+The remaining execution blockers have concrete follow-up owners/acceptance criteria:
+
+| Work | Owner / issue |
+| --- | --- |
+| Complete independent equivalent forms, reviewed publication/adapters and extra held-out families | Content/evaluator implementation and independent equivalence reviewer, [#245](https://github.com/MrH3lmy/CodeFit/issues/245) |
+| Frozen assignment, PRACTICE-only study arms, cohort-wide feedback embargo across all routes | Application-service/UI owner, [#246](https://github.com/MrH3lmy/CodeFit/issues/246) |
+| Equal-arm active-time accounting with verified exclusions and recovery | Session/UI measurement owner, [#247](https://github.com/MrH3lmy/CodeFit/issues/247) |
+| Opt-in consent, local withdrawal/deletion and allowlisted intentional export | Local privacy/application-service owner and independent privacy reviewer, [#248](https://github.com/MrH3lmy/CodeFit/issues/248) |
+| Complete freeze record, analysis artifact/preregistration, equivalence/rubric/missing-data/sample signoff | Independent study owner/reviewer; human approval cannot be supplied by this implementation |
+
+### Verification record
+
+Local platform: Debian 13 Linux x86_64, Temurin **21.0.12.1+1**, Maven **3.9.11**, JavaFX **21.0.5**,
+real FXML/controller execution under Xvfb display `:99`. Commands run from the dedicated worktree.
+`/workspace/run216` is an environment-only wrapper executing the installed Maven with
+`-s /workspace/tools/maven-settings.xml -B -Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts`;
+it sets `JAVA_HOME=/workspace/tools/jdk-21.0.12.1+1` and adds that JDK to PATH. Settings/truststore
+are build-download configuration, not a new application dependency. Ordinary reproduction on a
+Java 21 workstation can use `xvfb-run -a mvn -B ... test`.
+
+Extended focused regression command (**206 tests, 0 failures/errors/skips**, 2m54s):
+
+```sh
+DISPLAY=:99 TZ=Pacific/Honolulu /workspace/run216 -Dtest=AssessmentFormReadinessTest,PilotCandidateAuthorTest,HeldOutPracticeBoundaryTest,PilotCandidateIsolationTest,JavaChallengeEvaluatorTest,ChallengeEvaluationIntegrationTest,QuestCatalogIntegrationTest,QuestDiscoveryIsolationTest,ChallengePresentationIntegrationTest,SkillCatalogRepositoryTest,ProgressionServiceTest,ProgressionEvaluationIntegrationTest,ProgressionAtomicityIntegrationTest,ProgressionBackfillIntegrationTest,EvolutionControllerTest,EvolutionNavigationTest,FxmlLoadingTest,EvolutionPeerPrivacyTest,SnapshotLeakageTest,DatabaseIsolationRegressionTest,ProgressionMigrationTest,ChallengeEvaluationMigrationTest,ProblemSolvingSessionServiceTest,JavaSolutionWorkspaceServiceTest test
+```
+
+After strengthening the starter to include all advertised bugs and adding its regression fixture,
+the final readiness set passed **28 tests, 0 failures/errors/skips**, 20.702s:
+
+```sh
+DISPLAY=:99 TZ=Pacific/Honolulu /workspace/run216 -Dtest=AssessmentFormReadinessTest,PilotCandidateAuthorTest,HeldOutPracticeBoundaryTest,PilotCandidateIsolationTest test
+```
+
+Full final Java 21 suite:
+
+```sh
+DISPLAY=:99 TZ=UTC /workspace/run216 test
+```
+
+**1,782 tests, 0 failures, 0 errors, 0 skips; BUILD SUCCESS**, 8m44s. This full run includes
+the final starter regression (13 author cases / 28 total new readiness tests).
+
+The focused set includes real JavaFX controller (18), navigation (1), and FXML loading (2) tests;
+#242 bulk-read tests (13); installed evaluator/reference/mutant tests (49); durable evaluation
+integration/restart/replay tests (25); reward policy/evaluation/atomicity/backfill; session/draft,
+catalog/exposure, migration and signed P2P privacy regressions. The full suite also exercises all
+remaining evidence/mastery/adaptation, populated migrations, imports and multi-process P2P fixtures.
+All 17 candidate asset hashes were independently recomputed; local document file links and
+`git diff --check` passed. The repository-root learner `codefit.db` remains absent.
+
+Adversarial review: the candidate has no installed Problem/quest/presentation route, no automatic
+grading/evidence/XP and no journal/export/P2P addition. Whole-table snapshot tests preserve existing
+authorized drafts/sessions/exposure and all other local rows over inspection, restart and rejected
+hint/solution/practice/submission paths. Existing saved-result recovery remains usable; ordinary
+learning's hint/result access still prevents pilot execution until #246. No existing test assertions,
+fixture isolation, skips or evaluator/redaction policy were weakened. Linux/Xvfb is not native
+Windows/macOS/accessibility validation; human form equivalence and all approval gates remain unverified.
+
+| Final area | Status |
+| --- | --- |
+| Bounded #243 slice | **READY for draft review**, subject to exact-head CI recorded in the PR |
+| Overall technical implementation for protocol execution | **NOT READY**, #245–#248 remain blockers |
+| Protocol freeze | **NOT READY**, independent approval and complete freeze record absent |
+| Actual pilot execution | **NOT READY / PROHIBITED**, no participant collection or learning pilot executed |
+
+The draft PR records the final commit SHA, exact-head GitHub Actions run and final CI totals.
+It must remain unmerged; no checkbox in the protocol is automatically completed by these tests.

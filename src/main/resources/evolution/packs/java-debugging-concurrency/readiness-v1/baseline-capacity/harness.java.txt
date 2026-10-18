@@ -1,0 +1,64 @@
+public class Main {
+    static void check(boolean condition) {
+        if (!condition) throw new AssertionError("Capacity contract violated");
+    }
+
+    static void invariant(Exercise e) {
+        check(e.free() >= 0 && e.allocated() >= 0 && e.free() + e.allocated() == 12);
+    }
+
+    public static void main(String[] args) throws Exception {
+        String mode = new String(System.in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).strip();
+        if (mode.equals("concurrency")) {
+            Exercise e = new Exercise();
+            var accepted = new java.util.concurrent.atomic.AtomicInteger();
+            var failure = new java.util.concurrent.atomic.AtomicReference<Throwable>();
+            var gate = new java.util.concurrent.CountDownLatch(1);
+            Thread[] workers = new Thread[4];
+            for (int i = 0; i < workers.length; i++) {
+                final String id = "job-" + i;
+                workers[i] = new Thread(() -> {
+                    try {
+                        gate.await();
+                        if (e.claim(id, 4)) accepted.incrementAndGet();
+                    } catch (Throwable problem) { failure.compareAndSet(null, problem); }
+                });
+                workers[i].setDaemon(true);
+                workers[i].start();
+            }
+            gate.countDown();
+            for (Thread worker : workers) {
+                worker.join(2000);
+                check(!worker.isAlive());
+            }
+            check(failure.get() == null);
+            check(accepted.get() == 3 && e.free() == 0 && e.allocated() == 12);
+            invariant(e);
+            int restored = 0;
+            for (int i = 0; i < workers.length; i++) restored += e.release("job-" + i);
+            check(restored == 12 && e.free() == 12 && e.allocated() == 0);
+        } else {
+            Exercise e = new Exercise();
+            invariant(e);
+            check(e.claim("render", 7));
+            invariant(e);
+            check(!e.claim("render", 1));
+            check(e.free() == 5 && e.allocated() == 7);
+            check(!e.claim("upload", 6));
+            check(!e.claim("zero", 0) && !e.claim("negative", -3));
+            check(e.free() == 5 && e.allocated() == 7);
+            check(e.claim("upload", 5));
+            check(e.free() == 0 && e.allocated() == 12);
+            check(e.release("absent") == 0);
+            check(e.release("render") == 7);
+            check(e.release("render") == 0);
+            invariant(e);
+            check(e.release("upload") == 5);
+            check(e.free() == 12 && e.allocated() == 0);
+            check(e.claim("render", 2));
+            check(e.release("render") == 2);
+            invariant(e);
+        }
+        System.out.print("OK\n");
+    }
+}

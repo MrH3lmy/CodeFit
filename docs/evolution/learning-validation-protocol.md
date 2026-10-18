@@ -301,6 +301,21 @@ domain-specific protocol/content/equivalence review. Cross-domain extrapolation 
 
 ## Pre-execution verification and review checklist
 
+Implementation audit #243: [gap matrix](pilot-readiness-gap-analysis.md) and
+[assessment readiness/equivalence preparation](pilot-assessment-readiness.md) distinguish code-backed
+checks from unfulfilled study requirements. The bounded slice adds an unpublished original baseline
+candidate, exact metadata comparison, author reference/mutant fixtures and a direct practice-cohort
+guard. It does not install an equivalent form set or implement assignment, cohort-wide embargo,
+verified study active-time or consent/export. Remaining implementation owners are
+[#245](https://github.com/MrH3lmy/CodeFit/issues/245),
+[#246](https://github.com/MrH3lmy/CodeFit/issues/246),
+[#247](https://github.com/MrH3lmy/CodeFit/issues/247) and
+[#248](https://github.com/MrH3lmy/CodeFit/issues/248).
+**Technical implementation: NOT READY; protocol freeze: NOT READY; pilot execution: NOT READY /
+PROHIBITED.** None of the checkboxes below is satisfied merely by this slice's CI or matching
+metadata. Human equivalence/rubric approval, completed preregistration/freeze, privacy review and
+execution authorization remain required; no actual pilot or learning outcomes are reported.
+
 - [ ] Protocol commit, version/hash, and analysis specification frozen before invitations or outcome access.
 - [ ] #213 content review approves exact equivalent baseline/post forms, behavior/check map, and separate transfer and delayed-retention pools; current catalog limitations above are resolved.
 - [ ] Every task/family is checked against ordinary browse/recommendation routes, fixed practice assignment, and all other assessment roles; participant prior exposure is captured and exclusion is auditable.

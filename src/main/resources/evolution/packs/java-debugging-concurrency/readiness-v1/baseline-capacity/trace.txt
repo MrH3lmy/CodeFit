@@ -1,0 +1,5 @@
+Invariant: free + allocated = 12, free >= 0, allocated >= 0.
+Forbidden operation: deducting capacity without creating exactly one active claim.
+Forbidden operation: crediting a release twice or crediting a nonexistent claim.
+Atomicity: validation, duplicate detection, claim mutation and capacity update share one boundary.
+Finite concurrent observations test only executed histories. Structural admission is separate.

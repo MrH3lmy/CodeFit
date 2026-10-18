@@ -128,7 +128,10 @@ final class SchemaMigrator {
                     ProgressionSchema::createEffortProcessed),
             new VersionedMigration(24,
                     "Audit and isolate corrupted finalized effort reward sources",
-                    ProgressionSchema::addEffortQuarantine)
+                    ProgressionSchema::addEffortQuarantine),
+            new VersionedMigration(25,
+                    "Preserve reward opt-out for finalized effort submissions",
+                    ProgressionSchema::addEffortOptOutDisposition)
     );
 
     static void migrate(Connection connection) throws SQLException {

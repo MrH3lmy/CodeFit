@@ -120,7 +120,7 @@ public final class PlayerSystemService {
                 catalog.quests(),
                 latest,
                 Map.copyOf(prior),
-                progression.snapshot());
+                progression.snapshot(adaptive.milestoneReconciliationPending()));
     }
 
     public BaselineDiagnosticService baseline() {

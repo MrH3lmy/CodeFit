@@ -542,6 +542,16 @@ public final class EvolutionController implements RouteLifecycle {
             progression.getChildren()
                     .add(actions(button("Retry pending rewards", this::refresh)));
         }
+        if (overview.progression().milestoneReconciliationPending()) {
+            progression
+                    .getChildren()
+                    .add(
+                            text(
+                                    "A mastery milestone reward could not be saved. Your learning"
+                                            + " overview is current; retry reward reconciliation"
+                                            + " on the next refresh."));
+            progression.getChildren().add(actions(button("Retry milestone reward", this::refresh)));
+        }
         if (overview.progression().quarantinedEffortSources() > 0) {
             progression
                     .getChildren()

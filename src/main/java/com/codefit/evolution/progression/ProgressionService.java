@@ -10,9 +10,11 @@ import com.codefit.evolution.evaluation.EvaluationTypes;
 import com.codefit.evolution.evidence.EvidenceCodec;
 import com.codefit.evolution.evidence.EvidenceTypes.Availability;
 import com.codefit.evolution.GraphRef;
+import com.codefit.evolution.mastery.EstimateCodec;
 import com.codefit.evolution.mastery.EstimateRevisionRepository;
 import com.codefit.evolution.mastery.MasteryEstimateService;
 import com.codefit.evolution.mastery.MasteryEstimate;
+import com.codefit.evolution.mastery.OrdinalMasteryPolicy;
 import com.codefit.evolution.quest.CatalogCodec;
 import com.codefit.evolution.quest.CatalogRef;
 import com.codefit.evolution.quest.EvolutionQuest;
@@ -65,6 +67,7 @@ public final class ProgressionService {
             boolean rewardsEnabled,
             int pendingEffortRewards,
             int quarantinedEffortSources,
+            boolean milestoneReconciliationPending,
             List<Entitlement> history,
             Set<String> unlockedMilestones) {
         public Snapshot {
@@ -77,6 +80,12 @@ public final class ProgressionService {
     public record HistoryPage(List<Entitlement> entries, Long nextBeforeSequence) {
         public HistoryPage {
             entries = List.copyOf(entries);
+        }
+    }
+
+    public static final class RetryableMilestoneRewardFailure extends RuntimeException {
+        public RetryableMilestoneRewardFailure(SQLException cause) {
+            super("Milestone reward balance could not be saved; retry on the next refresh", cause);
         }
     }
 
@@ -111,6 +120,28 @@ public final class ProgressionService {
                 "submission:" + sourceId,
                 "First attributable completed evaluation for this quest objective",
                 ProgressionPolicy.EFFORT_XP);
+    }
+
+    public static void markOptedOutSubmission(
+            Connection c,
+            long submissionId,
+            String commandId,
+            CatalogRef questRef,
+            Outcome outcome)
+            throws SQLException {
+        try (var s =
+                        c.prepareStatement(
+                                "SELECT enabled FROM evolution_reward_preferences WHERE id=1");
+                var r = s.executeQuery()) {
+            if (!r.next()) throw new SQLException("Reward preference is unavailable");
+            if (r.getInt(1) == 0) {
+                var quest = new QuestCatalogRepository().findQuest(c, questRef);
+                if (quest.isPresent() && eligibleOutcome(outcome))
+                    new ProgressionService()
+                            .awardEffort(c, quest.get(), outcome, commandId, submissionId);
+                markEffortProcessed(c, submissionId, "OPTED_OUT", null);
+            }
+        }
     }
 
     private record PendingEffort(
@@ -468,7 +499,7 @@ public final class ProgressionService {
                 && !preexistingMilestone(
                         c, RewardType.INDEPENDENT_MILESTONE, skill.skillId(),
                         skill.definitionVersion()))
-            insertAndAward(
+            awardMilestone(
                     c,
                     "independent:" + skill.skillId() + ":v" + skill.definitionVersion(),
                     RewardType.INDEPENDENT_MILESTONE,
@@ -481,7 +512,7 @@ public final class ProgressionService {
                 && !preexistingMilestone(
                         c, RewardType.RETENTION_MILESTONE, skill.skillId(),
                         skill.definitionVersion()))
-            insertAndAward(
+            awardMilestone(
                     c,
                     "retention:" + skill.skillId() + ":v" + skill.definitionVersion(),
                     RewardType.RETENTION_MILESTONE,
@@ -490,6 +521,22 @@ public final class ProgressionService {
                     source,
                     "First current RETENTION_SUPPORTED support for this skill definition",
                     ProgressionPolicy.RETENTION_MILESTONE_XP);
+    }
+
+    private static void awardMilestone(
+            Connection c,
+            String key,
+            RewardType type,
+            String subject,
+            int definitionVersion,
+            String source,
+            String reason,
+            int amount) {
+        try {
+            insertAndAward(c, key, type, subject, definitionVersion, source, reason, amount);
+        } catch (SQLException failure) {
+            throw new RetryableMilestoneRewardFailure(failure);
+        }
     }
 
     private static Optional<MasteryEstimate> persistedEstimate(
@@ -557,6 +604,10 @@ public final class ProgressionService {
     }
 
     public Snapshot snapshot() {
+        return snapshot(false);
+    }
+
+    public Snapshot snapshot(boolean milestoneReconciliationPending) {
         try (var c = DatabaseConfig.getConnection()) {
             int xp, level, streakDays, totalReviews, enabled;
             try (var s = c.createStatement();
@@ -588,6 +639,7 @@ public final class ProgressionService {
                     enabled == 1,
                     pendingEffortCount(),
                     quarantinedEffortSourceCount(c),
+                    milestoneReconciliationPending,
                     history,
                     unlockedMilestones(c));
         } catch (SQLException e) {
@@ -611,6 +663,48 @@ public final class ProgressionService {
         } catch (SQLException e) {
             throw new IllegalStateException("Unable to read reward history", e);
         }
+    }
+
+    public Map<Long, Boolean> proofAvailability(
+            Connection c, Collection<Long> sequences) throws SQLException {
+        if (c.getAutoCommit() || sequences == null || sequences.size() > 64)
+            throw new IllegalArgumentException("Bounded caller-owned read snapshot required");
+        if (sequences.isEmpty()) return Map.of();
+        var ids = new LinkedHashSet<>(sequences);
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        var entries = new ArrayList<Entitlement>();
+        try (var s =
+                c.prepareStatement(
+                        "SELECT sequence,entitlement_key,reward_type,subject_id,"
+                                + "definition_version,xp_awarded,status,source_ref,reason,"
+                                + "policy_version,earned_at FROM evolution_reward_entitlements"
+                                + " WHERE sequence IN ("
+                                + placeholders
+                                + ")")) {
+            int index = 1;
+            for (long id : ids) s.setLong(index++, id);
+            try (var r = s.executeQuery()) {
+                while (r.next())
+                    entries.add(
+                            new Entitlement(
+                                    r.getLong("sequence"),
+                                    r.getString("entitlement_key"),
+                                    RewardType.valueOf(r.getString("reward_type")),
+                                    r.getString("subject_id"),
+                                    r.getInt("definition_version"),
+                                    r.getInt("xp_awarded"),
+                                    r.getString("status"),
+                                    r.getString("source_ref"),
+                                    r.getString("reason"),
+                                    true,
+                                    r.getString("policy_version"),
+                                    r.getString("earned_at")));
+            }
+        }
+        var result = new LinkedHashMap<Long, Boolean>();
+        for (var entry : withProofAvailability(c, entries))
+            result.put(entry.sequence(), entry.proofAvailable());
+        return Map.copyOf(result);
     }
 
     private List<Entitlement> history(Connection c, Long beforeSequence, int limit)
@@ -651,30 +745,79 @@ public final class ProgressionService {
     private static List<Entitlement> withProofAvailability(
             Connection c, List<Entitlement> entitlements) throws SQLException {
         var evidenceIds = new LinkedHashSet<String>();
+        var revisionIds = new LinkedHashSet<Long>();
         for (var entitlement : entitlements) {
             String evidenceId = evidenceId(entitlement.source());
-            if (evidenceId != null) evidenceIds.add(evidenceId);
+            if (evidenceId != null) {
+                evidenceIds.add(evidenceId);
+                Long revision = estimateRevision(entitlement.source());
+                if (revision != null) revisionIds.add(revision);
+            }
         }
-        var available = new HashSet<String>();
-        if (!evidenceIds.isEmpty()) {
-            String placeholders = String.join(",", Collections.nCopies(evidenceIds.size(), "?"));
+        var proofs = new HashMap<Long, SavedProof>();
+        if (!revisionIds.isEmpty()) {
+            String placeholders = String.join(",", Collections.nCopies(revisionIds.size(), "?"));
             try (var s =
                     c.prepareStatement(
-                            "SELECT o.evidence_id,o.payload FROM evolution_evidence_sources s"
-                                    + " JOIN evolution_evidence_observations o"
-                                    + " ON o.evidence_id=s.head_id WHERE o.evidence_id IN ("
+                            "SELECT revision,input_sha,inputs FROM evolution_estimate_revisions"
+                                    + " WHERE revision IN ("
                                     + placeholders
                                     + ")")) {
                 int index = 1;
-                for (String id : evidenceIds) s.setString(index++, id);
+                for (long revision : revisionIds) s.setLong(index++, revision);
                 try (var r = s.executeQuery()) {
                     while (r.next()) {
                         try {
-                            if (EvidenceCodec.decode(r.getBytes("payload")).availability()
-                                    == Availability.AVAILABLE)
-                                available.add(r.getString("evidence_id"));
+                            byte[] inputs = r.getBytes("inputs");
+                            if (!CatalogCodec.digest(inputs).equals(r.getString("input_sha")))
+                                continue;
+                            var estimate =
+                                    new OrdinalMasteryPolicy().estimate(EstimateCodec.decode(inputs));
+                            if (!eligibleMilestone(estimate)) continue;
+                            var ids =
+                                    estimate.contributions().stream()
+                                            .map(MasteryEstimate.Contribution::evidenceId)
+                                            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+                            if (ids.isEmpty()) continue;
+                            proofs.put(
+                                    r.getLong("revision"),
+                                    new SavedProof(
+                                            estimate.skill().skillId(),
+                                            estimate.skill().definitionVersion(),
+                                            estimate.band(),
+                                            ids));
+                            evidenceIds.addAll(ids);
                         } catch (RuntimeException invalid) {
-                            // Invalid or unavailable proof is displayed as unavailable.
+                            // Invalid saved proof is unavailable; earned XP remains immutable.
+                        }
+                    }
+                }
+            }
+        }
+        var available = new HashSet<String>();
+        if (!evidenceIds.isEmpty()) {
+            var ids = new ArrayList<>(evidenceIds);
+            for (int offset = 0; offset < ids.size(); offset += 500) {
+                var batch = ids.subList(offset, Math.min(offset + 500, ids.size()));
+                String placeholders = String.join(",", Collections.nCopies(batch.size(), "?"));
+                try (var s =
+                        c.prepareStatement(
+                                "SELECT o.evidence_id,o.payload FROM evolution_evidence_sources s"
+                                        + " JOIN evolution_evidence_observations o"
+                                        + " ON o.evidence_id=s.head_id WHERE o.evidence_id IN ("
+                                        + placeholders
+                                        + ")")) {
+                    int index = 1;
+                    for (String id : batch) s.setString(index++, id);
+                    try (var r = s.executeQuery()) {
+                        while (r.next()) {
+                            try {
+                                if (EvidenceCodec.decode(r.getBytes("payload")).availability()
+                                        == Availability.AVAILABLE)
+                                    available.add(r.getString("evidence_id"));
+                            } catch (RuntimeException invalid) {
+                                // Invalid or unavailable proof is displayed as unavailable.
+                            }
                         }
                     }
                 }
@@ -685,7 +828,31 @@ public final class ProgressionService {
                         entitlement -> {
                             String id = evidenceId(entitlement.source());
                             boolean proofAvailable =
-                                    id == null || (id.matches("[0-9a-f]{64}") && available.contains(id));
+                                    id == null && entitlement.type() == RewardType.EFFORT;
+                            if (id != null) {
+                                Long revision = estimateRevision(entitlement.source());
+                                SavedProof proof = revision == null ? null : proofs.get(revision);
+                                proofAvailable =
+                                        id.matches("[0-9a-f]{64}")
+                                                && proof != null
+                                                && proof.subject().equals(entitlement.subject())
+                                                && proof.definitionVersion()
+                                                        == entitlement.definitionVersion()
+                                                && (entitlement.type()
+                                                                        == RewardType
+                                                                                .INDEPENDENT_MILESTONE
+                                                                ? proof.band().ordinal()
+                                                                        >= Band.INDEPENDENT.ordinal()
+                                                                : entitlement.type()
+                                                                                == RewardType
+                                                                                        .RETENTION_MILESTONE
+                                                                        && proof.band()
+                                                                                == Band
+                                                                                        .RETENTION_SUPPORTED)
+                                                && proof.evidenceIds().contains(id)
+                                                && proof.evidenceIds().stream()
+                                                        .allMatch(available::contains);
+                            }
                             return new Entitlement(
                                     entitlement.sequence(),
                                     entitlement.key(),
@@ -707,6 +874,22 @@ public final class ProgressionService {
         int marker = source.lastIndexOf(":evidence:");
         return marker < 0 ? null : source.substring(marker + ":evidence:".length());
     }
+
+    private static Long estimateRevision(String source) {
+        int marker = source.lastIndexOf(":revision:");
+        if (marker < 0) return null;
+        int start = marker + ":revision:".length();
+        int end = source.indexOf(':', start);
+        if (end < 0) return null;
+        try {
+            return Long.parseLong(source.substring(start, end));
+        } catch (NumberFormatException invalid) {
+            return null;
+        }
+    }
+
+    private record SavedProof(
+            String subject, int definitionVersion, Band band, Set<String> evidenceIds) {}
 
     private static Set<String> unlockedMilestones(Connection c) throws SQLException {
         var unlocked = new TreeSet<String>();
@@ -792,7 +975,15 @@ public final class ProgressionService {
                 c.prepareStatement(
                         "SELECT 1 FROM evolution_evidence_observations o"
                                 + " JOIN evolution_evidence_sources s ON s.root_id=o.root_id"
-                                + " WHERE o.evidence_id=? AND o.sequence>? AND s.head_id=o.evidence_id")) {
+                                        + " WHERE o.evidence_id=? AND o.sequence>?"
+                                        + " AND s.head_id=o.evidence_id"
+                                        + " AND s.source_type='CHALLENGE_EVALUATION'"
+                                        + " AND s.source_record_id>("
+                                        + " SELECT historical_submission_through FROM"
+                                        + " evolution_reward_state WHERE id=1)"
+                                        + " AND NOT EXISTS (SELECT 1 FROM evolution_reward_effort_processed x"
+                                        + " WHERE x.submission_id=s.source_record_id"
+                                        + " AND x.disposition='OPTED_OUT')")) {
             for (var contribution : estimate.contributions()) {
                 if (!contribution.independent()) continue;
                 s.setString(1, contribution.evidenceId());

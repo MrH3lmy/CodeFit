@@ -26,7 +26,7 @@ class PlayerWorkspaceMigrationTest {
             s.execute("DROP TABLE IF EXISTS evolution_reward_milestone_baseline");
             s.execute("DROP TABLE IF EXISTS evolution_reward_effort_scan");
             s.execute("DROP TABLE IF EXISTS evolution_reward_effort_processed");
-            s.execute("DELETE FROM schema_migrations WHERE version=24");
+            s.execute("DELETE FROM schema_migrations WHERE version IN(24,25)");
             s.execute("DELETE FROM schema_migrations WHERE version=23");
             s.execute("DELETE FROM schema_migrations WHERE version=22");
             s.execute("DELETE FROM schema_migrations WHERE version=21");

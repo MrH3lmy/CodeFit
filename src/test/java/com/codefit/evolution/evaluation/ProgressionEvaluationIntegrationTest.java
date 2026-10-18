@@ -144,13 +144,26 @@ class ProgressionEvaluationIntegrationTest {
                         "");
         var coordinator = new ChallengeEvaluationCoordinator(CLOCK);
         var progression = new ProgressionService();
+        coordinator.prepare(request);
         progression.setRewardsEnabled(false);
 
         assertEquals(Outcome.PASSED, coordinator.submit(request).outcome());
+        progression.setRewardsEnabled(true);
         assertEquals(0, progression.reconcilePendingEffortRewards());
         assertEquals(0, xp());
         assertEquals("OPTED_OUT", progression.snapshot().history().getFirst().status());
-        progression.setRewardsEnabled(true);
+        try (var c = DatabaseConfig.getConnection();
+                var s =
+                        c.prepareStatement(
+                                "SELECT disposition FROM evolution_reward_effort_processed"
+                                        + " WHERE submission_id=(SELECT id FROM"
+                                        + " evolution_submissions WHERE command_id=?)")) {
+            s.setString(1, request.id());
+            try (var r = s.executeQuery()) {
+                assertTrue(r.next());
+                assertEquals("OPTED_OUT", r.getString(1));
+            }
+        }
         assertEquals(Outcome.PASSED, coordinator.submit(request).outcome());
         assertEquals(0, xp());
         assertEquals(1, entitlements());
@@ -517,7 +530,7 @@ class ProgressionEvaluationIntegrationTest {
                 insert.setString(1, ineligible.command());
                 assertEquals(1, insert.executeUpdate());
             }
-            statement.execute("DELETE FROM schema_migrations WHERE version=24");
+            statement.execute("DELETE FROM schema_migrations WHERE version IN(24,25)");
         }
 
         DatabaseConfig.initialize();

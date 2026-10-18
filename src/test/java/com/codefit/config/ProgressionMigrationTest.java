@@ -26,7 +26,7 @@ class ProgressionMigrationTest {
             s.execute("DROP TABLE IF EXISTS evolution_reward_effort_processed");
             s.execute("DROP TABLE evolution_reward_state");
             s.execute("DROP TABLE evolution_reward_preferences");
-            s.execute("DELETE FROM schema_migrations WHERE version IN(20,21,22,23,24)");
+            s.execute("DELETE FROM schema_migrations WHERE version IN(20,21,22,23,24,25)");
             s.execute("UPDATE user_progress SET xp=678,level=7,streak_days=12 WHERE id=1");
 
             SchemaMigrator.migrate(c);
@@ -54,7 +54,7 @@ class ProgressionMigrationTest {
             }
             try (var r =
                     s.executeQuery(
-                            "SELECT COUNT(*) FROM schema_migrations WHERE version=24")) {
+                            "SELECT COUNT(*) FROM schema_migrations WHERE version=25")) {
                 assertTrue(r.next());
                 assertEquals(1, r.getInt(1));
             }

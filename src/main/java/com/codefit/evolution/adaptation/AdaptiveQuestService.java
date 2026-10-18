@@ -38,6 +38,7 @@ public final class AdaptiveQuestService {
     private final MasteryEstimateService estimates = new MasteryEstimateService();
     private final QuestCatalogRepository catalog = new QuestCatalogRepository();
     private final ChallengePresentationService presentations;
+    private volatile boolean milestoneReconciliationPending;
 
     public AdaptiveQuestService() {
         this(
@@ -76,9 +77,19 @@ public final class AdaptiveQuestService {
     /** Current Player System entry point; historical/replayed decisions never grant milestones. */
     public Decision recommendCurrent() {
         var decision = recommend(JavaDebuggingSkillSeed.GRAPH, clock.instant());
-        new ProgressionService()
-                .reconcileCurrentMilestones(decision.input().graph(), decision.input().asOf());
+        try {
+            new ProgressionService()
+                    .reconcileCurrentMilestones(
+                            decision.input().graph(), decision.input().asOf());
+            milestoneReconciliationPending = false;
+        } catch (ProgressionService.RetryableMilestoneRewardFailure retryable) {
+            milestoneReconciliationPending = true;
+        }
         return decision;
+    }
+
+    public boolean milestoneReconciliationPending() {
+        return milestoneReconciliationPending;
     }
 
     public Decision recommend(GraphRef graph, Instant asOf) {

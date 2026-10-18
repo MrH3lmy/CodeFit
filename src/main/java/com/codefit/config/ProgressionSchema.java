@@ -110,7 +110,7 @@ final class ProgressionSchema {
                     BEGIN SELECT RAISE(ABORT,'Historical milestone baseline is immutable'); END
                     """);
         }
-        var latest = new java.util.LinkedHashMap<String, HistoricalEstimate>();
+        var history = new java.util.ArrayList<HistoricalEstimate>();
         try (var s =
                         c.createStatement();
                 var r =
@@ -123,16 +123,7 @@ final class ProgressionSchema {
                 if (!com.codefit.evolution.quest.CatalogCodec.digest(bytes)
                         .equals(r.getString("input_sha")))
                     throw new SQLException("Historical estimate digest mismatch");
-                String key =
-                        r.getString("graph_id")
-                                + ":v"
-                                + r.getInt("graph_version")
-                                + ":"
-                                + r.getString("skill_id")
-                                + ":v"
-                                + r.getInt("skill_version");
-                latest.put(
-                        key,
+                history.add(
                         new HistoricalEstimate(
                                 r.getLong("revision"),
                                 r.getInt("skill_version"),
@@ -145,8 +136,8 @@ final class ProgressionSchema {
                 c.prepareStatement(
                         "INSERT INTO evolution_reward_milestone_baseline"
                                 + "(reward_type,subject_id,definition_version,source_revision)"
-                                + " VALUES(?,?,?,?)")) {
-            for (var row : latest.values()) {
+                                + " VALUES(?,?,?,?) ON CONFLICT DO NOTHING")) {
+            for (var row : history) {
                 MasteryEstimate estimate;
                 try {
                     estimate = new OrdinalMasteryPolicy().estimate(row.input());
@@ -232,6 +223,36 @@ final class ProgressionSchema {
             s.execute("DROP TABLE evolution_reward_effort_processed");
             s.execute(
                     "ALTER TABLE evolution_reward_effort_processed_v24"
+                            + " RENAME TO evolution_reward_effort_processed");
+            s.execute(
+                    "CREATE INDEX evolution_reward_effort_processed_disposition ON"
+                            + " evolution_reward_effort_processed(disposition,submission_id)");
+        }
+    }
+
+    static void addEffortOptOutDisposition(Connection c) throws SQLException {
+        try (Statement s = c.createStatement()) {
+            s.execute("DROP INDEX IF EXISTS evolution_reward_effort_processed_disposition");
+            s.execute(
+                    """
+                    CREATE TABLE evolution_reward_effort_processed_v25 (
+                      submission_id INTEGER PRIMARY KEY REFERENCES evolution_submissions(id),
+                      disposition TEXT NOT NULL CHECK(disposition IN
+                        ('RECONCILED','INELIGIBLE','QUARANTINED','OPTED_OUT')),
+                      failure_code TEXT,
+                      CHECK((disposition='QUARANTINED')=(failure_code IS NOT NULL))
+                    )
+                    """);
+            s.execute(
+                    """
+                    INSERT INTO evolution_reward_effort_processed_v25
+                      (submission_id,disposition,failure_code)
+                    SELECT submission_id,disposition,failure_code
+                    FROM evolution_reward_effort_processed
+                    """);
+            s.execute("DROP TABLE evolution_reward_effort_processed");
+            s.execute(
+                    "ALTER TABLE evolution_reward_effort_processed_v25"
                             + " RENAME TO evolution_reward_effort_processed");
             s.execute(
                     "CREATE INDEX evolution_reward_effort_processed_disposition ON"

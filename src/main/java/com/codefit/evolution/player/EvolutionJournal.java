@@ -2,6 +2,7 @@ package com.codefit.evolution.player;
 
 import com.codefit.config.DatabaseConfig;
 import com.codefit.evolution.evaluation.DurableEvaluationRepository;
+import com.codefit.evolution.progression.ProgressionService;
 
 import java.sql.*;
 import java.time.*;
@@ -86,7 +87,9 @@ UNION ALL SELECT earned_at,'REWARD',CAST(sequence AS TEXT),reward_type||' · '||
             c.commit();
             entries.sort(ORDER);
             boolean more = entries.size() > limit;
-            var result = List.copyOf(entries.subList(0, Math.min(limit, entries.size())));
+            var result =
+                    rewardProofStatus(
+                            c, entries.subList(0, Math.min(limit, entries.size())));
             var last = result.isEmpty() ? null : result.getLast();
             return new Page(
                     result,
@@ -175,10 +178,46 @@ UNION ALL SELECT earned_at,'REWARD',CAST(sequence AS TEXT),reward_type||' · '||
                                             + r.getString(9)));
             }
             c.commit();
-            return List.copyOf(out);
+            return rewardProofStatus(c, out);
         } catch (SQLException e) {
             throw new IllegalStateException("Recovery links unavailable", e);
         }
+    }
+
+    private static List<Entry> rewardProofStatus(Connection c, List<Entry> entries)
+            throws SQLException {
+        var sequences = new ArrayList<Long>();
+        for (var entry : entries) {
+            if (!entry.kind().equals("REWARD")) continue;
+            try {
+                sequences.add(Long.parseLong(entry.ref()));
+            } catch (NumberFormatException ignored) {
+                // Invalid reward references have no available proof.
+            }
+        }
+        var availability = new ProgressionService().proofAvailability(c, sequences);
+        return entries.stream()
+                .map(
+                        entry -> {
+                            if (!entry.kind().equals("REWARD")) return entry;
+                            boolean available;
+                            try {
+                                available =
+                                        availability.getOrDefault(
+                                                Long.parseLong(entry.ref()), false);
+                            } catch (NumberFormatException invalid) {
+                                available = false;
+                            }
+                            return new Entry(
+                                    entry.at(),
+                                    entry.kind(),
+                                    entry.ref(),
+                                    entry.message()
+                                            + (available
+                                                    ? " · proof available"
+                                                    : " · proof unavailable or superseded"));
+                        })
+                .toList();
     }
 
     private static long maxSubmission(Connection c) throws SQLException {

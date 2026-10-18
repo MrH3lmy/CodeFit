@@ -1,0 +1,10 @@
+{
+  "schema": "codefit-review-intake-baseline/v0.23",
+  "independently_enrolled_external_reviewers": 0,
+  "externally_signed_decisions_received": 0,
+  "independently_approved_claims": 0,
+  "independently_approved_missions": 0,
+  "production_graders": 0,
+  "mastery_eligible": false,
+  "status": "AWAIT_EXTERNAL_REVIEWER_ENROLLMENT"
+}

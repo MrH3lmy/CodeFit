@@ -1,0 +1,57 @@
+{
+  "approval_count": 0,
+  "instructions": "Create own expected response, plausible misconception, discriminating follow-up and fairness caveat BEFORE seeing withheld author rubric. No answer keys included.",
+  "required_decision": "ACCEPT | REJECT | NEEDS_REVISION",
+  "review_role": "pedagogy",
+  "schema": "codefit-review-delivery/v0.27",
+  "subjects": [
+    {
+      "prompt": "Predict which locks are held for an inherited default two-step operation when its primitive operations each synchronize internally; distinguish per-call synchronization from compound atomicity.",
+      "review_status": "PENDING_EXTERNAL_PEDAGOGY_REVIEW",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "stage": "predict",
+      "subject_id": "EJ20-021-Q1",
+      "subject_sha256": "29a0954fe320994bca0b360dc5b71845a11c499d3f0e24c2b50f3a8a8d56c9ba"
+    },
+    {
+      "prompt": "Build a typed static protocol enum and a noninstantiable constants holder, but keep changing currency limits as validated runtime configuration rather than hard-coded enum constants.",
+      "review_status": "PENDING_EXTERNAL_PEDAGOGY_REVIEW",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "stage": "build",
+      "subject_id": "EJ20-022-Q3",
+      "subject_sha256": "1ebdf7ec362a244ebde71927d3e72ce0f5a30a31cb4d97128fb714631e316757"
+    },
+    {
+      "prompt": "Predict that a sealed record subtype can still contain invalid amounts unless an explicit canonical constructor validates them; compare invalid tagged states with validated alternatives.",
+      "review_status": "PENDING_EXTERNAL_PEDAGOGY_REVIEW",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "stage": "predict",
+      "subject_id": "EJ20-023-Q1",
+      "subject_sha256": "9827b4017188897a84bf0b45951d3d85ae9f67aa9a69d578ec7d7c7c40f42e37"
+    },
+    {
+      "prompt": "Build original sealed payment outcomes with validated record constructors, defensive ownership of mutable members, and an exhaustive Java 21 switch; test invalid and null inputs separately.",
+      "review_status": "PENDING_EXTERNAL_PEDAGOGY_REVIEW",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "stage": "build",
+      "subject_id": "EJ20-023-Q3",
+      "subject_sha256": "bece2ced13353fa30161355f82d11c2088d409052df3ee839cf6d6c72f820e65"
+    },
+    {
+      "prompt": "Predict when Java 21 javac emits an enclosing-reference field for a nonstatic member class, contrasting a class that never reads outer state with one that does; distinguish class-file layout from language-level construction.",
+      "review_status": "PENDING_EXTERNAL_PEDAGOGY_REVIEW",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "stage": "predict",
+      "subject_id": "EJ20-024-Q1",
+      "subject_sha256": "dce617958fb9bef6c34771e36194e8c912c44578f7e0d2696de11ead98bc883a"
+    },
+    {
+      "prompt": "Build static and nonstatic task variants; inspect Java 21 class-file fields and constructor signatures deterministically, then explain when real outer-state use causes retention without relying on garbage-collection timing.",
+      "review_status": "PENDING_EXTERNAL_PEDAGOGY_REVIEW",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "stage": "build",
+      "subject_id": "EJ20-024-Q3",
+      "subject_sha256": "fd0785bf015dae88a3e37af919a82787ed6878579c4ceeba9ff15165d17a014e"
+    }
+  ]
+}

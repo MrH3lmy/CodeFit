@@ -1,0 +1,10 @@
+{
+  "schema": "codefit-java-author-challenge/v0.21",
+  "java_version": "openjdk version \"21.0.12.1\" 2026-08-18",
+  "java21_behavioral_assertions": 33,
+  "expected_javac_rejections": 12,
+  "positive_compiled_with_warnings_as_errors": true,
+  "negative_diagnostics_matched": true,
+  "independent_review": false,
+  "release_eligible": false
+}

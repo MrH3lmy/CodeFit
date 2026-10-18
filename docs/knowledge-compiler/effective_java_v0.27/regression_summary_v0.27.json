@@ -1,0 +1,242 @@
+{
+  "schema": "codefit-v27-regression-summary/v0.27",
+  "parent": "v0.26",
+  "python_modules": 31,
+  "python_tests_passed": 508,
+  "python_tests_failed": 0,
+  "python_modules_skipped": 0,
+  "inherited_python_tests": 482,
+  "new_review_delivery_tests": 26,
+  "historical_java21_assertions": 1150,
+  "historical_javac_rejections": 242,
+  "new_java21_executions": 0,
+  "new_javac_rejections": 0,
+  "technical_subjects_prepared": 28,
+  "blind_pedagogy_subjects_prepared": 6,
+  "externally_enrolled_reviewers": 0,
+  "independently_approved_claims": 0,
+  "independently_approved_missions": 0,
+  "actual_isolated_worker_executions": 0,
+  "production_graders": 0,
+  "mastery_eligible": false,
+  "release_eligible": false,
+  "individual_module_results": [
+    {
+      "elapsed_s": 0.86,
+      "exit_code": 0,
+      "module": "test_atomize",
+      "status": "PASS",
+      "tests": 1
+    },
+    {
+      "elapsed_s": 0.72,
+      "exit_code": 0,
+      "module": "test_compiler",
+      "status": "PASS",
+      "tests": 4
+    },
+    {
+      "elapsed_s": 9.21,
+      "exit_code": 0,
+      "module": "test_concurrency_v16",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 0.96,
+      "exit_code": 0,
+      "module": "test_deep_v5",
+      "status": "PASS",
+      "tests": 8
+    },
+    {
+      "elapsed_s": 2.8,
+      "exit_code": 0,
+      "module": "test_effective_java_v4",
+      "status": "PASS",
+      "tests": 9
+    },
+    {
+      "elapsed_s": 0.64,
+      "exit_code": 0,
+      "module": "test_enrichment",
+      "status": "PASS",
+      "tests": 6
+    },
+    {
+      "elapsed_s": 9.02,
+      "exit_code": 0,
+      "module": "test_enums_enhanced_v8",
+      "status": "PASS",
+      "tests": 16
+    },
+    {
+      "elapsed_s": 0.93,
+      "exit_code": 0,
+      "module": "test_enums_v7",
+      "status": "PASS",
+      "tests": 10
+    },
+    {
+      "elapsed_s": 10.2,
+      "exit_code": 0,
+      "module": "test_exceptions_v14",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 0.77,
+      "exit_code": 0,
+      "module": "test_exhaustive_calibration_v23",
+      "status": "PASS",
+      "tests": 8
+    },
+    {
+      "elapsed_s": 12.12,
+      "exit_code": 0,
+      "module": "test_foundations_proxy_v18",
+      "status": "PASS",
+      "tests": 16
+    },
+    {
+      "elapsed_s": 10.9,
+      "exit_code": 0,
+      "module": "test_general_types_v12",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 10.43,
+      "exit_code": 0,
+      "module": "test_general_v11",
+      "status": "PASS",
+      "tests": 13
+    },
+    {
+      "elapsed_s": 9.71,
+      "exit_code": 0,
+      "module": "test_general_v13",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 0.67,
+      "exit_code": 0,
+      "module": "test_generated",
+      "status": "PASS",
+      "tests": 2
+    },
+    {
+      "elapsed_s": 5.87,
+      "exit_code": 0,
+      "module": "test_generics_v6",
+      "status": "PASS",
+      "tests": 9
+    },
+    {
+      "elapsed_s": 0.63,
+      "exit_code": 0,
+      "module": "test_grader_boundary_v24",
+      "status": "PASS",
+      "tests": 49
+    },
+    {
+      "elapsed_s": 3.9,
+      "exit_code": 0,
+      "module": "test_lambdas_v8",
+      "status": "PASS",
+      "tests": 6
+    },
+    {
+      "elapsed_s": 8.8,
+      "exit_code": 0,
+      "module": "test_methods_v10",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 9.19,
+      "exit_code": 0,
+      "module": "test_object_contracts_v19",
+      "status": "PASS",
+      "tests": 18
+    },
+    {
+      "elapsed_s": 2.11,
+      "exit_code": 0,
+      "module": "test_receipt_ledger_v26",
+      "status": "PASS",
+      "tests": 34
+    },
+    {
+      "elapsed_s": 9.01,
+      "exit_code": 0,
+      "module": "test_reliability_v15",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 0.71,
+      "exit_code": 0,
+      "module": "test_review_attestation_v23",
+      "status": "PASS",
+      "tests": 39
+    },
+    {
+      "elapsed_s": 0.76,
+      "exit_code": 0,
+      "module": "test_review_delivery_v27",
+      "status": "PASS",
+      "tests": 26
+    },
+    {
+      "elapsed_s": 0.85,
+      "exit_code": 0,
+      "module": "test_review_readiness_v22",
+      "status": "PASS",
+      "tests": 29
+    },
+    {
+      "elapsed_s": 0.81,
+      "exit_code": 0,
+      "module": "test_review_v21",
+      "status": "PASS",
+      "tests": 20
+    },
+    {
+      "elapsed_s": 9.07,
+      "exit_code": 0,
+      "module": "test_serialization_v17",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 7.78,
+      "exit_code": 0,
+      "module": "test_streams_v9",
+      "status": "PASS",
+      "tests": 9
+    },
+    {
+      "elapsed_s": 11.44,
+      "exit_code": 0,
+      "module": "test_type_design_v20",
+      "status": "PASS",
+      "tests": 19
+    },
+    {
+      "elapsed_s": 0.81,
+      "exit_code": 0,
+      "module": "test_v3",
+      "status": "PASS",
+      "tests": 5
+    },
+    {
+      "elapsed_s": 0.65,
+      "exit_code": 0,
+      "module": "test_worker_receipt_v25",
+      "status": "PASS",
+      "tests": 68
+    }
+  ]
+}

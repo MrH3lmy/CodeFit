@@ -1,0 +1,235 @@
+{
+  "actual_isolated_worker_executions": 0,
+  "approved_isolated_workers": 0,
+  "codefit_runtime_changed": false,
+  "externally_enrolled_workers": 0,
+  "historical_expected_javac_rejections": 242,
+  "historical_java21_assertions": 1150,
+  "independently_approved_claims": 0,
+  "independently_approved_missions": 0,
+  "individual_module_results": [
+    {
+      "elapsed_s": 0.84,
+      "exit_code": 0,
+      "module": "test_atomize",
+      "status": "PASS",
+      "tests": 1
+    },
+    {
+      "elapsed_s": 0.8,
+      "exit_code": 0,
+      "module": "test_compiler",
+      "status": "PASS",
+      "tests": 4
+    },
+    {
+      "elapsed_s": 8.97,
+      "exit_code": 0,
+      "module": "test_concurrency_v16",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 0.84,
+      "exit_code": 0,
+      "module": "test_deep_v5",
+      "status": "PASS",
+      "tests": 8
+    },
+    {
+      "elapsed_s": 2.51,
+      "exit_code": 0,
+      "module": "test_effective_java_v4",
+      "status": "PASS",
+      "tests": 9
+    },
+    {
+      "elapsed_s": 0.67,
+      "exit_code": 0,
+      "module": "test_enrichment",
+      "status": "PASS",
+      "tests": 6
+    },
+    {
+      "elapsed_s": 8.95,
+      "exit_code": 0,
+      "module": "test_enums_enhanced_v8",
+      "status": "PASS",
+      "tests": 16
+    },
+    {
+      "elapsed_s": 0.82,
+      "exit_code": 0,
+      "module": "test_enums_v7",
+      "status": "PASS",
+      "tests": 10
+    },
+    {
+      "elapsed_s": 9.56,
+      "exit_code": 0,
+      "module": "test_exceptions_v14",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 0.62,
+      "exit_code": 0,
+      "module": "test_exhaustive_calibration_v23",
+      "status": "PASS",
+      "tests": 8
+    },
+    {
+      "elapsed_s": 12.08,
+      "exit_code": 0,
+      "module": "test_foundations_proxy_v18",
+      "status": "PASS",
+      "tests": 16
+    },
+    {
+      "elapsed_s": 10.96,
+      "exit_code": 0,
+      "module": "test_general_types_v12",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 10.08,
+      "exit_code": 0,
+      "module": "test_general_v11",
+      "status": "PASS",
+      "tests": 13
+    },
+    {
+      "elapsed_s": 9.67,
+      "exit_code": 0,
+      "module": "test_general_v13",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 0.63,
+      "exit_code": 0,
+      "module": "test_generated",
+      "status": "PASS",
+      "tests": 2
+    },
+    {
+      "elapsed_s": 6.16,
+      "exit_code": 0,
+      "module": "test_generics_v6",
+      "status": "PASS",
+      "tests": 9
+    },
+    {
+      "elapsed_s": 0.69,
+      "exit_code": 0,
+      "module": "test_grader_boundary_v24",
+      "status": "PASS",
+      "tests": 49
+    },
+    {
+      "elapsed_s": 3.82,
+      "exit_code": 0,
+      "module": "test_lambdas_v8",
+      "status": "PASS",
+      "tests": 6
+    },
+    {
+      "elapsed_s": 8.92,
+      "exit_code": 0,
+      "module": "test_methods_v10",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 9.27,
+      "exit_code": 0,
+      "module": "test_object_contracts_v19",
+      "status": "PASS",
+      "tests": 18
+    },
+    {
+      "elapsed_s": 1.96,
+      "exit_code": 0,
+      "module": "test_receipt_ledger_v26",
+      "status": "PASS",
+      "tests": 34
+    },
+    {
+      "elapsed_s": 9.47,
+      "exit_code": 0,
+      "module": "test_reliability_v15",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 0.71,
+      "exit_code": 0,
+      "module": "test_review_attestation_v23",
+      "status": "PASS",
+      "tests": 39
+    },
+    {
+      "elapsed_s": 0.83,
+      "exit_code": 0,
+      "module": "test_review_readiness_v22",
+      "status": "PASS",
+      "tests": 29
+    },
+    {
+      "elapsed_s": 0.8,
+      "exit_code": 0,
+      "module": "test_review_v21",
+      "status": "PASS",
+      "tests": 20
+    },
+    {
+      "elapsed_s": 9.05,
+      "exit_code": 0,
+      "module": "test_serialization_v17",
+      "status": "PASS",
+      "tests": 12
+    },
+    {
+      "elapsed_s": 7.91,
+      "exit_code": 0,
+      "module": "test_streams_v9",
+      "status": "PASS",
+      "tests": 9
+    },
+    {
+      "elapsed_s": 11.83,
+      "exit_code": 0,
+      "module": "test_type_design_v20",
+      "status": "PASS",
+      "tests": 19
+    },
+    {
+      "elapsed_s": 0.89,
+      "exit_code": 0,
+      "module": "test_v3",
+      "status": "PASS",
+      "tests": 5
+    },
+    {
+      "elapsed_s": 0.86,
+      "exit_code": 0,
+      "module": "test_worker_receipt_v25",
+      "status": "PASS",
+      "tests": 68
+    }
+  ],
+  "inherited_python_tests": 448,
+  "learner_release": false,
+  "new_java_assertions_this_batch": 0,
+  "new_javac_negative_executions_this_batch": 0,
+  "new_sqlite_ledger_tests": 34,
+  "parent": "v0.25",
+  "production_graders": 0,
+  "python_modules": 30,
+  "python_modules_skipped": 0,
+  "python_tests_failed": 0,
+  "python_tests_passed": 482,
+  "schema": "codefit-v26-regression-summary/v0.26",
+  "verified_mastery": 0
+}

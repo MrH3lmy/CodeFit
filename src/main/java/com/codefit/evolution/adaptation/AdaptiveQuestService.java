@@ -23,6 +23,12 @@ import java.util.function.BooleanSupplier;
  * SQL transactions. Same-connection data_version is rechecked under the writer before publication.
  */
 public final class AdaptiveQuestService {
+    private static final Object[] START_LOCKS = new Object[64];
+
+    static {
+        Arrays.setAll(START_LOCKS, ignored -> new Object());
+    }
+
     private final Clock clock;
     private final BundledAssets assets;
     private final BooleanSupplier runnerAvailable;
@@ -307,6 +313,19 @@ public final class AdaptiveQuestService {
      * atomically.
      */
     public ChallengePresentationService.View start(
+            String responseCommand, QuestTypes.Familiarity familiarity) {
+        Objects.requireNonNull(responseCommand);
+        Objects.requireNonNull(familiarity);
+        int lockIndex =
+                Math.floorMod(
+                        Objects.hash(DatabaseConfig.currentDatabaseUrl(), responseCommand),
+                        START_LOCKS.length);
+        synchronized (START_LOCKS[lockIndex]) {
+            return startLocked(responseCommand, familiarity);
+        }
+    }
+
+    private ChallengePresentationService.View startLocked(
             String responseCommand, QuestTypes.Familiarity familiarity) {
         String presentation =
                 connection(

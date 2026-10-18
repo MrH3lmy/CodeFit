@@ -803,11 +803,30 @@ class AdaptiveQuestIntegrationTest {
         var decision = service.recommend(T);
         var command = choose("parallel-start", CommandKind.ACCEPT, decision);
         service.respond(command);
-        try (var pool = Executors.newFixedThreadPool(2)) {
-            var a = pool.submit(() -> service.start(command.id(), Familiarity.UNKNOWN));
-            var b = pool.submit(() -> service(0).start(command.id(), Familiarity.UNKNOWN));
-            assertEquals(a.get(20, TimeUnit.SECONDS), b.get(20, TimeUnit.SECONDS));
+        int callers = 8;
+        var ready = new CountDownLatch(callers);
+        var start = new CountDownLatch(1);
+        ChallengePresentationService.View first;
+        try (var pool = Executors.newFixedThreadPool(callers)) {
+            var results = new ArrayList<Future<ChallengePresentationService.View>>();
+            for (int i = 0; i < callers; i++) {
+                results.add(
+                        pool.submit(
+                                () -> {
+                                    ready.countDown();
+                                    assertTrue(start.await(10, TimeUnit.SECONDS));
+                                    return service(0)
+                                            .start(command.id(), Familiarity.UNKNOWN);
+                                }));
+            }
+            assertTrue(ready.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            first = results.getFirst().get(20, TimeUnit.SECONDS);
+            for (var result : results) assertEquals(first, result.get(20, TimeUnit.SECONDS));
         }
+        DatabaseConfig.initialize();
+        assertEquals(
+                first, service(0).start(command.id(), Familiarity.UNKNOWN));
         assertEquals(1, count("evolution_challenge_presentations"));
         assertEquals(0, count("evolution_evidence_observations"));
     }

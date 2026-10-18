@@ -1,0 +1,16 @@
+{
+  "schema": "codefit-redacted-review-progress/v0.29",
+  "review_subjects": 34,
+  "technical_claims_total": 28,
+  "pedagogy_missions_total": 6,
+  "subjects_with_signed_decisions": 0,
+  "quarantined_signed_review_records": 0,
+  "awaiting_review": 34,
+  "awaiting_owner_adjudication": 0,
+  "needing_revision_or_arbitration": 0,
+  "independent_approvals": 0,
+  "owner_adjudications": 0,
+  "mastery_eligible": false,
+  "learner_release": false,
+  "privacy": "AGGREGATES_ONLY_NO_IDENTITIES_OR_EVIDENCE"
+}

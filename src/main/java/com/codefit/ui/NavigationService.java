@@ -278,7 +278,7 @@ public final class NavigationService {
             for (String stylesheet : STYLESHEETS) {
                 primaryScene.getStylesheets().add(NavigationService.class.getResource(stylesheet).toExternalForm());
             }
-            primaryScene.setFill(Color.web("#0B0D12"));
+            primaryScene.setFill(Color.web("#090D19"));
             primaryStage.setScene(primaryScene);
             primaryStage.setMinWidth(760);
             primaryStage.setMinHeight(560);

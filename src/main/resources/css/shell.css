@@ -1,190 +1,76 @@
-/* The persistent application shell: sidebar navigation and top bar. */
-
+/* Persistent System chrome. Text labels remain visible at 760px; navigation scrolls vertically
+ * at short window heights or larger text sizes, without compressing control hit targets. */
 .sidebar {
     -fx-background-color: -color-surface;
     -fx-border-color: transparent -color-border transparent transparent;
     -fx-border-width: 0 1 0 0;
-    -fx-padding: 24 14 18 14;
-    -fx-min-width: 216;
-    -fx-pref-width: 232;
-    -fx-max-width: 260;
-}
-
-.sidebar-compact {
-    -fx-padding: 20 12 16 12;
-    -fx-min-width: 208;
+    -fx-padding: 22 14 16 14;
+    -fx-min-width: 220;
     -fx-pref-width: 220;
     -fx-max-width: 220;
 }
-
-.sidebar-compact .brand-block {
-    -fx-padding: 0 5 10 5;
-}
-
-.sidebar-compact .sidebar-title {
-    -fx-font-size: 22px;
-}
-
-.sidebar-compact .sidebar-subtitle {
-    -fx-font-size: 11px;
-}
-
-.sidebar-compact .nav-group {
-    -fx-padding: 10;
-}
-
-.sidebar-compact .nav-item, .sidebar-compact .nav-item-active {
-    -fx-min-height: 40;
-    -fx-pref-height: 40;
-    -fx-padding: 0 12 0 14;
-}
-
-.sidebar-compact .theme-selector-card,
-.sidebar-compact .sidebar-footer-card {
-    -fx-padding: 12;
-}
-
 .sidebar-narrow {
-    -fx-padding: 16 10 14 10;
-    -fx-min-width: 196;
-    -fx-pref-width: 204;
-    -fx-max-width: 204;
+    -fx-padding: 16 10 12 10;
+    -fx-min-width: 168;
+    -fx-pref-width: 168;
+    -fx-max-width: 168;
 }
-
-.sidebar-narrow .brand-block {
-    -fx-padding: 0 4 8 4;
+.brand-block { -fx-padding: 0 10 12 10; }
+.brand-sigil {
+    -fx-text-fill: -color-selection;
+    -fx-border-color: -color-selection;
+    -fx-border-width: 1;
+    -fx-border-radius: 7;
+    -fx-padding: 7 11;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
 }
-
-.sidebar-narrow .sidebar-title {
-    -fx-font-size: 19px;
-}
-
-.sidebar-narrow .nav-group {
-    -fx-padding: 9;
-}
-
-.sidebar-narrow .nav-item, .sidebar-narrow .nav-item-active {
-    -fx-min-height: 38;
-    -fx-pref-height: 38;
-    -fx-font-size: 12px;
-    -fx-padding: 0 10 0 12;
-}
-
-.sidebar-narrow .theme-selector-card {
-    -fx-padding: 10;
-}
-
-.app-topbar {
-    -fx-padding: 14 24 14 24;
-    -fx-background-color: transparent;
-    -fx-border-color: transparent transparent -color-border transparent;
-    -fx-border-width: 0 0 1 0;
-}
-
-.topbar-title {
-    -fx-text-fill: -color-text-primary;
-    -fx-font-size: 18px;
-    -fx-font-weight: 700;
-    -fx-letter-spacing: -0.01em;
-}
-
-.brand-block {
-    -fx-padding: 0 6 12 6;
-    -fx-border-color: transparent transparent -color-border transparent;
-    -fx-border-width: 0 0 1 0;
-}
-
-.sidebar-title {
-    -fx-text-fill: -color-text-primary;
-    -fx-font-size: 22px;
-    -fx-font-weight: 800;
-    -fx-letter-spacing: -0.02em;
-}
-
-.sidebar-subtitle {
-    -fx-text-fill: -color-text-secondary;
-    -fx-font-size: 12px;
-    -fx-font-weight: 600;
-}
-
-.nav-group {
-    -fx-background-color: transparent;
-    -fx-padding: 12 0;
-}
-
-.nav-section-label {
-    -fx-text-fill: -color-text-secondary;
-    -fx-font-size: 11px;
-    -fx-font-weight: 700;
-    -fx-letter-spacing: 0.10em;
-    -fx-padding: 0 6 4 6;
-}
-
+.sidebar-title { -fx-text-fill: -color-text-primary; -fx-font-size: 26px; -fx-font-weight: bold; }
+.sidebar-subtitle { -fx-text-fill: -color-text-secondary; -fx-font-size: 10px; -fx-font-weight: bold; }
+.sidebar-scroll, .sidebar-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; }
+.nav-group { -fx-padding: 2 3; }
+.nav-section-label { -fx-text-fill: -color-text-secondary; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 10 8 4 8; }
 .nav-item, .nav-item-active {
     -fx-alignment: center-left;
     -fx-background-insets: 0;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
-    -fx-border-width: 1;
+    -fx-border-width: 1 1 1 3;
     -fx-font-size: 13px;
-    -fx-font-weight: 600;
+    -fx-font-weight: normal;
     -fx-min-height: 40;
-    -fx-pref-height: 40;
-    -fx-padding: 0 14 0 16;
+    -fx-padding: 9 10;
+    -fx-graphic-text-gap: 12;
 }
-
-.nav-item {
-    -fx-background-color: transparent;
-    -fx-text-fill: -color-text-secondary;
-    -fx-border-color: transparent;
-}
-
-.nav-item:hover {
-    -fx-background-color: -color-surface-raised;
-    -fx-text-fill: -color-text-primary;
-}
-
+.nav-item { -fx-background-color: transparent; -fx-text-fill: -color-text-secondary; -fx-border-color: transparent; }
+.nav-item:hover { -fx-background-color: -color-surface-raised; -fx-text-fill: -color-text-primary; }
 .nav-item-active {
     -fx-background-color: -color-surface-raised;
-    -fx-text-fill: -color-text-primary;
-    -fx-border-color: -color-accent;
+    -fx-text-fill: -color-selection;
+    -fx-border-color: -color-border -color-border -color-border -color-selection;
+    -fx-font-weight: bold;
 }
-
-.nav-item-active:hover {
-    -fx-background-color: derive(-color-surface-raised, 6%);
+.nav-icon { -fx-fill: transparent; -fx-stroke: -color-text-secondary; -fx-stroke-width: 1.5; }
+.nav-item-active .nav-icon { -fx-stroke: -color-selection; }
+.nav-item:focused, .nav-item-active:focused {
+    -fx-border-color: -color-selection;
+    -fx-border-width: 2;
+    -fx-border-insets: -1;
 }
-
-.sidebar-footer-card, .theme-selector-card {
+.sidebar-footer-card {
     -fx-background-color: -color-surface-raised;
-    -fx-border-color: -color-border;
-    -fx-border-width: 1;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
-    -fx-padding: 14 12;
-}
-
-.sidebar-footer-title {
-    -fx-text-fill: -color-text-primary;
-    -fx-font-size: 13px;
-    -fx-font-weight: 700;
-}
-
-.sidebar-footer-text {
-    -fx-text-fill: -color-text-secondary;
-    -fx-font-size: 12px;
-    -fx-font-weight: 500;
-    -fx-line-spacing: 2;
-}
-
-.theme-selector-card .choice-box {
-    -fx-background-color: -color-surface;
     -fx-border-color: -color-border;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
-    -fx-mark-color: -color-accent;
+    -fx-padding: 12;
 }
-
-.theme-selector-card .choice-box > .label {
-    -fx-text-fill: -color-text-primary;
-    -fx-font-weight: 600;
+.sidebar-footer-text { -fx-text-fill: -color-text-secondary; -fx-font-size: 12px; }
+.app-topbar {
+    -fx-padding: 16 24;
+    -fx-background-color: -color-surface;
+    -fx-border-color: transparent transparent -color-border transparent;
+    -fx-border-width: 0 0 1 0;
 }
+.topbar-title { -fx-text-fill: -color-text-primary; -fx-font-size: 18px; -fx-font-weight: bold; }
+.shell-narrow .app-topbar { -fx-padding: 12 16; }
+.shell-narrow .content { -fx-padding: 16; }

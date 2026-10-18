@@ -1,0 +1,18 @@
+{
+  "component": "worker_receipt_v25.py",
+  "cryptographically_valid_synthetic_receipts_do_not_approve": true,
+  "enforces": "strict envelope; Ed25519; operator-pinned key digest; exact v24 work-order and policy digest; timestamp tolerance; nonce rejection with caller-provided prior state; finite metrics; status coherence",
+  "ephemeral_synthetic_test_signers": true,
+  "executes_java_or_learner_code": false,
+  "external_enrolled_worker_keys_in_archive": 0,
+  "independent_security_audit": false,
+  "learner_mastery_awarded": false,
+  "private_signing_keys_in_archive": 0,
+  "production_grade": false,
+  "proves_pedagogical_accuracy": false,
+  "requires_external_durable_replay_state": true,
+  "schema": "codefit-v25-security-evidence/v0.25",
+  "scope": "offline signature and receipt contract only",
+  "verifies_actual_worker_isolation": false,
+  "verifies_claimed_telemetry_against_OS": false
+}

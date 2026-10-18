@@ -34,6 +34,7 @@ and a passed local test are useful signals with different meanings; none alone p
 | #215 ordered adaptive policy, coherent decisions, learner controls and UI handoff | [Adaptive quest policy](adaptive-quest-policy.md), [verification](adaptive-quest-verification.md) |
 | #216 JavaFX Player System, authorized workspace, journal and recovery | [Player System](player-system-ui.md), [verification](player-system-verification.md) |
 | #214 staged evaluation, checks, evidence, recovery, privacy and limits | [Challenge evaluation](challenge-evaluation.md), [verification](challenge-evaluation-verification.md) |
+| #218 preregistered feasibility protocol, held-out outcomes, privacy and decision gates | [Learning validation protocol](learning-validation-protocol.md) |
 
 Read the audit before the ADR and contracts. Numerical thresholds in the lifecycle are a deliberately
 conservative, versioned starting policy, to be tested in #212/#215 and evaluated in #218; they are

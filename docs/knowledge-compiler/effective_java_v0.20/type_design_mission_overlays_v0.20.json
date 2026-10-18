@@ -1,0 +1,593 @@
+{
+  "schema": "codefit-type-design-replacement-missions/v0.20",
+  "missions": [
+    {
+      "mission_id": "EJ20-019-Q1",
+      "note_id": "EJ20-019",
+      "source_unit_id": "EJ-ITEM-019",
+      "stage": "predict",
+      "original_quest_brief": "Predict startup trace when a superclass constructor calls a virtual audit hook that reads a subclass final field. Explain the default value observation.",
+      "rubric_criteria": [
+        "Correct initialization order",
+        "Name overriding target",
+        "Distinguish final visibility from initialized value"
+      ],
+      "negative_controls": [
+        "constructor-virtual-call-is-safe",
+        "field-final-implies-initialized"
+      ],
+      "replaces_draft_id": "EJ4-019-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-019-Q2",
+      "note_id": "EJ20-019",
+      "source_unit_id": "EJ-ITEM-019",
+      "stage": "debug",
+      "original_quest_brief": "Debug a base processor whose bulk operation delegates to an overridable single-item call and accidentally meters twice after an instrumentation subclass is installed.",
+      "rubric_criteria": [
+        "Correct hook self-use",
+        "Preserve counting invariant",
+        "No hidden protected promise"
+      ],
+      "negative_controls": [
+        "override-without-test",
+        "unannotated-hook-coupling"
+      ],
+      "replaces_draft_id": "EJ4-019-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-019-Q3",
+      "note_id": "EJ20-019",
+      "source_unit_id": "EJ-ITEM-019",
+      "stage": "build",
+      "original_quest_brief": "Build a narrow gateway hook contract plus a final composition wrapper; test two extensions and one maliciously stateful override.",
+      "rubric_criteria": [
+        "Constructor isolation",
+        "Documented callback order",
+        "Third-party extension test"
+      ],
+      "negative_controls": [
+        "protected-all-fields",
+        "call-overridable-in-constructor"
+      ],
+      "replaces_draft_id": "EJ4-019-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-019-Q4",
+      "note_id": "EJ20-019",
+      "source_unit_id": "EJ-ITEM-019",
+      "stage": "defend",
+      "original_quest_brief": "Defend sealed, final, factory-restricted and openly extensible designs against plugin compatibility and security tradeoffs.",
+      "rubric_criteria": [
+        "Explicit extension policy",
+        "Compatibility analysis",
+        "Protected API minimization"
+      ],
+      "negative_controls": [
+        "sealed-means-no-overrides",
+        "final-prevents-interface-composition"
+      ],
+      "replaces_draft_id": "EJ4-019-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-020-Q1",
+      "note_id": "EJ20-020",
+      "source_unit_id": "EJ-ITEM-020",
+      "stage": "predict",
+      "original_quest_brief": "Predict what happens when a concrete class already extends a framework base but needs to implement two unrelated service capabilities.",
+      "rubric_criteria": [
+        "Single class inheritance",
+        "Multiple interfaces",
+        "Skeletal implementation optional"
+      ],
+      "negative_controls": [
+        "second-extends-allowed",
+        "interface-cannot-default"
+      ],
+      "replaces_draft_id": "EJ4-020-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-020-Q2",
+      "note_id": "EJ20-020",
+      "source_unit_id": "EJ-ITEM-020",
+      "stage": "debug",
+      "original_quest_brief": "Debug a contract migration that forces adapters into a new abstract base and breaks a third-party implementation with an existing parent class.",
+      "rubric_criteria": [
+        "Preserve direct implementation",
+        "Narrow primitive API",
+        "Test unrelated implementers"
+      ],
+      "negative_controls": [
+        "mandatory-abstract-base",
+        "assume-all-adapters-share-parent"
+      ],
+      "replaces_draft_id": "EJ4-020-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-020-Q3",
+      "note_id": "EJ20-020",
+      "source_unit_id": "EJ-ITEM-020",
+      "stage": "build",
+      "original_quest_brief": "Build a resilient dispatch interface with an optional abstract helper that composes two primitive methods; add two independent concrete implementations.",
+      "rubric_criteria": [
+        "Behavioral contract test",
+        "Optional reusable scaffold",
+        "No Object default"
+      ],
+      "negative_controls": [
+        "default-equals",
+        "instance-state-in-interface"
+      ],
+      "replaces_draft_id": "EJ4-020-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-020-Q4",
+      "note_id": "EJ20-020",
+      "source_unit_id": "EJ-ITEM-020",
+      "stage": "defend",
+      "original_quest_brief": "Defend when to use default methods, utility composition and a skeletal superclass under dependency, compatibility and testing constraints.",
+      "rubric_criteria": [
+        "Liskov-style substitutability",
+        "Extensibility options",
+        "Inherited behavior hazards"
+      ],
+      "negative_controls": [
+        "interface-solves-all-invariants",
+        "inheritance-for-type-only"
+      ],
+      "replaces_draft_id": "EJ4-020-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-021-Q1",
+      "note_id": "EJ20-021",
+      "source_unit_id": "EJ-ITEM-021",
+      "stage": "predict",
+      "original_quest_brief": "Predict whether an inherited default batch operation acquires the lock used by a wrapper around each single operation.",
+      "rubric_criteria": [
+        "Distinguish batch atomicity",
+        "Recognize inherited default",
+        "Name invariant risk"
+      ],
+      "negative_controls": [
+        "method-level-lock-is-batch-lock",
+        "compiles-means-safe"
+      ],
+      "replaces_draft_id": "EJ4-021-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-021-Q2",
+      "note_id": "EJ20-021",
+      "source_unit_id": "EJ-ITEM-021",
+      "stage": "debug",
+      "original_quest_brief": "Debug a legacy wrapper whose new default operation partially updates a collection after an exception, violating atomicity promised by its old API.",
+      "rubric_criteria": [
+        "Protect unit-of-work",
+        "Compatibility test",
+        "No hidden bypass"
+      ],
+      "negative_controls": [
+        "accept-partial-commit",
+        "only-run-interface-tests"
+      ],
+      "replaces_draft_id": "EJ4-021-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-021-Q3",
+      "note_id": "EJ20-021",
+      "source_unit_id": "EJ-ITEM-021",
+      "stage": "build",
+      "original_quest_brief": "Build a tiny versioned capability extension and a locked legacy adapter, with regression tests for default and explicit override paths.",
+      "rubric_criteria": [
+        "Old adapter preserved",
+        "Lock scope established",
+        "Direct/legacy clients tested"
+      ],
+      "negative_controls": [
+        "force-every-client-upgrade",
+        "inherit-default-untested"
+      ],
+      "replaces_draft_id": "EJ4-021-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-021-Q4",
+      "note_id": "EJ20-021",
+      "source_unit_id": "EJ-ITEM-021",
+      "stage": "defend",
+      "original_quest_brief": "Defend whether to add an abstract method, a default, an extension interface or a companion utility for a widely consumed API.",
+      "rubric_criteria": [
+        "Source/binary/behavior compatibility",
+        "Implementation inventory",
+        "Migration rollout gates"
+      ],
+      "negative_controls": [
+        "binary-compatibility-alone",
+        "defaults-as-painless"
+      ],
+      "replaces_draft_id": "EJ4-021-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-022-Q1",
+      "note_id": "EJ20-022",
+      "source_unit_id": "EJ-ITEM-022",
+      "stage": "predict",
+      "original_quest_brief": "Predict which names leak into subclasses when a handler implements an interface holding only scalar constants.",
+      "rubric_criteria": [
+        "Inherited namespace",
+        "No runtime capability",
+        "Public API coupling"
+      ],
+      "negative_controls": [
+        "constant-interface-as-type",
+        "implements-is-import"
+      ],
+      "replaces_draft_id": "EJ4-022-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-022-Q2",
+      "note_id": "EJ20-022",
+      "source_unit_id": "EJ-ITEM-022",
+      "stage": "debug",
+      "original_quest_brief": "Debug a public SDK that couples every adapter to a constants interface and accidentally exposes versioned internal thresholds.",
+      "rubric_criteria": [
+        "Remove meaningless implements",
+        "Preserve intended constants",
+        "Plan compatibility migration"
+      ],
+      "negative_controls": [
+        "keep-implements-for-convenience",
+        "embed-secret-limits"
+      ],
+      "replaces_draft_id": "EJ4-022-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-022-Q3",
+      "note_id": "EJ20-022",
+      "source_unit_id": "EJ-ITEM-022",
+      "stage": "build",
+      "original_quest_brief": "Build a typed currency threshold enum and a noninstantiable numeric-constants utility, with direct imports at call sites.",
+      "rubric_criteria": [
+        "Meaningful types",
+        "Narrow exports",
+        "No dummy implementation"
+      ],
+      "negative_controls": [
+        "public-utility-constructor",
+        "interface-with-constants-only"
+      ],
+      "replaces_draft_id": "EJ4-022-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-022-Q4",
+      "note_id": "EJ20-022",
+      "source_unit_id": "EJ-ITEM-022",
+      "stage": "defend",
+      "original_quest_brief": "Defend constants in an existing interface, separate final holder, enum or instance config in a library with downstream clients.",
+      "rubric_criteria": [
+        "Ownership and semantics",
+        "Migration hazards",
+        "Inlined constant tradeoff"
+      ],
+      "negative_controls": [
+        "all-zero-method-interfaces-bad",
+        "enum-for-every-scalar"
+      ],
+      "replaces_draft_id": "EJ4-022-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-023-Q1",
+      "note_id": "EJ20-023",
+      "source_unit_id": "EJ-ITEM-023",
+      "stage": "predict",
+      "original_quest_brief": "Predict how a tag/nullable-field model accepts an impossible outcome and how a sealed variant rejects it at construction.",
+      "rubric_criteria": [
+        "Invalid-state representation",
+        "Exhaustive matching",
+        "Open vs closed semantics"
+      ],
+      "negative_controls": [
+        "null-fields-safe",
+        "switch-default-is-validation"
+      ],
+      "replaces_draft_id": "EJ4-023-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-023-Q2",
+      "note_id": "EJ20-023",
+      "source_unit_id": "EJ-ITEM-023",
+      "stage": "debug",
+      "original_quest_brief": "Debug a payment response with a status tag plus optional authorization token, retry delay and decline reason that accepts contradictory combinations.",
+      "rubric_criteria": [
+        "Variant validity",
+        "No impossible state",
+        "Wire/domain separation"
+      ],
+      "negative_controls": [
+        "one-giant-constructor",
+        "switch-does-everything"
+      ],
+      "replaces_draft_id": "EJ4-023-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-023-Q3",
+      "note_id": "EJ20-023",
+      "source_unit_id": "EJ-ITEM-023",
+      "stage": "build",
+      "original_quest_brief": "Build a sealed Outcome interface with Authorized, Rejected and Deferred records and an exhaustive Java21 pattern switch.",
+      "rubric_criteria": [
+        "Typed variants",
+        "Exhaustive result handling",
+        "Sensitive payload ownership"
+      ],
+      "negative_controls": [
+        "record-components-automatically-safe",
+        "tagged-nullable-dto-as-domain"
+      ],
+      "replaces_draft_id": "EJ4-023-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-023-Q4",
+      "note_id": "EJ20-023",
+      "source_unit_id": "EJ-ITEM-023",
+      "stage": "defend",
+      "original_quest_brief": "Defend sealed versus open subtype APIs, backwards-compatible wire tags and when plain tagged data is legitimate.",
+      "rubric_criteria": [
+        "Domain evolution",
+        "Deserializer interoperability",
+        "Pattern switch migration"
+      ],
+      "negative_controls": [
+        "closed-enum-always-best",
+        "sealed-allows-arbitrary-plugin"
+      ],
+      "replaces_draft_id": "EJ4-023-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-024-Q1",
+      "note_id": "EJ20-024",
+      "source_unit_id": "EJ-ITEM-024",
+      "stage": "predict",
+      "original_quest_brief": "Predict which nested object retains its enclosing gateway when queued long after request completion.",
+      "rubric_criteria": [
+        "Outer reference",
+        "Static nested distinction",
+        "GC reachability limits"
+      ],
+      "negative_controls": [
+        "all-nested-capture-owner",
+        "gc-proves-leak"
+      ],
+      "replaces_draft_id": "EJ4-024-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-024-Q2",
+      "note_id": "EJ20-024",
+      "source_unit_id": "EJ-ITEM-024",
+      "stage": "debug",
+      "original_quest_brief": "Debug an unbounded async retry list that holds the enclosing order service through a nonstatic task despite only needing request ID.",
+      "rubric_criteria": [
+        "Narrow dependency capture",
+        "Explicit ownership",
+        "Lifecycle regression"
+      ],
+      "negative_controls": [
+        "make-inner-for-convenience",
+        "rely-on-gc-test"
+      ],
+      "replaces_draft_id": "EJ4-024-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-024-Q3",
+      "note_id": "EJ20-024",
+      "source_unit_id": "EJ-ITEM-024",
+      "stage": "build",
+      "original_quest_brief": "Build static RetryTask and a nonstatic iterator adapter, then test each expected owner association through controlled references.",
+      "rubric_criteria": [
+        "Static can exist independently",
+        "Adapter intentionally bound",
+        "No incidental service capture"
+      ],
+      "negative_controls": [
+        "retain-entire-service",
+        "force-every-inner-static"
+      ],
+      "replaces_draft_id": "EJ4-024-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-024-Q4",
+      "note_id": "EJ20-024",
+      "source_unit_id": "EJ-ITEM-024",
+      "stage": "defend",
+      "original_quest_brief": "Defend nested-class selection for extension libraries, lambdas, callbacks and service shutdown with measurable retention risk.",
+      "rubric_criteria": [
+        "Lifetime analysis",
+        "API compatibility",
+        "Explicit dependency graph"
+      ],
+      "negative_controls": [
+        "lambda-never-captures",
+        "inner-always-leaks"
+      ],
+      "replaces_draft_id": "EJ4-024-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-025-Q1",
+      "note_id": "EJ20-025",
+      "source_unit_id": "EJ-ITEM-025",
+      "stage": "predict",
+      "original_quest_brief": "Predict duplicate symbol diagnostics when two separate Java source inputs define the same package-private helper name.",
+      "rubric_criteria": [
+        "Source lookup",
+        "Duplicate types",
+        "Compile order caveat"
+      ],
+      "negative_controls": [
+        "package-private-never-collides",
+        "ide-build-is-canonical"
+      ],
+      "replaces_draft_id": "EJ4-025-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-025-Q2",
+      "note_id": "EJ20-025",
+      "source_unit_id": "EJ-ITEM-025",
+      "stage": "debug",
+      "original_quest_brief": "Debug a generated DTO and a manually written file that both declare an auxiliary top-level mapper causing different clean-build outcomes.",
+      "rubric_criteria": [
+        "Deterministic sources",
+        "One top-level owner",
+        "No stale build output"
+      ],
+      "negative_controls": [
+        "rename-only-class-file",
+        "rely-on-incremental-cache"
+      ],
+      "replaces_draft_id": "EJ4-025-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-025-Q3",
+      "note_id": "EJ20-025",
+      "source_unit_id": "EJ-ITEM-025",
+      "stage": "build",
+      "original_quest_brief": "Build one-file-per-top-level layout with a private static helper class and a reproducible clean-compile script.",
+      "rubric_criteria": [
+        "Correct file mapping",
+        "No duplicate symbols",
+        "Private helper visibility"
+      ],
+      "negative_controls": [
+        "two-top-level-per-source",
+        "public-duplicate-type"
+      ],
+      "replaces_draft_id": "EJ4-025-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ20-025-Q4",
+      "note_id": "EJ20-025",
+      "source_unit_id": "EJ-ITEM-025",
+      "stage": "defend",
+      "original_quest_brief": "Defend when to split top-level types versus nesting them in a public facade, considering readability and API stability.",
+      "rubric_criteria": [
+        "Compilation determinism",
+        "Encapsulation benefit",
+        "Build generator coordination"
+      ],
+      "negative_controls": [
+        "source-order-is-contract",
+        "all-helpers-top-level"
+      ],
+      "replaces_draft_id": "EJ4-025-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

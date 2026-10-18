@@ -120,16 +120,27 @@ class SkillCatalogRepositoryTest {
         repository.publishDefinition(definition);
         SkillGraph graph = new SkillGraph(new GraphRef("malformed.bulk", 1), List.of(definition), List.of());
         repository.publishGraph(graph);
-        try (Connection connection = DatabaseConfig.getConnection(); Statement sql = connection.createStatement()) {
-            sql.execute("DROP TRIGGER evolution_skill_behaviors_immutable_DELETE");
-            sql.execute("DELETE FROM evolution_skill_behaviors WHERE skill_id = 'malformed.bulk' AND position = 0");
-            assertThrows(IllegalStateException.class, () -> repository.findGraph(graph.ref()));
-            assertThrows(IllegalStateException.class, () -> repository.listSkillsInDomain("example"));
+        try (Connection connection = DatabaseConfig.getConnection()) {
+            connection.setAutoCommit(false);
+            try (Statement sql = connection.createStatement()) {
+                sql.execute("DROP TRIGGER evolution_skill_behaviors_immutable_DELETE");
+                sql.execute("DELETE FROM evolution_skill_behaviors WHERE skill_id = 'malformed.bulk' AND position = 0");
+                assertThrows(IllegalStateException.class, () -> repository.findGraph(connection, graph.ref()));
+                assertThrows(IllegalStateException.class, () -> repository.listSkillsInDomain(connection, "example"));
 
-            sql.execute("DROP TRIGGER evolution_skill_definitions_immutable_UPDATE");
-            sql.execute("UPDATE evolution_skill_definitions SET published = 0 WHERE skill_id = 'malformed.bulk'");
-            assertTrue(assertThrows(IllegalArgumentException.class, () -> repository.findGraph(graph.ref()))
-                    .getMessage().contains("Missing published skill definition"));
+                sql.execute("DROP TRIGGER evolution_skill_definitions_immutable_UPDATE");
+                sql.execute("UPDATE evolution_skill_definitions SET published = 0 WHERE skill_id = 'malformed.bulk'");
+                assertTrue(assertThrows(IllegalArgumentException.class, () -> repository.findGraph(connection, graph.ref()))
+                        .getMessage().contains("Missing published skill definition"));
+            } finally {
+                connection.rollback();
+            }
+            try (Statement sql = connection.createStatement()) {
+                assertThrows(SQLException.class, () -> sql.execute(
+                        "DELETE FROM evolution_skill_behaviors WHERE skill_id = 'java.debugging.reproduce' AND position = 0"));
+                assertThrows(SQLException.class, () -> sql.execute(
+                        "UPDATE evolution_skill_definitions SET published = 0 WHERE skill_id = 'java.debugging.reproduce'"));
+            }
         }
     }
 

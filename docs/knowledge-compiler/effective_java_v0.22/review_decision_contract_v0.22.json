@@ -1,0 +1,23 @@
+{
+  "schema": "codefit-independent-decision-contract/v0.22",
+  "reviewer_requirements": [
+    "Independent person/agent distinct from original author; declare conflicts and model/tool identity.",
+    "Review complete authorized source pages privately; quote no publisher passages into public artifacts.",
+    "Decide each claim as ACCEPT, REJECT or NEEDS_REVISION, with a reproducible independently obtained reference or counterexample.",
+    "Technical and pedagogy reviews require separate passes; a self-test cannot mark approval.",
+    "Revision of a claim resets its approval status; exceptions need explicit review owner."
+  ],
+  "claim_decision_example": {
+    "claim_id": "EJ22-024-C2",
+    "reviewer_id": "REQUIRED_EXTERNAL_ID",
+    "reviewed_source_hash": "REQUIRED",
+    "reviewed_test_reference": "REQUIRED",
+    "decision": "ACCEPT|REJECT|NEEDS_REVISION",
+    "independent_review": true,
+    "review_timestamp": "REQUIRED",
+    "evidence": "REQUIRED"
+  },
+  "approval_count": 0,
+  "auto_approval": false,
+  "release_eligible": false
+}

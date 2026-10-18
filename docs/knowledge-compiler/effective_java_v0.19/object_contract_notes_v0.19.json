@@ -1,0 +1,171 @@
+{
+  "schema": "codefit-object-contract-notes/v0.19",
+  "notes": [
+    {
+      "title": "Design diagnostic descriptions without turning logs into a protocol",
+      "core": "An informative object description improves observability but remains a human-facing diagnostic unless its representation is explicitly contracted. Expose typed accessors for programmatic consumers, keep cardinality and secrets under control, and distinguish a documented parseable format from a changeable summary.",
+      "rules": [
+        "Override inherited Object descriptions for public domain value objects that need meaningful diagnostics.",
+        "Summarize huge object graphs rather than recursively dumping confidential or cyclic fields.",
+        "Document whether a string format is a compatibility contract; never promise stability accidentally.",
+        "When stable serialization or interchange is required, define a separate versioned codec rather than parsing a debug string.",
+        "Provide typed accessors even if the representation is documented so callers do not scrape it.",
+        "Preserve determinism where tests or log correlation need it, while avoiding secrets and high-cardinality identifiers."
+      ],
+      "nuance": [
+        "Even an immutable record may generate a descriptive toString that includes secret components.",
+        "Record-generated representations expose component naming conventions but do not replace data-transfer schemas.",
+        "Lazy association traversal in ORM toString may cause extra queries or recursion.",
+        "A stable parseable toString format becomes a long-lived API burden once documented.",
+        "Calling toString in hot structured-logging paths can create unnecessary allocation and leak sensitive data."
+      ],
+      "misconception": "If a class has getters, consumers can safely parse its toString as a backwards-compatible machine format.",
+      "production_context": "A checkout audit event prints a masked summary of payment route and state, with structured event IDs supplied separately.",
+      "java21_delta": "Java 21 records generate toString automatically, but generated output may disclose sensitive component values and is not a substitute for an explicit logging policy.",
+      "note_id": "EJ19-012",
+      "source_unit_id": "EJ-ITEM-012",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 76,
+      "pdf_page_end_exclusive": 79,
+      "source_body_sha256": "b211304c171861a37cffae013014787d85ffe35fbcd8e0ff7f5723cabcae26a9",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent semantic and teaching reviews not done."
+    },
+    {
+      "title": "Prefer explicit copying contracts over inherited clone machinery",
+      "core": "Java object copying requires a stated ownership model. Cloneable changes Object.clone behavior but does not expose a public cloning method; shallow copies retain mutable referents. For new domain APIs prefer constructors or factories that express which nested structures are shared, copied, or immutable.",
+      "rules": [
+        "Treat Cloneable as compatibility machinery, not as a new generalized copy interface.",
+        "If legacy Cloneable is required, supply public covariant clone and restore independent mutable representation.",
+        "Never assume cloning an array containing mutable elements deeply copies the elements.",
+        "Use an iterative strategy for long linked chains to avoid recursive copying stack exhaustion.",
+        "Do not invoke overridable instance methods before cloned state has been re-established.",
+        "Favor copy constructors and conversion factories for newly designed value or collection APIs.",
+        "State identity semantics for unique IDs, locks, resource handles, and snapshot consistency."
+      ],
+      "nuance": [
+        "Object.clone bypasses constructors, complicating final fields and invariant establishment.",
+        "Cloning mutable resources such as sockets or locks may not be meaningful or safe.",
+        "Arrays remain a practical use of clone for copying their storage, but elements can still alias.",
+        "A copy factory accepting an interface can choose different destination implementation.",
+        "Copying under concurrent mutation requires separate snapshot synchronization policy.",
+        "Java 21 records are shallowly immutable if components refer to mutable structures; record construction is not a deep-copy operation."
+      ],
+      "misconception": "Calling clone yields fully independent objects and always initializes invariants through the constructor.",
+      "production_context": "A risk rule snapshot copies mutable map/list containers while sharing documented immutable rule entries, avoiding aliasing between requests.",
+      "java21_delta": "Java 21 records and List.copyOf/Map.copyOf offer concise defensive containers but are shallow, reject nulls in copyOf, and do not replace a deep graph-copy policy.",
+      "note_id": "EJ19-013",
+      "source_unit_id": "EJ-ITEM-013",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 79,
+      "pdf_page_end_exclusive": 87,
+      "source_body_sha256": "d363b25a8c5229a4c2ffbf620c1edc7ededf74e04a0586ebd2d17f587a4335de",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent semantic and teaching reviews not done."
+    },
+    {
+      "title": "Establish a coherent total ordering and test comparator laws",
+      "core": "A natural ordering is a public mathematical contract: comparison signs must be antisymmetric, transitive, and consistent when two values compare equal. Sorted collections interpret comparator equivalence as key equivalence, which may differ from equals unless intentionally documented.",
+      "rules": [
+        "Implement Comparable only when one natural order makes semantic sense; use named Comparator for contextual orders.",
+        "Preserve sign symmetry, transitivity, and zero-equivalence consistency across all supported inputs.",
+        "Prefer Integer.compare, Long.compare or Comparator.comparing instead of subtraction which may overflow.",
+        "Compare significant fields in priority order and include meaningful tie breakers.",
+        "Define and test policy for nulls explicitly; Comparable instance method generally rejects null.",
+        "Document deliberate compareTo-versus-equals inconsistency and its effect on TreeSet and TreeMap."
+      ],
+      "nuance": [
+        "Only the sign of a comparison result matters; avoid assuming a result must be exactly -1 or 1.",
+        "BigDecimal numerical comparisons treat some different scales as equivalent while equals does not.",
+        "Comparator.thenComparing can prevent equal-priority transaction records from being collapsed.",
+        "NaN, signed zero and locale-aware text sorting require an intentional domain definition.",
+        "Using a mutable field as a sorted-set key can break subsequent membership behavior.",
+        "Java 21 has established comparator-combinator APIs; performance anecdotes from older JDK versions require fresh benchmarks."
+      ],
+      "misconception": "An integer difference comparator is safe and TreeSet deduplicates entries strictly using equals.",
+      "production_context": "A payment ledger sorts by event timestamp and stable tie-breaker ID, avoiding silent loss of simultaneous events.",
+      "java21_delta": "Java 21 Comparator.comparingLong and thenComparing remain available; records simplify value modeling but do not enforce ordering laws.",
+      "note_id": "EJ19-014",
+      "source_unit_id": "EJ-ITEM-014",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 87,
+      "pdf_page_end_exclusive": 94,
+      "source_body_sha256": "ad4e673d831637b96d3b8b412b825ea5ee3b1a14bb098d7971ffa8b33e52e0b1",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent semantic and teaching reviews not done."
+    },
+    {
+      "title": "Minimize exported surface and protect mutable state across module boundaries",
+      "core": "API accessibility is an architectural dependency decision. Keep implementation types and members narrowly scoped, export only deliberate contracts, and do not confuse a final reference with immutable contents. Module exports in Java 21 add boundaries, but classpath deployment and reflective opens change the effective access model.",
+      "rules": [
+        "Keep top-level implementation types package-private unless external consumers require them.",
+        "Prefer private fields and only widen to package-private for a demonstrable collaborator or test seam.",
+        "Treat protected extension points as compatibility commitments rather than convenience.",
+        "Do not expose mutable arrays through public static final fields or getters returning original arrays.",
+        "Return defensive copies or genuinely immutable views whose backing mutability is controlled.",
+        "Document JPMS exports versus opens and test with modules where module encapsulation is essential.",
+        "Use public immutable constants only if the referenced object itself cannot be mutated."
+      ],
+      "nuance": [
+        "An unmodifiable view of a still-mutated private backing list reflects later internal changes.",
+        "List.of and List.copyOf are unmodifiable but may contain mutable objects.",
+        "A public field in an unexported module package is not automatically reachable from external named modules.",
+        "Unnamed classpath code follows different access behavior from strict module-path deployments.",
+        "Reflection with opens weakens deep encapsulation; module metadata is not a full security boundary.",
+        "Interface implementation and method overrides constrain how far visibility can be reduced."
+      ],
+      "misconception": "public static final byte[] is immutable, and module descriptors make all Java code unreachable through reflection.",
+      "production_context": "A merchant KYC module exposes a validation interface but not writable static lookup arrays or internal token policy caches.",
+      "java21_delta": "Java 21 JPMS has matured since the book described Java 9 modules as new; test exports/opens/module path assumptions rather than repeating era-specific adoption predictions.",
+      "note_id": "EJ19-015",
+      "source_unit_id": "EJ-ITEM-015",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 94,
+      "pdf_page_end_exclusive": 99,
+      "source_body_sha256": "3d34c450129469183e1d01fc5d2c0a81b1e3ac86c542731ea9241f031f1e77fd",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent semantic and teaching reviews not done."
+    },
+    {
+      "title": "Avoid public mutable fields while preserving the right value shape",
+      "core": "An exported class with directly writable state makes invariants and future representation changes impossible to control. Prefer private fields with intentional access methods or immutable value records; internal package-private carriers can be simpler because their coupling is contained.",
+      "rules": [
+        "Expose accessors rather than public instance data in exported mutable domain classes.",
+        "Validate invariants at construction and every mutating boundary, not only in getters.",
+        "Make accessors return safe copies or immutable values when backing fields are mutable.",
+        "Use a Java21 record for a public immutable data carrier only when its component types have safe ownership semantics.",
+        "Package-private and private nested internal carriers may expose fields when scope is truly local.",
+        "Recognize public final scalar fields as less dangerous but still representation commitments in an exported API."
+      ],
+      "nuance": [
+        "Records publish accessor names and a component-based API; changing components can break clients.",
+        "Record components referencing arrays require defensive copies at entry and exit.",
+        "A getter without validation does not automatically protect invariants if a setter is unrestricted.",
+        "JavaBeans conventions and ORM frameworks may impose API compatibility requirements; weigh those before changing shape.",
+        "Package-private internal fields should not be used to transfer authority across trust boundaries.",
+        "A public record with a mutable collection is not deeply immutable without explicit ownership policy."
+      ],
+      "misconception": "A public final reference to a mutable array makes the array immutable; getters always make data encapsulated.",
+      "production_context": "A public merchant limit value provides validated read-only access, while private internal transport carriers use direct fields where safe.",
+      "java21_delta": "Java 21 records supply concise public immutable-value APIs but are shallow unless mutable components are copied; do not blindly transpose 2018 getter advice to every record.",
+      "note_id": "EJ19-016",
+      "source_unit_id": "EJ-ITEM-016",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 99,
+      "pdf_page_end_exclusive": 101,
+      "source_body_sha256": "d40ae4d5446495898e9a03acb2f4d661f3f2a53fcf42214c29dd45c452ff5e3e",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent semantic and teaching reviews not done."
+    }
+  ]
+}

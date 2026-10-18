@@ -1,0 +1,195 @@
+{
+  "schema": "codefit-concurrency-notes/v0.16",
+  "notes": [
+    {
+      "title": "Choose bounded task execution instead of hand-made thread queues",
+      "prerequisites": [
+        "Runnable versus Callable",
+        "ExecutorService lifecycle",
+        "queue capacity",
+        "interrupt and cancellation"
+      ],
+      "core": "Separate the unit of work from its execution policy. Choose an executor and a bounded admission, capacity, cancellation and shutdown strategy that reflect the service workload rather than creating an uncontrolled thread for every request.",
+      "rules": [
+        "Use Runnable for fire-and-report side effects and Callable/Future when a result or a checked exception must be observed.",
+        "Always define orderly shutdown, forced-stop fallback and interruption propagation; an executor is a resource, not a daemon guarantee.",
+        "Avoid a cached thread pool for sustained, unbounded arrival rates: CPU, queues and downstream capacity need explicit budgets.",
+        "Prefer an explicitly bounded ThreadPoolExecutor with a documented rejection policy for constrained platform-thread worker pools.",
+        "Use CompletionService or Future APIs to collect outcomes and preserve failure information; a successful submit is not business completion.",
+        "Consider modern virtual-thread executors for blocking I/O only after evaluating admission control, downstream concurrency and task lifetimes."
+      ],
+      "nuance": [
+        "Executors.newFixedThreadPool bounds worker count but commonly retains an unbounded LinkedBlockingQueue: fixed threads do not imply bounded backlog.",
+        "Java 21 Executors.newVirtualThreadPerTaskExecutor is an unbounded per-task creation policy; virtual threads are not automatic backpressure.",
+        "Java 21 structured concurrency remains preview; preview API examples must not be treated as stable public contracts.",
+        "Calling Future.cancel(true) requests interruption but cannot guarantee completion, transactional rollback or remote cancellation.",
+        "Schedulers and fork-join work stealing suit particular workload shapes; parallel streams should not be used as a generic server job queue."
+      ],
+      "misconception": "A fixed-thread executor fully bounds queued work and virtual threads remove the need to limit concurrent requests.",
+      "production_context": "A payment reconciliation worker accepts work through a bounded policy, records rejected submissions explicitly and distinguishes completed external operations from mere accepted tasks.",
+      "java21_delta": "Java 21 provides virtual-thread-per-task executors; they ease many blocking-wait costs but not database connection, request-rate, memory or downstream capacity limits.",
+      "note_id": "EJ16-080",
+      "source_unit_id": "EJ-ITEM-080",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 344,
+      "pdf_page_end_exclusive": 346,
+      "source_body_sha256": "c79d23feb44fd9bb470aa0f80df058f39110c916c7d24459ca3a644b20bdfdca",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis after complete private section read; independent technical and educational review not performed."
+    },
+    {
+      "title": "Use concurrent collections and synchronizers instead of manual wait/notify",
+      "prerequisites": [
+        "ConcurrentHashMap and atomic map methods",
+        "BlockingQueue",
+        "CountDownLatch",
+        "monitor condition loops"
+      ],
+      "core": "Express worker coordination with BlockingQueue, CountDownLatch and atomic concurrent collection methods, rather than fragile hand-coded monitor wait/notify protocols; use condition rechecks for any unavoidable legacy monitor wait.",
+      "rules": [
+        "Choose ConcurrentHashMap.compute, merge or putIfAbsent for the corresponding single-key atomic update; a get-then-put is not equivalent.",
+        "Use a bounded BlockingQueue and an explicit producer admission policy when queue memory and task pressure must be limited.",
+        "Use CountDownLatch for one-shot coordination and always account for worker failures in finally to avoid indefinite waits.",
+        "Employ Semaphore for explicit in-process permits and protect releases with finally to avoid leaks under exceptions.",
+        "Do not assume holding a synchronized block on a concurrent collection makes a multi-method composite transaction atomic.",
+        "When maintaining wait/notify code, wait under its monitor in a while loop, rechecking the predicate after every wake-up."
+      ],
+      "nuance": [
+        "CountDownLatch is one-use; choose a different synchronizer for repeated coordination, or construct a fresh latch per round.",
+        "Semaphore limits local concurrency only; it is not a cross-replica distributed capacity lock.",
+        "ConcurrentHashMap.compute mapping functions must be short and nonblocking and must not attempt prohibited recursive updates.",
+        "BlockingQueue.put/take can block indefinitely; interrupts, timeouts and shutdown policy need explicit handling.",
+        "Spurious wakeups and unrelated notifications mean if(condition) wait is unsafe even when it appears to work in smoke tests."
+      ],
+      "misconception": "ConcurrentHashMap makes get followed by put atomic, and wait only wakes up when the application notifies the right condition.",
+      "production_context": "A payment-event consumer coordinates a small bounded worker pool using ArrayBlockingQueue and a one-use latch, records interruptions and uses atomic map updates for per-event counts.",
+      "java21_delta": "Java 21 retains java.util.concurrent queue, map and synchronizer guarantees and supports virtual-thread blocking; primitives still need explicit resource and cancellation limits.",
+      "note_id": "EJ16-081",
+      "source_unit_id": "EJ-ITEM-081",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 346,
+      "pdf_page_end_exclusive": 351,
+      "source_body_sha256": "fb071b045d416e1a1d872c6355ea18a75079885a5ebc7a6732da63fb9534b5a5",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis after complete private section read; independent technical and educational review not performed."
+    },
+    {
+      "title": "Document thread-safety contracts and synchronization ownership explicitly",
+      "prerequisites": [
+        "Java memory model",
+        "immutable versus mutable objects",
+        "client-side iteration",
+        "private lock encapsulation"
+      ],
+      "core": "Document what concurrent callers may safely do, which atomic sequences require external locking and which monitor must be used; do not infer a public thread-safety contract from synchronized keywords or passing tests.",
+      "rules": [
+        "Describe immutability or unconditional, conditional or absent thread safety on public types and factory methods.",
+        "For conditional thread safety, identify the exact compound operations and external lock a caller must hold.",
+        "When exposing Collections.synchronizedMap, explicitly document iteration over views while holding the wrapper map monitor.",
+        "Use a final private lock for internal synchronization where the class promises unconditional thread safety and does not need a client-exposed atomic sequence.",
+        "Do not expose internal locks or synchronize on externally controlled objects without deliberately committing to interference and denial-of-service risks.",
+        "Document snapshot versus live-view and iteration/mutation semantics, even when a collection class is called concurrent."
+      ],
+      "nuance": [
+        "An immutable object is safe to share only when construction and publication are safe; its reachable mutable members can invalidate immutability.",
+        "ConcurrentHashMap has individually thread-safe operations but compound application invariants may need further synchronization.",
+        "Collections.synchronizedMap view traversal requires locking on the map wrapper, not merely the keySet view.",
+        "A synchronized method declaration alone is not a stable guarantee of atomicity over several calls.",
+        "A private lock excludes external interference but cannot directly support documented client-side compound atomic sequences."
+      ],
+      "misconception": "A method marked synchronized proves every operation of the class is safe in any concurrently executed sequence.",
+      "production_context": "A merchant settings registry documents immutable snapshots and atomic replacement; a synchronized wrapper map documents the lock that callers must hold when traversing a live collection view.",
+      "java21_delta": "Java 21 API documentation must still describe synchronization contracts explicitly; virtual threads change scheduling, not the meaning of synchronized collections.",
+      "note_id": "EJ16-082",
+      "source_unit_id": "EJ-ITEM-082",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 351,
+      "pdf_page_end_exclusive": 354,
+      "source_body_sha256": "cd79aba298cb354067c0e03f177a7c1a073b2701bdc9b997185186a1e5ac54e8",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis after complete private section read; independent technical and educational review not performed."
+    },
+    {
+      "title": "Initialize eagerly by default and choose safe lazy publication only when justified",
+      "prerequisites": [
+        "Java initialization ordering",
+        "volatile and happens-before",
+        "class initialization holder",
+        "synchronized accessor"
+      ],
+      "core": "Prefer straightforward eager final initialization unless startup cost, optional use, or a genuine initialization cycle justifies lazy work. When sharing a lazy result, use a safe publication technique with explicit thread-safety and failure semantics.",
+      "rules": [
+        "Start with eager final initialization and verify an actual initialization cost before adding concurrency complexity.",
+        "Use a static holder class for truly lazy static constant setup when deferred class initialization is useful.",
+        "Use a synchronized accessor for simple per-instance lazy initialization, especially when breaking a cycle.",
+        "If a measured instance hot path warrants double-checked locking, use a volatile field and a second check within the same monitor.",
+        "Ensure no partially initialized mutable object escapes through constructors or lazy suppliers; publish fully built immutable results.",
+        "Decide how exceptions, null results and repeated initialization attempts are handled; a null sentinel is ambiguous when null is a valid computed result."
+      ],
+      "nuance": [
+        "The holder idiom is for static fields; it is not a magical per-instance cache and circular static initialization has its own risks.",
+        "An unsafe nonvolatile double-check can publish incorrectly under the Java memory model; smoke tests cannot certify correctness.",
+        "A single-check lazy cache may recompute under contention, which is acceptable only for idempotent, safely published work.",
+        "A volatile field guarantees publication visibility but not exclusive initialization without the guarded second check.",
+        "Java 21 virtual threads do not change field visibility, class initialization or publication requirements."
+      ],
+      "misconception": "If a lazy value appears correct in a few concurrent tests, the field can omit volatile and the second check.",
+      "production_context": "A service creates a rarely used immutable schema validator lazily through a synchronized accessor, while critical regularly used connection configuration remains eager and final.",
+      "java21_delta": "Java 21 retains class-initialization guarantees and the JMM requirements for volatile double-checking; use newer runtime measurements rather than copying historic speed ratios.",
+      "note_id": "EJ16-083",
+      "source_unit_id": "EJ-ITEM-083",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 354,
+      "pdf_page_end_exclusive": 357,
+      "source_body_sha256": "a756d2a9c8966187d0ee1d1a40aed29464e3866366c6debff8674f4549b23ecb",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis after complete private section read; independent technical and educational review not performed."
+    },
+    {
+      "title": "Write progress-safe concurrency without depending on scheduler hints",
+      "prerequisites": [
+        "blocked versus runnable threads",
+        "Thread.yield",
+        "bounded queues",
+        "thread starvation"
+      ],
+      "core": "Make correctness independent of scheduler fairness and timing hints. Workers should block on work, use explicit coordination and preserve bounded runnable work rather than spin continuously or repair broken liveness with priorities and yields.",
+      "rules": [
+        "Prefer BlockingQueue.take, CountDownLatch.await or other coordination primitives rather than a busy loop polling shared state.",
+        "Never use Thread.yield or thread-priority changes to establish correctness, ordering or a deadline.",
+        "Choose bounded CPU worker parallelism appropriate to available processors and workload; total thread count is not the same as runnable count.",
+        "When a task blocks on another task scheduled to the same undersized pool, identify and eliminate thread-starvation deadlock.",
+        "Use bounded wait timeouts, interruption and explicit shutdown so liveness failures are diagnosed, not hidden by scheduling luck.",
+        "Measure runnable threads, queue delays, CPU saturation and task lengths before tuning executor configuration."
+      ],
+      "nuance": [
+        "Thread.sleep is not a synchronization proof: sleeps can wake later than requested and do not establish a missing happens-before relation.",
+        "Thread.yield is a scheduler hint with no portable liveness guarantee.",
+        "Virtual-thread parking changes resource costs of blocking but does not make CPU work or downstream calls infinitely scalable.",
+        "A blocking operation in the wrong critical section can still deadlock regardless of how the scheduler favors that thread.",
+        "Task granularity has overhead trade-offs; fewer runnable threads does not imply only one total thread or universal throughput gains."
+      ],
+      "misconception": "Raising worker priority or yielding frequently is a portable fix for a task that cannot make progress.",
+      "production_context": "A settlement poller waits for tasks on a bounded queue instead of spinning at 100% CPU; a batch coordinator avoids blocking all pool workers while waiting for queued peers.",
+      "java21_delta": "Java21 virtual threads can efficiently park many I/O waiters, but thread scheduling hints and pool starvation remain unsuitable foundations for correctness.",
+      "note_id": "EJ16-084",
+      "source_unit_id": "EJ-ITEM-084",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 357,
+      "pdf_page_end_exclusive": 360,
+      "source_body_sha256": "4b1df4dfea6a43f6451658e7ff7ac0224b7ebe4c6b0160559ad51859b7bf9353",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original synthesis after complete private section read; independent technical and educational review not performed."
+    }
+  ]
+}

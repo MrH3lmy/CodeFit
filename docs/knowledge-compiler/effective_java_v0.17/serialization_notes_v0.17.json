@@ -1,0 +1,195 @@
+{
+  "schema": "codefit-serialization-notes/v0.17",
+  "notes": [
+    {
+      "title": "Reject untrusted native deserialization; prefer explicit data interchange",
+      "prerequisites": [
+        "Java ObjectInputStream",
+        "untrusted input trust boundaries",
+        "ObjectInputFilter",
+        "JSON and schema validation"
+      ],
+      "core": "Treat Java object deserialization as a potentially dangerous code-execution and resource-consumption boundary, not merely a parser. Prefer bounded, schema-validated data interchange for messages crossing trust zones; avoid ObjectInputStream for attacker-controlled bytes.",
+      "rules": [
+        "Prefer explicit DTO schemas in maintained formats such as JSON or protobuf for external requests, queues and archived integration data.",
+        "Do not deserialize bytes from untrusted users or unauthenticated systems using an unrestricted ObjectInputStream.",
+        "A Java 21 ObjectInputFilter can reject classes and bound object graph depth, references, array size and bytes, but it must not be misrepresented as a universally safe sandbox.",
+        "Validate authentication, authorization, message sizes, versioning, domains and resource budgets independently of parser filters.",
+        "Audit transitive dependencies for accidental Java serialization endpoints; a gadget may be activated during readObject execution before the calling service gets a safe DTO.",
+        "Reject unknown message fields/types or handle them under a defined, tested compatibility policy and log only non-sensitive diagnostics."
+      ],
+      "nuance": [
+        "JDK filters are additional defenses, not an adequate justification to deserialize arbitrary attacker-controlled graph types.",
+        "JSON is not inherently safe from large/deep payload denial of service; streaming and explicit depth/size limits remain necessary.",
+        "Java21 has process-wide and stream-specific object input filters, with policy composition and initialization behavior needing deployment verification.",
+        "Serialized Java object graph contracts are tightly coupled to implementation classes; a wire DTO with versioned schema is a separate design.",
+        "Avoid broad allowlists including application-specific Serializable classes whose readObject or readResolve behaviors are not reviewed."
+      ],
+      "misconception": "A signed token, a Serializable interface, or an object-input filter makes arbitrary object graph deserialization safe.",
+      "production_context": "A merchant webhook accepts a capped JSON request DTO with authentication, explicit type validation and idempotent processing rather than decoding a Java serialized payment graph.",
+      "java21_delta": "Java21 ObjectInputFilter supports resource and type rejection as defense in depth; do not assume any library that calls ObjectInputStream uses a restrictive filter automatically.",
+      "note_id": "EJ17-085",
+      "source_unit_id": "EJ-ITEM-085",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 360,
+      "pdf_page_end_exclusive": 364,
+      "source_body_sha256": "995fb8ab3e7a0cc70903b2ccad46757d769fe66bcb7062669d0ad58314843b74",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author draft after complete private section read; independent review pending."
+    },
+    {
+      "title": "Treat Serializable as a long-lived compatibility and security commitment",
+      "prerequisites": [
+        "serialVersionUID",
+        "invariants",
+        "inheritance",
+        "serialized form compatibility"
+      ],
+      "core": "Implementing Serializable changes the lifetime of a class’s data representation. Preserve invariants, evolve explicit versions deliberately, and avoid applying Serializable to active, inheritable or implementation-coupled objects without strong need.",
+      "rules": [
+        "Do not add implements Serializable as a convenience until storage, compatibility, attack surface and supported upgrade paths are specified.",
+        "Declare serialVersionUID deliberately where Serializable is required; the identifier alone cannot make incompatible field changes safe.",
+        "Treat the serialized form and constructor-bypassing reconstruction behavior as part of the compatibility contract.",
+        "Use strict readObject validation or a serialization proxy where permitted, and keep security invariants meaningful after reconstruction.",
+        "Avoid serializing thread pools, connections, locks, requests with secrets, and general active-resource wrappers.",
+        "Document superclass, finality, inheritance and class-version evolution effects before publishing a stable serialized representation."
+      ],
+      "nuance": [
+        "Serializable is a marker interface, not evidence that an object is safe to deserialize or stable across deployments.",
+        "A matching serialVersionUID does not guarantee logical compatibility across revisions, constructors, invariants or class hierarchies.",
+        "Default serialized form may expose private implementation details that are otherwise invisible in a public API.",
+        "Classes intended for extension and nested nonstatic inner classes have additional compatibility hazards and deserve specific review.",
+        "A new stable external interchange DTO may have lower long-term costs than maintaining a JVM native form."
+      ],
+      "misconception": "Serializable only adds a small marker and serialVersionUID can make any future shape compatible.",
+      "production_context": "A settlement event is an immutable schema-versioned wire DTO rather than the live service entity and its database connection.",
+      "java21_delta": "Java21 preserves Object Serialization Stream Protocol and explicit serialVersionUID mechanics, but legacy compatibility does not imply suitability for new public-wire APIs.",
+      "note_id": "EJ17-086",
+      "source_unit_id": "EJ-ITEM-086",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 364,
+      "pdf_page_end_exclusive": 367,
+      "source_body_sha256": "5f5e1abeecd81a4c518e16abe73f9af8ebfe369147578abee1bdfac86a81ca24",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author draft after complete private section read; independent review pending."
+    },
+    {
+      "title": "Serialize logical state, not accidental physical representation",
+      "prerequisites": [
+        "transient fields",
+        "writeObject/readObject",
+        "logical data contracts",
+        "representation invariants"
+      ],
+      "core": "When a native serialized representation is unavoidable, design the durable logical fields deliberately. Avoid automatically encoding internal object graphs whose incidental links, indexes or synchronization state will change across versions.",
+      "rules": [
+        "Before using the default serialized form, compare the logical value represented by an object with the incidental shape of its fields and links.",
+        "Prefer a custom serialized form for objects whose physical graph contains implementation detail, back pointers, indexes, caches or redundant links.",
+        "Make derived caches and synchronization-only fields transient; reconstruct them deterministically when a trusted compatible object is loaded.",
+        "Bound counts and validate data read from streams before allocating large arrays or constructing nested mutable graphs.",
+        "Synchronize a serialization snapshot to the same extent needed to observe a consistent object state in ordinary methods.",
+        "Document serialized-form versions and write/read symmetry with tests for empty values, limits, evolution and invalid content."
+      ],
+      "nuance": [
+        "A simple value aggregate with fields matching logical data might be suitable for default form, yet still needs invariant review.",
+        "Transient is about excluding state from the default form; it does not automatically protect secrets elsewhere in the stream.",
+        "Custom readObject methods are attack-facing when reading untrusted streams and cannot be treated as a safe general parser.",
+        "Native Java custom forms are less interoperable than explicit external schemas; choose them only if unavoidable.",
+        "Avoid writing unchecked sequence sizes: malicious counts can cause overflow, negative-array exceptions or excessive allocation."
+      ],
+      "misconception": "ObjectOutputStream serializes only the public logical value and excludes linked-list internals unless instructed otherwise.",
+      "production_context": "A migration-only archival snapshot serializes an ordered set of validated identifiers, not a live linked graph or mutable cache.",
+      "java21_delta": "Java21 retains writeObject/readObject hooks and transient handling; modern Java records are not a reason to expose native serialized object graphs at public boundaries.",
+      "note_id": "EJ17-087",
+      "source_unit_id": "EJ-ITEM-087",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 367,
+      "pdf_page_end_exclusive": 374,
+      "source_body_sha256": "5d42efe1120015e7a9985c2699a24d8bf8b86a1dbbad3aea3c867736320b53a5",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author draft after complete private section read; independent review pending."
+    },
+    {
+      "title": "Defend deserialization by rebuilding invariants and ownership boundaries",
+      "prerequisites": [
+        "readObject lifecycle",
+        "defensive copies",
+        "InvalidObjectException",
+        "mutable aliasing"
+      ],
+      "core": "A deserialization path is effectively an alternate constructor that can violate invariants or expose mutable representation. Reject malformed state, defensively copy mutable inputs where necessary and do not rely on ordinary constructor validation to have run.",
+      "rules": [
+        "Do not assume a nonpublic constructor or final field declaration makes a class invariant immune to deserialization.",
+        "For serializable mutable reference fields, copy or reconstruct ownership before validation so an attacker-controlled alias cannot mutate the validated object afterward.",
+        "Validate ordering, ranges, nulls, counts and uniqueness during the read path; throw InvalidObjectException with safe diagnostics for invalid state.",
+        "Do not use overridable methods or invoke client callbacks while rebuilding partially initialized objects.",
+        "Use bounded and allowlisted input from a trusted source; defensive readObject code is not permission to parse arbitrary untrusted streams.",
+        "Prefer immutable external DTO decoding with explicit construction when a new protocol can avoid native deserialization."
+      ],
+      "nuance": [
+        "A mutable nested object may need a deep defensive copy; merely copying the outer list does not copy each mutable element.",
+        "Java defensive copying using clone on extensible mutable types can invoke subclass behavior; constructors or known immutable conversions may be safer.",
+        "An invalid graph can be constructed without executing validation from the public constructor.",
+        "Attacker-controlled reference graphs can share aliases even if an object’s apparent fields look independent.",
+        "readObject data arrives after stream class descriptors and graph traversal; filtering and resource bounds are separate safeguards."
+      ],
+      "misconception": "A previously validated constructor and private final mutable fields ensure deserialized instances retain immutability and ordering.",
+      "production_context": "A trusted migration tool reconstructs a date range into defensive independent date values and rejects inverted endpoints before exposing a resulting immutable snapshot.",
+      "java21_delta": "Java21 object input filters and record support do not remove the need to validate any legacy readObject path or eliminate mutable aliasing.",
+      "note_id": "EJ17-088",
+      "source_unit_id": "EJ-ITEM-088",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 374,
+      "pdf_page_end_exclusive": 380,
+      "source_body_sha256": "8eb8de8429276d7f0c19fb03602ccfaaad1774aea724feb555f73128bc8befc8",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author draft after complete private section read; independent review pending."
+    },
+    {
+      "title": "Preserve singleton identity with enums rather than fragile readResolve",
+      "prerequisites": [
+        "singletons",
+        "readResolve",
+        "object identity",
+        "enum serialization"
+      ],
+      "core": "For true single-instance types, use an enum singleton when compatible with the model. Relying on readResolve for instance control of a Serializable class is subtle: it runs after object reconstruction and may not prevent state or reference leakage.",
+      "rules": [
+        "Prefer a one-element enum for stateless singletons that must retain identity across ordinary Java serialization.",
+        "Do not assume private constructors prevent native deserialization from creating extra object instances.",
+        "Treat readResolve as a special legacy compatibility mechanism, not as the default singleton implementation.",
+        "For a readResolve-based singleton, prevent mutable or reference-typed instance fields from exposing pre-resolution deserialized objects.",
+        "Test identity with == across an isolated trusted round-trip and test intended invariant behavior, not only equals.",
+        "Do not promote arbitrary native deserialization into a public endpoint solely to benefit from enum identity."
+      ],
+      "nuance": [
+        "Enums serialize by stable constant name; renaming or deleting constants is a schema migration and compatibility concern.",
+        "readResolve does not undo effects that happen during readObject or other graph construction callbacks.",
+        "The Java serialization method lookup and access rules matter for special hooks; a method with the wrong signature is not the requested hook.",
+        "An enum singleton is not inherently a distributed singleton across replicas or processes.",
+        "An enum may be inappropriate when the type must extend another concrete superclass or meet external framework construction requirements."
+      ],
+      "misconception": "A Serializable singleton with a private constructor and readResolve always provides the same safety guarantees as an enum.",
+      "production_context": "An immutable stateless authorization-policy registry is modeled as an enum strategy, while external persistent configuration uses versioned records rather than Java object identity.",
+      "java21_delta": "Java21 retains enum serialization identity guarantees within a JVM but provides no network-wide singleton guarantees.",
+      "note_id": "EJ17-089",
+      "source_unit_id": "EJ-ITEM-089",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 380,
+      "pdf_page_end_exclusive": 384,
+      "source_body_sha256": "8e7c2b6bbce35e5ba5732c89e3066caf03e178ec6d74a3a6e9bf28a8f61fef7c",
+      "source_review": "SOURCE_READ_AUTHOR_DRAFT__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author draft after complete private section read; independent review pending."
+    }
+  ]
+}

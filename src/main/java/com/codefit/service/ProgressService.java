@@ -3,14 +3,15 @@ package com.codefit.service;
 import com.codefit.model.ReviewRating;
 import com.codefit.model.UserProgress;
 import com.codefit.repository.UserProgressRepository;
+import com.codefit.evolution.progression.ProgressionPolicy;
 
 import java.time.LocalDate;
 import java.util.prefs.Preferences;
 
 public class ProgressService {
-    public static final int XP_PER_LEVEL = 100;
-    private static final int CONSISTENT_STREAK_DAYS = 7;
-    private static final int EXPERIENCED_REVIEW_COUNT = 50;
+    public static final int XP_PER_LEVEL = ProgressionPolicy.XP_PER_LEVEL;
+    private static final int CONSISTENT_STREAK_DAYS = ProgressionPolicy.CONSISTENT_STREAK_DAYS;
+    private static final int EXPERIENCED_REVIEW_COUNT = ProgressionPolicy.EXPERIENCED_REVIEW_COUNT;
     public static final int REFLECTION_CARD_XP = 5;
     public static final int REFLECTION_CARD_DAILY_XP_CAP = 15;
     private static final String REFLECTION_XP_DATE_KEY = "reflectionXpDate";
@@ -32,26 +33,9 @@ public class ProgressService {
             return "E-Rank Backend Starter";
         }
 
-        int level = progress.getLevel();
         boolean consistent = progress.getStreakDays() >= CONSISTENT_STREAK_DAYS
                 || progress.getTotalReviews() >= EXPERIENCED_REVIEW_COUNT;
-
-        if (level >= 30 && consistent) {
-            return "S-Rank Backend Architect";
-        }
-        if (level >= 24 && consistent) {
-            return "A-Rank Backend Lead";
-        }
-        if (level >= 18 && consistent) {
-            return "B-Rank Backend Specialist";
-        }
-        if (level >= 10) {
-            return "C-Rank Backend Builder";
-        }
-        if (level >= 5) {
-            return "D-Rank Backend Apprentice";
-        }
-        return "E-Rank Backend Starter";
+        return ProgressionPolicy.engagementRank(progress.getLevel(), consistent);
     }
 
     public int recordReflectionCardCreated() {

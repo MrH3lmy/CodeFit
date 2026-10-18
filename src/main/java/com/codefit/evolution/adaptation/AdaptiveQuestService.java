@@ -7,6 +7,7 @@ import com.codefit.config.*;
 import com.codefit.evolution.*;
 import com.codefit.evolution.adaptation.AdaptationDecisionRepository.*;
 import com.codefit.evolution.mastery.*;
+import com.codefit.evolution.progression.ProgressionService;
 import com.codefit.evolution.quest.*;
 import com.codefit.repository.*;
 import com.codefit.service.*;
@@ -22,6 +23,12 @@ import java.util.function.BooleanSupplier;
  * SQL transactions. Same-connection data_version is rechecked under the writer before publication.
  */
 public final class AdaptiveQuestService {
+    private static final Object[] START_LOCKS = new Object[64];
+
+    static {
+        Arrays.setAll(START_LOCKS, ignored -> new Object());
+    }
+
     private final Clock clock;
     private final BundledAssets assets;
     private final BooleanSupplier runnerAvailable;
@@ -31,6 +38,7 @@ public final class AdaptiveQuestService {
     private final MasteryEstimateService estimates = new MasteryEstimateService();
     private final QuestCatalogRepository catalog = new QuestCatalogRepository();
     private final ChallengePresentationService presentations;
+    private volatile boolean milestoneReconciliationPending;
 
     public AdaptiveQuestService() {
         this(
@@ -64,6 +72,24 @@ public final class AdaptiveQuestService {
 
     public Decision recommend(Instant asOf) {
         return recommend(JavaDebuggingSkillSeed.GRAPH, asOf);
+    }
+
+    /** Current Player System entry point; historical/replayed decisions never grant milestones. */
+    public Decision recommendCurrent() {
+        var decision = recommend(JavaDebuggingSkillSeed.GRAPH, clock.instant());
+        try {
+            new ProgressionService()
+                    .reconcileCurrentMilestones(
+                            decision.input().graph(), decision.input().asOf());
+            milestoneReconciliationPending = false;
+        } catch (ProgressionService.RetryableMilestoneRewardFailure retryable) {
+            milestoneReconciliationPending = true;
+        }
+        return decision;
+    }
+
+    public boolean milestoneReconciliationPending() {
+        return milestoneReconciliationPending;
     }
 
     public Decision recommend(GraphRef graph, Instant asOf) {
@@ -298,6 +324,19 @@ public final class AdaptiveQuestService {
      * atomically.
      */
     public ChallengePresentationService.View start(
+            String responseCommand, QuestTypes.Familiarity familiarity) {
+        Objects.requireNonNull(responseCommand);
+        Objects.requireNonNull(familiarity);
+        int lockIndex =
+                Math.floorMod(
+                        Objects.hash(DatabaseConfig.currentDatabaseUrl(), responseCommand),
+                        START_LOCKS.length);
+        synchronized (START_LOCKS[lockIndex]) {
+            return startLocked(responseCommand, familiarity);
+        }
+    }
+
+    private ChallengePresentationService.View startLocked(
             String responseCommand, QuestTypes.Familiarity familiarity) {
         String presentation =
                 connection(

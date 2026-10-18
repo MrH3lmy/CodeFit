@@ -2,6 +2,7 @@ package com.codefit.evolution.player;
 
 import com.codefit.config.DatabaseConfig;
 import com.codefit.evolution.evaluation.DurableEvaluationRepository;
+import com.codefit.evolution.progression.ProgressionService;
 
 import java.sql.*;
 import java.time.*;
@@ -43,6 +44,7 @@ UNION ALL SELECT as_of,'ESTIMATE',CAST(revision AS TEXT),'Skill estimate: '||ski
 UNION ALL SELECT as_of,'DECISION',id,'Next action decided · '||policy FROM evolution_adaptation_decisions
 UNION ALL SELECT chosen_at,'CHOICE',command_id,'Learner choice saved' FROM evolution_adaptation_choices
 UNION ALL SELECT chosen_at,'BASELINE',command_id,'Diagnostic '||action||': '||task FROM evolution_baseline_choices
+UNION ALL SELECT earned_at,'REWARD',CAST(sequence AS TEXT),reward_type||' · '||subject_id||' · '||status||' · +'||xp_awarded||' XP · policy v'||policy_version||' · '||reason||' · '||source_ref FROM evolution_reward_entitlements
 """;
     // Normalize Instant's optional fractional digits before lexicographic ordering; retain
     // nanoseconds.
@@ -85,7 +87,9 @@ UNION ALL SELECT chosen_at,'BASELINE',command_id,'Diagnostic '||action||': '||ta
             c.commit();
             entries.sort(ORDER);
             boolean more = entries.size() > limit;
-            var result = List.copyOf(entries.subList(0, Math.min(limit, entries.size())));
+            var result =
+                    rewardProofStatus(
+                            c, entries.subList(0, Math.min(limit, entries.size())));
             var last = result.isEmpty() ? null : result.getLast();
             return new Page(
                     result,
@@ -146,11 +150,74 @@ UNION ALL SELECT chosen_at,'BASELINE',command_id,'Diagnostic '||action||': '||ta
                                     r.getString(1),
                                     "Submission " + r.getString(2) + " · inspect / recover"));
             }
+            try (var s = c.createStatement();
+                    var r =
+                            s.executeQuery(
+                                    "SELECT earned_at,sequence,reward_type,subject_id,status,"
+                                            + "xp_awarded,policy_version,reason,source_ref FROM"
+                                            + " evolution_reward_entitlements ORDER BY sequence DESC"
+                                            + " LIMIT 8")) {
+                while (r.next())
+                    out.add(
+                            new Entry(
+                                    Instant.parse(r.getString(1)),
+                                    "REWARD",
+                                    r.getString(2),
+                                    r.getString(3)
+                                            + " · "
+                                            + r.getString(4)
+                                            + " · "
+                                            + r.getString(5)
+                                            + " · +"
+                                            + r.getInt(6)
+                                            + " XP · policy v"
+                                            + r.getString(7)
+                                            + " · "
+                                            + r.getString(8)
+                                            + " · "
+                                            + r.getString(9)));
+            }
             c.commit();
-            return List.copyOf(out);
+            return rewardProofStatus(c, out);
         } catch (SQLException e) {
             throw new IllegalStateException("Recovery links unavailable", e);
         }
+    }
+
+    private static List<Entry> rewardProofStatus(Connection c, List<Entry> entries)
+            throws SQLException {
+        var sequences = new ArrayList<Long>();
+        for (var entry : entries) {
+            if (!entry.kind().equals("REWARD")) continue;
+            try {
+                sequences.add(Long.parseLong(entry.ref()));
+            } catch (NumberFormatException ignored) {
+                // Invalid reward references have no available proof.
+            }
+        }
+        var availability = new ProgressionService().proofAvailability(c, sequences);
+        return entries.stream()
+                .map(
+                        entry -> {
+                            if (!entry.kind().equals("REWARD")) return entry;
+                            boolean available;
+                            try {
+                                available =
+                                        availability.getOrDefault(
+                                                Long.parseLong(entry.ref()), false);
+                            } catch (NumberFormatException invalid) {
+                                available = false;
+                            }
+                            return new Entry(
+                                    entry.at(),
+                                    entry.kind(),
+                                    entry.ref(),
+                                    entry.message()
+                                            + (available
+                                                    ? " · proof available"
+                                                    : " · proof unavailable or superseded"));
+                        })
+                .toList();
     }
 
     private static long maxSubmission(Connection c) throws SQLException {
@@ -176,7 +243,8 @@ UNION ALL SELECT chosen_at,'BASELINE',command_id,'Diagnostic '||action||': '||ta
                         "evolution_estimate_revisions",
                         "evolution_adaptation_decisions",
                         "evolution_adaptation_choices",
-                        "evolution_baseline_choices")) {
+                        "evolution_baseline_choices",
+                        "evolution_reward_entitlements")) {
             try (var s = c.createStatement();
                     var r = s.executeQuery("SELECT COALESCE(MAX(rowid),0) FROM " + table)) {
                 r.next();

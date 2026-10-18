@@ -5,6 +5,7 @@ import static com.codefit.evolution.evaluation.EvaluationTypes.*;
 import static com.codefit.evolution.evidence.EvidenceTypes.*;
 
 import com.codefit.evolution.evidence.*;
+import com.codefit.evolution.progression.ProgressionService;
 import com.codefit.evolution.quest.*;
 import com.codefit.model.*;
 import com.codefit.repository.*;
@@ -495,6 +496,12 @@ public final class ChallengeEvaluationCoordinator {
                                     attempt,
                                     assessment,
                                     s.id());
+                            ProgressionService.markOptedOutSubmission(
+                                    c,
+                                    s.id(),
+                                    command,
+                                    context.presentation().quest(),
+                                    evaluation.outcome());
                             var completed = required(c, command);
                             new EvidenceRepository()
                                     .append(

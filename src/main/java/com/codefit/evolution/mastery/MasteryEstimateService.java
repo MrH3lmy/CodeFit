@@ -5,6 +5,7 @@ import com.codefit.evolution.*;
 import com.codefit.evolution.evaluation.DurableEvaluationRepository;
 import com.codefit.evolution.evidence.*;
 import com.codefit.evolution.quest.*;
+import com.codefit.evolution.progression.ProgressionService;
 import com.codefit.repository.*;
 
 import java.sql.*;
@@ -12,7 +13,8 @@ import java.time.*;
 import java.util.*;
 
 /**
- * Explicit on-demand derivation. No startup scan or mutation of evidence, XP or peer aggregates.
+ * Explicit on-demand derivation. It does not scan on startup or mutate evidence/peer aggregates;
+ * the current Player System path reconciles milestones after recommendation publication.
  */
 public final class MasteryEstimateService {
     private final EstimateRevisionRepository revisions = new EstimateRevisionRepository();
@@ -60,7 +62,9 @@ public final class MasteryEstimateService {
                 byte[] bytes = EstimateCodec.encode(input);
                 var existing = revisions.existing(c, bytes, result);
                 if (version(c) != before) continue;
-                if (existing.isPresent()) return existing.get();
+                if (existing.isPresent()) {
+                    return existing.get();
+                }
                 c.setAutoCommit(false);
                 try {
                     try (var s = c.createStatement()) {

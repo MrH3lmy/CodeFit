@@ -113,7 +113,25 @@ final class SchemaMigrator {
                     AdaptationSchema::create),
             new VersionedMigration(19,
                     "Add local Evolution response drafts and working notes (#216)",
-                    PlayerWorkspaceSchema::create)
+                    PlayerWorkspaceSchema::create),
+            new VersionedMigration(20,
+                    "Add versioned Evolution XP entitlements and reward preferences (#217)",
+                    ProgressionSchema::create),
+            new VersionedMigration(21,
+                    "Preserve mastery milestones already reached before prospective rewards",
+                    ProgressionSchema::preserveHistoricalMilestones),
+            new VersionedMigration(22,
+                    "Persist forward progress for bounded effort reward recovery",
+                    ProgressionSchema::createEffortScanState),
+            new VersionedMigration(23,
+                    "Track terminal effort-recovery decisions per finalized submission",
+                    ProgressionSchema::createEffortProcessed),
+            new VersionedMigration(24,
+                    "Audit and isolate corrupted finalized effort reward sources",
+                    ProgressionSchema::addEffortQuarantine),
+            new VersionedMigration(25,
+                    "Preserve reward opt-out for finalized effort submissions",
+                    ProgressionSchema::addEffortOptOutDisposition)
     );
 
     static void migrate(Connection connection) throws SQLException {

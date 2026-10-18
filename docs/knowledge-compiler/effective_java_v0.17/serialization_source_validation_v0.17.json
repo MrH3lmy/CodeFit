@@ -1,0 +1,71 @@
+{
+  "schema": "codefit-serialization-source-validation/v0.17",
+  "items_checked": 5,
+  "complete_sections_read": 5,
+  "body_hashes_verified": 5,
+  "targeted_signals_matched": 25,
+  "checks": [
+    {
+      "source_unit_id": "EJ-ITEM-085",
+      "pdf_page_start": 360,
+      "pdf_page_end_exclusive": 364,
+      "body_chars": 10016,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signals_matched": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-086",
+      "pdf_page_start": 364,
+      "pdf_page_end_exclusive": 367,
+      "body_chars": 8640,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signals_matched": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-087",
+      "pdf_page_start": 367,
+      "pdf_page_end_exclusive": 374,
+      "body_chars": 14969,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signals_matched": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-088",
+      "pdf_page_start": 374,
+      "pdf_page_end_exclusive": 380,
+      "body_chars": 12052,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signals_matched": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    },
+    {
+      "source_unit_id": "EJ-ITEM-089",
+      "pdf_page_start": 380,
+      "pdf_page_end_exclusive": 384,
+      "body_chars": 8800,
+      "sha256_verified": true,
+      "locator_verified": true,
+      "complete_span_read": true,
+      "targeted_signals_matched": 5,
+      "independent_semantic_review": false,
+      "publisher_text_exported": false
+    }
+  ],
+  "independent_semantic_review": false,
+  "limitations": "Publisher PDF is private; hashes, source locators and short anchor checks are author verification, not independent semantic review."
+}

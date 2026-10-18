@@ -1,0 +1,24 @@
+{
+  "schema": "codefit-isolated-worker-policy/v0.24",
+  "jdk": "21",
+  "wall_ms": 5000,
+  "cpu_ms": 3000,
+  "memory_mib": 128,
+  "max_pids": 16,
+  "disk_mib": 16,
+  "max_stdout_bytes": 4096,
+  "max_stderr_bytes": 4096,
+  "max_files": 64,
+  "requires": [
+    "separate_unprivileged_worker",
+    "kernel_enforced_pid_memory_cpu_limits",
+    "network_namespace_no_egress",
+    "read_only_toolchain",
+    "ephemeral_no_host_secret_mounts",
+    "no_privilege_escalation",
+    "process_tree_termination",
+    "hidden_tests_separate_from_submission",
+    "bounded_output_outside_worker",
+    "independent_security_approval"
+  ]
+}

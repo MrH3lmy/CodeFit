@@ -1,0 +1,61 @@
+{
+  "schema": "codefit-blind-pedagogy-packet/v0.22",
+  "blind_missions": [
+    {
+      "mission_id": "EJ20-021-Q1",
+      "stage": "predict",
+      "prompt": "Predict which locks are held for an inherited default two-step operation when its primitive operations each synchronize internally; distinguish per-call synchronization from compound atomicity.",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "independent_pedagogy_review": "PENDING",
+      "author_rubric_withheld": true,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ20-022-Q3",
+      "stage": "build",
+      "prompt": "Build a typed static protocol enum and a noninstantiable constants holder, but keep changing currency limits as validated runtime configuration rather than hard-coded enum constants.",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "independent_pedagogy_review": "PENDING",
+      "author_rubric_withheld": true,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ20-023-Q1",
+      "stage": "predict",
+      "prompt": "Predict that a sealed record subtype can still contain invalid amounts unless an explicit canonical constructor validates them; compare invalid tagged states with validated alternatives.",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "independent_pedagogy_review": "PENDING",
+      "author_rubric_withheld": true,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ20-023-Q3",
+      "stage": "build",
+      "prompt": "Build original sealed payment outcomes with validated record constructors, defensive ownership of mutable members, and an exhaustive Java 21 switch; test invalid and null inputs separately.",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "independent_pedagogy_review": "PENDING",
+      "author_rubric_withheld": true,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ20-024-Q1",
+      "stage": "predict",
+      "prompt": "Predict when Java 21 javac emits an enclosing-reference field for a nonstatic member class, contrasting a class that never reads outer state with one that does; distinguish class-file layout from language-level construction.",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "independent_pedagogy_review": "PENDING",
+      "author_rubric_withheld": true,
+      "mastery_eligible": false
+    },
+    {
+      "mission_id": "EJ20-024-Q3",
+      "stage": "build",
+      "prompt": "Build static and nonstatic task variants; inspect Java 21 class-file fields and constructor signatures deterministically, then explain when real outer-state use causes retention without relying on garbage-collection timing.",
+      "reviewer_task": "Propose a correct answer, plausible incorrect answer, discriminating follow-up and fairness caveat without access to the author rubric or answer key.",
+      "independent_pedagogy_review": "PENDING",
+      "author_rubric_withheld": true,
+      "mastery_eligible": false
+    }
+  ],
+  "key_visibility": "WITHHELD_FROM_REVIEWER",
+  "approved_missions": 0
+}

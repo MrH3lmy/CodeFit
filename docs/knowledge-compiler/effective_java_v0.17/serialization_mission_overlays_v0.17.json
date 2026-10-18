@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-serialization-missions/v0.17",
+  "missions": [
+    {
+      "mission_id": "EJ17-085-Q1",
+      "note_id": "EJ17-085",
+      "source_unit_id": "EJ-ITEM-085",
+      "stage": "predict",
+      "original_quest_brief": "A service accepts base64 serialized Java objects over HTTP. Predict trust-boundary, gadget and resource risks; compare with bounded DTO decoding.",
+      "rubric_criteria": [
+        "Recognizes dangerous boundary",
+        "Explains filter limitations",
+        "Defines bounded alternative"
+      ],
+      "negative_controls": [
+        "unknown-serialized-class",
+        "gigantic-object-graph"
+      ],
+      "replaces_draft_id": "EJ4-085-01",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-085-Q2",
+      "note_id": "EJ17-085",
+      "source_unit_id": "EJ-ITEM-085",
+      "stage": "debug",
+      "original_quest_brief": "A queue consumer uses ObjectInputStream.readObject on partner input and trusts an instanceOf PaymentMessage after reading. Redesign before class loading and side effects.",
+      "rubric_criteria": [
+        "Avoids unsafe object construction",
+        "Authentication and schema controls",
+        "Safe failure diagnostics"
+      ],
+      "negative_controls": [
+        "instanceof-too-late",
+        "accept-all-filter"
+      ],
+      "replaces_draft_id": "EJ4-085-02",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-085-Q3",
+      "note_id": "EJ17-085",
+      "source_unit_id": "EJ-ITEM-085",
+      "stage": "build",
+      "original_quest_brief": "Implement a Java21 allowlisted record-to-DTO parser using a small explicit text grammar, hard length limits, valid enum values and version; reject malformed and oversized frames without using ObjectInputStream.",
+      "rubric_criteria": [
+        "Bounded parser",
+        "Explicit validation",
+        "No native deserialization"
+      ],
+      "negative_controls": [
+        "too-large-payload",
+        "unexpected-type"
+      ],
+      "replaces_draft_id": "EJ4-085-03",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-085-Q4",
+      "note_id": "EJ17-085",
+      "source_unit_id": "EJ-ITEM-085",
+      "stage": "defend",
+      "original_quest_brief": "Assess whether a narrow ObjectInputFilter is adequate for a private migration tool handling archived trusted data; specify operational isolation and why it cannot justify a public endpoint.",
+      "rubric_criteria": [
+        "Trust analysis",
+        "Filter and resource controls",
+        "Migration exit plan"
+      ],
+      "negative_controls": [
+        "filter-is-sandbox",
+        "archive-is-always-trusted"
+      ],
+      "replaces_draft_id": "EJ4-085-04",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-086-Q1",
+      "note_id": "EJ17-086",
+      "source_unit_id": "EJ-ITEM-086",
+      "stage": "predict",
+      "original_quest_brief": "A cached Serializable class adds and renames fields while retaining the same serialVersionUID. Predict when reconstruction can still violate business meaning.",
+      "rubric_criteria": [
+        "Version token distinguished from compatibility",
+        "Missing-field defaults",
+        "Invariant validation"
+      ],
+      "negative_controls": [
+        "serialuid-magic",
+        "default-null-invariant"
+      ],
+      "replaces_draft_id": "EJ4-086-01",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-086-Q2",
+      "note_id": "EJ17-086",
+      "source_unit_id": "EJ-ITEM-086",
+      "stage": "debug",
+      "original_quest_brief": "An engineer marks a connection-owning, inheritable worker Serializable so it can be placed on a queue. Identify resource and superclass hazards and replace transport with a DTO.",
+      "rubric_criteria": [
+        "No active resource serialization",
+        "Inheritance contract",
+        "Safe DTO boundary"
+      ],
+      "negative_controls": [
+        "serialize-executor",
+        "serialize-secret"
+      ],
+      "replaces_draft_id": "EJ4-086-02",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-086-Q3",
+      "note_id": "EJ17-086",
+      "source_unit_id": "EJ-ITEM-086",
+      "stage": "build",
+      "original_quest_brief": "Build a minimal original Serializable value type with explicit serialVersionUID and invariants, then verify legitimate round-trip and deliberate rejection of malformed state via a controlled deserialization path.",
+      "rubric_criteria": [
+        "Version declared",
+        "Invariant enforced",
+        "No production deserialization"
+      ],
+      "negative_controls": [
+        "invalid-default-value",
+        "forgot-uid"
+      ],
+      "replaces_draft_id": "EJ4-086-03",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-086-Q4",
+      "note_id": "EJ17-086",
+      "source_unit_id": "EJ-ITEM-086",
+      "stage": "defend",
+      "original_quest_brief": "Compare Java native serialization for a private short-lived cache with a versioned JSON/protobuf envelope for years of persisted customer events.",
+      "rubric_criteria": [
+        "Evolution cost",
+        "Threat and interoperability model",
+        "Deprecation strategy"
+      ],
+      "negative_controls": [
+        "same-uid-solves-everything",
+        "cache-trust-assumed"
+      ],
+      "replaces_draft_id": "EJ4-086-04",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-087-Q1",
+      "note_id": "EJ17-087",
+      "source_unit_id": "EJ-ITEM-087",
+      "stage": "predict",
+      "original_quest_brief": "A linked-list object uses default serialization, including redundant node links. Predict why a representation refactor threatens archived data and its size.",
+      "rubric_criteria": [
+        "Logical vs physical form",
+        "Compatibility",
+        "Graph size exposure"
+      ],
+      "negative_controls": [
+        "node-graph-as-contract",
+        "renaming-breaks-archives"
+      ],
+      "replaces_draft_id": "EJ4-087-01",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-087-Q2",
+      "note_id": "EJ17-087",
+      "source_unit_id": "EJ-ITEM-087",
+      "stage": "debug",
+      "original_quest_brief": "A custom readObject reads a count and allocates an array without checking it, then trusts a mutable cache field restored from the stream.",
+      "rubric_criteria": [
+        "Count and size bound",
+        "Reconstruct derived state",
+        "Validate loaded entries"
+      ],
+      "negative_controls": [
+        "huge-count",
+        "cache-from-input"
+      ],
+      "replaces_draft_id": "EJ4-087-02",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-087-Q3",
+      "note_id": "EJ17-087",
+      "source_unit_id": "EJ-ITEM-087",
+      "stage": "build",
+      "original_quest_brief": "Implement a self-contained custom serialized form for a small bounded list of immutable codes, storing count and values with defensive read-time checks and a transient derived lookup.",
+      "rubric_criteria": [
+        "Logical state only",
+        "Bounded deserialization",
+        "Stable round-trip"
+      ],
+      "negative_controls": [
+        "negative-count",
+        "duplicate-code"
+      ],
+      "replaces_draft_id": "EJ4-087-03",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-087-Q4",
+      "note_id": "EJ17-087",
+      "source_unit_id": "EJ-ITEM-087",
+      "stage": "defend",
+      "original_quest_brief": "Compare default native serialization, custom native form and versioned external DTO for a domain model expected to evolve across teams.",
+      "rubric_criteria": [
+        "Physical graph tradeoffs",
+        "Version migration",
+        "Resource limits"
+      ],
+      "negative_controls": [
+        "custom-form-is-universal",
+        "default-is-compact"
+      ],
+      "replaces_draft_id": "EJ4-087-04",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-088-Q1",
+      "note_id": "EJ17-088",
+      "source_unit_id": "EJ-ITEM-088",
+      "stage": "predict",
+      "original_quest_brief": "A serialized value carries two mutable Date references that were validated by the constructor years ago. Predict the risk of bypassing constructor checks and sharing aliases.",
+      "rubric_criteria": [
+        "Constructor-bypass risk",
+        "Ownership boundaries",
+        "Invariant revalidation"
+      ],
+      "negative_controls": [
+        "constructor-ran",
+        "private-field-means-safe"
+      ],
+      "replaces_draft_id": "EJ4-088-01",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-088-Q2",
+      "note_id": "EJ17-088",
+      "source_unit_id": "EJ-ITEM-088",
+      "stage": "debug",
+      "original_quest_brief": "A readObject validates start<=end then copies mutable endpoints. Explain the aliasing window and move copy-before-validation.",
+      "rubric_criteria": [
+        "Copy before check",
+        "Reject reversed interval",
+        "No attacker alias retained"
+      ],
+      "negative_controls": [
+        "validate-then-copy",
+        "shallow-copy-only"
+      ],
+      "replaces_draft_id": "EJ4-088-02",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-088-Q3",
+      "note_id": "EJ17-088",
+      "source_unit_id": "EJ-ITEM-088",
+      "stage": "build",
+      "original_quest_brief": "Create a small date-range serialization fixture that defensively restores mutable Date fields, validates ordering, and rejects deliberately malformed streams.",
+      "rubric_criteria": [
+        "Defensive copies",
+        "InvalidObjectException",
+        "Bounded trusted fixture"
+      ],
+      "negative_controls": [
+        "invalid-order",
+        "mutable-alias"
+      ],
+      "replaces_draft_id": "EJ4-088-03",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-088-Q4",
+      "note_id": "EJ17-088",
+      "source_unit_id": "EJ-ITEM-088",
+      "stage": "defend",
+      "original_quest_brief": "Review whether hardened readObject plus filters makes Java native serialized payment events suitable for public API ingestion.",
+      "rubric_criteria": [
+        "Threat model",
+        "Filter limitations",
+        "Alternative schema"
+      ],
+      "negative_controls": [
+        "hardened-means-safe",
+        "no-size-limits"
+      ],
+      "replaces_draft_id": "EJ4-088-04",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-089-Q1",
+      "note_id": "EJ17-089",
+      "source_unit_id": "EJ-ITEM-089",
+      "stage": "predict",
+      "original_quest_brief": "A Serializable singleton has private construction but lacks readResolve. Predict whether a trusted object-stream roundtrip preserves reference identity.",
+      "rubric_criteria": [
+        "Identity not equality",
+        "Serialization reconstruction",
+        "Enum alternative"
+      ],
+      "negative_controls": [
+        "private-ctor-suffices",
+        "equals-means-singleton"
+      ],
+      "replaces_draft_id": "EJ4-089-01",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-089-Q2",
+      "note_id": "EJ17-089",
+      "source_unit_id": "EJ-ITEM-089",
+      "stage": "debug",
+      "original_quest_brief": "A legacy readResolve singleton includes a mutable reference field used during reconstruction. Explain reference-leak risk and remove state-bearing instance fields.",
+      "rubric_criteria": [
+        "Early reference escape",
+        "Transient or redesign",
+        "No public native parsing"
+      ],
+      "negative_controls": [
+        "readresolve-fixes-all",
+        "state-leak"
+      ],
+      "replaces_draft_id": "EJ4-089-02",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-089-Q3",
+      "note_id": "EJ17-089",
+      "source_unit_id": "EJ-ITEM-089",
+      "stage": "build",
+      "original_quest_brief": "Implement an enum singleton with an immutable operation and demonstrate identity across a small trusted ObjectOutputStream/ObjectInputStream roundtrip, contrasting a controlled Serializable class.",
+      "rubric_criteria": [
+        "Enum identity verified",
+        "Explicit known-class test",
+        "No untrusted bytes"
+      ],
+      "negative_controls": [
+        "same-class-not-same-instance",
+        "wire-schema-confusion"
+      ],
+      "replaces_draft_id": "EJ4-089-03",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ17-089-Q4",
+      "note_id": "EJ17-089",
+      "source_unit_id": "EJ-ITEM-089",
+      "stage": "defend",
+      "original_quest_brief": "Evaluate migrating an existing Serializable singleton to enum while old stored objects may still be present. Explain backward compatibility, data migration and when legacy readResolve is justified.",
+      "rubric_criteria": [
+        "Compatibility validation",
+        "Migration plan",
+        "Risks documented"
+      ],
+      "negative_controls": [
+        "rename-enum-constant",
+        "blind-format-swap"
+      ],
+      "replaces_draft_id": "EJ4-089-04",
+      "grader_plan": "Source-anchored author-only rubric; held-out learner grader not implemented",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

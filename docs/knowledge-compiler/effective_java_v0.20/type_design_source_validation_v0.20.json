@@ -1,0 +1,90 @@
+{
+  "schema": "codefit-type-design-source-validation/v0.20",
+  "items_checked": 7,
+  "body_hashes_verified": 7,
+  "source_locators_verified": 7,
+  "source_signals_matched": 35,
+  "private_pdf_sha256_verified": true,
+  "private_pdf_pages": 413,
+  "checks": [
+    {
+      "unit": "EJ-ITEM-019",
+      "start_page": 114,
+      "end_page_exclusive": 120,
+      "length": 14286,
+      "body_sha256_matches": true,
+      "source_locator_matches": true,
+      "anchor_signals_matched": 5,
+      "publisher_text_published": false,
+      "independent_review": false
+    },
+    {
+      "unit": "EJ-ITEM-020",
+      "start_page": 120,
+      "end_page_exclusive": 125,
+      "length": 12142,
+      "body_sha256_matches": true,
+      "source_locator_matches": true,
+      "anchor_signals_matched": 5,
+      "publisher_text_published": false,
+      "independent_review": false
+    },
+    {
+      "unit": "EJ-ITEM-021",
+      "start_page": 125,
+      "end_page_exclusive": 128,
+      "length": 6636,
+      "body_sha256_matches": true,
+      "source_locator_matches": true,
+      "anchor_signals_matched": 5,
+      "publisher_text_published": false,
+      "independent_review": false
+    },
+    {
+      "unit": "EJ-ITEM-022",
+      "start_page": 128,
+      "end_page_exclusive": 130,
+      "length": 4250,
+      "body_sha256_matches": true,
+      "source_locator_matches": true,
+      "anchor_signals_matched": 5,
+      "publisher_text_published": false,
+      "independent_review": false
+    },
+    {
+      "unit": "EJ-ITEM-023",
+      "start_page": 130,
+      "end_page_exclusive": 133,
+      "length": 5779,
+      "body_sha256_matches": true,
+      "source_locator_matches": true,
+      "anchor_signals_matched": 5,
+      "publisher_text_published": false,
+      "independent_review": false
+    },
+    {
+      "unit": "EJ-ITEM-024",
+      "start_page": 133,
+      "end_page_exclusive": 136,
+      "length": 8121,
+      "body_sha256_matches": true,
+      "source_locator_matches": true,
+      "anchor_signals_matched": 5,
+      "publisher_text_published": false,
+      "independent_review": false
+    },
+    {
+      "unit": "EJ-ITEM-025",
+      "start_page": 136,
+      "end_page_exclusive": 138,
+      "length": 4527,
+      "body_sha256_matches": true,
+      "source_locator_matches": true,
+      "anchor_signals_matched": 5,
+      "publisher_text_published": false,
+      "independent_review": false
+    }
+  ],
+  "independent_semantic_review": false,
+  "limitations": "Private full-span author read, source identity, locators and anchor checks; not independent semantic verification. No publisher passages exported."
+}

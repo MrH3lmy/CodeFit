@@ -1,0 +1,16 @@
+{
+  "blind_pedagogy_missions": 6,
+  "files_sha256": {
+    "blind_pedagogy_packet_v0.27.json": "5cf4a85d06f007ecc6d5793cdc6d9f342e907383410e99e0af846fc19f32c824",
+    "technical_claim_packet_v0.27.json": "3bd1444a8ea017148528d89ba2d9d64067e654edc0b5185ea438d5fdbf6c15f7"
+  },
+  "independently_approved": 0,
+  "owner_must_pin_manifest_out_of_band": true,
+  "private_answer_keys_exported": false,
+  "private_keys_exported": false,
+  "publisher_passages_exported": false,
+  "release_eligible": false,
+  "reviewer_enrolled": false,
+  "schema": "codefit-review-delivery-manifest/v0.27",
+  "technical_claims": 28
+}

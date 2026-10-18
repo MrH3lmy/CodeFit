@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-concurrency-mission-overlays/v0.16",
+  "missions": [
+    {
+      "mission_id": "EJ16-080-Q1",
+      "note_id": "EJ16-080",
+      "source_unit_id": "EJ-ITEM-080",
+      "stage": "predict",
+      "original_quest_brief": "A service has four worker threads, a default fixed-pool queue and ten thousand slow partner calls. Predict queue and memory behavior; contrast with a bounded executor and virtual-thread-per-task policy.",
+      "rubric_criteria": [
+        "Worker bound versus queue bound",
+        "Rejection and downstream load",
+        "No virtual-thread backpressure myth"
+      ],
+      "negative_controls": [
+        "fixed-pool-unbounded-queue",
+        "virtual-thread-unlimited"
+      ],
+      "replaces_draft_id": "EJ4-080-01",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-080-Q2",
+      "note_id": "EJ16-080",
+      "source_unit_id": "EJ-ITEM-080",
+      "stage": "debug",
+      "original_quest_brief": "A batch processor calls submit and marks a payout COMPLETED before Future.get(), then exits without shutting the executor. Correct success, failure, interruption and lifecycle semantics.",
+      "rubric_criteria": [
+        "Completion distinct from acceptance",
+        "Failure propagated from Future",
+        "Shutdown with bounded fallback"
+      ],
+      "negative_controls": [
+        "submit-is-success",
+        "executor-not-closed"
+      ],
+      "replaces_draft_id": "EJ4-080-02",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-080-Q3",
+      "note_id": "EJ16-080",
+      "source_unit_id": "EJ-ITEM-080",
+      "stage": "build",
+      "original_quest_brief": "Implement a small bounded ThreadPoolExecutor with custom rejection policy, Callable result tracking, cancellation, and a finite orderly-shutdown path. Demonstrate one accepted and one rejected task deterministically.",
+      "rubric_criteria": [
+        "Explicit bounded admission",
+        "Future outcome and exception propagation",
+        "No lingering workers"
+      ],
+      "negative_controls": [
+        "silent-discard",
+        "unbounded-backlog"
+      ],
+      "replaces_draft_id": "EJ4-080-03",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-080-Q4",
+      "note_id": "EJ16-080",
+      "source_unit_id": "EJ-ITEM-080",
+      "stage": "defend",
+      "original_quest_brief": "Compare a fixed platform-thread executor, virtual-thread-per-task executor and fork-join pool for blocking network calls versus CPU-intensive jobs. State measured capacity and downstream isolation criteria.",
+      "rubric_criteria": [
+        "Workload-specific execution",
+        "Capacity limits and fairness",
+        "JDK21 preview/stable distinctions"
+      ],
+      "negative_controls": [
+        "one-pool-fits-all",
+        "virtual-threads-are-free"
+      ],
+      "replaces_draft_id": "EJ4-080-04",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-081-Q1",
+      "note_id": "EJ16-081",
+      "source_unit_id": "EJ-ITEM-081",
+      "stage": "predict",
+      "original_quest_brief": "Two workers increment a missing map key with get+put while a third invokes compute. Predict legal outcomes and identify which operation owns an atomic key update.",
+      "rubric_criteria": [
+        "Lost updates traced",
+        "Atomic compute guarantee",
+        "No map-wide transaction claim"
+      ],
+      "negative_controls": [
+        "get-then-put-race",
+        "compute-means-global-transaction"
+      ],
+      "replaces_draft_id": "EJ4-081-01",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-081-Q2",
+      "note_id": "EJ16-081",
+      "source_unit_id": "EJ-ITEM-081",
+      "stage": "debug",
+      "original_quest_brief": "A latch-based test runs three tasks on a one-thread pool; each task waits for the other tasks to become ready. Diagnose starvation deadlock and repair coordination and timeouts.",
+      "rubric_criteria": [
+        "Executor capacity versus waiting workers",
+        "Bounded timeouts",
+        "Failure countDown in finally"
+      ],
+      "negative_controls": [
+        "thread-starvation",
+        "indefinite-await"
+      ],
+      "replaces_draft_id": "EJ4-081-02",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-081-Q3",
+      "note_id": "EJ16-081",
+      "source_unit_id": "EJ-ITEM-081",
+      "stage": "build",
+      "original_quest_brief": "Build a bounded queue handoff with take/poll or offer and interruption, and a deterministic CountDownLatch test that handles worker failure without a lost countDown.",
+      "rubric_criteria": [
+        "Queue boundedness",
+        "One-shot coordination",
+        "Interrupt and completion handling"
+      ],
+      "negative_controls": [
+        "lost-countdown",
+        "unbounded-buffer"
+      ],
+      "replaces_draft_id": "EJ4-081-03",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-081-Q4",
+      "note_id": "EJ16-081",
+      "source_unit_id": "EJ-ITEM-081",
+      "stage": "defend",
+      "original_quest_brief": "Review replacing a legacy while(condition) wait loop with if(condition) wait and notify. Explain spurious wakeups, monitor ownership and when high-level concurrent utilities are preferable.",
+      "rubric_criteria": [
+        "Predicate loop required",
+        "Monitor semantics",
+        "Clear migration path"
+      ],
+      "negative_controls": [
+        "if-not-while",
+        "notify-as-condition-guarantee"
+      ],
+      "replaces_draft_id": "EJ4-081-04",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-082-Q1",
+      "note_id": "EJ16-082",
+      "source_unit_id": "EJ-ITEM-082",
+      "stage": "predict",
+      "original_quest_brief": "A synchronizedMap exposes keySet(), and client code loops over the view without acquiring the map monitor. Predict the unsupported assumption and state the required lock.",
+      "rubric_criteria": [
+        "Correct synchronization monitor",
+        "Live view iteration caveat",
+        "No invented guaranteed failure"
+      ],
+      "negative_controls": [
+        "locking-keyset-only",
+        "assuming-view-safety"
+      ],
+      "replaces_draft_id": "EJ4-082-01",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-082-Q2",
+      "note_id": "EJ16-082",
+      "source_unit_id": "EJ-ITEM-082",
+      "stage": "debug",
+      "original_quest_brief": "A class claims thread-safe because every getter is synchronized but returns a mutable ArrayList directly. Repair publication, ownership and the documented API contract.",
+      "rubric_criteria": [
+        "No mutable alias leakage",
+        "Whole-operation atomicity",
+        "Contract-level documentation"
+      ],
+      "negative_controls": [
+        "synchronized-getter-is-enough",
+        "mutable-reference-leak"
+      ],
+      "replaces_draft_id": "EJ4-082-02",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-082-Q3",
+      "note_id": "EJ16-082",
+      "source_unit_id": "EJ-ITEM-082",
+      "stage": "build",
+      "original_quest_brief": "Author a documented thread-safe counter registry with a private final lock and immutable snapshot method; verify safe concurrent increments and explicitly state which sequences are atomic.",
+      "rubric_criteria": [
+        "Private lock discipline",
+        "Clear Javadoc thread-safety description",
+        "Snapshot consistency"
+      ],
+      "negative_controls": [
+        "public-monitor-exposure",
+        "undocumented-composite"
+      ],
+      "replaces_draft_id": "EJ4-082-03",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-082-Q4",
+      "note_id": "EJ16-082",
+      "source_unit_id": "EJ-ITEM-082",
+      "stage": "defend",
+      "original_quest_brief": "Compare a private-lock unconditionally safe class with a conditionally safe synchronized wrapper needing public monitor access. Decide which contract fits iteration and extensibility.",
+      "rubric_criteria": [
+        "Conditional versus unconditional distinction",
+        "Required external lock specified",
+        "Public lock interference trade-off"
+      ],
+      "negative_controls": [
+        "all-classes-use-private-lock",
+        "synchronized-implies-contract"
+      ],
+      "replaces_draft_id": "EJ4-082-04",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-083-Q1",
+      "note_id": "EJ16-083",
+      "source_unit_id": "EJ-ITEM-083",
+      "stage": "predict",
+      "original_quest_brief": "Two threads call getConfig() on an instance using if(cache==null) cache=build() without synchronization. Explain duplicate work and unsafe publication; contrast with static holder semantics.",
+      "rubric_criteria": [
+        "Visibility versus repeated initialization",
+        "Static holder distinction",
+        "No race-free inference from tests"
+      ],
+      "negative_controls": [
+        "nonvolatile-lazy",
+        "holder-per-instance"
+      ],
+      "replaces_draft_id": "EJ4-083-01",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-083-Q2",
+      "note_id": "EJ16-083",
+      "source_unit_id": "EJ-ITEM-083",
+      "stage": "debug",
+      "original_quest_brief": "A lazily created credential decoder is shared through a nonvolatile field and its supplier may return null. Repair locking, publication and null-result policy without ignoring supplier failures.",
+      "rubric_criteria": [
+        "Volatile or synchronized publication",
+        "Null sentinel contract",
+        "No leaked partial object"
+      ],
+      "negative_controls": [
+        "null-as-uninitialized",
+        "unsafe-double-check"
+      ],
+      "replaces_draft_id": "EJ4-083-02",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-083-Q3",
+      "note_id": "EJ16-083",
+      "source_unit_id": "EJ-ITEM-083",
+      "stage": "build",
+      "original_quest_brief": "Implement one Java21 class with a synchronized lazy instance accessor and a separate static initialization-on-demand holder. Count deterministic single initialization under concurrent access.",
+      "rubric_criteria": [
+        "One-time initialization contract",
+        "Correct synchronized/holder mechanics",
+        "Bounded coordination and tests"
+      ],
+      "negative_controls": [
+        "double-initialize",
+        "eager-holder-load"
+      ],
+      "replaces_draft_id": "EJ4-083-03",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-083-Q4",
+      "note_id": "EJ16-083",
+      "source_unit_id": "EJ-ITEM-083",
+      "stage": "defend",
+      "original_quest_brief": "Evaluate lazy versus eager creation for an often-used cheap value and a rarely used costly value, including JVM startup, steady-state and failure-path measurement.",
+      "rubric_criteria": [
+        "Measured cost-benefit",
+        "Complexity and maintenance",
+        "Safely published caching"
+      ],
+      "negative_controls": [
+        "lazy-everything",
+        "unmeasured-speedup"
+      ],
+      "replaces_draft_id": "EJ4-083-04",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-084-Q1",
+      "note_id": "EJ16-084",
+      "source_unit_id": "EJ-ITEM-084",
+      "stage": "predict",
+      "original_quest_brief": "A queue consumer spins on while(queue.isEmpty()) and tries Thread.yield() to lower CPU. Predict CPU and liveness limitations; compare with blocking take and an interrupt-aware shutdown.",
+      "rubric_criteria": [
+        "Busy-wait cost",
+        "Scheduler hints not guarantees",
+        "Correct blocking and cancellation"
+      ],
+      "negative_controls": [
+        "yield-as-fix",
+        "spin-without-stop"
+      ],
+      "replaces_draft_id": "EJ4-084-01",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-084-Q2",
+      "note_id": "EJ16-084",
+      "source_unit_id": "EJ-ITEM-084",
+      "stage": "debug",
+      "original_quest_brief": "A two-worker pool runs two tasks which each submit a dependent task to the same pool then block on Future.get(). Diagnose starvation and revise task dependencies and capacity.",
+      "rubric_criteria": [
+        "Starvation cycle identified",
+        "Revised dependency graph",
+        "Timeout and cancellation"
+      ],
+      "negative_controls": [
+        "pool-self-deadlock",
+        "priority-as-solution"
+      ],
+      "replaces_draft_id": "EJ4-084-02",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-084-Q3",
+      "note_id": "EJ16-084",
+      "source_unit_id": "EJ-ITEM-084",
+      "stage": "build",
+      "original_quest_brief": "Build a bounded producer-consumer Java21 demonstration using ArrayBlockingQueue, timeouts and orderly interruption; verify that an idle consumer does not poll in a hot spin.",
+      "rubric_criteria": [
+        "No busy loop",
+        "Bounded completion and shutdown",
+        "Observable task delivery"
+      ],
+      "negative_controls": [
+        "spin-consumer",
+        "sleep-as-lock"
+      ],
+      "replaces_draft_id": "EJ4-084-03",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ16-084-Q4",
+      "note_id": "EJ16-084",
+      "source_unit_id": "EJ-ITEM-084",
+      "stage": "defend",
+      "original_quest_brief": "Compare adding Thread.yield, elevating priority, or redesigning coordination in an overloaded payment worker. Require runnable-thread, queue and p99 evidence without false fairness guarantees.",
+      "rubric_criteria": [
+        "Portable correctness",
+        "Capacity and load evidence",
+        "No timing folklore"
+      ],
+      "negative_controls": [
+        "priority-fixes-deadlock",
+        "scheduler-order-assumption"
+      ],
+      "replaces_draft_id": "EJ4-084-04",
+      "grader_plan": "Original conceptual rubric only; held-out learner grader not implemented or approved",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

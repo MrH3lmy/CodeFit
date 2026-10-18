@@ -1,0 +1,25 @@
+{
+  "actual_isolated_worker": false,
+  "backup_rollback_protection": false,
+  "component": "receipt_ledger_v26.py",
+  "cross_machine_distributed_ledger": false,
+  "independent_security_audit": false,
+  "mastery_eligible": false,
+  "output_evidence_status": "QUARANTINED_ONLY",
+  "production_grade": false,
+  "real_trusted_signing_key_enrolled": false,
+  "same_machine_sqlite_atomicity_tested": true,
+  "schema": "codefit-v26-ledger-security/v0.26",
+  "scope": "local single-host SQLite prototype with synthetic signatures only",
+  "tests_in_new_module": 34,
+  "verified_behaviors": [
+    "SQLite BEGIN IMMEDIATE serialized receipt acceptance",
+    "persistent UNIQUE constraints for nonce, attempt_id, and work_order",
+    "offline Ed25519 receipt verification using separately supplied pinned public key",
+    "refusal when ledger trust settings mutate",
+    "same-DB concurrent threads and separate OS processes admit only one signed receipt",
+    "reopen same DB does not reset replay protection",
+    "no source, raw receipt, signing secret or output text in ledger table",
+    "return results cannot award XP, rewards, mastery or learner release"
+  ]
+}

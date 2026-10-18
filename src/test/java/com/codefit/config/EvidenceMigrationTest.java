@@ -65,7 +65,7 @@ class EvidenceMigrationTest {
         assertEquals(before, rows());
         try (var c = DatabaseConfig.getConnection();
                 var s = c.createStatement()) {
-            assertEquals(24, scalar(s, "SELECT MAX(version) FROM schema_migrations"));
+            assertEquals(25, scalar(s, "SELECT MAX(version) FROM schema_migrations"));
             assertEquals(1, scalar(s, "SELECT COUNT(*) FROM schema_migrations WHERE version=14"));
             assertEquals(3, scalar(s, "SELECT COUNT(*) FROM evolution_evidence_mapping_rules"));
             assertEquals(0, scalar(s, "SELECT COUNT(*) FROM evolution_evidence_observations"));

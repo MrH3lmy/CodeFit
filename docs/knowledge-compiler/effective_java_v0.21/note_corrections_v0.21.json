@@ -1,0 +1,43 @@
+{
+  "schema": "codefit-internal-note-replacements/v0.21",
+  "notes": [
+    {
+      "note_id": "EJ20-024",
+      "source_unit_id": "EJ-ITEM-024",
+      "title": "Avoid accidental outer-instance retention by choosing nested class lifetime intentionally",
+      "core": "Nonstatic member-class construction is associated with an enclosing instance, and methods may access its state. Historically compilers emitted a synthetic outer-reference field even when unused; the tested Java 21 javac can omit that field when the member class never references the owner. Classes that actually access owner state can retain it; static nested classes have no implicit enclosing-instance construction requirement. Measure actual references, and still prefer static nesting when owner state is not required.",
+      "rules": [
+        "Prefer a static member class when its behavior does not need an enclosing object.",
+        "Make captured dependencies explicit rather than relying on hidden outer references.",
+        "Use nonstatic inner adapters when each instance genuinely operates on its owner.",
+        "Avoid unbounded callbacks or scheduled tasks that unintentionally retain the service graph.",
+        "Test object lifetime and reference reachability without relying on nondeterministic GC timing.",
+        "Treat public nested-class staticness and constructor signatures as compatibility decisions.",
+        "Use short lambdas for stateless functional behavior, accounting for captured variables and this semantics."
+      ],
+      "nuance": [
+        "Java 21 lambdas capture referenced state and may retain large objects just as an inner class can.",
+        "A static nested class can access outer private static members without enclosing instance.",
+        "Local and anonymous classes differ from static member classes in naming, scope and construction.",
+        "A nonstatic inner class can be created with an explicit outer instance and has distinct construction bytecode.",
+        "An implicit outer reference is about object lifetime, not a guarantee of an observable leak in every case.",
+        "Member class type names remain nested even when declared static, which affects binary compatibility.",
+        "Java 21 javac can omit unused this$0 fields; actual retention varies with captured references and compiler implementation.",
+        "Do not infer heap reachability from a constructor parameter alone, or from nondeterministic garbage-collection timing."
+      ],
+      "misconception": "Moving code into a nested class never changes retention because both inner and static nested classes are scoped by the outer class.",
+      "production_context": "A webhook retry queue stores callbacks for hours; a forgotten nonstatic nested retry job retains a heavy service instance and all its caches.",
+      "java21_delta": "A Java 21 javac optimization can omit an unused synthetic outer-instance field in an inner class, despite the enclosing-instance constructor parameter. This is compiler behavior and must not be promised for all compilers or language versions.",
+      "source_variant": "effective-java-3rd-2018-text-native",
+      "pdf_page_start": 133,
+      "pdf_page_end_exclusive": 136,
+      "source_body_sha256": "752d666b7af34a32d5557f9b27a852f6f67d3a2be96111870046557746ba6fa1",
+      "source_review": "INTERNAL_CHALLENGE_CORRECTED__PENDING_INDEPENDENT_REVIEW",
+      "learner_release": false,
+      "mastery_eligible": false,
+      "note_scope": "Original source-informed author synthesis; independent claim and teaching reviews pending.",
+      "replaces_note_id": "EJ20-024",
+      "review_revision": "v0.21"
+    }
+  ]
+}

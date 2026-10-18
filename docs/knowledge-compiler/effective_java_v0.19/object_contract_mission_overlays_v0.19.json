@@ -1,0 +1,425 @@
+{
+  "schema": "codefit-object-contract-missions/v0.19",
+  "missions": [
+    {
+      "mission_id": "EJ19-012-Q1",
+      "note_id": "EJ19-012",
+      "source_unit_id": "EJ-ITEM-012",
+      "stage": "predict",
+      "original_quest_brief": "Predict the log output and contract risk when a domain value uses Object.toString, a generated record description, or a documented human-readable format.",
+      "rubric_criteria": [
+        "State what is guaranteed",
+        "Identify the record secret exposure",
+        "Keep protocol separate"
+      ],
+      "negative_controls": [
+        "parse-debug-string",
+        "log-entire-card"
+      ],
+      "replaces_draft_id": "EJ4-012-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-012-Q2",
+      "note_id": "EJ19-012",
+      "source_unit_id": "EJ-ITEM-012",
+      "stage": "debug",
+      "original_quest_brief": "A monitoring client parses a changed debug description and a record prints a bearer token. Replace the parser with an accessor and define redacted diagnostic formatting.",
+      "rubric_criteria": [
+        "No parsing of diagnostics",
+        "No token leakage",
+        "Human-readable stable summary"
+      ],
+      "negative_controls": [
+        "regex-parsed-tostring",
+        "token-in-log"
+      ],
+      "replaces_draft_id": "EJ4-012-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-012-Q3",
+      "note_id": "EJ19-012",
+      "source_unit_id": "EJ-ITEM-012",
+      "stage": "build",
+      "original_quest_brief": "Implement a transaction status value with explicit masked toString, typed getters, and independently versioned structured representation; test redaction and component fidelity.",
+      "rubric_criteria": [
+        "Safe masked string",
+        "Typed consumer API",
+        "Round-trip only through dedicated codec"
+      ],
+      "negative_controls": [
+        "toString-as-json",
+        "dump-secret-fields"
+      ],
+      "replaces_draft_id": "EJ4-012-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-012-Q4",
+      "note_id": "EJ19-012",
+      "source_unit_id": "EJ-ITEM-012",
+      "stage": "defend",
+      "original_quest_brief": "Choose a representation contract for logs, support tickets, and export files while considering compatibility and forward schema evolution.",
+      "rubric_criteria": [
+        "Compatibility pledge explicit",
+        "Privacy controls",
+        "Typed interface vs diagnostics"
+      ],
+      "negative_controls": [
+        "promote-log-to-contract",
+        "no-fields-accessors"
+      ],
+      "replaces_draft_id": "EJ4-012-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-013-Q1",
+      "note_id": "EJ19-013",
+      "source_unit_id": "EJ-ITEM-013",
+      "stage": "predict",
+      "original_quest_brief": "Predict which references remain shared after Object.clone, array.clone, List.copyOf, and a custom deep-copy of mutable rule elements.",
+      "rubric_criteria": [
+        "Distinguish container versus element aliasing",
+        "Constructor bypass explained",
+        "Explicit ownership contract"
+      ],
+      "negative_controls": [
+        "clone-means-deep",
+        "record-means-deep"
+      ],
+      "replaces_draft_id": "EJ4-013-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-013-Q2",
+      "note_id": "EJ19-013",
+      "source_unit_id": "EJ-ITEM-013",
+      "stage": "debug",
+      "original_quest_brief": "A copied retry-policy object shares a mutable buckets array and silently corrupts the original. Repair the copy contract without violating final-field invariants.",
+      "rubric_criteria": [
+        "Separate mutable representation",
+        "No state corruption",
+        "Document nested mutability"
+      ],
+      "negative_controls": [
+        "super-clone-only",
+        "clone-array-of-mutable-is-deep"
+      ],
+      "replaces_draft_id": "EJ4-013-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-013-Q3",
+      "note_id": "EJ19-013",
+      "source_unit_id": "EJ-ITEM-013",
+      "stage": "build",
+      "original_quest_brief": "Implement a constructor-based snapshot that owns copied mutable entries and prove source/copy mutations cannot cross; include a shallow-copy negative control.",
+      "rubric_criteria": [
+        "Isolation on mutation",
+        "Immutability boundaries",
+        "No Cloneable dependency"
+      ],
+      "negative_controls": [
+        "reference-assignment",
+        "copy-only-top-list"
+      ],
+      "replaces_draft_id": "EJ4-013-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-013-Q4",
+      "note_id": "EJ19-013",
+      "source_unit_id": "EJ-ITEM-013",
+      "stage": "defend",
+      "original_quest_brief": "Compare cloning, copy construction, serialization roundtrip, and interface-based conversion for a multitenant configuration model.",
+      "rubric_criteria": [
+        "API clarity",
+        "Concurrency and resource semantics",
+        "Performance evidence requirement"
+      ],
+      "negative_controls": [
+        "serialization-is-free-copy",
+        "clone-always-safer"
+      ],
+      "replaces_draft_id": "EJ4-013-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-014-Q1",
+      "note_id": "EJ19-014",
+      "source_unit_id": "EJ-ITEM-014",
+      "stage": "predict",
+      "original_quest_brief": "Predict the result when two different-scale BigDecimal values enter HashSet and TreeSet, and when a comparator subtracts MIN_VALUE from MAX_VALUE.",
+      "rubric_criteria": [
+        "Equality distinction",
+        "Comparator overflow",
+        "Sorted key equivalence"
+      ],
+      "negative_controls": [
+        "treeset-uses-equals",
+        "subtract-no-overflow"
+      ],
+      "replaces_draft_id": "EJ4-014-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-014-Q2",
+      "note_id": "EJ19-014",
+      "source_unit_id": "EJ-ITEM-014",
+      "stage": "debug",
+      "original_quest_brief": "A comparator orders events with (int)(a.time-b.time) and discards equal-timestamp distinct payments. Correct it with safe chained comparisons.",
+      "rubric_criteria": [
+        "No overflow",
+        "Stable tie-breaker",
+        "Comparator laws"
+      ],
+      "negative_controls": [
+        "subtract-time",
+        "timestamp-only-key"
+      ],
+      "replaces_draft_id": "EJ4-014-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-014-Q3",
+      "note_id": "EJ19-014",
+      "source_unit_id": "EJ-ITEM-014",
+      "stage": "build",
+      "original_quest_brief": "Create a Java21 immutable settlement key with natural ordering and property checks for sign symmetry, transitivity, and TreeSet preservation.",
+      "rubric_criteria": [
+        "Total ordering",
+        "No accidental dedup",
+        "Set semantics tested"
+      ],
+      "negative_controls": [
+        "hashcode-order",
+        "nontransitive-rule"
+      ],
+      "replaces_draft_id": "EJ4-014-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-014-Q4",
+      "note_id": "EJ19-014",
+      "source_unit_id": "EJ-ITEM-014",
+      "stage": "defend",
+      "original_quest_brief": "Choose natural order versus explicit comparator for business priority, localized display, and monetary value normalization.",
+      "rubric_criteria": [
+        "Ordering versus equality",
+        "Migration compatibility",
+        "Stable key invariants"
+      ],
+      "negative_controls": [
+        "mutable-tree-key",
+        "locale-as-natural-order"
+      ],
+      "replaces_draft_id": "EJ4-014-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-015-Q1",
+      "note_id": "EJ19-015",
+      "source_unit_id": "EJ-ITEM-015",
+      "stage": "predict",
+      "original_quest_brief": "Predict what an external caller can mutate through a public static final array and what changes when the array is private with a defensive accessor.",
+      "rubric_criteria": [
+        "Reference vs contents",
+        "Encapsulation boundary",
+        "Module nuance"
+      ],
+      "negative_controls": [
+        "final-means-immutable",
+        "jpms-everywhere"
+      ],
+      "replaces_draft_id": "EJ4-015-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-015-Q2",
+      "note_id": "EJ19-015",
+      "source_unit_id": "EJ-ITEM-015",
+      "stage": "debug",
+      "original_quest_brief": "An authentication configuration helper returns a private mutable byte[] and a test makes internals public. Keep narrow visibility and return a copy.",
+      "rubric_criteria": [
+        "No external mutation",
+        "Test seam remains narrow",
+        "No secret-copy bypass"
+      ],
+      "negative_controls": [
+        "return-private-array",
+        "public-for-tests"
+      ],
+      "replaces_draft_id": "EJ4-015-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-015-Q3",
+      "note_id": "EJ19-015",
+      "source_unit_id": "EJ-ITEM-015",
+      "stage": "build",
+      "original_quest_brief": "Implement a narrow public facade backed by package-private implementation, immutable configuration snapshots, and a module descriptor smoke sample.",
+      "rubric_criteria": [
+        "Minimal exported API",
+        "Defensive copy",
+        "Correct module boundary"
+      ],
+      "negative_controls": [
+        "public-internals",
+        "unsafe-list-view"
+      ],
+      "replaces_draft_id": "EJ4-015-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-015-Q4",
+      "note_id": "EJ19-015",
+      "source_unit_id": "EJ-ITEM-015",
+      "stage": "defend",
+      "original_quest_brief": "Review a library API for protected hooks, classpath/module-path differences and deep reflection; decide what is genuinely guaranteed.",
+      "rubric_criteria": [
+        "API evolution",
+        "JPMS caveats",
+        "Risk-based surface minimization"
+      ],
+      "negative_controls": [
+        "protected-is-private",
+        "module-as-sandbox"
+      ],
+      "replaces_draft_id": "EJ4-015-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-016-Q1",
+      "note_id": "EJ19-016",
+      "source_unit_id": "EJ-ITEM-016",
+      "stage": "predict",
+      "original_quest_brief": "Predict which invariants can be broken when clients mutate public fields, a final array field, and a mutable record component.",
+      "rubric_criteria": [
+        "Field accessibility",
+        "Shallow immutability",
+        "Representation commitment"
+      ],
+      "negative_controls": [
+        "final-array-safe",
+        "record-deep-safe"
+      ],
+      "replaces_draft_id": "EJ4-016-01",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-016-Q2",
+      "note_id": "EJ19-016",
+      "source_unit_id": "EJ-ITEM-016",
+      "stage": "debug",
+      "original_quest_brief": "A public mutable limit field allows negative credit limits and a getter returns an owned array. Replace with validated operations and defensive output.",
+      "rubric_criteria": [
+        "Invariant validated",
+        "Encapsulation maintained",
+        "Mutation isolation"
+      ],
+      "negative_controls": [
+        "getter-return-original",
+        "public-set-anything"
+      ],
+      "replaces_draft_id": "EJ4-016-02",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-016-Q3",
+      "note_id": "EJ19-016",
+      "source_unit_id": "EJ-ITEM-016",
+      "stage": "build",
+      "original_quest_brief": "Design a Java21 limit configuration record using defensive array copies alongside a controlled mutable class exposing read methods and checked updates.",
+      "rubric_criteria": [
+        "Constructor validation",
+        "Accessor ownership",
+        "Stable client API"
+      ],
+      "negative_controls": [
+        "raw-array-record",
+        "public-nonfinal-field"
+      ],
+      "replaces_draft_id": "EJ4-016-03",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    },
+    {
+      "mission_id": "EJ19-016-Q4",
+      "note_id": "EJ19-016",
+      "source_unit_id": "EJ-ITEM-016",
+      "stage": "defend",
+      "original_quest_brief": "Compare a record, mutable accessor-based class, and package-private field carrier in a fintech SDK with long-lived clients.",
+      "rubric_criteria": [
+        "Compatibility scope",
+        "State invariants",
+        "Performance and simplicity tradeoff"
+      ],
+      "negative_controls": [
+        "getters-for-every-internal",
+        "public-fields-always-fine"
+      ],
+      "replaces_draft_id": "EJ4-016-04",
+      "grader_plan": "Conceptual rubric only, no production grader or held-out mastery test",
+      "grader_verified": false,
+      "mastery_eligible": false,
+      "status": "SOURCE_ANCHORED_AUTHOR_DRAFT"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+codefit_knowledge_compiler_checkpoint_v0_32_2026-10-19.zip
+SHA-256: 4e812746134b053adb574a5913cc26c14107d7cc8e872f5c1ee11120ac5e979f
+Manifest SHA-256: b3fd5755cbf2748a04a739300b1a4885dc1dd3e48e5691f878f48011f62073cf
+Remote readback: byte-for-byte matched the locally audited ZIP on 2026-10-19.
+Verified private payload files: 1046
+Author-side Python tests passed: 620; one historic comparison-PDF module skipped (9 tests).
+No independent approvals, no merged branch, no production release.

@@ -9,3 +9,6 @@ Fresh v0.35 review tests: 12 pass; targeted current+prior: 25 pass
 Full v0.35 regression: INCOMPLETE/TIMEOUT (10 prior modules, 99 observed tests; one missing-PDF module skip)
 Latest completed available Python regression: v0.34, 646 passed in 37 modules, one missing-PDF module skipped
 Real external approvals: 0; no merge, no learner release
+
+POST-RECOVERY UPDATE — 2026-10-19:
+Google Drive backup now UPLOADED into the original private project folder. Downloaded cloud ZIP, checked byte-level SHA-256 against this file, and ZIP CRC passed. Earlier failed-upload statement above is historical; the quota blocker is no longer active for these uploads. Archive hash and payload inventory unchanged.

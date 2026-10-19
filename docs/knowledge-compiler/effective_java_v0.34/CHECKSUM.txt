@@ -7,3 +7,6 @@ Google Drive: UPLOAD FAILED — 403 forbidden / target folder not writable; NO r
 Fresh original author-only Java21 runtime assertions: 26; expected compile rejections: 6.
 Available Python regressions: 646 PASS across 37 modules, 0 failures/timeouts; 1 historical older-PDF comparison module skipped (9 tests).
 Independent approvals: 0; branch unmerged; no production release.
+
+POST-RECOVERY UPDATE — 2026-10-19:
+Google Drive backup now UPLOADED into the original private project folder. Downloaded cloud ZIP, checked byte-level SHA-256 against this file, and ZIP CRC passed. Earlier failed-upload statement above is historical; the quota blocker is no longer active for these uploads. Archive hash and payload inventory unchanged.

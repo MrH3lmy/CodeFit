@@ -1,0 +1,9 @@
+codefit_knowledge_compiler_checkpoint_v0_33_2026-10-19.zip
+SHA-256: d7b141ba3a7802a9f488d50cde589d8144743d8667449bc345c07eab03e502fd
+Manifest SHA-256: e2613e0958ce781d689b7ed2d206fb59c97cd3dcd0ba8d235be6b7d94d6b127a
+Verified payload files: 1064
+Google Drive readback: downloaded archive hash and 1064/1064 manifest verified.
+Fresh author-side v0.33 probes: Java21 20 positives / 6 expected compile failures, 13 Python unit tests passing.
+Inherited v0.32 baseline: 620 Python passing; incomplete v0.33 historical full rerun.
+External approvals: 0
+Branch unmerged.

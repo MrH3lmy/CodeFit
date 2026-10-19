@@ -1,0 +1,10 @@
+# CodeFit Knowledge Compiler — next safe agent handoff after v0.35
+
+1. Restore v0.35 from the private ChatGPT Library `CodeFit Knowledge Compiler Recovery`, or from the original user-provided v0.35 archive; verify SHA-256 `cf567ab3e55f16c9db1ae2ae5d0de4c137e42e18951f4628c483b17f088c2672`, then call `checkpoint_manifest_v35.audit_checkpoint` before extraction. v0.35 (not v0.33/v0.34) is the newest local/completed checkpoint.
+2. Google Drive destination writes are blocked by storage quota. Preserve v0.33 Drive backup until owner frees storage/expands quota; do not delete old files silently. Once writable, upload and download-hash-verify v0.34 and v0.35 separately.
+3. Private v0.35 contains original-only author-assisted technical audit of all 28 existing technical docket claims, six pedagogy briefs and deterministic JDK21 Item21 concurrency witness; **no external signatures, approvals, owner adjudications or mastery grants**.
+4. Review the five flagged technical subjects and four pedagogical ambiguities; update original source locators with versioned new fingerprints if removing overinclusive TOC/page headers/preambles. Do not silently modify historical subject hashes.
+5. Run `python -m unittest tests.test_technical_content_audit_v35 tests.test_lambdas_reprobes_v34` and compile/run `validation/v35/BatchAtomicityWitnessV35.java` on Java 21; replay full bounded suite if resources permit. Latest complete Python baseline is v0.34 at 646 passing; v0.35 full rerun did not finish.
+6. Enroll genuinely independent technical and pedagogy reviewers under issue #253 via owner-verified identities and external trust/key pinning. Source PDF only via authorized private access. Obtain their signed evidence, then separate owner adjudication; no proxy AI approvals.
+7. Keep 504 structural units, 157 preliminary mappings, 90/90 Effective Java author drafts, 419 distinct mission blueprints, 360 nonadditive replacement overlays; zero new slots and zero independently accepted.
+8. No public copyrighted book content, source PDFs, signing keys, answer keys, private Drive URLs or reviewed-personal-data; never merge, deploy or mutate user XP/reward/mastery runtime.

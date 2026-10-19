@@ -21,3 +21,7 @@ Google Drive rejected v0.34 upload with 403 because the owner's **storage quota 
 504 major units structurally discovered; 157 preliminary mappings; 90/90 Effective Java author drafts; 419 distinct original mission blueprints; 360 replacement overlays, not additive. Existing 28 technical + six pedagogy review subjects remain **0 authentic independent decisions, 0 external approvals, 0 human owner adjudications**. No production worker/grader, learner mastery, merge, or release authorized.
 
 For actual reviewer enrollment and owner adjudication use issue #253; this branch is review coordination only. Never impersonate an external reviewer or fabricate signed evidence.
+
+## Later storage restoration (2026-10-19)
+
+The earlier Google Drive upload failure was caused by exhausted account storage. The owner freed space; the exact private v0.34 and v0.35 ZIPs are now uploaded into the original private Drive folder and have been downloaded and SHA-256/ZIP-integrity verified. Earlier statements in this handoff about blocked Drive upload are retained as historical incident evidence. This did not alter compiler data, review approvals, or branch merge state.

@@ -1,0 +1,9 @@
+# Original-only handoff for CodeFit Knowledge Compiler v0.34
+
+1. Start from private local `codefit_knowledge_compiler_checkpoint_v0_34_2026-10-19.zip` when available. Pin outer SHA256 **independently**: `905feee30d5d56f1f355511b3120f11c06794dd9d8d4f3e0b0697bf2e5d24e9c`. Verify via `checkpoint_manifest_v34.audit_checkpoint` before extraction. If not persisted/accessible, return to v0.33 **without pretending v0.34 was backed up**; reconstruct the new batch only from verified local/private handoff.
+2. Google Drive upload currently returns 403 not writable, despite folder read access. Owner should check Drive permissions/account/quota and retry when authorized. Do not silently put the private archive in a public location.
+3. All new author-side material for Items42–44 is private original source-free prompts, tests and locator hashes. PDF and publisher excerpts remain outside archive and GitHub. Java9-era guidance must be tested against JDK21.
+4. Tests: `python -m unittest tests.test_lambdas_reprobes_v34` gives 13 fresh pass; `python validation/v34/run_java21_v34.py` gives 26 runtime checks and six intended javac failures. `python bounded_regression_v34.py` records individual historical module outcomes; last run 646 pass, one old comparison PDF module skipped (nine tests).
+5. Coverage unchanged: 504 units, 157 preliminary mappings, 90/90 Effective Java author drafts, 419 unique mission slots, 360 replacement overlays. Three new v0.34 review probes are nonadditive. No independent approvals or production graders.
+6. Enroll actual independent reviewers and obtain signed evidence and owner adjudication using issue #253. Never impersonate reviewers or treat author smoke fixtures as mastery.
+7. Next batch requires a new version, private checkpoint/manifest/coverage, and original-only new unmerged handoff; never merge or change XP/reward/mastery runtime.

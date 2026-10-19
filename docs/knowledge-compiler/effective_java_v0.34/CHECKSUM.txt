@@ -1,0 +1,9 @@
+codefit_knowledge_compiler_checkpoint_v0_34_2026-10-19.zip
+SHA-256: 905feee30d5d56f1f355511b3120f11c06794dd9d8d4f3e0b0697bf2e5d24e9c
+Manifest SHA-256: ac43d7a78dabfc6b918c5e711e60739349eb1dc6f9defd7a04b9bcd708d3d3c1
+Private archive payload files verified: 1085
+CRC: PASS; exact file manifest: PASS; outer local pin: MATCH
+Google Drive: UPLOAD FAILED — 403 forbidden / target folder not writable; NO remote readback.
+Fresh original author-only Java21 runtime assertions: 26; expected compile rejections: 6.
+Available Python regressions: 646 PASS across 37 modules, 0 failures/timeouts; 1 historical older-PDF comparison module skipped (9 tests).
+Independent approvals: 0; branch unmerged; no production release.

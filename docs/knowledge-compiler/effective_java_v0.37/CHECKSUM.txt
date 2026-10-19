@@ -1,0 +1,9 @@
+codefit_knowledge_compiler_checkpoint_v0_37_2026-10-19.zip
+SHA-256: f858aec60d93e9eecd81146a6700b80477bdfe702ca142a1ec31cf2a82b140b1
+Manifest SHA-256: c0aef1d013843578be5a4306283e5585071dd228f1db94d9931d2f5941c8c5ab
+Payload files: 1141
+ZIP file bytes: 3029159
+Google Drive upload/download rehash: PASS
+Archive CRC and exact payload manifest: PASS
+Python: 693 pass / 40 modules; zero failures/timeouts; one comparison-PDF module deferred (9 tests).
+Independent approvals: 0; production release: NO; GitHub branch: UNMERGED.

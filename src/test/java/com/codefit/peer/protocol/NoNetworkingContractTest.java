@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -74,8 +76,20 @@ class NoNetworkingContractTest {
     void noRuntimeDependencyWasAddedForThisSlice() throws IOException {
         String pom = Files.readString(Path.of("pom.xml"));
         long dependencies = Pattern.compile("<dependency>").matcher(pom).results().count();
-        assertEquals(5, dependencies, "javafx-controls, javafx-fxml, sqlite-jdbc, poi-ooxml, junit-jupiter only; "
+        assertEquals(6, dependencies, "javafx-controls, javafx-fxml, sqlite-jdbc, poi-ooxml, jackson-core, junit-jupiter only; "
                 + "a transport/crypto dependency needs the inventory in docs/p2p/runtime-dependency-inventory.md updated first");
+        // #257 adds a reviewed streaming codec, not networking. Pin exact coordinates as well as count.
+        Set<String> coordinates = Pattern.compile("<dependency>(.*?)</dependency>", Pattern.DOTALL)
+                .matcher(pom).results().map(match -> {
+                    var group = Pattern.compile("<groupId>([^<]+)</groupId>").matcher(match.group(1));
+                    var artifact = Pattern.compile("<artifactId>([^<]+)</artifactId>").matcher(match.group(1));
+                    assertTrue(group.find());
+                    assertTrue(artifact.find());
+                    return group.group(1) + ":" + artifact.group(1);
+                }).collect(Collectors.toSet());
+        assertEquals(Set.of("org.openjfx:javafx-controls", "org.openjfx:javafx-fxml",
+                "org.xerial:sqlite-jdbc", "org.apache.poi:poi-ooxml",
+                "com.fasterxml.jackson.core:jackson-core", "org.junit.jupiter:junit-jupiter"), coordinates);
         for (String forbidden : List.of("libp2p", "netty", "bouncycastle", "tink", "ipfs", "webrtc", "ice4j", "jmdns")) {
             assertFalse(pom.toLowerCase().contains(forbidden), "unexpected dependency: " + forbidden);
         }

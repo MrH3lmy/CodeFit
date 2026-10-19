@@ -1,0 +1,8 @@
+codefit_knowledge_compiler_checkpoint_v0_36_2026-10-19.zip
+SHA-256: b2f8926f3c943d3ed2daab6d2f3e93f1b271104348206c74e4c92a4bf9adafe0
+Manifest SHA-256: 7095a479382866eb9246f5b1aa0e5c644d07a367dcf0179766c462c6e12f136a
+Verified payload files: 1117; ZIP total entries: 1118
+Google Drive upload: SUCCEEDED; downloaded whole ZIP hash matched; CRC and manifest digest verified.
+Python regression: 676 pass / 39 modules / 0 failed / 0 timeout / 1 legacy comparison-PDF module deferred (9 tests)
+Fresh Java21: 24 assertion passes; 1 expected duplicate-class compilation rejection.
+External approvals: 0; branch remains unmerged.

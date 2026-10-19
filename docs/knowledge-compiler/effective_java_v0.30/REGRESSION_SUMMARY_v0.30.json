@@ -1,0 +1,11 @@
+{
+  "version": "v0.30",
+  "python_tests_passed": 591,
+  "python_modules_passed": 33,
+  "python_modules_skipped": 1,
+  "historical_comparison_tests_deferred": 9,
+  "new_author_tests": 34,
+  "inherited_tests_executed": 557,
+  "independent_approvals": 0,
+  "learner_release": false
+}

@@ -21,3 +21,7 @@ Owner's existing Drive folder metadata is readable, but **upload of v0.34 was re
 
 ## Truthful coverage
 504 five-book major source units structurally discovered; 157 preliminary mappings; Effective Java 90/90 original author drafts; 419 distinct mission blueprint slots; 360 replacement overlays nonadditive. 28 technical and 6 blind pedagogy review subjects await independent review. Zero real independent reviewer enrollments, signed decisions, approvals, owner adjudications, production graders, security-approved workers and verified learner mastery. No merge, deployment, XP/rewards/mastery changes.
+
+## Later storage restoration (2026-10-19)
+
+The earlier Google Drive upload failure was caused by exhausted account storage. The owner freed space; the exact private v0.34 and v0.35 ZIPs are now uploaded into the original private Drive folder and have been downloaded and SHA-256/ZIP-integrity verified. Earlier statements in this handoff about blocked Drive upload are retained as historical incident evidence. This did not alter compiler data, review approvals, or branch merge state.

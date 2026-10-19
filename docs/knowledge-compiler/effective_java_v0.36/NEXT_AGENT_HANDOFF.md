@@ -1,0 +1,10 @@
+# Resume CodeFit Knowledge Compiler from v0.36
+
+1. Always begin from private owner Drive checkpoint **v0.36**, not v0.35 or older; pin whole ZIP SHA256 `b2f8926f3c943d3ed2daab6d2f3e93f1b271104348206c74e4c92a4bf9adafe0` independently, then run `checkpoint_manifest_v36.audit_checkpoint` before extraction.
+2. Preferred private text-native Effective Java 3rd PDF remains outside archive; compare its SHA with `output/source_registry_v4.json`. Historical claim source-body hashes and original review subjects are preserved, including TOC/page header scope caveat; do not silently revise hashes.
+3. Run `python -m unittest tests.test_review_remediation_v36` (18 tests), `python review_remediation_v36.py` (24 runtime assertions + one deliberately rejected duplicate-class javac) and `python bounded_regression_v36.py` for available full historical regressions (last 676 pass/39 modules; nine separate old-PDF tests deferred).
+4. See private `output/deep_v36/author_remediation_v0.36.json` for five evidence-strengthened items and original predict/debug/build/defend stages. Do **not** upgrade claim status to independent approved.
+5. For six pedagogy tasks, share **only** `output/deep_v36/blind_review_packet_v0.36.json` with a truly independent blind reviewer. Withhold private `owner_private_scoring_guidance_v0.36.json` until reviewer has submitted.
+6. Independently enroll real reviewers under issue #253, pin source and signed evidence via owner-controlled out-of-band channel, receive decisions and conduct separate owner adjudication. No synthetic signatures, no claims of independent approval.
+7. Do not inflate counts: 504 discovered, 157 preliminary mapped, 90/90 Effective Java author notes, 419 distinct missions, 360 replacement overlays. v0.36 added zero new mission IDs or overlays.
+8. Continue subsequent bounded reviewed batches with versioned private ZIP, coverage, runlog, cloud readback and source-safe unmerged handoff; never merge, deploy, publish publisher PDF/text, or change XP/rewards/mastery.

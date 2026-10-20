@@ -4,3 +4,12 @@ target/
 codefit.db
 .idea/
 *.iml
+
+# Experimental web desktop build outputs (never learner data)
+desktop/node_modules/
+desktop/dist/
+desktop/dist-electron/
+desktop/java/
+desktop/release/
+desktop/test-results/
+desktop/playwright-report/

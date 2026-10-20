@@ -38,24 +38,31 @@ evidence. Related: [ADR-0001](adr-0001-decentralized-peer-architecture.md) ·
 * The out-of-band channel users choose for sending an invitation. CodeFit neither operates nor
   contacts it.
 
-## 2. Current runtime dependencies (unchanged by #180)
+## 2. Current runtime dependencies
 
 | Artifact | Version | Network behaviour relevant here |
 |---|---|---|
 | `org.openjfx:javafx-controls`, `javafx-fxml` | 21.0.5 | No network use by these modules. `javafx-web` (WebView) is **not** a dependency and must not be used to render peer content |
 | `org.xerial:sqlite-jdbc` | 3.46.1.0 | Extracts its bundled native library to a temp dir. No network |
 | `org.apache.poi:poi-ooxml` | 5.2.5 | Local workbook parsing only. Never given peer data |
+| `com.fasterxml.jackson.core:jackson-core` | 2.22.4 | #257 experimental desktop streaming JSON only, byte-array input/output, strict bounded parsing. No databind, network client, worker, telemetry or default endpoint; never used for peer protocol data |
 | JDK 21 (`java.base`, `jdk.crypto.ec`) | 21 | `SunEC` supplies Ed25519 and X25519. On JDK 21 it is in module **`jdk.crypto.ec`**, which a jlink/jpackage image must include (verified: provider module = `jdk.crypto.ec` on 21.0.10) |
 
 `NoNetworkingContractTest.noRuntimeDependencyWasAddedForThisSlice` asserts that the POM still
-declares exactly these dependencies plus JUnit, and none of libp2p, Netty, Bouncy Castle, Tink,
-IPFS, WebRTC, ice4j, or JmDNS. **Still true after #182**: the transport, invitation, and LAN discovery
+declares exactly these dependencies plus JUnit (six direct coordinates, explicitly allowlisted), and none of libp2p, Netty, Bouncy Castle, Tink,
+IPFS, WebRTC, ice4j, or JmDNS. **Still true after #182 and #257**: the transport, invitation, and LAN discovery
 code (`com.codefit.peer.transport`, `com.codefit.peer.invitation`, `com.codefit.peer.discovery`) adds
 zero new Maven dependencies — TLS is `javax.net.ssl`, framing/certificates use `java.io`/`java.security`,
 and LAN discovery uses `java.net.MulticastSocket`/`javax.crypto.Mac`, all `java.base`/`SunJCE`/`SunJSSE`.
 `NoHiddenServiceDependencyTest` additionally scans the #182 packages for hosted-service patterns
 (STUN/TURN, bootstrap lists, signaling/rendezvous, IP-check services, telemetry) and hardcoded external
 hostnames.
+
+### #257 local desktop codec review
+
+FasterXML's [jackson-core](https://github.com/FasterXML/jackson-core) is an actively maintained Apache-2.0 streaming codec; the pinned [2.22.4 Maven Central artifact](https://repo.maven.apache.org/maven2/com/fasterxml/jackson/core/jackson-core/2.22.4/) supplies the POM/license and module metadata. It is pure Java (`com.fasterxml.jackson.core` module), with no native payload or new transitive runtime dependencies. Java 21 compilation and real subprocess tests verify this use. `DesktopProtocol` uses only byte arrays and output streams, not its optional URL/file parser overloads. No executor or background thread is created by this codec. The JSON factory is bounded and does not deserialize Java classes. The separate desktop process owns its startup/shutdown.
+
+This addition authorizes no peer endpoint, new P2P library or wire-format change. The Electron proof uses local resources/private stdio and never starts `NetworkingService`; its npm/runtime boundary is inventoried in [Gate 0 security](../architecture/gate0/security.md). The dependency regression retains the forbidden-library checks and now pins exact Maven coordinates, rather than only a total count.
 
 ## 3. Cryptography and transport: selection record
 

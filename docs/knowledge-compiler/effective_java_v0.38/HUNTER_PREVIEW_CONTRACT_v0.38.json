@@ -1,0 +1,32 @@
+{
+  "schema": "codefit-hunter-streams-preview/v0.38",
+  "status": "AUTHOR_DRAFT_NOT_PRODUCTION_IMPORTABLE",
+  "skills": [
+    {
+      "id": "java.streams.readability.v1",
+      "item": 45
+    },
+    {
+      "id": "java.streams.reduction.v1",
+      "item": 46
+    },
+    {
+      "id": "java.streams.return.contracts.v1",
+      "item": 47
+    },
+    {
+      "id": "java.streams.parallel.safety.v1",
+      "item": 48
+    }
+  ],
+  "stages": [
+    "predict",
+    "debug",
+    "build",
+    "defend"
+  ],
+  "mission_revisions": 16,
+  "new_unique_missions": 0,
+  "independent_approvals": 0,
+  "mastery_enabled": false
+}

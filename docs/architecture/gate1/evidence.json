@@ -1,0 +1,235 @@
+{
+  "sourceCommit": "855378f3b971a52fff49ade73ed0a45170351370",
+  "capturedAtUtc": "2026-10-21T07:51:58.010546+00:00",
+  "captureSource": "Packaged Linux Electron executable; native content screenshots and X11 walkthrough",
+  "chromiumSandbox": true,
+  "network": "Isolated Linux network namespace, loopback only, no external route",
+  "packagedAppAsarSha256": "3a37b0d4b1eaf0399014379bb62a7f3ebf68821f0593f6dd4c255f257a5e81a1",
+  "screenshots": [
+    {
+      "path": "screenshots/activity-achievement-specimen.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "6996f541b143ced9d6ae2d150a15f3f0568a998747ef2dcc747b2bb343ff5d35"
+    },
+    {
+      "path": "screenshots/command-dark-1280-2x.png",
+      "width": 2560,
+      "height": 1800,
+      "sha256": "5bf8c624e709b474cfeb8939e74388921280f6e8cbca86fcdf4e340900731bbe"
+    },
+    {
+      "path": "screenshots/command-dark-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "106bbc88d5b1f453a0a06c27498c576dfbc7d76cab63e383ff8a8f060be5cd36"
+    },
+    {
+      "path": "screenshots/command-dark-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "3d53a2a9fd011f500f7f94f3e014e59f10e67243aa7562bee97105b3ca2802e6"
+    },
+    {
+      "path": "screenshots/command-details-dark-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "0d4552b041d6b249f94cf9be50ec056df4a997d0a466674f01c812d4fb28fe8e"
+    },
+    {
+      "path": "screenshots/command-details-dark-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "4fdf59dce86ff7866da7598cae118c6d9eb2dc84521c8155bc3d7b61050b9f26"
+    },
+    {
+      "path": "screenshots/command-details-light-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "af536f454c1aec3aba72b20ee86acf812fad86aa485d9f9d47e1ca571be5254b"
+    },
+    {
+      "path": "screenshots/command-details-light-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "63201fa019455b54a5674796b3979cbaa497e22e689bc0691587a9fc5f14ce61"
+    },
+    {
+      "path": "screenshots/command-light-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "b82f3a5cfafab263dcc84ff333f06bc69c80153148e2a03f9b9bf23d46b68a06"
+    },
+    {
+      "path": "screenshots/command-light-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "160841d652e4284279b5c0ffd82a0f961b4fd4d15b938f0c53de4f5e339e4773"
+    },
+    {
+      "path": "screenshots/empty-light-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "bb672bc3d67abfa6ece96078d11d40afbc94de4c141da483c7547c2d80603abc"
+    },
+    {
+      "path": "screenshots/error-light-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "8c5f6abfe69c7d41684c0d5de40e5a2f3150fef2a0c44551e8e50041ef742c48"
+    },
+    {
+      "path": "screenshots/evaluation-interrupted.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "0763313d366ca09c0dcfbc51b654efb8504e137d16b40f86b13653c54a36307e"
+    },
+    {
+      "path": "screenshots/evaluator-unavailable.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "4f638ad332d7788cf69b18034892ea207fe904359643715c02a72c26071bf007"
+    },
+    {
+      "path": "screenshots/evidence-contradictory.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "992c188979244d3647cbc1a08ad18d9c56c802b5cc63ffb7aa39b9f7ac39b862"
+    },
+    {
+      "path": "screenshots/evidence-stale.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "dbbb2176e9ff59e5bf2982afae80958cccd0c8f707f1ce6414b4f8b008187547"
+    },
+    {
+      "path": "screenshots/loading-light-760-reduced-motion.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "32e41cc343f9e41487687220b4f023d646cc80ce449fd625e14bc9cfde145821"
+    },
+    {
+      "path": "screenshots/missions-dark-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "cb5a19ffa1ace3fe9e17f0dd7c9ad836b101a84c9eabcb7ef9601b0978665484"
+    },
+    {
+      "path": "screenshots/missions-dark-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "3e34331bf23cf64a19b716efd148f05f4f83468f8505bfcec865560a28b95983"
+    },
+    {
+      "path": "screenshots/missions-empty.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "ad415ed9fa46a703dbc9799d8cb5bf5de2190622eb0f468d395b87163d437683"
+    },
+    {
+      "path": "screenshots/missions-light-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "ddaa79279413adec0eb71ad8dff620f2720901fde5c837f304479a262453f043"
+    },
+    {
+      "path": "screenshots/missions-light-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "da65a528a1b01d057c2c97afbd9bd7f40e16804b24933aa14bad371630517e7d"
+    },
+    {
+      "path": "screenshots/offline-light-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "68f762aaf8f6610f3a521f69cddc310830330cea684b26d4209ce9d4588408ed"
+    },
+    {
+      "path": "screenshots/profile-unconnected.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "b2ac7ae63a0363c633374047e08d01606b9245978e3413d7a09a34758c658804"
+    },
+    {
+      "path": "screenshots/state-empty.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "f53505b6fdae422e8bc322e077794303105e817eb23283d36d77833914158418"
+    },
+    {
+      "path": "screenshots/state-error.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "25b4d37a39bb22d53fb10b2f51c453d8d9139627eddf63108615a43ca85775f6"
+    },
+    {
+      "path": "screenshots/state-loading.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "d68931a932aabbc1de68587d194152df48bb21431ec710e61f0075b6cfe8dee9"
+    },
+    {
+      "path": "screenshots/state-offline.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "650bf96f3e51d25582a3ac8970431b66474b1e15797305645352776de797ab08"
+    },
+    {
+      "path": "screenshots/state-unknown.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "15bea749dd53c7d0fd68b927a65a208ddb9712f8f3da0916fc5e14a5f018644c"
+    },
+    {
+      "path": "screenshots/tree-dark-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "e425cd4a932a7b2329a7d70a1051bea5bf556f0f8731c6d8bb05112a45aaa1ab"
+    },
+    {
+      "path": "screenshots/tree-dark-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "a79959feeff6f0261941fd5b00062a505a876aec3d0b487f83e8c5eda4aa0903"
+    },
+    {
+      "path": "screenshots/tree-inspector-dark-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "06cf49cbfed483515436270146f38d8d29bfa8cdd0a1cb6b5b7635ff4736c51e"
+    },
+    {
+      "path": "screenshots/tree-inspector-light-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "595465a261129c547f303bd86a0c1d67a882bc6e70e0116638789e2790d01e0b"
+    },
+    {
+      "path": "screenshots/tree-light-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a478253de263581ef664ae040c24ad468073150f100532abb511db530b78a925"
+    },
+    {
+      "path": "screenshots/tree-light-760.png",
+      "width": 760,
+      "height": 900,
+      "sha256": "280333aa47e27498da9c7e6c0a7f176e83d5731990229258f7524ec68e578ab3"
+    },
+    {
+      "path": "screenshots/workspace-unsaved.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "d0937b84410cbb887deddbab31fe0fd3dae1df588ef0317d13834d4cdb49e7f4"
+    }
+  ],
+  "walkthrough": {
+    "path": "walkthrough.webm",
+    "sha256": "93998e4fcdb6e73b71e018a49e5903797192c84ad90d3efd649627b494ae6c78",
+    "durationSeconds": 21.1,
+    "codec_name": "vp9",
+    "width": 1280,
+    "height": 900,
+    "r_frame_rate": "20/1"
+  }
+}

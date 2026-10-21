@@ -8,7 +8,7 @@ A clickable Gate 1 proposal for [#259](https://github.com/MrH3lmy/CodeFit/issues
 
 ## Actual Electron views
 
-All primary images are actual Electron content captures at exactly 1280×900 or 760×900. Bundled assets, local fonts and the real Chromium renderer are used; no browser mock or generated screenshot is substituted. Dark and light are shown side by side for direct review. Vertical scrolling reveals journal, full mission catalog and lower inspection content; supplementary views follow.
+All primary images are actual Electron content captures at exactly 1280×900 or 760×900. The 36-image gallery and native walkthrough were captured from the packaged implementation `855378f3b971a52fff49ade73ed0a45170351370` on 2026-10-21, offline with Chromium sandboxing enabled. Bundled assets, local fonts and the real Chromium renderer are used; no browser mock or generated screenshot is substituted. Dark and light are shown side by side for direct review. Vertical scrolling reveals journal, full mission catalog and lower inspection content; supplementary views follow.
 
 | Screen / width | Dark | Light |
 | --- | --- | --- |

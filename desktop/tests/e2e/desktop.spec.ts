@@ -45,6 +45,7 @@ function alive(pid: number): boolean {
 }
 async function open() {
   return electron.launch({
+    chromiumSandbox: true,
     executablePath: executable,
     args,
     cwd: directory,
@@ -75,8 +76,12 @@ test.afterEach(async () => {
 
 test("real read-only service works offline with sandbox, narrow bridge and dark/light layouts", async () => {
   const page = await application.firstWindow();
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: /Java Library/ })
+    .click();
   await page.context().setOffline(true);
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.locator(".library").getByRole("status")).toContainText(
     "8 deck descriptions received from Java",
   );
   expect(children(application.process().pid!)).toHaveLength(1);
@@ -91,6 +96,9 @@ test("real read-only service works offline with sandbox, narrow bridge and dark/
       webSecurity: p.webSecurity,
     };
   });
+  expect(
+    await application.evaluate(() => process.argv.includes("--no-sandbox")),
+  ).toBe(false);
   expect(preferences).toEqual({
     sandbox: true,
     contextIsolation: true,
@@ -133,7 +141,9 @@ test("real read-only service works offline with sandbox, narrow bridge and dark/
         handler({ sender, senderFrame: sender.mainFrame }, "sql"),
       ]);
     }),
-  ).toEqual(Array.from({ length: 3 }, () => ({ ok: false, code: "UNAVAILABLE" })));
+  ).toEqual(
+    Array.from({ length: 3 }, () => ({ ok: false, code: "UNAVAILABLE" })),
+  );
   for (const width of [1280, 760]) {
     await application.evaluate(
       ({ BrowserWindow }, width) =>
@@ -153,7 +163,7 @@ test("real read-only service works offline with sandbox, narrow bridge and dark/
           () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
       ).toBe(true);
-      if (process.env.CODEFIT_CAPTURE_SCREENSHOTS) {
+      if (process.env.CODEFIT_CAPTURE_GATE0_SCREENSHOTS) {
         const output = resolve("../docs/architecture/gate0/screenshots");
         mkdirSync(output, { recursive: true });
         await page.screenshot({ path: join(output, `${theme}-${width}.png`) });
@@ -161,28 +171,51 @@ test("real read-only service works offline with sandbox, narrow bridge and dark/
     }
   }
   await page.getByRole("button", { name: "Refresh from Java" }).click();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
   await page.keyboard.press("Tab");
-  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe(
-    "BUTTON",
+  await expect(
+    page.getByRole("link", { name: "Skip to content" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeFocused();
+  expect(await page.evaluate(() => location.hash)).toBe("");
+  await page.getByRole("button", { name: "Refresh from Java" }).click();
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
   );
 });
 
 test("cancel closes the Java process and the next read creates a fresh session", async () => {
   const page = await application.firstWindow();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: /Java Library/ })
+    .click();
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
   const previous = children(application.process().pid!)[0];
   await page.evaluate(() => window.codefit.cancelRead());
   await expect.poll(() => alive(previous)).toBe(false);
   await page.getByRole("button", { name: "Refresh from Java" }).click();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
   expect(children(application.process().pid!)).toHaveLength(1);
   expect(children(application.process().pid!)[0]).not.toBe(previous);
 });
 
 test("Java crash is explained and retry recovers without changing the learner sentinel", async () => {
   const page = await application.firstWindow();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: /Java Library/ })
+    .click();
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
   process.kill(children(application.process().pid!)[0], "SIGKILL");
   await expect.poll(() => children(application.process().pid!).length).toBe(0);
   await page.getByRole("button", { name: "Refresh from Java" }).click();
@@ -190,12 +223,20 @@ test("Java crash is explained and retry recovers without changing the learner se
     page.getByRole("heading", { name: "Connection needs attention" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Refresh from Java" }).click();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
 });
 
 test("renderer crash and ordinary window close stop their owned Java process", async () => {
   let page = await application.firstWindow();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: /Java Library/ })
+    .click();
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
   const first = children(application.process().pid!)[0];
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].webContents.forcefullyCrashRenderer(),
@@ -204,7 +245,13 @@ test("renderer crash and ordinary window close stop their owned Java process", a
   await application.close();
   application = await open();
   page = await application.firstWindow();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: /Java Library/ })
+    .click();
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
   const second = children(application.process().pid!)[0];
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].close(),
@@ -214,7 +261,13 @@ test("renderer crash and ordinary window close stop their owned Java process", a
 
 test("main process hard crash terminates the owned Java child", async () => {
   const page = await application.firstWindow();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: /Java Library/ })
+    .click();
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
   const child = children(application.process().pid!)[0];
   application.process().kill("SIGKILL");
   await expect.poll(() => alive(child), { timeout: 7000 }).toBe(false);
@@ -222,7 +275,13 @@ test("main process hard crash terminates the owned Java child", async () => {
 
 test("second application instance exits without another Java engine", async () => {
   const page = await application.firstWindow();
-  await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: /Java Library/ })
+    .click();
+  await expect(page.locator(".library").getByRole("status")).toContainText(
+    "8 deck descriptions",
+  );
   const child = children(application.process().pid!)[0];
   const duplicate = spawn(executable, args, {
     cwd: directory,
@@ -232,7 +291,9 @@ test("second application instance exits without another Java engine", async () =
   try {
     await expect.poll(() => duplicate.exitCode, { timeout: 7000 }).toBe(0);
     expect(children(application.process().pid!)).toEqual([child]);
-    await expect(page.getByRole("status")).toContainText("8 deck descriptions");
+    await expect(page.locator(".library").getByRole("status")).toContainText(
+      "8 deck descriptions",
+    );
   } finally {
     duplicate.kill("SIGKILL");
   }

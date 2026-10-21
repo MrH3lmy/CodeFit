@@ -31,7 +31,7 @@ jobs:
         working-directory: desktop
       - name: Smoke test packaged desktop with sandbox enabled
         working-directory: desktop
-        run: CODEFIT_DESKTOP_EXECUTABLE="$PWD/release/CodeFit-Gate0-linux-x64/codefit-gate0" xvfb-run -a npm run test:e2e
+        run: CODEFIT_DESKTOP_EXECUTABLE="$PWD/release/CodeFit-Gate0-linux-x64/codefit-gate0" xvfb-run -a -s "-screen 0 2560x1800x24" npm run test:e2e
       - name: Archive unsigned Linux proof (preserve executable permissions)
         run: tar -czf codefit-gate0-linux-x64.tar.gz -C desktop/release CodeFit-Gate0-linux-x64
       - uses: actions/upload-artifact@v4

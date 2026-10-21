@@ -1,8 +1,8 @@
-# CodeFit Gate 0 desktop proof
+# CodeFit · Gate 1 visual prototype
 
-Experimental React/TypeScript/Vite + Electron frontend for the existing Java 21 engine. This app opens **only a newly created disposable sample database**, queries the real `DeckService`, then serves deck descriptors through a private read-only pipe. It never opens the learner profile. JavaFX remains the normal application.
+An experimental, locally bundled Electron/React experience with Command Center, Ascension Tree and Mission Console. All progression, missions and evidence are clearly labeled demonstration data. The separate **Java Library** preserves Gate 0's real read-only `DeckService` query over a newly created disposable sample database. No learner profile is opened. JavaFX remains the normal application.
 
-See [ADR](../docs/architecture/adr-0001-web-desktop.md), [ownership map](../docs/architecture/gate0/dependency-map.md), [threat model](../docs/architecture/gate0/security.md), [verification](../docs/architecture/gate0/verification.md) and [Gate 1 approval plan](../docs/architecture/gate1-visual-approval.md). This is #257 / #256 only; neither this screen nor draft #255 constitutes approval of the final product design.
+Start with the [visual review gallery](../docs/architecture/gate1/README.md), [design system](../docs/architecture/gate1/design-system.md), [widget/data map and walkthrough](../docs/architecture/gate1/data-and-interactions.md), and [verification](../docs/architecture/gate1/verification.md). This is #259 / #256, awaiting explicit product-owner visual approval. The [Gate 0 ADR](../docs/architecture/adr-0001-web-desktop.md), [ownership map](../docs/architecture/gate0/dependency-map.md) and [threat model](../docs/architecture/gate0/security.md) still govern the unchanged bridge/Java boundary. Draft #255 remains untouched.
 
 ## Build and run
 
@@ -42,7 +42,7 @@ CODEFIT_DESKTOP_EXECUTABLE="$PWD/release/CodeFit-Gate0-linux-x64/codefit-gate0" 
 
 Do not add `--no-sandbox` to work around host restrictions. Use a host with a functioning Chromium sandbox. The native e2e/process-fault tests currently target Linux (`ps`, `/proc`, POSIX signals); Windows/macOS tests belong to their native packaging validation. Playwright opens local debugging connections only in the test harness; normal app startup has no debugging listener or HTTP server.
 
-`CODEFIT_CAPTURE_SCREENSHOTS=1` captures the four real desktop views into `docs/architecture/gate0/screenshots`. Tests use isolated Chromium configuration directories and a sentinel `codefit.db`; they do not modify a real learner database. `npm test` includes the real bundled Java service, so run `prepare:java` first.
+`CODEFIT_CAPTURE_SCREENSHOTS=1` captures the twelve primary Gate 1 views plus interaction/state evidence into `docs/architecture/gate1/screenshots`. The old four Gate 0 captures only regenerate with the separate `CODEFIT_CAPTURE_GATE0_SCREENSHOTS` flag. Tests use isolated Chromium configuration directories and a sentinel `codefit.db`; they do not modify a real learner database. `npm test` includes the real bundled Java service, so run `prepare:java` first.
 
 From the repository root, retain the complete Java regression run:
 
@@ -50,11 +50,11 @@ From the repository root, retain the complete Java regression run:
 xvfb-run -a mvn -B test
 ```
 
-The new **Desktop Gate 0** workflow builds and tests the packaged Linux artifact without disabling its sandbox. It publishes an unsigned tarball for seven days, preserving executable permissions. The existing Java CI workflow is unchanged.
+The **Desktop Gate 0** workflow builds and tests the packaged Linux artifact with explicit `chromiumSandbox: true` in the Playwright harness and an argv assertion against `--no-sandbox`. It publishes an unsigned tarball for seven days, preserving executable permissions. The existing Java CI workflow is unchanged.
 
 ## Layout, lifecycle and rollback
 
-- `src/`: React view and strict public DTO schemas; no learning policies or database access.
+- `src/`: reusable visual components, three screen modules, sample mission dialog, labeled fixtures and the isolated Java Library; no learning policies or database access.
 - `electron/`: fixed bundled process path, session ownership, exact-frame IPC authorization and sandboxed preload.
 - `../src/main/java/com/codefit/desktop/`: separate headless entrypoint and bounded Java protocol, reusing the existing initializer and deck service.
 - `java/`: generated platform runtime + existing compiled engine/resources/dependencies. Never commit this directory.

@@ -1,5 +1,7 @@
 # Gate 1: explicit visual approval before migration
 
+The [Gate 1 proposal, native screenshot gallery and review checklist](gate1/README.md) are now available. **Visual approval remains pending.**
+
 Issue #259 follows review of Gate 0 #257. Draft #255 was not approved. Gate 0's library screen proves native desktop rendering and Java communication; it is not an approved Command Center or substitute for the high-fidelity design gate. Do not start Gate 3 screen migration based on passing tests or these screenshots.
 
 ## Design deliverable

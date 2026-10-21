@@ -88,7 +88,7 @@ if (!app.requestSingleInstanceLock()) {
         minWidth: 760,
         minHeight: 640,
         show: false,
-        title: "CodeFit · Architecture preview",
+        title: "CodeFit · The Ascent — Gate 1 preview",
         backgroundColor: "#080e1b",
         webPreferences: {
           preload: join(__dirname, "preload.cjs"),

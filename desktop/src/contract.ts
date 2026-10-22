@@ -166,6 +166,9 @@ export type Operation = z.infer<typeof OperationSchema>;
 export type OperationResult = z.infer<typeof OperationResultSchema>;
 export type AckResult = z.infer<typeof AckResultSchema>;
 export interface CodeFitBridge {
+  chooseLearnerProfile(): Promise<import("./learner-contract").LearnerResult>;
+  readLearnerProfile(): Promise<import("./learner-contract").LearnerResult>;
+  disconnectLearnerProfile(): Promise<void>;
   readState(afterId: number): Promise<Result>;
   createDeck(input: DeckInput): Promise<OperationResult>;
   pendingDeck(): Promise<OperationResult>;

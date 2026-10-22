@@ -115,8 +115,11 @@ test("real experimental profile works offline with sandbox, narrow bridge and da
     keys: [
       "acknowledgeDeck",
       "cancelOperation",
+      "chooseLearnerProfile",
       "createDeck",
+      "disconnectLearnerProfile",
       "pendingDeck",
+      "readLearnerProfile",
       "readState",
       "recoverDeck",
     ],

@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   session,
   type IpcMainInvokeEvent,
@@ -11,6 +12,8 @@ import { JavaSession, runtimeLocation } from "./java-session";
 import { DesktopApplication } from "./desktop-application";
 import { OperationJournal } from "./operation-journal";
 import { EngineOwner } from "./engine-owner";
+import { LearnerOwner } from "./learner-session";
+import type { LearnerResult } from "../src/learner-contract";
 
 app.setName("CodeFit Gate 0");
 // Deliberately independent from JavaFX preferences and every learner DB location.
@@ -35,6 +38,13 @@ const engine = new EngineOwner(
       join(app.getPath("userData"), "experimental-library-v1"),
     ),
 );
+
+const learner = new LearnerOwner(
+  () => runtimeLocation(javaRoot),
+  join(app.getPath("userData"), "learner-snapshots-v1"),
+);
+let learnerDialogBusy = false;
+let learnerGeneration = 0;
 
 const application = new DesktopApplication(
   engine,
@@ -71,10 +81,13 @@ if (!app.requestSingleInstanceLock()) {
     event.preventDefault();
     if (quitting) return;
     quitting = true;
-    void engine.shutdown().finally(() => {
-      quitReady = true;
-      app.quit();
-    });
+    learnerGeneration++;
+    void Promise.allSettled([engine.shutdown(), learner.shutdown()]).finally(
+      () => {
+        quitReady = true;
+        app.quit();
+      },
+    );
   });
   app.on("window-all-closed", () => app.quit());
   void app
@@ -104,7 +117,7 @@ if (!app.requestSingleInstanceLock()) {
         minWidth: 760,
         minHeight: 640,
         show: false,
-        title: "CodeFit · The Ascent — experimental Java library",
+        title: "CodeFit · The Ascent",
         backgroundColor: "#080e1b",
         webPreferences: {
           preload: join(__dirname, "preload.cjs"),
@@ -124,13 +137,97 @@ if (!app.requestSingleInstanceLock()) {
       window.webContents.on("will-attach-webview", (event) =>
         event.preventDefault(),
       );
+      window.webContents.on(
+        "did-start-navigation",
+        (_event, _url, _inPlace, mainFrame) => {
+          if (mainFrame) {
+            learnerGeneration++;
+            void learner.disconnect();
+          }
+        },
+      );
       window.webContents.on("render-process-gone", () => {
+        learnerGeneration++;
         void engine.stop();
+        void learner.disconnect();
       });
       window.on("closed", () => {
         window = undefined;
+        learnerGeneration++;
         void engine.shutdown();
+        void learner.shutdown();
       });
+      ipcMain.handle(
+        "codefit:learner:choose",
+        async (event, ...args: unknown[]): Promise<LearnerResult> => {
+          if (quitting || !authorized(event, args, 0))
+            return { ok: false, code: "UNAVAILABLE" };
+          if (learnerDialogBusy) return { ok: false, code: "BUSY" };
+          learnerDialogBusy = true;
+          const generation = ++learnerGeneration;
+          const permitted = () =>
+            !quitting &&
+            generation === learnerGeneration &&
+            authorized(event, args, 0);
+          const owner = window!;
+          try {
+            await learner.disconnect();
+            if (!permitted()) return { ok: false, code: "CANCELLED" };
+            // No renderer-supplied path, SQL, command, runtime or backup destination is accepted.
+            const choice = await dialog.showOpenDialog(owner, {
+              title: "Choose a CodeFit learner database",
+              defaultPath: join(process.cwd(), "codefit.db"),
+              buttonLabel: "Select profile",
+              properties: ["openFile"],
+              filters: [
+                {
+                  name: "SQLite database",
+                  extensions: ["db", "sqlite", "sqlite3"],
+                },
+                { name: "All files", extensions: ["*"] },
+              ],
+            });
+            if (!permitted()) return { ok: false, code: "CANCELLED" };
+            if (choice.canceled || choice.filePaths.length !== 1)
+              return { ok: false, code: "CANCELLED" };
+            const confirmation = await dialog.showMessageBox(owner, {
+              type: "question",
+              title: "Connect a read-only learner snapshot",
+              message: "Create a private snapshot of this learner profile?",
+              detail: `Selected file: ${JSON.stringify(choice.filePaths[0])}\n\nCodeFit will read this database and keep a full private backup on this device, including sensitive local profile content. Learning records are never modified, migrated or replaced. SQLite may create or update lock and shared-memory coordination files. Close JavaFX first: older JavaFX versions and external tools may ignore ownership locks. This view shows the capture time; select the profile again for newer data. Storage is limited to eight captures; archive backups before making more.`,
+              buttons: ["Cancel", "Connect read-only snapshot"],
+              defaultId: 0,
+              cancelId: 0,
+              noLink: true,
+            });
+            if (!permitted() || confirmation.response !== 1)
+              return { ok: false, code: "CANCELLED" };
+            return await learner.connect(choice.filePaths[0], permitted);
+          } catch {
+            return { ok: false, code: "UNAVAILABLE" };
+          } finally {
+            learnerDialogBusy = false;
+          }
+        },
+      );
+      ipcMain.handle("codefit:learner:read", (event, ...args: unknown[]) => {
+        const generation = learnerGeneration;
+        return learner.read(
+          () =>
+            !quitting &&
+            generation === learnerGeneration &&
+            authorized(event, args, 0),
+        );
+      });
+      ipcMain.handle(
+        "codefit:learner:disconnect",
+        async (event, ...args: unknown[]) => {
+          if (!quitting && authorized(event, args, 0)) {
+            learnerGeneration++;
+            await learner.disconnect();
+          }
+        },
+      );
       ipcMain.handle("codefit:state:read", (event, ...args: unknown[]) =>
         application.read(
           args[0],

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "baseline": "78898a4a605768f582ef3a3f8835afbe1fb2f286",
+  "capture": "Actual packaged Linux app; synthetic selected profiles only; sandbox enabled; loopback-only offline namespace",
+  "screenshots": [
+    {
+      "file": "screenshots/cancelled-late-confirmation.png",
+      "bytes": 240884,
+      "sha256": "54299f663ba74f88f9a819683a7015c65499e359f756538249ee625c46f79084"
+    },
+    {
+      "file": "screenshots/consent-declined.png",
+      "bytes": 250699,
+      "sha256": "087679ff9e1401835d4c7a30e0813e954eddd280ecfad6cab99a7bab0ca2bf27"
+    },
+    {
+      "file": "screenshots/dark-1280.png",
+      "bytes": 445769,
+      "sha256": "0135f2c3288be173bbd4d6dd8be63e42c0b7abc78a780560c36ed96292b6b776"
+    },
+    {
+      "file": "screenshots/dark-760.png",
+      "bytes": 272292,
+      "sha256": "04c2dd4dd9b169c43f4de698669d76557b4500d525a4669e593706929ce522e6"
+    },
+    {
+      "file": "screenshots/incompatible-schema.png",
+      "bytes": 253122,
+      "sha256": "7550fadd517af2bce7e38f71ae84e13c5316e6bcc7177663c3bc2d482c6e1ea1"
+    },
+    {
+      "file": "screenshots/light-1280.png",
+      "bytes": 441724,
+      "sha256": "d09d210e0650c28c31966abe375a57cc80fc609acca1155539c4bab33bfbf0b8"
+    },
+    {
+      "file": "screenshots/light-760.png",
+      "bytes": 266121,
+      "sha256": "f56e78229efd6b3da6f3262e6b928068e3842855075e0edf15f3fe365d04c72e"
+    },
+    {
+      "file": "screenshots/missing-progress-760.png",
+      "bytes": 272630,
+      "sha256": "9c0faf75a1bd5abd438e7155541dbbd4aaef2aaa4bdd70c8778be732337c245e"
+    }
+  ]
+}

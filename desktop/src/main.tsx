@@ -9,6 +9,11 @@ import { CommandCenter } from "./command-center";
 import { Tree } from "./ascension-tree";
 import { MissionConsole } from "./mission-console";
 import { MissionDialog } from "./mission-dialog";
+import {
+  LearnerProfile,
+  profileName,
+  useLearnerProfile,
+} from "./learner-profile";
 import "./style.css";
 
 type Screen = "command" | "tree" | "missions" | "library";
@@ -40,6 +45,7 @@ const nav: { id: Screen; label: string; sub: string; icon: IconName }[] = [
   },
 ];
 function App() {
+  const learner = useLearnerProfile();
   const [screen, setScreen] = useState<Screen>("command");
   const [libraryOpened, setLibraryOpened] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -131,13 +137,17 @@ function App() {
           <button
             className="profile"
             onClick={() => setModal("profile")}
-            title="Preview profile"
+            title="Learner profile"
           >
             <span className="avatar">
-              E<span />
+              {Array.from(profileName(learner.profile))[0]}
+              <span />
             </span>
             <span>
-              Explorer<small>PREVIEW IDENTITY</small>
+              {profileName(learner.profile)}
+              <small>
+                {learner.profile ? "LEARNER SNAPSHOT" : "PREVIEW IDENTITY"}
+              </small>
             </span>
             <Icon name="chevron" size={14} />
           </button>
@@ -164,24 +174,48 @@ function App() {
             <button
               className="top-avatar"
               onClick={() => setModal("profile")}
-              aria-label="Open preview profile"
+              aria-label={
+                learner.profile
+                  ? "Open learner profile"
+                  : "Open preview profile"
+              }
             >
-              E
+              {Array.from(profileName(learner.profile))[0]}
             </button>
           </div>
         </header>
         <div className="provenance">
           <span>
             <i />
-            {screen === "library" ? "EXPERIMENTAL DATA" : "DESIGN PREVIEW"}
+            {screen === "library"
+              ? "EXPERIMENTAL DATA"
+              : screen === "command" && learner.profile
+                ? "LEARNER SNAPSHOT"
+                : "DESIGN PREVIEW"}
           </span>
           <p>
             {screen === "library"
-              ? "Live experimental profile. Your learner profile is not connected."
-              : "Demonstration data. Your learner profile is not connected."}
+              ? learner.profile
+                ? "Live experimental profile. This library is separate from learner data."
+                : "Live experimental profile. Your learner profile is not connected."
+              : learner.profile
+                ? screen === "command"
+                  ? "Recorded learner data. Read-only snapshot; newer changes need a new capture."
+                  : "Demonstration data. These examples are separate from your connected learner snapshot."
+                : "Demonstration data. Your learner profile is not connected."}
           </p>
-          <button onClick={() => setModal("states")}>
-            {state === "ready" ? "Explore states" : stateLabels[state]}{" "}
+          <button
+            onClick={() =>
+              setModal(screen === "command" ? "profile" : "states")
+            }
+          >
+            {screen === "command"
+              ? learner.profile
+                ? "Profile details"
+                : "Connect profile"
+              : state === "ready"
+                ? "Explore states"
+                : stateLabels[state]}{" "}
             <Icon name="chevron" size={12} />
           </button>
         </div>
@@ -212,29 +246,53 @@ function App() {
                     : "ENG / 04"}
             </span>
           </div>
-          {state === "offline" && (
-            <div className="state-banner" role="status">
-              <Icon name="wifi" />
+          {screen === "command" && (learner.busy || learner.error) && (
+            <div
+              className="state-banner learner-connection"
+              role={learner.error ? "alert" : "status"}
+            >
+              <Icon name={learner.error ? "alert" : "clock"} />
               <span>
-                <strong>Offline preview.</strong> Bundled examples remain
-                available. No connection or sync is implied.
+                {learner.error ||
+                  "Waiting for selection or a verified learner snapshot…"}
               </span>
-              <button onClick={() => setState("ready")}>
-                Reconnect preview
+              <button
+                onClick={() =>
+                  learner.busy ? void learner.disconnect() : setModal("profile")
+                }
+              >
+                {learner.busy ? "Cancel connection" : "Profile details"}
               </button>
             </div>
           )}
-          {state === "unknown" && (
-            <div className="state-banner" role="status">
-              <Icon name="info" />
-              <span>
-                <strong>No observations yet.</strong> Unknown means unobserved,
-                never zero ability.
-              </span>
-              <button onClick={() => setState("ready")}>Restore example</button>
-            </div>
-          )}
+          {state === "offline" &&
+            !(screen === "command" && learner.profile) && (
+              <div className="state-banner" role="status">
+                <Icon name="wifi" />
+                <span>
+                  <strong>Offline preview.</strong> Bundled examples remain
+                  available. No connection or sync is implied.
+                </span>
+                <button onClick={() => setState("ready")}>
+                  Reconnect preview
+                </button>
+              </div>
+            )}
+          {state === "unknown" &&
+            !(screen === "command" && learner.profile) && (
+              <div className="state-banner" role="status">
+                <Icon name="info" />
+                <span>
+                  <strong>No observations yet.</strong> Unknown means
+                  unobserved, never zero ability.
+                </span>
+                <button onClick={() => setState("ready")}>
+                  Restore example
+                </button>
+              </div>
+            )}
           {screen !== "library" &&
+          !(screen === "command" && learner.profile) &&
           (state === "empty" || state === "error" || state === "loading") ? (
             <StateView kind={state} onReset={() => setState("ready")} />
           ) : screen === "command" ? (
@@ -245,6 +303,8 @@ function App() {
               onActivity={() => setModal("activity")}
               onBoss={() => setModal("boss")}
               unknown={state === "unknown"}
+              learner={learner.profile}
+              onProfile={() => setModal("profile")}
             />
           ) : screen === "tree" ? (
             <Tree
@@ -262,7 +322,7 @@ function App() {
               <Mark /> BUILT THROUGH PRACTICE.
             </span>
             <span>
-              Gate 1 · Visual review <i /> Engine authority preserved
+              Gate 2 · Read-only learner view <i /> Engine authority preserved
             </span>
           </footer>
         </main>
@@ -287,7 +347,8 @@ function App() {
                   key={value}
                   onClick={() => {
                     setState(value);
-                    if (screen === "library") setScreen("missions");
+                    if (screen === "library" || learner.profile)
+                      setScreen("missions");
                     setModal(null);
                     setAnnouncement(`${label} preview`);
                   }}
@@ -337,35 +398,17 @@ function App() {
       )}
       {modal === "profile" && (
         <Dialog
-          title="Every expert starts somewhere."
+          title="Your journey, in context."
+          eyebrow="LEARNER PROFILE / READ-ONLY"
           onClose={() => setModal(null)}
         >
-          <div className="profile-summary">
-            <span className="avatar large">E</span>
-            <div>
-              <h3>Explorer</h3>
-              <p>Local demonstration identity</p>
-            </div>
-            <Badge tone="violet">PROTOTYPE</Badge>
-          </div>
-          <p className="dialog-intro">
-            Your profile is deliberately disconnected while this visual
-            experience is under review.
-          </p>
-          <div className="profile-metrics">
-            {["Level", "XP balance", "Rank", "Earned rewards"].map((label) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>—</strong>
-                <small>Not connected</small>
-              </div>
-            ))}
-          </div>
-          <p className="callout">
-            <Icon name="shield" /> Progression rewards reflect participation.
-            Skill understanding requires evidence; this preview never calculates
-            either.
-          </p>
+          <LearnerProfile
+            profile={learner.profile}
+            busy={learner.busy}
+            error={learner.error}
+            onChoose={() => void learner.choose()}
+            onDisconnect={() => void learner.disconnect()}
+          />
         </Dialog>
       )}
       {modal === "activity" && (

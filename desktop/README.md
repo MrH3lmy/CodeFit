@@ -1,8 +1,12 @@
-# CodeFit · Gate2 experimental Java library
+# CodeFit · Gate2 learner snapshots and experimental library
 
-The approved React Command Center, Ascension Tree and Mission Console remain labeled Gate1 previews. The **Java Library** now reads authoritative deck descriptors from a durable, isolated experimental profile and creates a deck through the existing Java service. Java owns SQLite and validates every command. No real learner profile is opened, migrated or opted in; JavaFX remains the normal application.
+Gate 2 continuation adds an explicitly selected **read-only learner snapshot** in Command Center. Start with the [learner-profile walkthrough](../docs/architecture/gate2-profile/README.md), [ADR 0003](../docs/architecture/adr-0003-learner-snapshots.md), and [typed read API](../docs/architecture/gate2-profile/api.md). The original experimental Library remains separate. Real learner writes, migrations and automatic reconnection are unavailable. The reader currently supports validated local Linux filesystems only.
 
-Start with the [Gate2 review walkthrough and screenshots](../docs/architecture/gate2/README.md), [ADR 0002](../docs/architecture/adr-0002-headless-library-boundary.md), [exact API and ownership map](../docs/architecture/gate2/api.md), and [verification evidence](../docs/architecture/gate2/verification.md). This is #261 under #256, based on visually approved/merged Gate1 PR #263. The [Gate1 gallery](../docs/architecture/gate1/README.md) remains the visual contract. Draft #255 is not the baseline.
+For tests, export `JAVA_HOME` to a Java 21 JDK. The learner tests compile a test-only synthetic profile builder outside the artifact; the packaged application still uses its bundled runtime. `CODEFIT_CAPTURE_PROFILE_SCREENSHOTS=1` captures the connected Command Center and failure states under `docs/architecture/gate2-profile/screenshots`.
+
+The approved React design is preserved. Command Center shows recorded learner data after explicit selection; Ascension Tree, Mission Console and remaining concept actions are labelled demonstrations. The **Java Library** reads deck descriptors from its separate durable experimental profile and creates decks through the existing Java service. Java owns SQLite and validates every command. Learner sources are never migrated or written; JavaFX remains the full learning application.
+
+The [original experimental-library walkthrough](../docs/architecture/gate2/README.md), [ADR 0002](../docs/architecture/adr-0002-headless-library-boundary.md), and [v2 API](../docs/architecture/gate2/api.md) document the retained PR #264 foundation. This continues #261 under #256 from its merged baseline. The [Gate1 gallery](../docs/architecture/gate1/README.md) remains the visual contract. Draft #255 is not the baseline.
 
 ## Build and run
 
@@ -21,7 +25,7 @@ npm start
 
 `CODEFIT_MAVEN` may be an absolute executable wrapper for Maven/proxy settings; it is never evaluated as a shell command. On a managed proxy, Node 24's `NODE_USE_ENV_PROXY=1 NODE_USE_SYSTEM_CA=1` can be used for dependency acquisition without bypassing TLS checks. No runtime downloads occur on app launch.
 
-The renderer is always loaded from the production Vite build, including during `npm start`. No development HTTP server or remote content is used. Changes require another `npm run build`. The preload exposes only `readState`, `createDeck`, `pendingDeck`, `recoverDeck`, `acknowledgeDeck`, and `cancelOperation`. Cancellation stops the connection while retaining the durable operation; it does not promise a write rollback.
+The renderer is always loaded from the production Vite build, including during `npm start`. No development HTTP server or remote content is used. Changes require another `npm run build`. The preload exposes the six experimental-library methods (`readState`, `createDeck`, `pendingDeck`, `recoverDeck`, `acknowledgeDeck`, `cancelOperation`) and three learner methods (`chooseLearnerProfile`, `readLearnerProfile`, `disconnectLearnerProfile`). Experimental write cancellation retains its durable operation and does not promise rollback. Learner cancellation stops the reader and invalidates its selection.
 
 ## Package and test the actual artifact
 
@@ -54,20 +58,22 @@ The **Desktop Gate 0** workflow builds and tests the packaged Linux artifact wit
 
 ## Layout, lifecycle and rollback
 
-- `src/`: reusable visual components, three screen modules, sample mission dialog, labeled fixtures and the isolated Java Library; no learning policies or database access.
+- `src/`: approved screen modules, the connected read-only Command Center, labelled sample content and the isolated Java Library; no learning policies or database access.
 - `electron/`: fixed bundled process path, session ownership, exact-frame IPC authorization and sandboxed preload.
-- `../src/main/java/com/codefit/desktop/`: separate headless entrypoint and bounded Java protocol, separating new-profile bootstrap, strictly read-only queries and transactional deck creation through the existing Java service.
+- `../src/main/java/com/codefit/desktop/`: separate learner-read and experimental-library entrypoints with bounded protocols; learner capture/projection never uses the initializer or experimental writer.
 - `java/`: generated platform runtime + existing compiled engine/resources/dependencies. Never commit this directory.
 - `release/`: generated unsigned local artifact. Package paths are resolved from Electron resources, not the working directory or `JAVA_HOME`.
 
 Chromium keeps the existing independent `CodeFit-Gate0` user-data directory under platform application data (normally `~/.config/CodeFit-Gate0` on Linux). The fixed `experimental-library-v1` subdirectory holds the experimental database, marker and Java ownership lock. `experimental-operations-v1` holds the single current creation intent. Both persist across restart. The renderer cannot select a path. The browser session remains ephemeral and does not load JavaFX preferences.
 
+`learner-snapshots-v1` holds private full-database captures (0700 directory, 0600 files). Native selection and confirmation are required before each capture; the source opens read-only. Compatible schema25 and integrity are validated before atomic publication. No source restoration or reconnection happens automatically. See the [backup/recovery guide](../docs/architecture/gate2-profile/README.md) for the eight-generation/64MiB bounds, sensitive-content caveat, Linux filesystem restrictions and restoration to a new disposable path.
+
 On the first Java Library operation, Java initializes a fresh staged database with starter decks and publishes it atomically. Existing profiles are verified and recovered under the owner lock; they are never automatically migrated or replaced. Named state/receipt queries use read-only SQLite connections. JavaFX now acquires the same cooperative profile lock before its initializer and retains it until JVM exit. Older binaries and external SQLite tools do not honor this lock; do not point them at the experimental profile while it is open.
 
 Recovery: after an interrupted response, reopen Java Library. A saved receipt confirms the actual outcome. If completion remains unknown, **Check and finish saved creation** checks Java and replays the same saved command only when needed. **Acknowledge and continue** clears a terminal receipt from the main journal after Java verifies it. A profile identity mismatch or invalid journal fails closed and keeps the files for review.
 
-Rollback: close every experimental process and keep the two experimental subdirectories together if you want to preserve your experimental decks and command recovery. Removing the artifact requires no learner migration rollback. These directories may be archived or deliberately removed only after their experimental data is no longer needed; no application cleanup recursively deletes them. Do not delete any ordinary JavaFX `codefit.db` or learner profile. A future learner opt-in, migration or backup workflow requires separate review.
+Rollback: close every process and keep the two experimental subdirectories together to preserve experimental decks and command recovery. Keep learner snapshots private when archiving them. Removing the artifact requires no learner migration rollback. Never delete an ordinary JavaFX `codefit.db`, WAL or journal as a workaround. Learner write authorization, migration and source restoration remain separate review gates.
 
 ## Platform limits
 
-The Linux local artifact is proven; it is not a signed installer. Build separately on each target OS/architecture. Windows still needs a native Maven launcher path (Node cannot directly spawn `mvn.cmd` without a command interpreter), correct SQLite natives, installer/runtime layout and shutdown verification. macOS needs a native build, hardened signing of nested Java/Electron binaries and notarization. No cross-platform readiness claim is made. The reduced runtime supports this library read/create slice; it intentionally lacks `jdk.compiler` and cannot replace the existing coding runner runtime.
+The Linux local artifact is tested; it is not a signed installer. Build separately on each target OS/architecture. Windows still needs a native Maven launcher path (Node cannot directly spawn `mvn.cmd` without a command interpreter), correct SQLite natives, installer/runtime layout and shutdown verification. macOS needs a native build, hardened signing of nested Java/Electron binaries and notarization. The learner reader fails closed outside its supported local Linux filesystems. The reduced runtime supports these read/experimental-create slices; it intentionally lacks `jdk.compiler` and cannot replace the existing coding runner runtime.

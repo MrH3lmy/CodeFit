@@ -3807,3 +3807,148 @@ select {
 .library .deck p {
   overflow-wrap: anywhere;
 }
+
+/* Learner snapshot content follows the approved Command Center composition. */
+.learner-profile .profile-summary > div,
+.learner-journey .journey-title > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.learner-profile .profile-summary {
+  flex-wrap: wrap;
+}
+.learner-profile .profile-summary .badge {
+  margin-left: auto;
+}
+.learner-profile .dialog-intro,
+.learner-profile .profile-metrics,
+.learner-profile .callout {
+  margin-top: 20px;
+}
+.learner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+.learner-profile .fine-print {
+  margin-top: 20px;
+}
+.snapshot-caption {
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 15px 0;
+  overflow-wrap: anywhere;
+}
+.learner-error {
+  color: var(--warm);
+  background: var(--surface-2);
+  border-left: 2px solid var(--warm);
+  margin-top: 20px;
+  padding: 12px 15px;
+}
+.learner-progression {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  flex: 1;
+  justify-content: center;
+}
+.learner-progression > span {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.learner-progression small {
+  font-size: 10px;
+  letter-spacing: 1.3px;
+  color: var(--muted);
+}
+.learner-progression strong {
+  font: 500 24px var(--display);
+  color: var(--cyan);
+}
+.learner-activity-metrics {
+  margin: 24px 0 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 30px;
+}
+.learner-activity-metrics dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.learner-activity-metrics dd {
+  margin: 3px 0 0;
+  font: 500 28px var(--display);
+}
+.learner-overview .active-mission-body > div {
+  min-width: 0;
+}
+.learner-overview .active-mission-body > div > .small-muted {
+  font-size: 11px;
+  line-height: 1.6;
+  max-width: 280px;
+}
+.learner-availability {
+  margin: 24px 0;
+}
+.learner-availability > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.learner-availability dt {
+  color: var(--ink);
+  font-size: 12px;
+}
+.learner-availability dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.learner-snapshot-row {
+  cursor: default;
+}
+.learner-snapshot-row > span:nth-child(2) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.profile > span:not(.avatar) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) {
+  .learner-progression {
+    gap: 18px;
+  }
+  .learner-progression > span {
+    gap: 6px;
+  }
+  .learner-progression strong {
+    font-size: 20px;
+  }
+}
+@media (max-width: 900px) {
+  .learner-journey {
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .learner-journey .journey-title {
+    flex: 1 0 100%;
+  }
+  .learner-progression {
+    justify-content: flex-start;
+  }
+  .learner-journey .strip-note {
+    position: static;
+    flex-basis: 100%;
+  }
+  .learner-overview .active-mission-body {
+    min-height: 0;
+  }
+}

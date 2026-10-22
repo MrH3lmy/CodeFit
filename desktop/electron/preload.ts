@@ -12,5 +12,9 @@ const bridge: CodeFitBridge = Object.freeze({
   acknowledgeDeck: (commandId: string) =>
     ipcRenderer.invoke("codefit:deck:acknowledge", commandId),
   cancelOperation: () => ipcRenderer.invoke("codefit:operation:cancel"),
+  chooseLearnerProfile: () => ipcRenderer.invoke("codefit:learner:choose"),
+  readLearnerProfile: () => ipcRenderer.invoke("codefit:learner:read"),
+  disconnectLearnerProfile: () =>
+    ipcRenderer.invoke("codefit:learner:disconnect"),
 });
 contextBridge.exposeInMainWorld("codefit", bridge);

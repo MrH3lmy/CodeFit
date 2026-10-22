@@ -1,14 +1,17 @@
+import { strictJson } from "./strict-json";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { join, delimiter } from "node:path";
 import { existsSync } from "node:fs";
 import {
   MAX_FRAME_BYTES,
+  MAX_REQUEST_BYTES,
   ReadySchema,
   RequestSchema,
   WireResponseSchema,
   type ErrorCode,
   type Result,
+  type Command,
 } from "../src/contract";
 
 export interface RuntimeLocation {
@@ -33,7 +36,7 @@ export function runtimeLocation(root: string): RuntimeLocation {
         "com",
         "codefit",
         "desktop",
-        "DesktopReadOnlyMain.class",
+        "DesktopApplicationMain.class",
       ),
     )
   )
@@ -47,12 +50,13 @@ export function runtimeLocation(root: string): RuntimeLocation {
   };
 }
 
-/** One process, one in-flight read. Failed sessions cannot be reused or replayed. */
+/** One process, one in-flight request. Failed transports cannot be reused; application command identity survives in the journal. */
 export class JavaSession {
   private child?: ChildProcessWithoutNullStreams;
   private buffer = Buffer.alloc(0);
   private logBytes = 0;
   private ready = false;
+  private profileId?: string;
   private closed = false;
   private busy = false;
   private failure: ErrorCode = "UNAVAILABLE";
@@ -62,6 +66,7 @@ export class JavaSession {
   private started?: Promise<void>;
   private pending?: {
     id: string;
+    command: Command;
     resolve: (result: Result) => void;
     timer: NodeJS.Timeout;
   };
@@ -73,6 +78,7 @@ export class JavaSession {
 
   constructor(
     private readonly runtime: RuntimeLocation,
+    private readonly profile: string,
     private readonly deadlineMs = 15_000,
   ) {}
   get pid(): number | undefined {
@@ -100,9 +106,11 @@ export class JavaSession {
           "-Djava.awt.headless=true",
           "-cp",
           this.runtime.classpath,
-          "com.codefit.desktop.DesktopReadOnlyMain",
+          "com.codefit.desktop.DesktopApplicationMain",
           "--parent",
           String(process.pid),
+          "--experimental-profile",
+          this.profile,
         ],
         {
           cwd: this.runtime.cwd,
@@ -160,11 +168,18 @@ export class JavaSession {
       const frame = this.buffer;
       this.buffer = Buffer.alloc(0);
       try {
-        const message: unknown = JSON.parse(
-          new TextDecoder("utf-8", { fatal: true }).decode(frame),
+        const message: unknown = strictJson(
+          new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+            frame,
+          ),
         );
         if (!this.ready) {
-          ReadySchema.parse(message);
+          const startup = ReadySchema.parse(message);
+          if (startup.type === "startup-error") {
+            void this.stop(startup.code);
+            return;
+          }
+          this.profileId = startup.profileId;
           this.ready = true;
           clearTimeout(this.startTimer);
           this.startResolve?.();
@@ -173,6 +188,32 @@ export class JavaSession {
           if (!this.pending || reply.id !== this.pending.id)
             throw new Error("uncorrelated");
           const pending = this.pending;
+          if (reply.ok) {
+            const expected = {
+              "state.read": "state",
+              "decks.create": "receipt",
+              "commands.status": "command-status",
+            }[pending.command.method];
+            if (reply.result.kind !== expected) throw new Error("wrong result");
+            if (
+              reply.result.kind === "state" &&
+              reply.result.profileId !== this.profileId
+            )
+              throw new Error("wrong profile");
+            if (reply.result.kind !== "state") {
+              if (
+                !("commandId" in pending.command) ||
+                reply.result.commandId !== pending.command.commandId
+              )
+                throw new Error("wrong command");
+              if (
+                reply.result.kind === "command-status" &&
+                reply.result.receipt &&
+                reply.result.receipt.commandId !== reply.result.commandId
+              )
+                throw new Error("wrong receipt");
+            }
+          }
           this.pending = undefined;
           clearTimeout(pending.timer);
           pending.resolve(
@@ -189,27 +230,33 @@ export class JavaSession {
     }
   }
 
-  async listDecks(): Promise<Result> {
+  async request(command: Command): Promise<Result> {
     if (this.closed) return { ok: false, code: this.failure };
     if (this.busy) return { ok: false, code: "BUSY" };
     this.busy = true;
     try {
       await this.start();
       if (this.closed) return { ok: false, code: this.failure };
+      if ("profileId" in command && command.profileId !== this.profileId)
+        return { ok: false, code: "PROFILE_MISMATCH" };
       const request = RequestSchema.parse({
-        v: 1,
+        ...command,
+        v: 2,
         id: randomUUID(),
-        method: "decks.list",
       });
+      const frame = JSON.stringify(request) + "\n";
+      if (Buffer.byteLength(frame) > MAX_REQUEST_BYTES + 1)
+        return { ok: false, code: "INVALID_INPUT" };
       return await new Promise<Result>((resolve) => {
         this.pending = {
           id: request.id,
+          command,
           resolve,
           timer: setTimeout(() => {
             void this.stop("TIMEOUT");
           }, this.deadlineMs),
         };
-        this.child!.stdin.write(JSON.stringify(request) + "\n");
+        this.child!.stdin.write(frame);
       });
     } catch {
       return { ok: false, code: this.failure };
@@ -235,7 +282,7 @@ export class JavaSession {
       this.fail(code);
       if (this.child) {
         const child = this.child;
-        child.stdin.end(); // EOF gives Java the opportunity to close its own database and remove it.
+        child.stdin.end(); // EOF gives Java the opportunity to close its own database before releasing ownership.
         this.terminationTimers.push(
           setTimeout(() => child.kill("SIGTERM"), 500),
         );

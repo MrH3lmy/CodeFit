@@ -2,7 +2,7 @@
   "name": "codefit-gate0",
   "version": "0.0.1",
   "private": true,
-  "description": "Experimental isolated read-only CodeFit desktop proof",
+  "description": "Experimental CodeFit desktop with a Java-owned isolated library and recoverable deck creation",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {

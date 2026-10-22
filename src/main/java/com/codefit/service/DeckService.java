@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 public class DeckService {
     /**
@@ -77,10 +79,19 @@ public class DeckService {
     }
 
     public Deck createDeck(String name, String description) {
+        return deckRepository.save(newDeck(name, description));
+    }
+
+    /** Same domain validation, with atomic persistence owned by an application use case. */
+    public Deck createDeck(Connection connection, String name, String description) throws SQLException {
+        return deckRepository.save(connection, newDeck(name, description));
+    }
+
+    private Deck newDeck(String name, String description) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Deck name is required.");
         }
-        return deckRepository.save(new Deck(name.trim(), description == null || description.isBlank() ? "Custom training deck." : description.trim()));
+        return new Deck(name.trim(), description == null || description.isBlank() ? "Custom training deck." : description.trim());
     }
 
     public void createJavaBackendPath() {

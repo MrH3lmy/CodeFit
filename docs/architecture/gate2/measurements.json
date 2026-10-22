@@ -1,0 +1,38 @@
+{
+  "platform": "linux",
+  "arch": "x64",
+  "measuredAt": "2026-10-22T00:10:56.918Z",
+  "method": "Five fresh app profiles/process trees, packaged artifact, first real service result. Warm OS file cache; automation and shared-host load affect timing. RSS sums count shared pages repeatedly; not PSS or peak.",
+  "samples": [
+    {
+      "readyMs": 3104,
+      "processCount": 8,
+      "totalRssKiB": 722736,
+      "javaRssKiB": 68068
+    },
+    {
+      "readyMs": 2631,
+      "processCount": 8,
+      "totalRssKiB": 713720,
+      "javaRssKiB": 70108
+    },
+    {
+      "readyMs": 2782,
+      "processCount": 8,
+      "totalRssKiB": 732332,
+      "javaRssKiB": 72496
+    },
+    {
+      "readyMs": 2791,
+      "processCount": 8,
+      "totalRssKiB": 735820,
+      "javaRssKiB": 71120
+    },
+    {
+      "readyMs": 2148,
+      "processCount": 8,
+      "totalRssKiB": 727576,
+      "javaRssKiB": 71636
+    }
+  ]
+}

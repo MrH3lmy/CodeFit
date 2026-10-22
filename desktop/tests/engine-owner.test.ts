@@ -10,9 +10,18 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
+const read = { method: "state.read" as const, afterId: 0 };
 const pass: Result = {
   ok: true,
-  result: { source: "isolated-seed", readOnly: true, decks: [] },
+  result: {
+    kind: "state",
+    source: "experimental-profile",
+    profileId: "8f12a1b0-56c1-4c3e-a111-3495bbce64a0",
+    readOnly: true,
+    progression: { status: "unsupported" },
+    decks: [],
+    nextAfterId: null,
+  },
 };
 
 test("cancelled old request cannot stop a newly started session", async () => {
@@ -21,17 +30,17 @@ test("cancelled old request cannot stop a newly started session", async () => {
   let newStops = 0;
   const owner = new EngineOwner(() =>
     ++creates === 1
-      ? { listDecks: () => oldReply.promise, stop: async () => {} }
+      ? { request: () => oldReply.promise, stop: async () => {} }
       : {
-          listDecks: async () => pass,
+          request: async () => pass,
           stop: async () => {
             newStops++;
           },
         },
   );
-  const original = owner.read(() => true);
+  const original = owner.execute(read, () => true);
   await owner.stop();
-  assert.deepEqual(await owner.read(() => true), pass);
+  assert.deepEqual(await owner.execute(read, () => true), pass);
   oldReply.resolve({ ok: false, code: "CANCELLED" });
   assert.deepEqual(await original, { ok: false, code: "CANCELLED" });
   assert.equal(newStops, 0);
@@ -46,11 +55,11 @@ for (const mode of ["shutdown", "authorization lost"] as const)
     let authorized = true;
     const owner = new EngineOwner(() => {
       creates++;
-      return { listDecks: async () => pass, stop: () => cleanup.promise };
+      return { request: async () => pass, stop: () => cleanup.promise };
     });
-    await owner.read(() => true);
+    await owner.execute(read, () => true);
     const stopped = owner.stop();
-    const pending = owner.read(() => authorized);
+    const pending = owner.execute(read, () => authorized);
     const shutdown = mode === "shutdown" ? owner.shutdown() : Promise.resolve();
     authorized = false;
     cleanup.resolve();
@@ -66,7 +75,7 @@ test("unauthorized calls never create a process; invalid results close their ses
   const owner = new EngineOwner(() => {
     creates++;
     return {
-      listDecks: async () =>
+      request: async () =>
         ({
           ok: true,
           result: { source: "learner", decks: [] },
@@ -76,12 +85,12 @@ test("unauthorized calls never create a process; invalid results close their ses
       },
     };
   });
-  assert.deepEqual(await owner.read(() => false), {
+  assert.deepEqual(await owner.execute(read, () => false), {
     ok: false,
     code: "UNAVAILABLE",
   });
   assert.equal(creates, 0);
-  assert.deepEqual(await owner.read(() => true), {
+  assert.deepEqual(await owner.execute(read, () => true), {
     ok: false,
     code: "START_FAILED",
   });

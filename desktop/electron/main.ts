@@ -8,7 +8,8 @@ import {
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { JavaSession, runtimeLocation } from "./java-session";
-import { type Result } from "../src/contract";
+import { DesktopApplication } from "./desktop-application";
+import { OperationJournal } from "./operation-journal";
 import { EngineOwner } from "./engine-owner";
 
 app.setName("CodeFit Gate 0");
@@ -28,12 +29,27 @@ const javaRoot = app.isPackaged
   ? join(process.resourcesPath, "java")
   : resolve(__dirname, "..", "java");
 const engine = new EngineOwner(
-  () => new JavaSession(runtimeLocation(javaRoot)),
+  () =>
+    new JavaSession(
+      runtimeLocation(javaRoot),
+      join(app.getPath("userData"), "experimental-library-v1"),
+    ),
 );
 
-function authorized(event: IpcMainInvokeEvent, args: unknown[]): boolean {
+const application = new DesktopApplication(
+  engine,
+  new OperationJournal(
+    join(app.getPath("userData"), "experimental-operations-v1"),
+  ),
+);
+
+function authorized(
+  event: IpcMainInvokeEvent,
+  args: unknown[],
+  count: number,
+): boolean {
   return (
-    args.length === 0 &&
+    args.length === count &&
     !!window &&
     !window.isDestroyed() &&
     !event.sender.isDestroyed() &&
@@ -88,7 +104,7 @@ if (!app.requestSingleInstanceLock()) {
         minWidth: 760,
         minHeight: 640,
         show: false,
-        title: "CodeFit · The Ascent — Gate 1 preview",
+        title: "CodeFit · The Ascent — experimental Java library",
         backgroundColor: "#080e1b",
         webPreferences: {
           preload: join(__dirname, "preload.cjs"),
@@ -115,16 +131,34 @@ if (!app.requestSingleInstanceLock()) {
         window = undefined;
         void engine.shutdown();
       });
-      ipcMain.handle(
-        "codefit:decks:list",
-        async (event, ...args: unknown[]): Promise<Result> => {
-          return engine.read(() => !quitting && authorized(event, args));
-        },
+      ipcMain.handle("codefit:state:read", (event, ...args: unknown[]) =>
+        application.read(
+          args[0],
+          () => !quitting && authorized(event, args, 1),
+        ),
+      );
+      ipcMain.handle("codefit:deck:create", (event, ...args: unknown[]) =>
+        application.create(
+          args[0],
+          () => !quitting && authorized(event, args, 1),
+        ),
+      );
+      ipcMain.handle("codefit:deck:pending", (event, ...args: unknown[]) =>
+        application.pending(() => !quitting && authorized(event, args, 0)),
+      );
+      ipcMain.handle("codefit:deck:recover", (event, ...args: unknown[]) =>
+        application.recover(() => !quitting && authorized(event, args, 0)),
+      );
+      ipcMain.handle("codefit:deck:acknowledge", (event, ...args: unknown[]) =>
+        application.acknowledge(
+          args[0],
+          () => !quitting && authorized(event, args, 1),
+        ),
       );
       ipcMain.handle(
-        "codefit:read:cancel",
+        "codefit:operation:cancel",
         async (event, ...args: unknown[]) => {
-          if (authorized(event, args)) await engine.stop();
+          if (!quitting && authorized(event, args, 0)) await engine.stop();
         },
       );
       await window.loadFile(join(contentRoot, "index.html"));

@@ -1,6 +1,7 @@
 package com.codefit;
 
 import com.codefit.config.DatabaseConfig;
+import com.codefit.config.ProfileLock;
 import com.codefit.service.BackgroundImportExecutor;
 import com.codefit.service.CompileOutcomeRegistry;
 import com.codefit.service.EvidenceBackfillWorker;
@@ -16,7 +17,8 @@ public class CodeFitApplication extends Application {
     private EvidenceBackfillWorker evidenceBackfill;
 
     @Override
-    public void start(Stage stage) {
+    public void start(Stage stage) throws java.io.IOException {
+        ProfileLock.holdForProcess(DatabaseConfig.currentDatabaseUrl());
         DatabaseConfig.initialize();
         evidenceBackfill = new EvidenceBackfillWorker();
         NavigationService.setPrimaryStage(stage);

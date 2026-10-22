@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "baseline": "c7b3f8cc9867c28a6c918321fa759515c0379973",
+  "capturedAt": "2026-10-22",
+  "artifact": "CodeFit-Gate0-linux-x64",
+  "sandbox": true,
+  "offline": "loopback-only network namespace",
+  "verification": {
+    "javaTests": 1815,
+    "nodeTests": 29,
+    "electronTests": 21,
+    "failures": 0,
+    "skipped": 0
+  },
+  "screenshots": [
+    {
+      "file": "screenshots/created-dark-1280.png",
+      "sha256": "1f0e2a9e1c0dbb6b5d39ebd7bace0aa593c672fbc18aee44acac51952f7bddf6",
+      "bytes": 131374
+    },
+    {
+      "file": "screenshots/created-dark-760.png",
+      "sha256": "16a933205cf116a0acb7cdc6727fe637f9e75e1f01ad343686dc66072e379ab0",
+      "bytes": 98132
+    },
+    {
+      "file": "screenshots/created-light-1280.png",
+      "sha256": "aecc0081665af7192f4e617b4ff3bd41df8e6e68835a432fbd8996e1f1e9302e",
+      "bytes": 130047
+    },
+    {
+      "file": "screenshots/created-light-760.png",
+      "sha256": "9743b24e2a22a933c690f78a46418a848c7a3ebb0b2832fe42e2c2ca47b141d0",
+      "bytes": 97455
+    },
+    {
+      "file": "screenshots/dark-1280.png",
+      "sha256": "b327b9866e6a499be2265d8b9f1d4e8bbddd5c25f6fc524dab85d9d53614a089",
+      "bytes": 107351
+    },
+    {
+      "file": "screenshots/dark-760.png",
+      "sha256": "336120d55117c4916b6f22e8752d8ba56c763e2b273d3e9f73922de044453e70",
+      "bytes": 80831
+    },
+    {
+      "file": "screenshots/light-1280.png",
+      "sha256": "248018a45cb5abd0b968d298e74cb46a61b04cfea6a0a85d742da7a4b74c4ddd",
+      "bytes": 114509
+    },
+    {
+      "file": "screenshots/light-760.png",
+      "sha256": "54845d09ac5352b54f77ecf0f7742274a4c83fa5efaffa33cd1739bd2c90c3fb",
+      "bytes": 80696
+    },
+    {
+      "file": "screenshots/name-rejected-dark-1280.png",
+      "sha256": "efe3faa650e194d69e6e8a45f5ad254d8b70d3c896dd89a036bbd69430678518",
+      "bytes": 114025
+    },
+    {
+      "file": "screenshots/pending-dark-1280.png",
+      "sha256": "8078aa95a50e653281f4282408013cfc7eb17685cb1ca1de20a66f7e77149856",
+      "bytes": 115707
+    },
+    {
+      "file": "screenshots/reconciled-dark-1280.png",
+      "sha256": "e283d0b1ff5c466ddba2672f2c17de7b652e036830dcf4d310c287b0675b7311",
+      "bytes": 131848
+    },
+    {
+      "file": "screenshots/unknown-completion-dark-1280.png",
+      "sha256": "1de90ebaa8360284c37bfd153cfd11d7f35b020d1433dfd31f129a15d075f2ab",
+      "bytes": 137383
+    }
+  ]
+}

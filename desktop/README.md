@@ -1,8 +1,8 @@
-# CodeFit · Gate 1 visual prototype
+# CodeFit · Gate2 experimental Java library
 
-An experimental, locally bundled Electron/React experience with Command Center, Ascension Tree and Mission Console. All progression, missions and evidence are clearly labeled demonstration data. The separate **Java Library** preserves Gate 0's real read-only `DeckService` query over a newly created disposable sample database. No learner profile is opened. JavaFX remains the normal application.
+The approved React Command Center, Ascension Tree and Mission Console remain labeled Gate1 previews. The **Java Library** now reads authoritative deck descriptors from a durable, isolated experimental profile and creates a deck through the existing Java service. Java owns SQLite and validates every command. No real learner profile is opened, migrated or opted in; JavaFX remains the normal application.
 
-Start with the [visual review gallery](../docs/architecture/gate1/README.md), [design system](../docs/architecture/gate1/design-system.md), [widget/data map and walkthrough](../docs/architecture/gate1/data-and-interactions.md), and [verification](../docs/architecture/gate1/verification.md). This is #259 / #256, awaiting explicit product-owner visual approval. The [Gate 0 ADR](../docs/architecture/adr-0001-web-desktop.md), [ownership map](../docs/architecture/gate0/dependency-map.md) and [threat model](../docs/architecture/gate0/security.md) still govern the unchanged bridge/Java boundary. Draft #255 remains untouched.
+Start with the [Gate2 review walkthrough and screenshots](../docs/architecture/gate2/README.md), [ADR 0002](../docs/architecture/adr-0002-headless-library-boundary.md), [exact API and ownership map](../docs/architecture/gate2/api.md), and [verification evidence](../docs/architecture/gate2/verification.md). This is #261 under #256, based on visually approved/merged Gate1 PR #263. The [Gate1 gallery](../docs/architecture/gate1/README.md) remains the visual contract. Draft #255 is not the baseline.
 
 ## Build and run
 
@@ -21,7 +21,7 @@ npm start
 
 `CODEFIT_MAVEN` may be an absolute executable wrapper for Maven/proxy settings; it is never evaluated as a shell command. On a managed proxy, Node 24's `NODE_USE_ENV_PROXY=1 NODE_USE_SYSTEM_CA=1` can be used for dependency acquisition without bypassing TLS checks. No runtime downloads occur on app launch.
 
-The renderer is always loaded from the production Vite build, including during `npm start`. No development HTTP server or remote content is used. Changes require another `npm run build`. The preload exposes only `listDecks()` and `cancelRead()`; cancellation closes the disposable session and a subsequent refresh starts another.
+The renderer is always loaded from the production Vite build, including during `npm start`. No development HTTP server or remote content is used. Changes require another `npm run build`. The preload exposes only `readState`, `createDeck`, `pendingDeck`, `recoverDeck`, `acknowledgeDeck`, and `cancelOperation`. Cancellation stops the connection while retaining the durable operation; it does not promise a write rollback.
 
 ## Package and test the actual artifact
 
@@ -42,7 +42,7 @@ CODEFIT_DESKTOP_EXECUTABLE="$PWD/release/CodeFit-Gate0-linux-x64/codefit-gate0" 
 
 Do not add `--no-sandbox` to work around host restrictions. Use a host with a functioning Chromium sandbox. The native e2e/process-fault tests currently target Linux (`ps`, `/proc`, POSIX signals); Windows/macOS tests belong to their native packaging validation. Playwright opens local debugging connections only in the test harness; normal app startup has no debugging listener or HTTP server.
 
-`CODEFIT_CAPTURE_SCREENSHOTS=1` captures the twelve primary Gate 1 views plus interaction/state evidence into `docs/architecture/gate1/screenshots`. The old four Gate 0 captures only regenerate with the separate `CODEFIT_CAPTURE_GATE0_SCREENSHOTS` flag. Tests use isolated Chromium configuration directories and a sentinel `codefit.db`; they do not modify a real learner database. `npm test` includes the real bundled Java service, so run `prepare:java` first.
+`CODEFIT_CAPTURE_SCREENSHOTS=1` captures the twelve primary Gate 1 views plus interaction/state evidence into `docs/architecture/gate1/screenshots`. `CODEFIT_CAPTURE_GATE2_SCREENSHOTS=1` captures the experimental library in both themes/widths plus confirmed, pending, rejection, unknown and reconciled states into `docs/architecture/gate2/screenshots`. Tests use isolated Chromium configuration directories and a sentinel `codefit.db`; they do not modify a real learner database. `npm test` includes the real bundled Java service, so run `prepare:java` first.
 
 From the repository root, retain the complete Java regression run:
 
@@ -56,14 +56,18 @@ The **Desktop Gate 0** workflow builds and tests the packaged Linux artifact wit
 
 - `src/`: reusable visual components, three screen modules, sample mission dialog, labeled fixtures and the isolated Java Library; no learning policies or database access.
 - `electron/`: fixed bundled process path, session ownership, exact-frame IPC authorization and sandboxed preload.
-- `../src/main/java/com/codefit/desktop/`: separate headless entrypoint and bounded Java protocol, reusing the existing initializer and deck service.
+- `../src/main/java/com/codefit/desktop/`: separate headless entrypoint and bounded Java protocol, separating new-profile bootstrap, strictly read-only queries and transactional deck creation through the existing Java service.
 - `java/`: generated platform runtime + existing compiled engine/resources/dependencies. Never commit this directory.
 - `release/`: generated unsigned local artifact. Package paths are resolved from Electron resources, not the working directory or `JAVA_HOME`.
 
-Chromium uses its dedicated `CodeFit-Gate0` directory under the platform application-data directory; on Linux this is normally `~/.config/CodeFit-Gate0`. The ephemeral browser session never loads the JavaFX profile/preferences. Java creates `codefit-gate0-*` directories under its OS temp directory and deletes its own known SQLite files on graceful close. SIGKILL of Java or power loss can leave disposable sample files. No automatic recursive sweep is performed.
+Chromium keeps the existing independent `CodeFit-Gate0` user-data directory under platform application data (normally `~/.config/CodeFit-Gate0` on Linux). The fixed `experimental-library-v1` subdirectory holds the experimental database, marker and Java ownership lock. `experimental-operations-v1` holds the single current creation intent. Both persist across restart. The renderer cannot select a path. The browser session remains ephemeral and does not load JavaFX preferences.
 
-Rollback: close the proof, remove its artifact/generated build directories and, if desired, its dedicated Chromium configuration directory. After confirming no proof process remains, abandoned `codefit-gate0-*` sample directories can be removed. Do not delete any JavaFX data or general `codefit.db`. There is no learner migration to reverse.
+On the first Java Library operation, Java initializes a fresh staged database with starter decks and publishes it atomically. Existing profiles are verified and recovered under the owner lock; they are never automatically migrated or replaced. Named state/receipt queries use read-only SQLite connections. JavaFX now acquires the same cooperative profile lock before its initializer and retains it until JVM exit. Older binaries and external SQLite tools do not honor this lock; do not point them at the experimental profile while it is open.
+
+Recovery: after an interrupted response, reopen Java Library. A saved receipt confirms the actual outcome. If completion remains unknown, **Check and finish saved creation** checks Java and replays the same saved command only when needed. **Acknowledge and continue** clears a terminal receipt from the main journal after Java verifies it. A profile identity mismatch or invalid journal fails closed and keeps the files for review.
+
+Rollback: close every experimental process and keep the two experimental subdirectories together if you want to preserve your experimental decks and command recovery. Removing the artifact requires no learner migration rollback. These directories may be archived or deliberately removed only after their experimental data is no longer needed; no application cleanup recursively deletes them. Do not delete any ordinary JavaFX `codefit.db` or learner profile. A future learner opt-in, migration or backup workflow requires separate review.
 
 ## Platform limits
 
-The Linux local artifact is proven; it is not a signed installer. Build separately on each target OS/architecture. Windows still needs a native Maven launcher path (Node cannot directly spawn `mvn.cmd` without a command interpreter), correct SQLite natives, installer/runtime layout and shutdown verification. macOS needs a native build, hardened signing of nested Java/Electron binaries and notarization. No cross-platform readiness claim is made. The reduced runtime supports this read use case; it intentionally lacks `jdk.compiler` and cannot replace the existing coding runner runtime.
+The Linux local artifact is proven; it is not a signed installer. Build separately on each target OS/architecture. Windows still needs a native Maven launcher path (Node cannot directly spawn `mvn.cmd` without a command interpreter), correct SQLite natives, installer/runtime layout and shutdown verification. macOS needs a native build, hardened signing of nested Java/Electron binaries and notarization. No cross-platform readiness claim is made. The reduced runtime supports this library read/create slice; it intentionally lacks `jdk.compiler` and cannot replace the existing coding runner runtime.

@@ -173,9 +173,13 @@ function App() {
         <div className="provenance">
           <span>
             <i />
-            DESIGN PREVIEW
+            {screen === "library" ? "EXPERIMENTAL DATA" : "DESIGN PREVIEW"}
           </span>
-          <p>Demonstration data. Your learner profile is not connected.</p>
+          <p>
+            {screen === "library"
+              ? "Live experimental profile. Your learner profile is not connected."
+              : "Demonstration data. Your learner profile is not connected."}
+          </p>
           <button onClick={() => setModal("states")}>
             {state === "ready" ? "Explore states" : stateLabels[state]}{" "}
             <Icon name="chevron" size={12} />
@@ -191,7 +195,7 @@ function App() {
                     ? "A MAP OF WHAT YOU CAN BECOME"
                     : screen === "missions"
                       ? "PURPOSEFUL PRACTICE. VISIBLE PROGRESS."
-                      : "PRESERVED JAVA ENGINE / READ ONLY"}
+                      : "PRESERVED JAVA ENGINE / EXPERIMENTAL PROFILE"}
               </p>
               <h1 ref={heading} tabIndex={-1}>
                 {nav.find((n) => n.id === screen)?.label}

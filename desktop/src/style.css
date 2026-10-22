@@ -3746,3 +3746,64 @@ select {
   color: var(--muted);
   line-height: 1.8;
 }
+
+/* Gate2: the existing Java Library surface is the only functional migration slice. */
+.library-create {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 22px 0 28px;
+  background: var(--surface);
+}
+.library-create h3 {
+  margin: 6px 0 18px;
+}
+.library-create form {
+  display: grid;
+  gap: 10px;
+  max-width: 620px;
+}
+.library-create label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.library-create label span {
+  color: var(--muted);
+  font-weight: 400;
+}
+.library-create input {
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
+  width: 100%;
+  min-width: 0;
+}
+.library-create button,
+.library-next {
+  padding: 11px 16px;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.library-create button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.operation-receipt {
+  overflow-wrap: anywhere;
+}
+.operation-receipt h4 {
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+.operation-receipt p {
+  line-height: 1.6;
+}
+.library .deck h3,
+.library .deck p {
+  overflow-wrap: anywhere;
+}

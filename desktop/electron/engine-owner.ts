@@ -1,29 +1,43 @@
-import { ResultSchema, type Result } from "../src/contract";
+import { ResultSchema, type Result, type Command } from "../src/contract";
 
-interface ReadSession {
-  listDecks(): Promise<Result>;
+interface ApplicationSession {
+  request(command: Command): Promise<Result>;
   stop(): Promise<void>;
 }
 
 /** Serializes session replacement; a stale request can only close its own session. */
 export class EngineOwner {
-  private current?: ReadSession;
+  private current?: ApplicationSession;
   private closing?: Promise<void>;
   private shuttingDown = false;
-  constructor(private readonly create: () => ReadSession) {}
+  constructor(private readonly create: () => ApplicationSession) {}
 
-  async read(authorized: () => boolean): Promise<Result> {
+  async execute(command: Command, authorized: () => boolean): Promise<Result> {
     if (this.shuttingDown || !authorized())
       return { ok: false, code: "UNAVAILABLE" };
     if (this.closing) await this.closing;
     // The window or owning frame may have gone away while cleanup was pending.
     if (this.shuttingDown || !authorized())
       return { ok: false, code: "UNAVAILABLE" };
-    let selected: ReadSession | undefined;
+    let selected: ApplicationSession | undefined;
     try {
       selected = this.current ??= this.create();
-      const result = ResultSchema.parse(await selected.listDecks());
-      if (!result.ok && result.code !== "BUSY") await this.stop(selected);
+      const result = ResultSchema.parse(await selected.request(command));
+      if (
+        !result.ok &&
+        [
+          "START_FAILED",
+          "UNAVAILABLE",
+          "READ_FAILED",
+          "COMMAND_FAILED",
+          "PROTOCOL_ERROR",
+          "TIMEOUT",
+          "CANCELLED",
+          "PROFILE_BUSY",
+          "PROFILE_INVALID",
+        ].includes(result.code)
+      )
+        await this.stop(selected);
       return result;
     } catch {
       if (selected) await this.stop(selected);

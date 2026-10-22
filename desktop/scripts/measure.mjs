@@ -16,6 +16,7 @@ for (let run = 0; run < 5; run++) {
   try {
     const start = performance.now();
     app = await electron.launch({
+      chromiumSandbox: true,
       executablePath,
       cwd: directory,
       env: {
@@ -25,6 +26,10 @@ for (let run = 0; run < 5; run++) {
       },
     });
     const page = await app.firstWindow();
+    await page
+      .getByRole("navigation")
+      .getByRole("button", { name: /Java Library/ })
+      .click();
     await page
       .getByRole("status")
       .filter({ hasText: "8 deck descriptions received from Java" })
@@ -40,7 +45,7 @@ for (let run = 0; run < 5; run++) {
         pid: +m[1],
         parent: +m[2],
         rssKiB: +m[3],
-        java: m[4].includes("com.codefit.desktop.DesktopReadOnlyMain"),
+        java: m[4].includes("com.codefit.desktop.DesktopApplicationMain"),
       }));
     const owned = new Set([app.process().pid]);
     let previous = 0;
@@ -73,7 +78,7 @@ const report = {
   samples,
 };
 writeFileSync(
-  resolve("../docs/architecture/gate0/measurements.json"),
+  resolve("../docs/architecture/gate2/measurements.json"),
   JSON.stringify(report, null, 2) + "\n",
 );
 console.log(JSON.stringify(report, null, 2));

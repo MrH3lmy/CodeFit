@@ -120,6 +120,7 @@ test("real experimental profile works offline with sandbox, narrow bridge and da
       "disconnectLearnerProfile",
       "pendingDeck",
       "readLearnerProfile",
+      "readLearnerSkills",
       "readState",
       "recoverDeck",
     ],

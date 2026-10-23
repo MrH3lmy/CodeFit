@@ -208,6 +208,27 @@ export function LearnerProfile({
         integration opens the source read-only. Native SQLite may use lock or
         shared-memory sidecars.
       </p>
+      <details className="snapshot-privacy">
+        <summary>Private backup storage and cleanup</summary>
+        <p>
+          Full snapshots are unencrypted and may contain answers, drafts and
+          peer keys. File permissions restrict access, but do not protect
+          against someone using your account or reading an unencrypted disk.
+        </p>
+        <p>
+          Storage stops after eight completed or interrupted captures.
+          Disconnect and close all CodeFit instances before managing files.
+          Archive completed snapshots to private, encrypted storage and verify
+          the copy before manually removing a chosen backup. Interrupted
+          .partial files are not verified backups.
+        </p>
+        <p>
+          Disconnecting does not delete backups. Automatic deletion and source
+          replacement are disabled. Deletion cannot guarantee secure erasure on
+          SSDs, synchronized folders or backups; use operating-system disk
+          encryption and avoid shared storage.
+        </p>
+      </details>
     </div>
   );
 }

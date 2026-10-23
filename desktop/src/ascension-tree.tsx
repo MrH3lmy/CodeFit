@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties } from "react";
 import { Icon } from "./icons";
 import { Badge, Button, tabKeys } from "./components";
 import { skills } from "./data";
+import { spatialNeighbor, focusSkill, preferredScroll } from "./skill-layout";
 export function Tree({
   onMission,
   unknown,
@@ -42,16 +43,8 @@ export function Tree({
       ].includes(e.key)
     ) {
       e.preventDefault();
-      const next =
-        e.key === "Home"
-          ? 0
-          : e.key === "End"
-            ? skills.length - 1
-            : (index +
-                (["ArrowRight", "ArrowDown"].includes(e.key) ? 1 : -1) +
-                skills.length) %
-              skills.length;
-      document.getElementById(`skill-${skills[next].id}`)?.focus();
+      const next = spatialNeighbor(skills, skills[index].id, e.key);
+      if (next) focusSkill(`skill-${next.id}`);
     }
   };
   return (
@@ -142,7 +135,7 @@ export function Tree({
                 <button
                   id={`skill-${s.id}`}
                   key={s.id}
-                  className={`skill-node ${s.state.toLowerCase().replace(" ", "-")} ${selected === s.id ? "selected" : ""} ${(branch === "Java" && s.id === "objects") || (branch === "Engineering" && ["core", "flow", "debug"].includes(s.id)) ? "dimmed" : ""} ${unknown ? "unknown-node" : ""}`}
+                  className={`skill-node ${s.state.toLowerCase().replace(" ", "-")} ${selected === s.id ? "selected" : ""} ${branch !== "All branches" && !s.branches.includes(branch as "Java" | "Engineering") ? "dimmed" : ""} ${unknown ? "unknown-node" : ""}`}
                   style={
                     {
                       "--x": `${s.x / 9}%`,
@@ -189,7 +182,10 @@ export function Tree({
                 document.getElementById("selected-skill-title")?.focus();
                 document
                   .getElementById("selected-skill-title")
-                  ?.scrollIntoView({ block: "center", behavior: "smooth" });
+                  ?.scrollIntoView({
+                    block: "center",
+                    behavior: preferredScroll(),
+                  });
               }}
             >
               Inspect {node.name} <span aria-hidden="true">↓</span>

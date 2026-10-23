@@ -3952,3 +3952,142 @@ select {
     min-height: 0;
   }
 }
+.skill-source p {
+  max-width: 720px;
+}
+.skill-read-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.skill-read-controls > span {
+  flex: 1 1 240px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.skill-read-controls .button {
+  font-size: 11px;
+  padding: 9px 12px;
+}
+.skill-read-state {
+  padding: 48px 24px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
+}
+.skill-read-state p {
+  color: var(--muted);
+}
+.learner-atlas {
+  align-items: start;
+}
+.learner-atlas .tree-panel {
+  position: sticky;
+  top: 16px;
+}
+.learner-atlas .skill-node {
+  width: 205px;
+}
+.learner-atlas .skill-node strong {
+  white-space: normal;
+  max-width: 205px;
+  line-height: 1.4;
+  text-align: center;
+}
+.learner-atlas .skill-node small {
+  font-size: 8px;
+  letter-spacing: 0.8px;
+}
+.learner-atlas .has-history .node-shape {
+  color: var(--violet);
+  border-color: var(--violet);
+  background: var(--violet-deep);
+}
+.learner-atlas .needs-review .node-shape {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.learner-atlas .skill-inspector {
+  min-width: 0;
+}
+.learner-atlas .badge {
+  white-space: normal;
+  line-height: 1.6;
+}
+.learner-atlas .segmented {
+  flex-wrap: wrap;
+}
+.learner-atlas .segmented button {
+  white-space: normal;
+}
+.exact-skill-ref {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.skill-behaviors,
+.skill-reasons {
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.skill-behaviors li,
+.skill-reasons li {
+  margin-bottom: 10px;
+}
+.skill-facts {
+  margin: 16px 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.skill-facts dt {
+  color: var(--muted);
+  margin-top: 11px;
+}
+.skill-facts dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.skill-warning {
+  color: var(--ink);
+  background: var(--surface-3);
+  border-left: 2px solid var(--gold);
+  padding: 11px 13px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.learner-atlas details {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.learner-atlas details summary {
+  cursor: pointer;
+  color: var(--cyan);
+}
+.learner-atlas details ul {
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+.map-legend .history {
+  background: var(--violet);
+}
+@media (max-width: 1000px) {
+  .learner-atlas .tree-panel {
+    position: relative;
+    top: auto;
+  }
+}
+@media (max-width: 850px) {
+  .learner-atlas .skill-inspector {
+    /* Keep definition details together beside a long historical evidence panel. */
+    grid-template-rows: min-content min-content min-content min-content 1fr;
+  }
+}

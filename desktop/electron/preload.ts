@@ -13,6 +13,7 @@ const bridge: CodeFitBridge = Object.freeze({
     ipcRenderer.invoke("codefit:deck:acknowledge", commandId),
   cancelOperation: () => ipcRenderer.invoke("codefit:operation:cancel"),
   chooseLearnerProfile: () => ipcRenderer.invoke("codefit:learner:choose"),
+  readLearnerSkills: () => ipcRenderer.invoke("codefit:learner:skills"),
   readLearnerProfile: () => ipcRenderer.invoke("codefit:learner:read"),
   disconnectLearnerProfile: () =>
     ipcRenderer.invoke("codefit:learner:disconnect"),

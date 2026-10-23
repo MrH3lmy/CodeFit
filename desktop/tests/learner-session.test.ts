@@ -10,6 +10,8 @@ import {
 } from "../electron/learner-session";
 import { runtimeLocation } from "../electron/java-session";
 import type { LearnerResult } from "../src/learner-contract";
+import type { LearnerSkillsResult } from "../src/learner-contract";
+import { LearnerSkillsSchema } from "../src/skill-contract";
 import { createLearnerFixture } from "./learner-fixture";
 
 test("real learner reads coalesce, preserve source bytes, and reopen frozen backups without domain writes", async () => {
@@ -45,6 +47,92 @@ test("real learner reads coalesce, preserve source bytes, and reopen frozen back
     await session.stop();
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("mixed overview and skill reads serialize and coalesce without leaking private metadata", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "codefit-skills-")),
+    file = join(dir, "source.db");
+  createLearnerFixture(file, "ascension-supported");
+  const before = readFileSync(file);
+  const session = new LearnerSession(
+    runtimeLocation(resolve("java")),
+    file,
+    join(dir, "snapshots"),
+  );
+  try {
+    const first = session.readSkills(),
+      duplicate = session.readSkills(),
+      overview = session.read();
+    assert.equal(first, duplicate);
+    const [a, b] = await Promise.all([first, overview]);
+    assert.ok(a.ok);
+    assert.ok(b.ok);
+    if (!a.ok || !b.ok) return;
+    assert.equal(a.result.kind, "learner-skills");
+    assert.equal(b.result.kind, "learner-overview");
+    assert.equal(a.result.sessionId, b.result.sessionId);
+    assert.equal(a.result.capturedAt, b.result.capturedAt);
+    assert.ok(a.result.nodes.some((n) => n.estimate.band === "INDEPENDENT"));
+    assert.ok(
+      a.result.nodes.every(
+        (n) => n.estimate.currentSupport === "NOT_EVALUATED",
+      ),
+    );
+    assert.deepEqual(await session.readSkills(), a);
+    assert.ok(!JSON.stringify(a).includes("PRIVATE-"));
+    assert.deepEqual(readFileSync(file), before);
+    const corrupt = structuredClone(a.result);
+    (corrupt.nodes[0] as any).answer = "secret";
+    assert.equal(LearnerSkillsSchema.safeParse(corrupt).success, false);
+    const mismatch = structuredClone(a.result);
+    mismatch.edges[0].prerequisite.version++;
+    assert.equal(LearnerSkillsSchema.safeParse(mismatch).success, false);
+    const cycle = structuredClone(a.result);
+    cycle.edges.push({
+      prerequisite: cycle.edges[0].dependent,
+      dependent: cycle.edges[0].prerequisite,
+    });
+    assert.equal(LearnerSkillsSchema.safeParse(cycle).success, false);
+    const excessive = structuredClone(a.result);
+    excessive.nodes = Array.from({ length: 33 }, () => a.result.nodes[0]);
+    assert.equal(LearnerSkillsSchema.safeParse(excessive).success, false);
+  } finally {
+    await session.stop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("profile switch fences a delayed skill read without disconnecting the replacement", async () => {
+  let release!: (v: LearnerSkillsResult) => void;
+  const waiting = new Promise<LearnerSkillsResult>((r) => {
+    release = r;
+  });
+  const overview = { ok: true, result: {} } as LearnerResult;
+  const owner = new LearnerOwner(
+    () => {
+      throw new Error();
+    },
+    "/unused",
+    (source) => ({
+      read: async () => overview,
+      readSkills: () =>
+        source === "A"
+          ? waiting
+          : Promise.resolve({ ok: false, code: "READ_FAILED" }),
+      stop: async () => {},
+    }),
+  );
+  await owner.connect("A", () => true);
+  const old = owner.readSkills(() => true);
+  await owner.connect("B", () => true);
+  release({ ok: false, code: "READ_FAILED" });
+  assert.deepEqual(await old, { ok: false, code: "CANCELLED" });
+  assert.deepEqual(await owner.read(() => true), overview);
+  assert.deepEqual(await owner.readSkills(() => false), {
+    ok: false,
+    code: "UNAVAILABLE",
+  });
+  await owner.shutdown();
 });
 test("unsupported schema and missing facts are explicit with source unchanged", async () => {
   for (const mode of ["future", "older", "missing"]) {
@@ -100,6 +188,52 @@ async function pipe(
   }
 }
 const ready = `process.stdout.write(JSON.stringify({v:3,type:'ready',profileId:'${profile}',sessionId:session})+'\\n');`;
+const emptySkillReply = `{v:1,kind:'learner-skills',source:'learner-snapshot',profileId:'${profile}',sessionId:session,capturedAt:'2026-01-01T00:00:00Z',schemaVersion:25,readOnly:true,status:'unavailable',reason:'GRAPH_UNAVAILABLE',graph:null,newerGraphAvailable:false,nodes:[],edges:[]}`;
+test("skill transport enforces method correlation, profile identity, private-field and frame bounds", async () => {
+  for (const mutation of [
+    "result.profileId='b'.repeat(64);",
+    "result.answer='PRIVATE-ANSWER';",
+    "result.nodes=Array(33).fill({});",
+  ]) {
+    await pipe(
+      `${ready}require('node:readline').createInterface({input:process.stdin}).on('line',line=>{const req=JSON.parse(line),result=${emptySkillReply};${mutation}process.stdout.write(JSON.stringify({v:3,id:req.id,ok:true,result})+'\\n');});`,
+      async (s) =>
+        assert.deepEqual(await s.readSkills(), {
+          ok: false,
+          code: "PROTOCOL_ERROR",
+        }),
+    );
+  }
+  await pipe(
+    `${ready}process.stdin.once('data',()=>process.stdout.write('x'.repeat(262145)));`,
+    async (s) =>
+      assert.deepEqual(await s.readSkills(), {
+        ok: false,
+        code: "PROTOCOL_ERROR",
+      }),
+  );
+  await pipe(
+    `${ready}require('node:readline').createInterface({input:process.stdin}).on('line',line=>{const req=JSON.parse(line);process.stdout.write(JSON.stringify({v:3,id:req.id,ok:true,result:${emptySkillReply}})+'\\n');});`,
+    async (s) =>
+      assert.deepEqual(await s.read(), { ok: false, code: "PROTOCOL_ERROR" }),
+  );
+});
+test("cancellation stops a skill read and its queued overview without restarting a process", async () => {
+  await pipe(`${ready}process.stdin.resume();`, async (s) => {
+    const skills = s.readSkills(),
+      overview = s.read();
+    await s.stop();
+    assert.deepEqual(await skills, { ok: false, code: "CANCELLED" });
+    assert.deepEqual(await overview, { ok: false, code: "CANCELLED" });
+    assert.deepEqual(await s.readSkills(), { ok: false, code: "CANCELLED" });
+  });
+  await pipe(
+    `${ready}process.stdin.resume();`,
+    async (s) =>
+      assert.deepEqual(await s.readSkills(), { ok: false, code: "TIMEOUT" }),
+    100,
+  );
+});
 for (const [name, source] of Object.entries({
   "duplicate key": `process.stdout.write('{"v":3,"v":3,"type":"ready"}\\n');process.stdin.resume();`,
   "invalid UTF8": `process.stdout.write(Buffer.from([255,10]));process.stdin.resume();`,
@@ -160,6 +294,7 @@ test("switching and disconnect invalidate an older delayed read without stopping
         source === "A"
           ? delayed
           : Promise.resolve({ ok: false, code: "INCOMPATIBLE_SCHEMA" }),
+      readSkills: async () => ({ ok: false, code: "UNAVAILABLE" }),
       stop: async () => {
         stopped++;
       },

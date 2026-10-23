@@ -7,6 +7,7 @@ import { Library } from "./library";
 import { missions, stateLabels, type Mission, type PreviewState } from "./data";
 import { CommandCenter } from "./command-center";
 import { Tree } from "./ascension-tree";
+import { LearnerTree } from "./learner-tree";
 import { MissionConsole } from "./mission-console";
 import { MissionDialog } from "./mission-dialog";
 import {
@@ -189,7 +190,7 @@ function App() {
             <i />
             {screen === "library"
               ? "EXPERIMENTAL DATA"
-              : screen === "command" && learner.profile
+              : (screen === "command" || screen === "tree") && learner.profile
                 ? "LEARNER SNAPSHOT"
                 : "DESIGN PREVIEW"}
           </span>
@@ -199,17 +200,21 @@ function App() {
                 ? "Live experimental profile. This library is separate from learner data."
                 : "Live experimental profile. Your learner profile is not connected."
               : learner.profile
-                ? screen === "command"
+                ? screen === "command" || screen === "tree"
                   ? "Recorded learner data. Read-only snapshot; newer changes need a new capture."
                   : "Demonstration data. These examples are separate from your connected learner snapshot."
                 : "Demonstration data. Your learner profile is not connected."}
           </p>
           <button
             onClick={() =>
-              setModal(screen === "command" ? "profile" : "states")
+              setModal(
+                screen === "command" || screen === "tree"
+                  ? "profile"
+                  : "states",
+              )
             }
           >
-            {screen === "command"
+            {screen === "command" || screen === "tree"
               ? learner.profile
                 ? "Profile details"
                 : "Connect profile"
@@ -246,27 +251,33 @@ function App() {
                     : "ENG / 04"}
             </span>
           </div>
-          {screen === "command" && (learner.busy || learner.error) && (
-            <div
-              className="state-banner learner-connection"
-              role={learner.error ? "alert" : "status"}
-            >
-              <Icon name={learner.error ? "alert" : "clock"} />
-              <span>
-                {learner.error ||
-                  "Waiting for selection or a verified learner snapshot…"}
-              </span>
-              <button
-                onClick={() =>
-                  learner.busy ? void learner.disconnect() : setModal("profile")
-                }
+          {(screen === "command" || screen === "tree") &&
+            (learner.busy || learner.error) && (
+              <div
+                className="state-banner learner-connection"
+                role={learner.error ? "alert" : "status"}
               >
-                {learner.busy ? "Cancel connection" : "Profile details"}
-              </button>
-            </div>
-          )}
+                <Icon name={learner.error ? "alert" : "clock"} />
+                <span>
+                  {learner.error ||
+                    "Waiting for selection or a verified learner snapshot…"}
+                </span>
+                <button
+                  onClick={() =>
+                    learner.busy
+                      ? void learner.disconnect()
+                      : setModal("profile")
+                  }
+                >
+                  {learner.busy ? "Cancel connection" : "Profile details"}
+                </button>
+              </div>
+            )}
           {state === "offline" &&
-            !(screen === "command" && learner.profile) && (
+            !(
+              (screen === "command" || screen === "tree") &&
+              learner.profile
+            ) && (
               <div className="state-banner" role="status">
                 <Icon name="wifi" />
                 <span>
@@ -279,7 +290,10 @@ function App() {
               </div>
             )}
           {state === "unknown" &&
-            !(screen === "command" && learner.profile) && (
+            !(
+              (screen === "command" || screen === "tree") &&
+              learner.profile
+            ) && (
               <div className="state-banner" role="status">
                 <Icon name="info" />
                 <span>
@@ -292,7 +306,7 @@ function App() {
               </div>
             )}
           {screen !== "library" &&
-          !(screen === "command" && learner.profile) &&
+          !((screen === "command" || screen === "tree") && learner.profile) &&
           (state === "empty" || state === "error" || state === "loading") ? (
             <StateView kind={state} onReset={() => setState("ready")} />
           ) : screen === "command" ? (
@@ -307,10 +321,19 @@ function App() {
               onProfile={() => setModal("profile")}
             />
           ) : screen === "tree" ? (
-            <Tree
-              onMission={() => setMission(missions[0])}
-              unknown={state === "unknown"}
-            />
+            learner.profile ? (
+              <LearnerTree
+                key={learner.profile.sessionId}
+                profile={learner.profile}
+                onProfile={() => setModal("profile")}
+                onDisconnect={() => void learner.disconnect()}
+              />
+            ) : (
+              <Tree
+                onMission={() => setMission(missions[0])}
+                unknown={state === "unknown"}
+              />
+            )
           ) : screen === "missions" ? (
             <MissionConsole onMission={setMission} />
           ) : null}

@@ -1,5 +1,7 @@
 # Learner read API and ownership
 
+This records the PR #265 contract. The additive [Ascension API](../gate2-ascension/api.md) adds `readLearnerSkills` / `learner.skills.read` with a separate 256 KiB skills response bound; the original overview and startup bounds below remain unchanged.
+
 Executable schemas: [learner-contract.ts](../../../desktop/src/learner-contract.ts) and [LearnerProtocol.java](../../../src/main/java/com/codefit/desktop/LearnerProtocol.java). [ADR 0003](../adr-0003-learner-snapshots.md) defines capture and privacy guarantees.
 
 ## Renderer surface

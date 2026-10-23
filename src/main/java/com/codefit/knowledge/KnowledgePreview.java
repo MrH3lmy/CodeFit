@@ -13,10 +13,14 @@ import static com.codefit.knowledge.PreviewFailure.Code.*;
 /** Offline, pinned, original-author metadata reader. Never publishes graphs or learner evidence. */
 public final class KnowledgePreview {
     public static final String REVISION = "v0.41";
+    public static final String PUBLIC_SCHEMA = "codefit-public-knowledge-preview/0.1";
     public static final String SHA256 = "76377d04ecb0ff45690df32bbc001f66bfaa672e1935327e1c09b2b047a46f52";
     public static final int MAX_BYTES = 32_768;
     private static final String BASE = "/knowledge/hunter-pilot-v0.41/";
-    private static final Set<String> STAGES = Set.of("PREDICT", "DEBUG", "BUILD", "DEFEND");
+    private static final Set<String> REQUIRED_STAGES = Set.of("PREDICT", "DEBUG", "BUILD", "DEFEND");
+    private static final Set<String> PILOT_IDS = Set.of(
+            "java.general.local.scope.v1", "java.general.enhanced.iteration.v1",
+            "java.general.library.selection.v1", "java.general.exact.decimal.v1");
     private static final JsonFactory JSON = JsonFactory.builder()
             .streamReadConstraints(StreamReadConstraints.builder().maxNestingDepth(8)
                     .maxStringLength(512).maxNumberLength(16).build()).build();
@@ -92,17 +96,18 @@ public final class KnowledgePreview {
                 fields(stage, "stage", "id");
                 String kind = text(stage, "stage"), stageId = text(stage, "id");
                 if (!stageIds.add(stageId)) throw fail(DUPLICATE_ID);
-                if (!STAGES.contains(kind) || !coverage.add(kind)) throw fail(STAGES);
+                if (!REQUIRED_STAGES.contains(kind) || !coverage.add(kind)) throw fail(STAGES);
                 if (!stageId.equals("EJ41-" + source.substring(8) + "-" + kind)) throw fail(IDENTIFIER);
                 stages.add(new PublicPreview.Stage(kind, stageId));
             }
-            if (!coverage.equals(STAGES)) throw fail(STAGES);
-            skills.add(new PublicPreview.Skill(id, title, prerequisites, stages));
+            if (!coverage.equals(REQUIRED_STAGES)) throw fail(STAGES);
+            skills.add(new PublicPreview.Skill(id, title, source,
+                    text(skill, "source_section_sha256"), prerequisites, stages));
         }
         if (skills.size() != 4) throw fail(COUNT);
         for (var skill : skills) {
             for (String prerequisite : skill.prerequisites()) {
-                if (prerequisite.startsWith("java.general.") && !ids.contains(prerequisite))
+                if (PILOT_IDS.contains(prerequisite) && !ids.contains(prerequisite))
                     throw fail(MISSING_REFERENCE);
             }
         }
@@ -124,7 +129,8 @@ public final class KnowledgePreview {
             else blockers.add(new PublicPreview.Blocker(ids.contains(reference)
                     ? "UNMAPPED_SKILL" : "UNRESOLVED_EXTERNAL_PREREQUISITE", reference));
         }
-        return new PublicPreview("PUBLIC_PREVIEW", REVISION, "UNREVIEWED", "JDK21_VERIFICATION_PENDING",
+        return new PublicPreview(PUBLIC_SCHEMA, "PUBLIC_PREVIEW", REVISION, SHA256,
+                "UNREVIEWED", "JDK21_VERIFICATION_PENDING", false, false, false, false, false, 0,
                 "Java9-era guidance requires independent JDK21 verification; not a deployable challenge catalog.",
                 skills, mappings, blockers);
     }

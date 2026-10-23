@@ -5,7 +5,7 @@ public final class PreviewFailure extends IllegalArgumentException {
     public enum Code {
         IO, TOO_LARGE, INVALID_JSON, LIMIT, DUPLICATE_FIELD, FIELDS, TYPE, VERSION,
         IDENTIFIER, FINGERPRINT, FLAGS, COUNT, DUPLICATE_ID, STAGES,
-        MISSING_REFERENCE, CYCLE, PIN_MISMATCH, RESOURCE_PIN, CLI
+        MISSING_REFERENCE, CYCLE, PIN_MISMATCH, RESOURCE_PIN, OUTPUT_CONFLICT, CLI
     }
     private final Code code;
 

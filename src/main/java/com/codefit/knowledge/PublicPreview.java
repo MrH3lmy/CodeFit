@@ -6,7 +6,10 @@ import java.util.List;
 
 /** Metadata contract only; deliberately not a challenge, approval, or progression contract. */
 public record PublicPreview(
-        String exposure, String revision, String reviewStatus, String verification,
+        String schema, String exposure, String revision, String revisionSha256,
+        String reviewStatus, String verification,
+        boolean productionImportSupported, boolean graderAvailable, boolean xpEnabled,
+        boolean rewardsEnabled, boolean masteryEnabled, int independentApprovals,
         String caveat, List<Skill> skills, List<Mapping> mappings, List<Blocker> blockers) {
     public PublicPreview {
         skills = List.copyOf(skills);
@@ -14,7 +17,8 @@ public record PublicPreview(
         blockers = List.copyOf(blockers);
     }
 
-    public record Skill(String id, String title, List<String> prerequisites, List<Stage> stages) {
+    public record Skill(String id, String title, String sourceItem, String sourceSectionSha256,
+                        List<String> prerequisites, List<Stage> stages) {
         public Skill {
             prerequisites = List.copyOf(prerequisites);
             stages = List.copyOf(stages);

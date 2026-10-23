@@ -1,10 +1,10 @@
 # CodeFit · Gate2 learner snapshots and experimental library
 
-Gate 2 continuation adds an explicitly selected **read-only learner snapshot** in Command Center. Start with the [learner-profile walkthrough](../docs/architecture/gate2-profile/README.md), [ADR 0003](../docs/architecture/adr-0003-learner-snapshots.md), and [typed read API](../docs/architecture/gate2-profile/api.md). The original experimental Library remains separate. Real learner writes, migrations and automatic reconnection are unavailable. The reader currently supports validated local Linux filesystems only.
+Gate 2 continuation adds an explicitly selected **read-only learner snapshot** in Command Center and the Ascension Tree. The [Ascension integration](../docs/architecture/gate2-ascension/README.md) adds exact Java-owned definitions, prerequisites and explicitly historical estimate summaries. Start with the [learner-profile walkthrough](../docs/architecture/gate2-profile/README.md), [ADR 0003](../docs/architecture/adr-0003-learner-snapshots.md), and [typed read API](../docs/architecture/gate2-profile/api.md). The original experimental Library remains separate. Real learner writes, migrations and automatic reconnection are unavailable. The reader currently supports validated local Linux filesystems only.
 
 For tests, export `JAVA_HOME` to a Java 21 JDK. The learner tests compile a test-only synthetic profile builder outside the artifact; the packaged application still uses its bundled runtime. `CODEFIT_CAPTURE_PROFILE_SCREENSHOTS=1` captures the connected Command Center and failure states under `docs/architecture/gate2-profile/screenshots`.
 
-The approved React design is preserved. Command Center shows recorded learner data after explicit selection; Ascension Tree, Mission Console and remaining concept actions are labelled demonstrations. The **Java Library** reads deck descriptors from its separate durable experimental profile and creates decks through the existing Java service. Java owns SQLite and validates every command. Learner sources are never migrated or written; JavaFX remains the full learning application.
+The approved React design is preserved. Command Center shows recorded learner data after explicit selection; Ascension Tree shows the exact saved Java graph and historical evidence summaries; current capability is not evaluated. Mission Console and remaining concept actions stay labelled demonstrations. The **Java Library** reads deck descriptors from its separate durable experimental profile and creates decks through the existing Java service. Java owns SQLite and validates every command. Learner sources are never migrated or written; JavaFX remains the full learning application.
 
 The [original experimental-library walkthrough](../docs/architecture/gate2/README.md), [ADR 0002](../docs/architecture/adr-0002-headless-library-boundary.md), and [v2 API](../docs/architecture/gate2/api.md) document the retained PR #264 foundation. This continues #261 under #256 from its merged baseline. The [Gate1 gallery](../docs/architecture/gate1/README.md) remains the visual contract. Draft #255 is not the baseline.
 
@@ -25,7 +25,7 @@ npm start
 
 `CODEFIT_MAVEN` may be an absolute executable wrapper for Maven/proxy settings; it is never evaluated as a shell command. On a managed proxy, Node 24's `NODE_USE_ENV_PROXY=1 NODE_USE_SYSTEM_CA=1` can be used for dependency acquisition without bypassing TLS checks. No runtime downloads occur on app launch.
 
-The renderer is always loaded from the production Vite build, including during `npm start`. No development HTTP server or remote content is used. Changes require another `npm run build`. The preload exposes the six experimental-library methods (`readState`, `createDeck`, `pendingDeck`, `recoverDeck`, `acknowledgeDeck`, `cancelOperation`) and three learner methods (`chooseLearnerProfile`, `readLearnerProfile`, `disconnectLearnerProfile`). Experimental write cancellation retains its durable operation and does not promise rollback. Learner cancellation stops the reader and invalidates its selection.
+The renderer is always loaded from the production Vite build, including during `npm start`. No development HTTP server or remote content is used. Changes require another `npm run build`. The preload exposes the six experimental-library methods (`readState`, `createDeck`, `pendingDeck`, `recoverDeck`, `acknowledgeDeck`, `cancelOperation`) and four learner methods (`chooseLearnerProfile`, `readLearnerProfile`, `readLearnerSkills`, `disconnectLearnerProfile`). Experimental write cancellation retains its durable operation and does not promise rollback. Learner cancellation stops the reader and invalidates its selection.
 
 ## Package and test the actual artifact
 
@@ -46,7 +46,7 @@ CODEFIT_DESKTOP_EXECUTABLE="$PWD/release/CodeFit-Gate0-linux-x64/codefit-gate0" 
 
 Do not add `--no-sandbox` to work around host restrictions. Use a host with a functioning Chromium sandbox. The native e2e/process-fault tests currently target Linux (`ps`, `/proc`, POSIX signals); Windows/macOS tests belong to their native packaging validation. Playwright opens local debugging connections only in the test harness; normal app startup has no debugging listener or HTTP server.
 
-`CODEFIT_CAPTURE_SCREENSHOTS=1` captures the twelve primary Gate 1 views plus interaction/state evidence into `docs/architecture/gate1/screenshots`. `CODEFIT_CAPTURE_GATE2_SCREENSHOTS=1` captures the experimental library in both themes/widths plus confirmed, pending, rejection, unknown and reconciled states into `docs/architecture/gate2/screenshots`. Tests use isolated Chromium configuration directories and a sentinel `codefit.db`; they do not modify a real learner database. `npm test` includes the real bundled Java service, so run `prepare:java` first.
+`CODEFIT_CAPTURE_ASCENSION_SCREENSHOTS=1` captures the actual connected tree and evidence inspector in dark/light themes at 1280/760px plus missing/stale/contradictory/withdrawn states under `docs/architecture/gate2-ascension/screenshots`. `CODEFIT_CAPTURE_SCREENSHOTS=1` captures the twelve primary Gate 1 views plus interaction/state evidence into `docs/architecture/gate1/screenshots`. `CODEFIT_CAPTURE_GATE2_SCREENSHOTS=1` captures the experimental library in both themes/widths plus confirmed, pending, rejection, unknown and reconciled states into `docs/architecture/gate2/screenshots`. Tests use isolated Chromium configuration directories and a sentinel `codefit.db`; they do not modify a real learner database. `npm test` includes the real bundled Java service, so run `prepare:java` first.
 
 From the repository root, retain the complete Java regression run:
 
@@ -58,7 +58,7 @@ The **Desktop Gate 0** workflow builds and tests the packaged Linux artifact wit
 
 ## Layout, lifecycle and rollback
 
-- `src/`: approved screen modules, the connected read-only Command Center, labelled sample content and the isolated Java Library; no learning policies or database access.
+- `src/`: approved screen modules, the connected read-only Command Center and Ascension Tree, labelled sample content and the isolated Java Library; no learning policies or database access.
 - `electron/`: fixed bundled process path, session ownership, exact-frame IPC authorization and sandboxed preload.
 - `../src/main/java/com/codefit/desktop/`: separate learner-read and experimental-library entrypoints with bounded protocols; learner capture/projection never uses the initializer or experimental writer.
 - `java/`: generated platform runtime + existing compiled engine/resources/dependencies. Never commit this directory.

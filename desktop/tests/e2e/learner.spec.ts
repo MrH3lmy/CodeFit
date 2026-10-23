@@ -184,6 +184,14 @@ test("explicit consent connects authentic recorded data offline with dark/light 
     .getByRole("navigation")
     .getByRole("button", { name: /Ascension Tree/ })
     .click();
+  await expect(p.locator(".provenance")).toContainText("Recorded learner data");
+  await expect(
+    p.getByRole("region", { name: "Authoritative skill tree" }),
+  ).toBeVisible();
+  await p
+    .getByRole("navigation")
+    .getByRole("button", { name: /Mission Console/ })
+    .click();
   await expect(p.locator(".provenance")).toContainText("Demonstration data");
 });
 test("declining native confirmation never opens a learner reader", async () => {
@@ -213,7 +221,11 @@ test("unauthorized frames and renderer-supplied paths cannot open or disconnect 
   const failures = await app.evaluate(async ({ ipcMain, BrowserWindow }) => {
     const sender = BrowserWindow.getAllWindows()[0].webContents;
     return Promise.all(
-      ["codefit:learner:choose", "codefit:learner:read"].flatMap((name) => {
+      [
+        "codefit:learner:choose",
+        "codefit:learner:read",
+        "codefit:learner:skills",
+      ].flatMap((name) => {
         const h = (ipcMain as any)._invokeHandlers.get(name);
         return [
           h({ sender, senderFrame: null }),
@@ -223,7 +235,7 @@ test("unauthorized frames and renderer-supplied paths cannot open or disconnect 
     );
   });
   expect(failures).toEqual(
-    Array.from({ length: 4 }, () => ({ ok: false, code: "UNAVAILABLE" })),
+    Array.from({ length: 6 }, () => ({ ok: false, code: "UNAVAILABLE" })),
   );
   await app.evaluate(async ({ ipcMain, BrowserWindow }) => {
     const sender = BrowserWindow.getAllWindows()[0].webContents;

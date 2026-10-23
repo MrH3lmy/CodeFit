@@ -48,12 +48,21 @@ class KnowledgePreviewTest {
                 new Mutation("\"UNRESOLVED\"", "\"RESOLVED\"", FLAGS),
                 new Mutation("\"schema\":", "\"secret-input\":", FIELDS),
                 new Mutation("\"schema\":", "\"overlays\": [], \"schema\":", FIELDS),
+                new Mutation("\"schema\":", "\"java_runtime\": \"21_VERIFIED\", \"schema\":", FIELDS),
+                new Mutation("\"schema\":", "\"difficulty\": \"APPROVED\", \"schema\":", FIELDS),
                 new Mutation("\"schema\":", "\"solution\": \"secret-input\", \"schema\":", FIELDS),
+                new Mutation("\"title\":", "\"prompt\": \"secret-input\", \"title\":", FIELDS),
+                new Mutation("\"title\":", "\"hint\": \"secret-input\", \"title\":", FIELDS),
+                new Mutation("\"title\":", "\"reference_solution\": \"secret-input\", \"title\":", FIELDS),
+                new Mutation("\"title\":", "\"grader_key\": \"secret-input\", \"title\":", FIELDS),
                 new Mutation("\"id\": \"EJ41-057-PREDICT\"", "\"id\": \"EJ41-057-PREDICT\", \"answer\": \"secret-input\"", FIELDS),
                 new Mutation("\"schema\":", "\"schema\": \"secret-input\", \"schema\":", DUPLICATE_FIELD),
                 new Mutation("\"title\":", "\"title\": \"secret-input\", \"title\":", DUPLICATE_FIELD),
                 new Mutation("\"stage\": \"PREDICT\"", "\"stage\": \"PREDICT\", \"stage\": \"BUILD\"", DUPLICATE_FIELD),
                 new Mutation("\"java.general.local.scope.v1\"", "\"Bad secret-input\"", IDENTIFIER),
+                new Mutation("\"java.control.flow\"", "\"../secret-input\"", IDENTIFIER),
+                new Mutation("\"java.control.flow\"", "\"https://private.invalid/secret-input\"", IDENTIFIER),
+                new Mutation("\"java.control.flow\"", "\"java.general.local.scope.v0\"", PIN_MISMATCH),
                 new Mutation("EJ-ITEM-057", "EJ-ITEM-999", IDENTIFIER),
                 new Mutation("EJ41-057-PREDICT", "EJ40-057-PREDICT", IDENTIFIER),
                 new Mutation("43b67abff90d1f079a80f0a24a3a519bf1a482c674fed3f53c9b6e767bef4adb", "secret-input", FINGERPRINT),
@@ -76,6 +85,29 @@ class KnowledgePreviewTest {
                 new Mutation("a4a1e168f2b00c26677e7f75052d5585cf4425f1641af697dd7927a7ae25e865", "0".repeat(64), PIN_MISMATCH),
                 new Mutation("\"java.control.flow\"", "\"java.debugging.reproduce\"", PIN_MISMATCH),
                 new Mutation("\"java.control.flow\"", "\"java.external.unknown\"", PIN_MISMATCH));
+    }
+
+    @Test
+    void exactMappingBlockersAndPublicArtifactArePinned() {
+        PublicPreview preview = KnowledgePreview.loadBundled();
+        Set<PublicPreview.Blocker> expected = Set.of(
+                new PublicPreview.Blocker("UNMAPPED_SKILL", "java.general.local.scope.v1"),
+                new PublicPreview.Blocker("UNMAPPED_SKILL", "java.general.enhanced.iteration.v1"),
+                new PublicPreview.Blocker("UNMAPPED_SKILL", "java.general.library.selection.v1"),
+                new PublicPreview.Blocker("UNMAPPED_SKILL", "java.general.exact.decimal.v1"),
+                new PublicPreview.Blocker("UNRESOLVED_EXTERNAL_PREREQUISITE", "java.control.flow"),
+                new PublicPreview.Blocker("UNRESOLVED_EXTERNAL_PREREQUISITE", "java.exceptions.checked"),
+                new PublicPreview.Blocker("UNRESOLVED_EXTERNAL_PREREQUISITE", "java.collections.iteration"),
+                new PublicPreview.Blocker("UNRESOLVED_EXTERNAL_PREREQUISITE", "java.numeric.integer.overflow"),
+                new PublicPreview.Blocker("UNRESOLVED_EXTERNAL_PREREQUISITE", "java.api.contracts"),
+                new PublicPreview.Blocker("UNRESOLVED_EXTERNAL_PREREQUISITE", "java.api.preconditions.v1"));
+        assertEquals(expected, new HashSet<>(preview.blockers()));
+        assertEquals(expected.size(), preview.blockers().size());
+        assertTrue(preview.mappings().isEmpty(), "No suffix stripping or related-sounding graph substitutions");
+        assertEquals(List.of("java.general.local.scope.v1", "java.collections.iteration"),
+                preview.skills().get(1).prerequisites(), "Keep the actual internal prerequisite unchanged");
+        assertEquals("95ff42f24a88ac85400a4cda43daf9e0caabab8e4e324fa21c992f78a2ecb874",
+                KnowledgePreview.sha256(KnowledgePreviewCli.export(preview)));
     }
 
     @ParameterizedTest
@@ -153,6 +185,10 @@ class KnowledgePreviewTest {
         rejects(INVALID_JSON, utf8("{"));
         rejects(TYPE, utf8("null"));
         rejects(TYPE, utf8("[]"));
+        rejects(TYPE, utf8(text().replace("\"independent_approvals\": 0", "\"independent_approvals\": null")));
+        rejects(LIMIT, utf8(text().replace("\"independent_approvals\": 0",
+                "\"independent_approvals\": 12345678901234567")));
+        rejects(INVALID_JSON, utf8(text().substring(0, text().lastIndexOf(']'))));
         rejects(PIN_MISMATCH, utf8(text() + "\n"));
     }
 

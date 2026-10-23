@@ -203,3 +203,14 @@ skips** after the explicit preview capability/locator DTO changes.
 the CLI build/export subprocess and compare pinned bundled bytes and safe output.
 These checks validate the adapter, not the semantic accuracy of book-derived
 claims or the readiness of a grader.
+
+The final focused run passed **54 tests**, including immutable export conflict
+and redacted failure checks. The full-suite count above precedes the final CLI
+publication hardening; a redundant later full run is not needed to establish
+that recorded result. Secret scanning of all changed files passed.
+
+Final automated review/security validation could not complete: the validation
+service reported that its time window had expired. An earlier scan reported no
+alerts, but that is not a substitute for validation of the final diff.
+Independent review and final security validation remain outstanding; keep this
+PR draft and unmerged.

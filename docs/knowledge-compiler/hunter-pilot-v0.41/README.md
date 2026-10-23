@@ -1,6 +1,6 @@
 # Knowledge Compiler → Hunter: v0.41 metadata-only pilot
 
-Original author-side metadata only, prepared from the verified private v0.41 archive (parent v0.40): Effective Java Items 57–60, four skills, sixteen stage IDs. No publisher PDF text/code, exercise prompts, solution keys, private Drive URLs, reviewer signing material or learner data.
+Original author-side metadata only, supplied as a v0.41 preview (author reports parent v0.40): Effective Java Items 57–60, four skills, sixteen stage IDs. No publisher PDF text/code, exercise prompts, solution keys, private Drive URLs, reviewer signing material or learner data.
 
 **Release status: UNREVIEWED.** Zero independent content approvals, production graders, Hunter imports, or verified learner mastery. Source SHA-256 is a source-section locator, not evidence of semantic accuracy. Preview metadata is not a deployable mission catalog.
 
@@ -8,7 +8,7 @@ Original author-side metadata only, prepared from the verified private v0.41 arc
 
 1. Inspect Java 21 SkillRef/GraphRef catalog and exposure/auth contracts. Map four skill IDs and prerequisites to pinned graph versions only where actual mappings exist; report gaps without guessing.
 2. Implement strict versioned offline read-only schema/adapter validation: duplicate IDs, malformed identifiers, unsupported version, cycles, missing external prerequisites, content/status tampering, and immutable revision checks fail closed. Do not modify live SQLite data.
-3. Expose only preview-safe metadata via typed Java IPC to React/Electron under #261; no restricted prompts/answers in renderer static assets, logs, exports, or P2P.
+3. Document a proposed preview-safe typed Java IPC boundary under #261. Implement it only in a separate reviewed PR; no new IPC or React integration belongs to #271. No restricted prompts/answers in renderer static assets, logs, exports, or P2P.
 4. Add positive/negative unit/integration tests and no-XP/reward/mastery-mutation checks. Preserve JavaFX fallback and align with web-desktop epic #256 and approved UI gate #259.
 5. Leave PR as **draft and unmerged** with exact tests and remaining blockers. Independent review (#253), private full mission briefs, actual content approval and grader rollout (#269) remain separate explicit gates.
 
@@ -197,7 +197,7 @@ Paths below are relative to `/home/runner/work/CodeFit/CodeFit/`:
 No existing graph/catalog, SQLite schema, evidence, grading, XP/reward, mastery,
 recovery, P2P, JavaFX or desktop IPC implementation is modified.
 
-### Regression evidence
+### Earlier branch verification (historical)
 
 With JDK21, the complete existing Java regression command
 `xvfb-run -a mvn -B test` passed **1,893 tests with zero failures, errors or
@@ -225,3 +225,7 @@ A separate read-only review of the complete PR diff found no significant issues;
 it does not substitute for independent curriculum approval. Independent content
 approval and every production release gate listed above remain outstanding.
 Keep this PR draft and unmerged.
+
+## Finalization after merged Ascension Tree
+
+Main `d6f05e55b805c09e7b69f5ac96dc64baa33cb609` merged cleanly into the existing PR branch without conflicts. The Ascension implementation is unchanged. See [final verification and provenance](verification.md) and the [separate frontend API proposal](frontend-boundary.md). Neither is independent curriculum approval.

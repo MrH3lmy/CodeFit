@@ -189,6 +189,9 @@ Paths below are relative to `/home/runner/work/CodeFit/CodeFit/`:
 - `src/test/java/com/codefit/knowledge/KnowledgePreviewTest.java`: positive,
   tampering, bounded parsing, graph blocker, immutable replay, resource corruption,
   safe export and non-mutation boundary regressions.
+- `src/test/java/com/codefit/knowledge/KnowledgePreviewReadOnlyIntegrationTest.java`:
+  verifies successful/rejected loads and export leave a seeded learner database
+  byte-identical and never initialize an absent profile or create a second database.
 - This README: schema, mapping audit, reproducibility and unfulfilled release gates.
 
 No existing graph/catalog, SQLite schema, evidence, grading, XP/reward, mastery,
@@ -197,20 +200,28 @@ recovery, P2P, JavaFX or desktop IPC implementation is modified.
 ### Regression evidence
 
 With JDK21, the complete existing Java regression command
-`xvfb-run -a mvn -B test` passed **1,881 tests with zero failures, errors or
-skips** after the explicit preview capability/locator DTO changes.
-`mvn -q -DskipTests package` also passed. The focused tests additionally exercise
-the CLI build/export subprocess and compare pinned bundled bytes and safe output.
-These checks validate the adapter, not the semantic accuracy of book-derived
-claims or the readiness of a grader.
+`xvfb-run -a mvn -B test` passed **1,893 tests with zero failures, errors or
+skips** on 2026-10-23 after the continuation's regression additions. Existing
+grading, XP, reward, mastery, recovery, P2P and desktop tests were not modified.
+The focused tests additionally exercise the CLI build/export subprocess and
+compare pinned bundled bytes and safe output. These checks validate the adapter,
+not the semantic accuracy of book-derived claims or the readiness of a grader.
 
-The final focused run passed **54 tests**, including immutable export conflict
-and redacted failure checks. The full-suite count above precedes the final CLI
-publication hardening; a redundant later full run is not needed to establish
-that recorded result. Secret scanning of all changed files passed.
+The continuation from PR #271 HEAD `40e84c7` passed **66 focused tests** with
+`mvn -B -Dtest=KnowledgePreviewTest,KnowledgePreviewReadOnlyIntegrationTest test`.
+The added checks pin the exact ten mapping blockers and public artifact checksum,
+reject path-like prerequisite IDs, protected prompt/hint/solution/grader fields,
+spoofed compatibility/difficulty fields and malformed numeric/truncated payloads,
+and exercise learner-profile non-mutation against isolated SQLite databases.
+The adapter remains unchanged: missing mappings are reported, never invented.
+`mvn -B -DskipTests package` and CLI `build` also passed on JDK21; the input and
+public DTO checksums above remain unchanged.
+Secret scanning of all ten PR files passed.
 
-Final automated review/security validation could not complete: the validation
-service reported that its time window had expired. An earlier scan reported no
-alerts, but that is not a substitute for validation of the final diff.
-Independent review and final security validation remain outstanding; keep this
-PR draft and unmerged.
+The continuation's CodeQL Java scan reported **zero alerts**. The automated code
+review service could not run because its configured review model was unavailable;
+this is a review infrastructure blocker, not a successful automated review.
+A separate read-only review of the complete PR diff found no significant issues;
+it does not substitute for independent curriculum approval. Independent content
+approval and every production release gate listed above remain outstanding.
+Keep this PR draft and unmerged.

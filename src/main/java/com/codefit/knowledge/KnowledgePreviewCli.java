@@ -33,6 +33,11 @@ public final class KnowledgePreviewCli {
     }
 
     private static void publish(byte[] artifact) throws IOException {
+        publish(artifact, () -> {});
+    }
+
+    // Package-private observer makes the post-rename ownership race reproducible in tests.
+    static void publish(byte[] artifact, Runnable afterPublication) throws IOException {
         Path target = Path.of("target"), directory = target.resolve("knowledge-preview");
         if (Files.isSymbolicLink(target)) throw KnowledgePreview.fail(IO);
         Files.createDirectories(target);
@@ -44,19 +49,25 @@ public final class KnowledgePreviewCli {
         }
         Path staging = target.resolve(".knowledge-preview-staging");
         Files.createDirectory(staging);
+        boolean published = false;
         try {
             write(staging.resolve("public-preview.json"), artifact);
             write(staging.resolve("public-preview.json.sha256"), checksum);
             // Publish both files together; unsupported atomic moves fail closed.
             try {
                 Files.move(staging, directory, StandardCopyOption.ATOMIC_MOVE);
+                published = true;
+                afterPublication.run();
             } catch (FileAlreadyExistsException | DirectoryNotEmptyException e) {
                 requireIdentical(directory, artifact, checksum);
             }
         } finally {
-            Files.deleteIfExists(staging.resolve("public-preview.json"));
-            Files.deleteIfExists(staging.resolve("public-preview.json.sha256"));
-            Files.deleteIfExists(staging);
+            // A successful rename relinquishes this path; another exporter may now own it.
+            if (!published) {
+                Files.deleteIfExists(staging.resolve("public-preview.json"));
+                Files.deleteIfExists(staging.resolve("public-preview.json.sha256"));
+                Files.deleteIfExists(staging);
+            }
         }
     }
 

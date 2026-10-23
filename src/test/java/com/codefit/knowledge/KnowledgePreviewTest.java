@@ -321,6 +321,34 @@ class KnowledgePreviewTest {
         assertFalse(Files.exists(Path.of("target/.knowledge-preview-staging")));
     }
 
+    @Test
+    void successfulPublicationMustNotCleanAnotherExportersNewStagingDirectory() throws Exception {
+        Path directory = Path.of("target/knowledge-preview");
+        Path staging = Path.of("target/.knowledge-preview-staging");
+        Path marker = staging.resolve("new-exporter-owned");
+        Files.deleteIfExists(directory.resolve("public-preview.json"));
+        Files.deleteIfExists(directory.resolve("public-preview.json.sha256"));
+        Files.deleteIfExists(directory);
+        byte[] artifact = KnowledgePreviewCli.export(KnowledgePreview.loadBundled());
+        try {
+            KnowledgePreviewCli.publish(artifact, () -> {
+                // The atomic rename released the fixed staging name. A second exporter
+                // now owns it, before the first exporter's finally block runs.
+                try {
+                    Files.createDirectory(staging);
+                    Files.writeString(marker, "second exporter");
+                } catch (IOException e) { throw new UncheckedIOException(e); }
+            });
+            assertArrayEquals(artifact, Files.readAllBytes(directory.resolve("public-preview.json")));
+            assertEquals("second exporter", Files.readString(marker));
+            assertEquals(0, cli("export", ORIGINAL.toString()).exit());
+            assertEquals("second exporter", Files.readString(marker));
+        } finally {
+            Files.deleteIfExists(marker);
+            Files.deleteIfExists(staging);
+        }
+    }
+
     private record CliResult(int exit, String output) { }
     private static CliResult cli(String... args) throws Exception {
         List<String> command = new ArrayList<>(List.of(

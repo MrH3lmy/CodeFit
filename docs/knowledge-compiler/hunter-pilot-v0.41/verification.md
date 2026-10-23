@@ -4,8 +4,9 @@ Baseline: main `d6f05e55b805c09e7b69f5ac96dc64baa33cb609`, including merged #272
 The existing PR head `c6b2af92e51320a413255b84a6982a3afa78c731` was reconciled with
 main by a normal merge, without conflicts or history rewriting. No existing
 Ascension, JavaFX, IPC, evaluator, exposure, progression or persistence code was
-changed. The adapter production code and pinned input are unchanged from that
-head; this finalization adds a cross-boundary regression and documentation.
+changed. The pinned input is unchanged. This finalization fixes CLI staging
+cleanup ownership after atomic publication, adds a deterministic race regression
+and an Ascension cross-boundary regression, and documents the future boundary.
 
 ## Provenance and reproducibility
 
@@ -68,6 +69,12 @@ records all four IDs. No suffix stripping or related-skill substitution occurs.
   refuses conflicting/partial output, and supports identical replay. It is not
   registered with Electron, not a service for untrusted path arguments, and not a
   security boundary against another process controlling the same build directory.
+- A controlled interleaving reproduced the original post-publication cleanup race:
+  another exporter can acquire the staging name after atomic rename. Cleanup now
+  runs only while the first exporter still owns its staging directory. The
+  regression failed before the fix and verifies the next owner remains untouched
+  after publication and identical replay. Crashed pre-publication staging remains
+  fail-closed (IO); the CLI does not silently delete another exporter's files.
 - PublicPreview is a data record, not an approval token. Future consumers must use
   the validated loader and strict wire schema, never trust a caller-constructed DTO
   to authorize content or learning effects.
@@ -79,7 +86,7 @@ records all four IDs. No suffix stripping or related-skill substitution occurs.
 
 ## Verification commands and final CI
 
-The focused run passed **67 tests, zero failures/errors/skips**:
+The focused run passed **68 tests, zero failures/errors/skips**:
 
 ```sh
 xvfb-run -a mvn -B -Dtest=KnowledgePreviewTest,KnowledgePreviewReadOnlyIntegrationTest,KnowledgePreviewAscensionBoundaryTest test
@@ -113,7 +120,9 @@ Keep UNREVIEWED, zero independent approvals, and production import, grading,
 mastery, XP and rewards disabled. Four skill mappings and six prerequisites,
 independent technical/pedagogical review and owner adjudication (#253), actual
 original briefs, JDK21 content confirmation and evaluator readiness (#269) remain
-separate gates. Adapter review is not content approval or permission to run a pilot.
+separate gates. The existing #253 review packet for Items 19–25 cannot approve
+this preview's Items 57–60. Adapter review is not content approval or permission
+to run a pilot.
 
 After independent preview-only PR review, use the separate
 [frontend-boundary proposal](frontend-boundary.md) to scope a Gate 2 read API and

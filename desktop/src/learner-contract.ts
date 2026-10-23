@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ErrorCodeSchema } from "./contract";
+import { LearnerSkillsSchema } from "./skill-contract";
 
 export const LearnerErrorSchema = z.enum([
   ...ErrorCodeSchema.options,
@@ -81,7 +82,7 @@ export const LearnerReadySchema = z.discriminatedUnion("type", [
 export const LearnerRequestSchema = z.strictObject({
   v: z.literal(3),
   id,
-  method: z.literal("learner.overview.read"),
+  method: z.enum(["learner.overview.read", "learner.skills.read"]),
   profileId,
   sessionId: id,
 });
@@ -90,7 +91,7 @@ export const LearnerWireSchema = z.discriminatedUnion("ok", [
     v: z.literal(3),
     id,
     ok: z.literal(true),
-    result: LearnerProjectionSchema,
+    result: z.union([LearnerProjectionSchema, LearnerSkillsSchema]),
   }),
   z.strictObject({
     v: z.literal(3),
@@ -99,3 +100,9 @@ export const LearnerWireSchema = z.discriminatedUnion("ok", [
     code: LearnerErrorSchema,
   }),
 ]);
+
+export const LearnerSkillsResultSchema = z.discriminatedUnion("ok", [
+  z.strictObject({ ok: z.literal(true), result: LearnerSkillsSchema }),
+  z.strictObject({ ok: z.literal(false), code: LearnerErrorSchema }),
+]);
+export type LearnerSkillsResult = z.infer<typeof LearnerSkillsResultSchema>;

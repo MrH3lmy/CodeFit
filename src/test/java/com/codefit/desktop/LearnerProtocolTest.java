@@ -27,6 +27,13 @@ class LearnerProtocolTest {
     @Test
     void onlyExactVersionedReadCapabilityIsAccepted() throws Exception {
         assertEquals(
+                "learner.skills.read",
+                LearnerProtocol.parse(
+                                request()
+                                        .replace("learner.overview.read", "learner.skills.read")
+                                        .getBytes(StandardCharsets.UTF_8))
+                        .method());
+        assertEquals(
                 profile,
                 LearnerProtocol.parse(request().getBytes(StandardCharsets.UTF_8)).profileId());
         for (String invalid :

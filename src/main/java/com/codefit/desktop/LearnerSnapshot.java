@@ -298,7 +298,7 @@ final class LearnerSnapshot implements AutoCloseable {
                 var r =
                         s.executeQuery(
                                 "SELECT 1 FROM sqlite_schema WHERE name='desktop_profile' LIMIT"
-                                    + " 1")) {
+                                        + " 1")) {
             if (r.next()) throw new IOException("PROFILE_INVALID");
         }
         String names =
@@ -309,7 +309,7 @@ final class LearnerSnapshot implements AutoCloseable {
                 var r =
                         s.executeQuery(
                                 "SELECT name,type,CASE WHEN length(sql)<=65536 THEN sql END FROM"
-                                    + " sqlite_schema WHERE name IN ("
+                                        + " sqlite_schema WHERE name IN ("
                                         + names
                                         + ") LIMIT 9")) {
             while (r.next()) {
@@ -344,7 +344,7 @@ final class LearnerSnapshot implements AutoCloseable {
                 var r =
                         s.executeQuery(
                                 "SELECT version FROM schema_migrations ORDER BY version LIMIT"
-                                    + " 26")) {
+                                        + " 26")) {
             for (int version = 1; version <= SCHEMA_VERSION; version++)
                 if (!r.next()
                         || r.getLong(1) != version
@@ -363,6 +363,16 @@ final class LearnerSnapshot implements AutoCloseable {
         try (Connection connection = openReadOnly(database, false)) {
             connection.setAutoCommit(false);
             var result = LearnerReadProjection.read(connection, profileId, sessionId, capturedAt);
+            connection.rollback();
+            return result;
+        }
+    }
+
+    LearnerSkillProjection.Projection readSkills() throws Exception {
+        checkedFile(database, MAX_BYTES);
+        try (Connection connection = openReadOnly(database, false)) {
+            connection.setAutoCommit(false);
+            var result = LearnerSkillProjection.read(connection, profileId, sessionId, capturedAt);
             connection.rollback();
             return result;
         }

@@ -63,7 +63,11 @@ public final class LearnerProfileMain {
                     response = LearnerProtocol.failed(request.id(), "PROFILE_MISMATCH");
                 else {
                     try {
-                        response = LearnerProtocol.result(request.id(), snapshot.read());
+                        response =
+                                request.method().equals("learner.skills.read")
+                                        ? LearnerProtocol.result(
+                                                request.id(), snapshot.readSkills())
+                                        : LearnerProtocol.result(request.id(), snapshot.read());
                     } catch (Exception failure) {
                         response = LearnerProtocol.failed(request.id(), "READ_FAILED");
                     }

@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "baseline": "febc92aad4a486b72dfb836e9a1ad7ca0487b9eb",
+  "platform": "Linux x64 / Xvfb / Electron 44.9.0",
+  "fixture": "isolated synthetic Ada Learner; Java-owned snapshot, never a real profile",
+  "capture": "packaged Electron Playwright, network namespace isolated, Chromium sandbox enabled",
+  "windowSizes": [
+    [
+      1280,
+      900
+    ],
+    [
+      760,
+      900
+    ]
+  ],
+  "note": "Full-page document capture; scrollbar reduces image width. No image postprocessing.",
+  "packagedAppAsarSha256": "4ef68000a03023607e2df467b691f3dd4a4cb0e5e32e3610813c71cc55327b1a",
+  "screenshots": [
+    {
+      "path": "screenshots/contradictory.png",
+      "sha256": "a8da80dae30a9f8cda55178301937c7bcc174d8959f595a4c15cb585049b390b",
+      "width": 1265,
+      "height": 2069,
+      "capturedAtUtc": "2026-10-23T13:19:02.926199+00:00"
+    },
+    {
+      "path": "screenshots/evidence-dark-1280.png",
+      "sha256": "7f1134a6e1abb35d8df213260db2b1b3d9ffcc000c5a160b511604fa0e331664",
+      "width": 1265,
+      "height": 1917,
+      "capturedAtUtc": "2026-10-23T13:18:42.465024+00:00"
+    },
+    {
+      "path": "screenshots/evidence-dark-760.png",
+      "sha256": "7c0805fe64aa2534addc6801cbc509f46cd91b69f381dd05788e4d8ac0c7234f",
+      "width": 745,
+      "height": 2101,
+      "capturedAtUtc": "2026-10-23T13:18:44.842628+00:00"
+    },
+    {
+      "path": "screenshots/evidence-light-1280.png",
+      "sha256": "1b97682b74c70a3c2474ea65f291eabfdac86bbbf5b660b281f0c14f6be9f359",
+      "width": 1265,
+      "height": 1917,
+      "capturedAtUtc": "2026-10-23T13:18:43.537816+00:00"
+    },
+    {
+      "path": "screenshots/evidence-light-760.png",
+      "sha256": "dd41cd22ab061de74a3acf18029451cf96111582f748bd6b0276d8c08b47587e",
+      "width": 745,
+      "height": 2101,
+      "capturedAtUtc": "2026-10-23T13:18:46.757885+00:00"
+    },
+    {
+      "path": "screenshots/new.png",
+      "sha256": "7211f6c2648af23629f8185f4aded14671e0bd06f6d9a6236ded56768d44e9a2",
+      "width": 1265,
+      "height": 1078,
+      "capturedAtUtc": "2026-10-23T13:18:51.417982+00:00"
+    },
+    {
+      "path": "screenshots/stale.png",
+      "sha256": "2008050a3f5aef995a6a568f4f1fddd8e9226846c8e578df7221034d2def21a2",
+      "width": 1265,
+      "height": 2039,
+      "capturedAtUtc": "2026-10-23T13:18:58.978125+00:00"
+    },
+    {
+      "path": "screenshots/tree-dark-1280.png",
+      "sha256": "1d8551460a8e876b6f4a0574529dd74e910fdd1b029be4a0f26c9b04dc9741b8",
+      "width": 1265,
+      "height": 1222,
+      "capturedAtUtc": "2026-10-23T13:18:42.029783+00:00"
+    },
+    {
+      "path": "screenshots/tree-dark-760.png",
+      "sha256": "7155bd1c96de4531797ad08ef555f39b1e51881100df493e25a136ec5e6d0f1f",
+      "width": 745,
+      "height": 1446,
+      "capturedAtUtc": "2026-10-23T13:18:44.017826+00:00"
+    },
+    {
+      "path": "screenshots/tree-light-1280.png",
+      "sha256": "b7d90ca0631148225d85d70715ea93cae3234e8fde203105188b009ea8dcb1ec",
+      "width": 1265,
+      "height": 1222,
+      "capturedAtUtc": "2026-10-23T13:18:43.218500+00:00"
+    },
+    {
+      "path": "screenshots/tree-light-760.png",
+      "sha256": "19d8a8e33bc5cb281fbf9ae4585dadf498bc0cecd15065f5e29a301de0f7e831",
+      "width": 745,
+      "height": 1446,
+      "capturedAtUtc": "2026-10-23T13:18:45.478658+00:00"
+    },
+    {
+      "path": "screenshots/withdrawn.png",
+      "sha256": "7b9ddd69d37cc60b46dd8c4edd855efe1d80aa4bba9c9d57b0ea10473441a000",
+      "width": 1265,
+      "height": 2018,
+      "capturedAtUtc": "2026-10-23T13:19:07.138284+00:00"
+    }
+  ]
+}

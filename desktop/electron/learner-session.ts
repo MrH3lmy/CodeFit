@@ -8,9 +8,12 @@ import {
   LearnerWireSchema,
   type LearnerError,
   type LearnerResult,
+  type LearnerSkillsResult,
 } from "../src/learner-contract";
 
-/** One read-only snapshot session. Concurrent reads share a single bounded request. */
+type ReadResult = LearnerResult | LearnerSkillsResult;
+type ReadMethod = "learner.overview.read" | "learner.skills.read";
+/** One snapshot, two allowlisted reads. Coalesce each kind and serialize the bounded pair. */
 export class LearnerSession {
   private child?: ChildProcessWithoutNullStreams;
   private closed = false;
@@ -25,7 +28,13 @@ export class LearnerSession {
   private profileId?: string;
   private readonly sessionId = randomUUID();
   private reading?: Promise<LearnerResult>;
-  private pending?: { id: string; resolve: (result: LearnerResult) => void };
+  private skillsReading?: Promise<LearnerSkillsResult>;
+  private queue: Promise<void> = Promise.resolve();
+  private pending?: {
+    id: string;
+    method: ReadMethod;
+    resolve: (result: ReadResult) => void;
+  };
   private exitResolve!: () => void;
   private readonly exited = new Promise<void>((resolve) => {
     this.exitResolve = resolve;
@@ -109,7 +118,10 @@ export class LearnerSession {
     while (offset < chunk.length) {
       const newline = chunk.indexOf(10, offset);
       const end = newline < 0 ? chunk.length : newline;
-      if (this.buffer.length + end - offset > 8192) {
+      if (
+        this.buffer.length + end - offset >
+        (this.pending?.method === "learner.skills.read" ? 262144 : 8192)
+      ) {
         void this.stop("PROTOCOL_ERROR");
         return;
       }
@@ -141,17 +153,20 @@ export class LearnerSession {
           if (
             reply.ok &&
             (reply.result.sessionId !== this.sessionId ||
-              reply.result.profileId !== this.profileId)
+              reply.result.profileId !== this.profileId ||
+              reply.result.kind !==
+                (this.pending.method === "learner.skills.read"
+                  ? "learner-skills"
+                  : "learner-overview"))
           )
             throw new Error("identity");
           clearTimeout(this.timer);
           const pending = this.pending;
           this.pending = undefined;
-          pending.resolve(
-            reply.ok
-              ? { ok: true, result: reply.result }
-              : { ok: false, code: reply.code },
-          );
+          if (!reply.ok) pending.resolve({ ok: false, code: reply.code });
+          else if (reply.result.kind === "learner-skills")
+            pending.resolve({ ok: true, result: reply.result });
+          else pending.resolve({ ok: true, result: reply.result });
         }
       } catch {
         void this.stop("PROTOCOL_ERROR");
@@ -164,24 +179,42 @@ export class LearnerSession {
   read(): Promise<LearnerResult> {
     if (this.closed) return Promise.resolve({ ok: false, code: this.failure });
     if (this.reading) return this.reading;
-    this.reading = this.readOne().finally(() => {
+    this.reading = (
+      this.enqueue("learner.overview.read") as Promise<LearnerResult>
+    ).finally(() => {
       this.reading = undefined;
     });
     return this.reading;
   }
-  private async readOne(): Promise<LearnerResult> {
+  readSkills(): Promise<LearnerSkillsResult> {
+    if (this.closed) return Promise.resolve({ ok: false, code: this.failure });
+    if (this.skillsReading) return this.skillsReading;
+    this.skillsReading = (
+      this.enqueue("learner.skills.read") as Promise<LearnerSkillsResult>
+    ).finally(() => {
+      this.skillsReading = undefined;
+    });
+    return this.skillsReading;
+  }
+  private enqueue(method: ReadMethod): Promise<ReadResult> {
+    const request = this.queue.then(() => this.readOne(method));
+    this.queue = request.then(() => {});
+    return request;
+  }
+  private async readOne(method: ReadMethod): Promise<ReadResult> {
+    if (this.closed) return { ok: false, code: this.failure };
     try {
       await this.start();
       if (this.closed) return { ok: false, code: this.failure };
       const request = LearnerRequestSchema.parse({
         v: 3,
         id: randomUUID(),
-        method: "learner.overview.read",
+        method,
         sessionId: this.sessionId,
         profileId: this.profileId,
       });
-      return await new Promise<LearnerResult>((resolve) => {
-        this.pending = { id: request.id, resolve };
+      return await new Promise<ReadResult>((resolve) => {
+        this.pending = { id: request.id, method, resolve };
         this.timer = setTimeout(() => {
           void this.stop("TIMEOUT");
         }, this.deadline);
@@ -217,6 +250,7 @@ export class LearnerSession {
 
 export interface LearnerReader {
   read(): Promise<LearnerResult>;
+  readSkills(): Promise<LearnerSkillsResult>;
   stop(): Promise<void>;
 }
 /** Generation-bound selection and teardown: a replaced profile can never publish into a new session. */
@@ -257,6 +291,22 @@ export class LearnerOwner {
     if (this.closed || !selected || !authorized())
       return { ok: false, code: "UNAVAILABLE" };
     const result = await selected.read();
+    if (
+      this.closed ||
+      generation !== this.generation ||
+      selected !== this.current ||
+      !authorized()
+    )
+      return { ok: false, code: "CANCELLED" };
+    if (!result.ok) await this.disconnect();
+    return result;
+  }
+  async readSkills(authorized: () => boolean): Promise<LearnerSkillsResult> {
+    const selected = this.current;
+    const generation = this.generation;
+    if (this.closed || !selected || !authorized())
+      return { ok: false, code: "UNAVAILABLE" };
+    const result = await selected.readSkills();
     if (
       this.closed ||
       generation !== this.generation ||

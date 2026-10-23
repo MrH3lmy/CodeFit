@@ -84,6 +84,7 @@ export const missions: Mission[] = [
 ];
 export type NodeState = "Completed" | "In progress" | "Available" | "Locked";
 export interface SkillNode {
+  branches: ("Java" | "Engineering")[];
   id: string;
   name: string;
   subtitle: string;
@@ -97,6 +98,7 @@ export interface SkillNode {
 export const skills: SkillNode[] = [
   {
     id: "core",
+    branches: ["Java"],
     name: "Java foundations",
     subtitle: "THE ORIGIN",
     state: "Completed",
@@ -109,6 +111,7 @@ export const skills: SkillNode[] = [
   },
   {
     id: "flow",
+    branches: ["Java"],
     name: "Control flow",
     subtitle: "REASONING",
     state: "Completed",
@@ -121,6 +124,7 @@ export const skills: SkillNode[] = [
   },
   {
     id: "objects",
+    branches: ["Engineering"],
     name: "Object thinking",
     subtitle: "STRUCTURE",
     state: "Available",
@@ -133,6 +137,7 @@ export const skills: SkillNode[] = [
   },
   {
     id: "debug",
+    branches: ["Java"],
     name: "Debugging",
     subtitle: "CURRENT FOCUS",
     state: "In progress",
@@ -145,6 +150,7 @@ export const skills: SkillNode[] = [
   },
   {
     id: "collections",
+    branches: ["Java", "Engineering"],
     name: "Collections",
     subtitle: "DATA & CONTRACTS",
     state: "Available",
@@ -157,6 +163,7 @@ export const skills: SkillNode[] = [
   },
   {
     id: "exceptions",
+    branches: ["Java", "Engineering"],
     name: "Exceptions",
     subtitle: "RESILIENCE",
     state: "Locked",
@@ -169,6 +176,7 @@ export const skills: SkillNode[] = [
   },
   {
     id: "concurrency",
+    branches: ["Java", "Engineering"],
     name: "Concurrency",
     subtitle: "THE NEXT HORIZON",
     state: "Locked",

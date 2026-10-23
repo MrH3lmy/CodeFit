@@ -27,6 +27,7 @@ export function createLearnerFixture(file: string, mode = "normal") {
         "-d",
         compiled,
         resolve("../src/test/java/com/codefit/desktop/LearnerFixture.java"),
+        resolve("../src/test/java/com/codefit/desktop/AscensionFixture.java"),
       ],
       { timeout: 30_000, stdio: "pipe" },
     );
@@ -39,9 +40,11 @@ export function createLearnerFixture(file: string, mode = "normal") {
     [
       "-cp",
       [compiled, engine].join(delimiter),
-      "com.codefit.desktop.LearnerFixture",
+      mode.startsWith("ascension-")
+        ? "com.codefit.desktop.AscensionFixture"
+        : "com.codefit.desktop.LearnerFixture",
       file,
-      mode,
+      mode.startsWith("ascension-") ? mode.slice(10) : mode,
     ],
     { timeout: 30_000, stdio: "pipe" },
   );

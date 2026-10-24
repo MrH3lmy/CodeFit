@@ -94,7 +94,8 @@ public final class KnowledgePreviewCli {
         }
     }
 
-    static byte[] export(PublicPreview preview) {
+    /** Explicit public-metadata serializer shared by the CLI and finite desktop read. No I/O. */
+    public static byte[] export(PublicPreview preview) {
         try {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             try (JsonGenerator json = new JsonFactory().createGenerator(bytes)) {

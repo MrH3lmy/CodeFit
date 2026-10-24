@@ -15,9 +15,10 @@ import {
   profileName,
   useLearnerProfile,
 } from "./learner-profile";
+import { CurriculumAtlas } from "./curriculum-preview";
 import "./style.css";
 
-type Screen = "command" | "tree" | "missions" | "library";
+type Screen = "command" | "tree" | "missions" | "library" | "curriculum";
 type Modal = "states" | "profile" | "activity" | "boss" | null;
 const nav: { id: Screen; label: string; sub: string; icon: IconName }[] = [
   {
@@ -42,6 +43,12 @@ const nav: { id: Screen; label: string; sub: string; icon: IconName }[] = [
     id: "library",
     label: "Java Library",
     sub: "Isolated engine connection",
+    icon: "library",
+  },
+  {
+    id: "curriculum",
+    label: "Curriculum Preview",
+    sub: "Explore author drafts",
     icon: "library",
   },
 ];
@@ -188,53 +195,61 @@ function App() {
         <div className="provenance">
           <span>
             <i />
-            {screen === "library"
-              ? "EXPERIMENTAL DATA"
-              : (screen === "command" || screen === "tree") && learner.profile
-                ? "LEARNER SNAPSHOT"
-                : "DESIGN PREVIEW"}
+            {screen === "curriculum"
+              ? "AUTHOR-DRAFT PREVIEW"
+              : screen === "library"
+                ? "EXPERIMENTAL DATA"
+                : (screen === "command" || screen === "tree") && learner.profile
+                  ? "LEARNER SNAPSHOT"
+                  : "DESIGN PREVIEW"}
           </span>
           <p>
-            {screen === "library"
-              ? learner.profile
-                ? "Live experimental profile. This library is separate from learner data."
-                : "Live experimental profile. Your learner profile is not connected."
-              : learner.profile
-                ? screen === "command" || screen === "tree"
-                  ? "Recorded learner data. Read-only snapshot; newer changes need a new capture."
-                  : "Demonstration data. These examples are separate from your connected learner snapshot."
-                : "Demonstration data. Your learner profile is not connected."}
+            {screen === "curriculum"
+              ? "Bundled metadata. Separate from learner evidence; no learning operations enabled."
+              : screen === "library"
+                ? learner.profile
+                  ? "Live experimental profile. This library is separate from learner data."
+                  : "Live experimental profile. Your learner profile is not connected."
+                : learner.profile
+                  ? screen === "command" || screen === "tree"
+                    ? "Recorded learner data. Read-only snapshot; newer changes need a new capture."
+                    : "Demonstration data. These examples are separate from your connected learner snapshot."
+                  : "Demonstration data. Your learner profile is not connected."}
           </p>
-          <button
-            onClick={() =>
-              setModal(
-                screen === "command" || screen === "tree"
-                  ? "profile"
-                  : "states",
-              )
-            }
-          >
-            {screen === "command" || screen === "tree"
-              ? learner.profile
-                ? "Profile details"
-                : "Connect profile"
-              : state === "ready"
-                ? "Explore states"
-                : stateLabels[state]}{" "}
-            <Icon name="chevron" size={12} />
-          </button>
+          {screen !== "curriculum" && (
+            <button
+              onClick={() =>
+                setModal(
+                  screen === "command" || screen === "tree"
+                    ? "profile"
+                    : "states",
+                )
+              }
+            >
+              {screen === "command" || screen === "tree"
+                ? learner.profile
+                  ? "Profile details"
+                  : "Connect profile"
+                : state === "ready"
+                  ? "Explore states"
+                  : stateLabels[state]}{" "}
+              <Icon name="chevron" size={12} />
+            </button>
+          )}
         </div>
         <main id="main-content" tabIndex={-1}>
           <div className="page-heading">
             <div>
               <p className="eyebrow">
-                {screen === "command"
-                  ? "YOUR PERSONAL OPERATING SYSTEM"
-                  : screen === "tree"
-                    ? "A MAP OF WHAT YOU CAN BECOME"
-                    : screen === "missions"
-                      ? "PURPOSEFUL PRACTICE. VISIBLE PROGRESS."
-                      : "PRESERVED JAVA ENGINE / EXPERIMENTAL PROFILE"}
+                {screen === "curriculum"
+                  ? "STRUCTURE BEFORE PROGRESSION"
+                  : screen === "command"
+                    ? "YOUR PERSONAL OPERATING SYSTEM"
+                    : screen === "tree"
+                      ? "A MAP OF WHAT YOU CAN BECOME"
+                      : screen === "missions"
+                        ? "PURPOSEFUL PRACTICE. VISIBLE PROGRESS."
+                        : "PRESERVED JAVA ENGINE / EXPERIMENTAL PROFILE"}
               </p>
               <h1 ref={heading} tabIndex={-1}>
                 {nav.find((n) => n.id === screen)?.label}
@@ -242,13 +257,15 @@ function App() {
               </h1>
             </div>
             <span className="page-index">
-              {screen === "command"
-                ? "SYS / 01"
-                : screen === "tree"
-                  ? "MAP / 02"
-                  : screen === "missions"
-                    ? "OPS / 03"
-                    : "ENG / 04"}
+              {screen === "curriculum"
+                ? "CAT / 05"
+                : screen === "command"
+                  ? "SYS / 01"
+                  : screen === "tree"
+                    ? "MAP / 02"
+                    : screen === "missions"
+                      ? "OPS / 03"
+                      : "ENG / 04"}
             </span>
           </div>
           {(screen === "command" || screen === "tree") &&
@@ -273,7 +290,8 @@ function App() {
                 </button>
               </div>
             )}
-          {state === "offline" &&
+          {screen !== "curriculum" &&
+            state === "offline" &&
             !(
               (screen === "command" || screen === "tree") &&
               learner.profile
@@ -289,7 +307,8 @@ function App() {
                 </button>
               </div>
             )}
-          {state === "unknown" &&
+          {screen !== "curriculum" &&
+            state === "unknown" &&
             !(
               (screen === "command" || screen === "tree") &&
               learner.profile
@@ -305,7 +324,8 @@ function App() {
                 </button>
               </div>
             )}
-          {screen !== "library" &&
+          {screen !== "curriculum" &&
+          screen !== "library" &&
           !((screen === "command" || screen === "tree") && learner.profile) &&
           (state === "empty" || state === "error" || state === "loading") ? (
             <StateView kind={state} onReset={() => setState("ready")} />
@@ -337,6 +357,7 @@ function App() {
           ) : screen === "missions" ? (
             <MissionConsole onMission={setMission} />
           ) : null}
+          {screen === "curriculum" && <CurriculumAtlas />}
           <div hidden={screen !== "library"}>
             {libraryOpened && <Library />}
           </div>
@@ -370,7 +391,11 @@ function App() {
                   key={value}
                   onClick={() => {
                     setState(value);
-                    if (screen === "library" || learner.profile)
+                    if (
+                      screen === "curriculum" ||
+                      screen === "library" ||
+                      learner.profile
+                    )
                       setScreen("missions");
                     setModal(null);
                     setAnnouncement(`${label} preview`);

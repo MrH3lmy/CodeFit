@@ -1,0 +1,143 @@
+{
+  "schema": "codefit-curriculum-preview/0.1",
+  "source_version": "v0.41",
+  "private_checkpoint_sha256": "a4a1e168f2b00c26677e7f75052d5585cf4425f1641af697dd7927a7ae25e865",
+  "source_kind": "original_author_metadata_only",
+  "production_import_supported": false,
+  "independent_approvals": 0,
+  "grader_available": false,
+  "xp_enabled": false,
+  "mastery_enabled": false,
+  "source_body_included": false,
+  "prerequisite_mapping_status": "UNRESOLVED",
+  "skills": [
+    {
+      "skill_id": "java.general.local.scope.v1",
+      "title": "Limit local state to the smallest meaningful scope",
+      "source_item": "EJ-ITEM-057",
+      "source_section_sha256": "43b67abff90d1f079a80f0a24a3a519bf1a482c674fed3f53c9b6e767bef4adb",
+      "prerequisites": [
+        "java.control.flow",
+        "java.exceptions.checked"
+      ],
+      "mission_stages": [
+        {
+          "stage": "PREDICT",
+          "id": "EJ41-057-PREDICT"
+        },
+        {
+          "stage": "DEBUG",
+          "id": "EJ41-057-DEBUG"
+        },
+        {
+          "stage": "BUILD",
+          "id": "EJ41-057-BUILD"
+        },
+        {
+          "stage": "DEFEND",
+          "id": "EJ41-057-DEFEND"
+        }
+      ],
+      "review_status": "AUTHOR_DRAFT_PENDING_EXTERNAL_REVIEW",
+      "release_eligible": false,
+      "gradable": false,
+      "mastery_eligible": false
+    },
+    {
+      "skill_id": "java.general.enhanced.iteration.v1",
+      "title": "Choose enhanced iteration without hiding mutation and pairing requirements",
+      "source_item": "EJ-ITEM-058",
+      "source_section_sha256": "404141b214d90785fd561df84980f2e70323ac8f93465ce1827e1cedd3017071",
+      "prerequisites": [
+        "java.general.local.scope.v1",
+        "java.collections.iteration"
+      ],
+      "mission_stages": [
+        {
+          "stage": "PREDICT",
+          "id": "EJ41-058-PREDICT"
+        },
+        {
+          "stage": "DEBUG",
+          "id": "EJ41-058-DEBUG"
+        },
+        {
+          "stage": "BUILD",
+          "id": "EJ41-058-BUILD"
+        },
+        {
+          "stage": "DEFEND",
+          "id": "EJ41-058-DEFEND"
+        }
+      ],
+      "review_status": "AUTHOR_DRAFT_PENDING_EXTERNAL_REVIEW",
+      "release_eligible": false,
+      "gradable": false,
+      "mastery_eligible": false
+    },
+    {
+      "skill_id": "java.general.library.selection.v1",
+      "title": "Prefer documented library primitives over ad hoc algorithms",
+      "source_item": "EJ-ITEM-059",
+      "source_section_sha256": "9a5ba3619b897ce2a87ec19ee7fdfc08ea9eee96c389816af45ca5034889b80f",
+      "prerequisites": [
+        "java.numeric.integer.overflow",
+        "java.api.contracts"
+      ],
+      "mission_stages": [
+        {
+          "stage": "PREDICT",
+          "id": "EJ41-059-PREDICT"
+        },
+        {
+          "stage": "DEBUG",
+          "id": "EJ41-059-DEBUG"
+        },
+        {
+          "stage": "BUILD",
+          "id": "EJ41-059-BUILD"
+        },
+        {
+          "stage": "DEFEND",
+          "id": "EJ41-059-DEFEND"
+        }
+      ],
+      "review_status": "AUTHOR_DRAFT_PENDING_EXTERNAL_REVIEW",
+      "release_eligible": false,
+      "gradable": false,
+      "mastery_eligible": false
+    },
+    {
+      "skill_id": "java.general.exact.decimal.v1",
+      "title": "Model exact amounts with explicit decimal scale and rounding",
+      "source_item": "EJ-ITEM-060",
+      "source_section_sha256": "62cf6e625613fbd1e7dc0e83baa5c96d1f4c105c2e393281fc7345b5c4bf51f6",
+      "prerequisites": [
+        "java.numeric.integer.overflow",
+        "java.api.preconditions.v1"
+      ],
+      "mission_stages": [
+        {
+          "stage": "PREDICT",
+          "id": "EJ41-060-PREDICT"
+        },
+        {
+          "stage": "DEBUG",
+          "id": "EJ41-060-DEBUG"
+        },
+        {
+          "stage": "BUILD",
+          "id": "EJ41-060-BUILD"
+        },
+        {
+          "stage": "DEFEND",
+          "id": "EJ41-060-DEFEND"
+        }
+      ],
+      "review_status": "AUTHOR_DRAFT_PENDING_EXTERNAL_REVIEW",
+      "release_eligible": false,
+      "gradable": false,
+      "mastery_eligible": false
+    }
+  ]
+}

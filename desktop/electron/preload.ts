@@ -3,6 +3,9 @@ import type { CodeFitBridge, DeckInput } from "../src/contract";
 
 // This file is bundled as a single sandbox-compatible CJS preload; no Node APIs cross the bridge.
 const bridge: CodeFitBridge = Object.freeze({
+  readCurriculumPreview: () => ipcRenderer.invoke("codefit:curriculum:read"),
+  cancelCurriculumPreview: () =>
+    ipcRenderer.invoke("codefit:curriculum:cancel"),
   readState: (afterId: number) =>
     ipcRenderer.invoke("codefit:state:read", afterId),
   createDeck: (input: DeckInput) =>

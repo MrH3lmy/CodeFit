@@ -166,6 +166,10 @@ export type Operation = z.infer<typeof OperationSchema>;
 export type OperationResult = z.infer<typeof OperationResultSchema>;
 export type AckResult = z.infer<typeof AckResultSchema>;
 export interface CodeFitBridge {
+  readCurriculumPreview(): Promise<
+    import("./curriculum-contract").CurriculumResult
+  >;
+  cancelCurriculumPreview(): Promise<void>;
   chooseLearnerProfile(): Promise<import("./learner-contract").LearnerResult>;
   readLearnerSkills(): Promise<
     import("./learner-contract").LearnerSkillsResult

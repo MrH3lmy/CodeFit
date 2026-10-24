@@ -12,6 +12,7 @@ import { JavaSession, runtimeLocation } from "./java-session";
 import { DesktopApplication } from "./desktop-application";
 import { OperationJournal } from "./operation-journal";
 import { EngineOwner } from "./engine-owner";
+import { CurriculumOwner, CurriculumSession } from "./curriculum-session";
 import { LearnerOwner } from "./learner-session";
 import type { LearnerResult } from "../src/learner-contract";
 
@@ -42,6 +43,10 @@ const engine = new EngineOwner(
 const learner = new LearnerOwner(
   () => runtimeLocation(javaRoot),
   join(app.getPath("userData"), "learner-snapshots-v1"),
+);
+const curriculum = new CurriculumOwner(
+  process.argv.includes("--enable-curriculum-preview-local"),
+  () => new CurriculumSession(runtimeLocation(javaRoot)),
 );
 let learnerDialogBusy = false;
 let learnerGeneration = 0;
@@ -82,12 +87,14 @@ if (!app.requestSingleInstanceLock()) {
     if (quitting) return;
     quitting = true;
     learnerGeneration++;
-    void Promise.allSettled([engine.shutdown(), learner.shutdown()]).finally(
-      () => {
-        quitReady = true;
-        app.quit();
-      },
-    );
+    void Promise.allSettled([
+      engine.shutdown(),
+      learner.shutdown(),
+      curriculum.shutdown(),
+    ]).finally(() => {
+      quitReady = true;
+      app.quit();
+    });
   });
   app.on("window-all-closed", () => app.quit());
   void app
@@ -143,6 +150,7 @@ if (!app.requestSingleInstanceLock()) {
           if (mainFrame) {
             learnerGeneration++;
             void learner.disconnect();
+            void curriculum.cancel();
           }
         },
       );
@@ -150,13 +158,25 @@ if (!app.requestSingleInstanceLock()) {
         learnerGeneration++;
         void engine.stop();
         void learner.disconnect();
+        void curriculum.cancel();
       });
       window.on("closed", () => {
         window = undefined;
         learnerGeneration++;
         void engine.shutdown();
         void learner.shutdown();
+        void curriculum.shutdown();
       });
+      ipcMain.handle("codefit:curriculum:read", (event, ...args: unknown[]) =>
+        curriculum.read(() => !quitting && authorized(event, args, 0)),
+      );
+      ipcMain.handle(
+        "codefit:curriculum:cancel",
+        async (event, ...args: unknown[]) => {
+          if (!quitting && authorized(event, args, 0))
+            await curriculum.cancel();
+        },
+      );
       ipcMain.handle(
         "codefit:learner:choose",
         async (event, ...args: unknown[]): Promise<LearnerResult> => {

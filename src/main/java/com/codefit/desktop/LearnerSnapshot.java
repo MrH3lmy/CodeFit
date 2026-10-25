@@ -378,6 +378,17 @@ final class LearnerSnapshot implements AutoCloseable {
         }
     }
 
+    LearnerMissionProjection.Projection readMissions() throws Exception {
+        checkedFile(database, MAX_BYTES);
+        try (Connection connection = openReadOnly(database, false)) {
+            connection.setAutoCommit(false);
+            var result =
+                    LearnerMissionProjection.read(connection, profileId, sessionId, capturedAt);
+            connection.rollback();
+            return result;
+        }
+    }
+
     Path database() {
         return database;
     }

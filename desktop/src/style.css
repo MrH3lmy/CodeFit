@@ -4557,3 +4557,297 @@ select {
     transition: none;
   }
 }
+
+.recorded-missions {
+  display: grid;
+  gap: 22px;
+}
+.mission-record-hero {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 34px;
+  background:
+    radial-gradient(ellipse at 100% 0%, var(--violet-deep), transparent 60%),
+    var(--surface);
+}
+.mission-record-hero h2 {
+  font: 500 35px/1.2 var(--display);
+  letter-spacing: -1px;
+  margin: 14px 0;
+}
+.mission-record-hero h2 em {
+  font-style: normal;
+  color: var(--cyan);
+}
+.mission-record-hero p:not(.eyebrow) {
+  max-width: 600px;
+  color: var(--muted);
+}
+.mission-record-mark {
+  display: grid;
+  gap: 18px;
+  place-items: center;
+  color: var(--cyan);
+  min-width: 160px;
+}
+.mission-record-mark span {
+  font: 12px/1.7 var(--display);
+  letter-spacing: 4px;
+  text-align: center;
+  color: var(--muted);
+}
+.mission-facts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.mission-facts > div {
+  padding: 18px;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+}
+.mission-facts > div:last-child {
+  border: 0;
+}
+.mission-facts strong {
+  font: 500 28px var(--display);
+}
+.mission-facts span:not(.badge) {
+  font-size: 10px;
+  color: var(--muted);
+}
+.mission-facts-note {
+  font-size: 11px;
+  color: var(--muted);
+  margin: -9px 0 0;
+}
+.mission-history-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.mission-history select {
+  max-width: 170px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 11px;
+}
+.mission-history-list {
+  display: grid;
+  gap: 12px;
+}
+.mission-record {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+}
+.mission-record:hover {
+  border-color: var(--violet);
+}
+.mission-record.selected {
+  border-color: var(--cyan);
+  background: linear-gradient(110deg, var(--cyan-deep), var(--surface));
+  box-shadow: inset 3px 0 var(--cyan);
+}
+.mission-record > div {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+.mission-record > div:last-child {
+  justify-items: end;
+  flex-shrink: 0;
+}
+.mission-record strong {
+  font: 500 17px/1.4 var(--display);
+}
+.mission-record .eyebrow {
+  font-size: 8px;
+}
+.mission-record code {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.mission-record small {
+  font-size: 9px;
+  color: var(--muted);
+}
+.mission-record-inspector {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+}
+.mission-record-inspector h2 {
+  font: 500 23px/1.3 var(--display);
+}
+.mission-record-inspector .eyebrow {
+  font-size: 9px;
+}
+.mission-record-inspector dt {
+  margin: 15px 0 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.mission-record-inspector dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.mission-record-inspector code {
+  font-size: 10px;
+}
+.mission-record-inspector p {
+  color: var(--muted);
+  font-size: 11px;
+}
+.mission-action-boundary {
+  padding: 16px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  margin-top: 20px;
+}
+.mission-action-boundary > svg {
+  color: var(--violet);
+}
+.mission-action-boundary button {
+  display: block;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  font-size: 11px;
+}
+.mission-empty {
+  padding: 34px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.mission-empty > svg {
+  color: var(--cyan);
+}
+.mission-empty p {
+  color: var(--muted);
+  font-size: 12px;
+}
+.published-quests > p,
+.mission-decision-history p {
+  color: var(--muted);
+  font-size: 12px;
+}
+.published-quest-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.published-quest-grid article {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+}
+.published-quest-grid h3 {
+  font: 500 17px var(--display);
+}
+.published-quest-grid code {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  color: var(--muted);
+}
+.published-quest-grid article > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--faint);
+  font-size: 10px;
+  margin-top: 18px;
+}
+.mission-decision-history {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.mission-decision-history summary {
+  cursor: pointer;
+  font: 500 16px var(--display);
+}
+.mission-decision-history summary .badge {
+  margin-left: 12px;
+}
+.mission-decision-history ul {
+  list-style: none;
+  padding: 0;
+}
+.mission-decision-history li {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+}
+.mission-decision-history code {
+  overflow-wrap: anywhere;
+  font-size: 10px;
+}
+.mission-decision-history time {
+  color: var(--muted);
+  font-size: 11px;
+}
+.mission-draft-boundary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0 4px;
+}
+.mission-draft-boundary svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--violet);
+}
+.mission-draft-boundary p {
+  margin: 0;
+}
+@media (max-width: 1050px) {
+  .mission-history-layout {
+    grid-template-columns: 1fr;
+  }
+  .mission-record-hero {
+    padding: 25px;
+  }
+  .mission-record-hero h2 {
+    font-size: 28px;
+  }
+  .mission-record-mark {
+    min-width: 80px;
+  }
+  .published-quest-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mission-facts > div {
+    padding: 12px;
+  }
+}

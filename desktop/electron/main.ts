@@ -239,6 +239,18 @@ if (!app.requestSingleInstanceLock()) {
             authorized(event, args, 0),
         );
       });
+      ipcMain.handle(
+        "codefit:learner:missions",
+        (event, ...args: unknown[]) => {
+          const generation = learnerGeneration;
+          return learner.readMissions(
+            () =>
+              !quitting &&
+              generation === learnerGeneration &&
+              authorized(event, args, 0),
+          );
+        },
+      );
       ipcMain.handle("codefit:learner:skills", (event, ...args: unknown[]) => {
         const generation = learnerGeneration;
         return learner.readSkills(

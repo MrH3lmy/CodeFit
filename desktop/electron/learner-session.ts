@@ -9,11 +9,15 @@ import {
   type LearnerError,
   type LearnerResult,
   type LearnerSkillsResult,
+  type LearnerMissionsResult,
 } from "../src/learner-contract";
 
-type ReadResult = LearnerResult | LearnerSkillsResult;
-type ReadMethod = "learner.overview.read" | "learner.skills.read";
-/** One snapshot, two allowlisted reads. Coalesce each kind and serialize the bounded pair. */
+type ReadResult = LearnerResult | LearnerSkillsResult | LearnerMissionsResult;
+type ReadMethod =
+  | "learner.overview.read"
+  | "learner.skills.read"
+  | "learner.missions.read";
+/** One snapshot, three allowlisted reads. Coalesce each kind and serialize the bounded reads. */
 export class LearnerSession {
   private child?: ChildProcessWithoutNullStreams;
   private closed = false;
@@ -28,6 +32,7 @@ export class LearnerSession {
   private profileId?: string;
   private readonly sessionId = randomUUID();
   private reading?: Promise<LearnerResult>;
+  private missionsReading?: Promise<LearnerMissionsResult>;
   private skillsReading?: Promise<LearnerSkillsResult>;
   private queue: Promise<void> = Promise.resolve();
   private pending?: {
@@ -120,7 +125,11 @@ export class LearnerSession {
       const end = newline < 0 ? chunk.length : newline;
       if (
         this.buffer.length + end - offset >
-        (this.pending?.method === "learner.skills.read" ? 262144 : 8192)
+        (this.pending?.method === "learner.skills.read"
+          ? 262144
+          : this.pending?.method === "learner.missions.read"
+            ? 65536
+            : 8192)
       ) {
         void this.stop("PROTOCOL_ERROR");
         return;
@@ -155,15 +164,19 @@ export class LearnerSession {
             (reply.result.sessionId !== this.sessionId ||
               reply.result.profileId !== this.profileId ||
               reply.result.kind !==
-                (this.pending.method === "learner.skills.read"
-                  ? "learner-skills"
-                  : "learner-overview"))
+                (this.pending.method === "learner.missions.read"
+                  ? "learner-missions"
+                  : this.pending.method === "learner.skills.read"
+                    ? "learner-skills"
+                    : "learner-overview"))
           )
             throw new Error("identity");
           clearTimeout(this.timer);
           const pending = this.pending;
           this.pending = undefined;
           if (!reply.ok) pending.resolve({ ok: false, code: reply.code });
+          else if (reply.result.kind === "learner-missions")
+            pending.resolve({ ok: true, result: reply.result });
           else if (reply.result.kind === "learner-skills")
             pending.resolve({ ok: true, result: reply.result });
           else pending.resolve({ ok: true, result: reply.result });
@@ -195,6 +208,16 @@ export class LearnerSession {
       this.skillsReading = undefined;
     });
     return this.skillsReading;
+  }
+  readMissions(): Promise<LearnerMissionsResult> {
+    if (this.closed) return Promise.resolve({ ok: false, code: this.failure });
+    if (this.missionsReading) return this.missionsReading;
+    this.missionsReading = (
+      this.enqueue("learner.missions.read") as Promise<LearnerMissionsResult>
+    ).finally(() => {
+      this.missionsReading = undefined;
+    });
+    return this.missionsReading;
   }
   private enqueue(method: ReadMethod): Promise<ReadResult> {
     const request = this.queue.then(() => this.readOne(method));
@@ -251,6 +274,7 @@ export class LearnerSession {
 export interface LearnerReader {
   read(): Promise<LearnerResult>;
   readSkills(): Promise<LearnerSkillsResult>;
+  readMissions(): Promise<LearnerMissionsResult>;
   stop(): Promise<void>;
 }
 /** Generation-bound selection and teardown: a replaced profile can never publish into a new session. */
@@ -307,6 +331,24 @@ export class LearnerOwner {
     if (this.closed || !selected || !authorized())
       return { ok: false, code: "UNAVAILABLE" };
     const result = await selected.readSkills();
+    if (
+      this.closed ||
+      generation !== this.generation ||
+      selected !== this.current ||
+      !authorized()
+    )
+      return { ok: false, code: "CANCELLED" };
+    if (!result.ok) await this.disconnect();
+    return result;
+  }
+  async readMissions(
+    authorized: () => boolean,
+  ): Promise<LearnerMissionsResult> {
+    const selected = this.current,
+      generation = this.generation;
+    if (this.closed || !selected || !authorized())
+      return { ok: false, code: "UNAVAILABLE" };
+    const result = await selected.readMissions();
     if (
       this.closed ||
       generation !== this.generation ||

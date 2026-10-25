@@ -192,7 +192,16 @@ test("explicit consent connects authentic recorded data offline with dark/light 
     .getByRole("navigation")
     .getByRole("button", { name: /Mission Console/ })
     .click();
-  await expect(p.locator(".provenance")).toContainText("Demonstration data");
+  await expect(p.locator(".provenance")).toContainText("Recorded learner data");
+  await expect(
+    p.getByRole("region", { name: "Recorded Mission Console" }),
+  ).toBeVisible();
+  await expect(
+    p.getByRole("heading", { name: "No saved submissions in this snapshot" }),
+  ).toBeVisible();
+  await expect(
+    p.getByRole("button", { name: "Evaluate / review unavailable" }),
+  ).toBeDisabled();
 });
 test("declining native confirmation never opens a learner reader", async () => {
   const p = await app.firstWindow();

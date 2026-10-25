@@ -115,6 +115,10 @@ test("profile switch fences a delayed skill read without disconnecting the repla
     "/unused",
     (source) => ({
       read: async () => overview,
+      readMissions: async () => ({
+        ok: false as const,
+        code: "UNAVAILABLE" as const,
+      }),
       readSkills: () =>
         source === "A"
           ? waiting
@@ -294,6 +298,10 @@ test("switching and disconnect invalidate an older delayed read without stopping
         source === "A"
           ? delayed
           : Promise.resolve({ ok: false, code: "INCOMPATIBLE_SCHEMA" }),
+      readMissions: async () => ({
+        ok: false as const,
+        code: "UNAVAILABLE" as const,
+      }),
       readSkills: async () => ({ ok: false, code: "UNAVAILABLE" }),
       stop: async () => {
         stopped++;

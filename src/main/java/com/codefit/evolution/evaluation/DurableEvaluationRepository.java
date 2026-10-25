@@ -161,6 +161,119 @@ public final class DurableEvaluationRepository {
                         s.snapshot().priorFamilySubmissions()));
     }
 
+    /**
+     * Metadata-only historical read on an already authorized caller snapshot. No
+     * recovery/reconciliation.
+     */
+    public record HistoryItem(
+            long sequence,
+            String command,
+            String presentation,
+            com.codefit.evolution.quest.CatalogRef quest,
+            com.codefit.evolution.quest.CatalogRef challenge,
+            java.time.Instant submittedAt,
+            Stage stage,
+            String outcome,
+            Integer revision,
+            boolean withdrawn,
+            java.time.Instant evaluatedAt) {}
+
+    public List<HistoryItem> recentMetadata(Connection c, int limit) throws SQLException {
+        if (c.getAutoCommit() || limit < 1 || limit > 21)
+            throw new IllegalArgumentException("Bounded caller-owned snapshot required");
+        var result = new ArrayList<HistoryItem>();
+        try (var q =
+                c.prepareStatement(
+                        "SELECT id, CASE WHEN length(snapshot)<=2000000 AND"
+                            + " length(command_id)+length(presentation_id)+length(request_sha)+length(snapshot_sha)"
+                            + "+length(artifact_sha)+length(executable_sha)+length(family_id)+length(variant_id)"
+                            + "+length(state)+length(coalesce(run_token,''))+length(coalesce(owner_started,''))+length(coalesce(child_started,''))+length(coalesce(staged_run,''))<=4096"
+                            + " THEN command_id END FROM evolution_submissions ORDER BY id DESC"
+                            + " LIMIT ?")) {
+            q.setInt(1, limit);
+            try (var rows = q.executeQuery()) {
+                while (rows.next()) {
+                    String command = rows.getString(2);
+                    if (command == null) throw new IllegalStateException("Invalid history bounds");
+                    SubmissionRequest.identity(command);
+                    var submission = find(c, command).orElseThrow();
+                    var snapshot = submission.snapshot();
+                    if ((submission.stage() == Stage.FINALIZED) != (submission.revision() != null)
+                            || submission.id() < 1)
+                        throw new IllegalStateException("Invalid historical stage");
+                    // Require frozen identity to agree with its persisted authorized presentation.
+                    var presentation = snapshot.presentation();
+                    try (var p =
+                            c.prepareStatement(
+                                    "SELECT CASE WHEN length(quest_id)<=128 THEN quest_id"
+                                        + " END,quest_version,CASE WHEN length(challenge_id)<=128"
+                                        + " THEN challenge_id"
+                                        + " END,challenge_version,typeof(quest_version),typeof(challenge_version),CASE"
+                                        + " WHEN length(presented_at)<=40 THEN presented_at END"
+                                        + " FROM evolution_challenge_presentations WHERE id=?")) {
+                        p.setString(1, presentation.id());
+                        try (var r = p.executeQuery()) {
+                            if (!r.next()
+                                    || !presentation.quest().id().equals(r.getString(1))
+                                    || presentation.quest().version() != r.getInt(2)
+                                    || !presentation.challenge().id().equals(r.getString(3))
+                                    || presentation.challenge().version() != r.getInt(4)
+                                    || !"integer".equals(r.getString(5))
+                                    || !"integer".equals(r.getString(6))
+                                    || !presentation
+                                            .presentedAt()
+                                            .toString()
+                                            .equals(r.getString(7)))
+                                throw new IllegalStateException("Invalid historical presentation");
+                        }
+                    }
+                    String outcome = null;
+                    boolean withdrawn = false;
+                    java.time.Instant evaluatedAt = null;
+                    if (submission.stage() == Stage.FINALIZED) {
+                        try (var p =
+                                c.prepareStatement(
+                                        "SELECT"
+                                            + " length(payload),length(digest),length(change_kind),length(reason),length(actor),length(coalesce(previous_evidence_id,''))"
+                                            + " FROM evolution_evaluation_revisions WHERE"
+                                            + " submission_id=? AND revision=?")) {
+                            p.setLong(1, submission.id());
+                            p.setInt(2, submission.revision());
+                            try (var r = p.executeQuery()) {
+                                if (!r.next() || r.getLong(1) > 2000000 || r.getLong(1) < 1)
+                                    throw new IllegalStateException("Invalid result bounds");
+                                for (int n = 2; n <= 6; n++)
+                                    if (r.getLong(n) > 128)
+                                        throw new IllegalStateException("Invalid result metadata");
+                            }
+                        }
+                        var revision = revision(c, submission, submission.revision());
+                        validateResult(snapshot, revision.result());
+                        evaluatedAt = revision.result().finishedAt();
+                        if (evaluatedAt.isBefore(snapshot.submittedAt()))
+                            throw new IllegalStateException("Invalid historical time");
+                        withdrawn = revision.change() == Change.RETRACTION;
+                        if (!withdrawn) outcome = revision.result().outcome().name();
+                    }
+                    result.add(
+                            new HistoryItem(
+                                    submission.id(),
+                                    command,
+                                    presentation.id(),
+                                    presentation.quest(),
+                                    presentation.challenge(),
+                                    snapshot.submittedAt(),
+                                    submission.stage(),
+                                    outcome,
+                                    submission.revision(),
+                                    withdrawn,
+                                    evaluatedAt));
+                }
+            }
+        }
+        return List.copyOf(result);
+    }
+
     private final QuestCatalogRepository transactions = new QuestCatalogRepository();
 
     public Optional<Submission> find(String command) {

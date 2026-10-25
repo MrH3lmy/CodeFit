@@ -64,10 +64,14 @@ public final class LearnerProfileMain {
                 else {
                     try {
                         response =
-                                request.method().equals("learner.skills.read")
+                                request.method().equals("learner.missions.read")
                                         ? LearnerProtocol.result(
-                                                request.id(), snapshot.readSkills())
-                                        : LearnerProtocol.result(request.id(), snapshot.read());
+                                                request.id(), snapshot.readMissions())
+                                        : request.method().equals("learner.skills.read")
+                                                ? LearnerProtocol.result(
+                                                        request.id(), snapshot.readSkills())
+                                                : LearnerProtocol.result(
+                                                        request.id(), snapshot.read());
                     } catch (Exception failure) {
                         response = LearnerProtocol.failed(request.id(), "READ_FAILED");
                     }

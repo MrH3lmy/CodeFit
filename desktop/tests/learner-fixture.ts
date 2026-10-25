@@ -28,6 +28,7 @@ export function createLearnerFixture(file: string, mode = "normal") {
         compiled,
         resolve("../src/test/java/com/codefit/desktop/LearnerFixture.java"),
         resolve("../src/test/java/com/codefit/desktop/AscensionFixture.java"),
+        resolve("../src/test/java/com/codefit/desktop/MissionFixture.java"),
       ],
       { timeout: 30_000, stdio: "pipe" },
     );
@@ -35,16 +36,25 @@ export function createLearnerFixture(file: string, mode = "normal") {
       if (compiled) rmSync(compiled, { recursive: true, force: true });
     });
   }
+  // Only the host fixture evaluates solutions; the packaged read-only runtime omits jdk.compiler.
   execFileSync(
-    resolve("java/runtime/bin/java"),
+    mode.startsWith("mission-")
+      ? join(process.env.JAVA_HOME!, "bin", "java")
+      : resolve("java/runtime/bin/java"),
     [
       "-cp",
       [compiled, engine].join(delimiter),
-      mode.startsWith("ascension-")
-        ? "com.codefit.desktop.AscensionFixture"
-        : "com.codefit.desktop.LearnerFixture",
+      mode.startsWith("mission-")
+        ? "com.codefit.desktop.MissionFixture"
+        : mode.startsWith("ascension-")
+          ? "com.codefit.desktop.AscensionFixture"
+          : "com.codefit.desktop.LearnerFixture",
       file,
-      mode.startsWith("ascension-") ? mode.slice(10) : mode,
+      mode.startsWith("mission-")
+        ? mode.slice(8)
+        : mode.startsWith("ascension-")
+          ? mode.slice(10)
+          : mode,
     ],
     { timeout: 30_000, stdio: "pipe" },
   );

@@ -16,6 +16,7 @@ const bridge: CodeFitBridge = Object.freeze({
     ipcRenderer.invoke("codefit:deck:acknowledge", commandId),
   cancelOperation: () => ipcRenderer.invoke("codefit:operation:cancel"),
   chooseLearnerProfile: () => ipcRenderer.invoke("codefit:learner:choose"),
+  readLearnerMissions: () => ipcRenderer.invoke("codefit:learner:missions"),
   readLearnerSkills: () => ipcRenderer.invoke("codefit:learner:skills"),
   readLearnerProfile: () => ipcRenderer.invoke("codefit:learner:read"),
   disconnectLearnerProfile: () =>

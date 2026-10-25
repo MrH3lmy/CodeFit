@@ -121,6 +121,7 @@ test("real experimental profile works offline with sandbox, narrow bridge and da
       "disconnectLearnerProfile",
       "pendingDeck",
       "readCurriculumPreview",
+      "readLearnerMissions",
       "readLearnerProfile",
       "readLearnerSkills",
       "readState",

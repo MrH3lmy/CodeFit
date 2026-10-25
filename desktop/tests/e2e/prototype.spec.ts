@@ -54,6 +54,8 @@ async function capture(name: string) {
 test("twelve native screen, theme and width compositions", async () => {
   const p = await app.firstWindow();
   await p.context().setOffline(true);
+  // firstWindow can precede React's initial theme effect; do not infer light from null.
+  await expect(p.locator("html")).toHaveAttribute("data-theme", "dark");
   const errors: string[] = [];
   p.on("pageerror", (error) => errors.push(error.message));
   for (const width of [1280, 760]) {

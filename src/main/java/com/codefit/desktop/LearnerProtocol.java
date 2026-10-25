@@ -46,7 +46,7 @@ final class LearnerProtocol {
         }
         if (!fields.keySet().equals(Set.of("v", "id", "method", "profileId", "sessionId"))
                 || !"3".equals(fields.get("v"))
-                || !Set.of("learner.overview.read", "learner.skills.read")
+                || !Set.of("learner.overview.read", "learner.skills.read", "learner.missions.read")
                         .contains(fields.get("method"))
                 || !ApplicationProtocol.uuid(fields.get("id"))
                 || !ApplicationProtocol.uuid(fields.get("sessionId"))
@@ -250,6 +250,77 @@ final class LearnerProtocol {
                     j.writeEndObject();
                 },
                 256 * 1024);
+    }
+
+    static byte[] result(String id, LearnerMissionProjection.Projection p) throws IOException {
+        return frame(
+                j -> {
+                    j.writeStringField("id", id);
+                    j.writeBooleanField("ok", true);
+                    j.writeObjectFieldStart("result");
+                    j.writeNumberField("v", 1);
+                    j.writeStringField("kind", "learner-missions");
+                    j.writeStringField("source", "learner-snapshot");
+                    j.writeBooleanField("readOnly", true);
+                    j.writeStringField("profileId", p.profileId());
+                    j.writeStringField("sessionId", p.sessionId());
+                    j.writeStringField("capturedAt", p.capturedAt().toString());
+                    j.writeNumberField("schemaVersion", 25);
+                    j.writeStringField("currentEligibility", "NOT_EVALUATED");
+                    j.writeStringField("activeAssignment", "NOT_EVALUATED");
+                    j.writeBooleanField("actionsEnabled", false);
+                    j.writeStringField("catalogStatus", p.catalogStatus());
+                    j.writeArrayFieldStart("quests");
+                    for (var q : p.quests()) {
+                        j.writeStartObject();
+                        j.writeStringField("id", q.id());
+                        j.writeNumberField("version", q.version());
+                        j.writeStringField("title", q.title());
+                        j.writeStringField("cohort", q.cohort());
+                        j.writeEndObject();
+                    }
+                    j.writeEndArray();
+                    j.writeStringField("historyStatus", p.historyStatus());
+                    j.writeBooleanField("historyTruncated", p.historyTruncated());
+                    j.writeArrayFieldStart("activities");
+                    for (var a : p.activities()) {
+                        j.writeStartObject();
+                        j.writeStringField("command", a.command());
+                        j.writeStringField("presentation", a.presentation());
+                        j.writeStringField("questId", a.questId());
+                        j.writeNumberField("questVersion", a.questVersion());
+                        j.writeStringField("challengeId", a.challengeId());
+                        j.writeNumberField("challengeVersion", a.challengeVersion());
+                        j.writeStringField("submittedAt", a.submittedAt().toString());
+                        j.writeStringField(
+                                "evaluatedAt",
+                                a.evaluatedAt() == null ? null : a.evaluatedAt().toString());
+                        j.writeStringField("stage", a.stage());
+                        j.writeStringField("outcome", a.outcome());
+                        number(j, "revision", a.revision());
+                        j.writeBooleanField("withdrawn", a.withdrawn());
+                        j.writeStringField("metadata", a.metadata());
+                        j.writeEndObject();
+                    }
+                    j.writeEndArray();
+                    j.writeStringField("decisionStatus", p.decisionStatus());
+                    j.writeBooleanField("decisionsTruncated", p.decisionsTruncated());
+                    j.writeArrayFieldStart("decisions");
+                    for (var d : p.decisions()) {
+                        j.writeStartObject();
+                        j.writeStringField("id", d.id());
+                        j.writeStringField("asOf", d.asOf().toString());
+                        j.writeEndObject();
+                    }
+                    j.writeEndArray();
+                    j.writeObjectFieldStart("review");
+                    j.writeNumberField("recordedReviews", p.reviewCount());
+                    j.writeNumberField("dueScheduledCards", p.dueScheduledCards());
+                    j.writeStringField("asOfDay", p.reviewDay());
+                    j.writeEndObject();
+                    j.writeEndObject();
+                },
+                65536);
     }
 
     private static void ref(JsonGenerator j, LearnerSkillProjection.Ref ref) throws IOException {

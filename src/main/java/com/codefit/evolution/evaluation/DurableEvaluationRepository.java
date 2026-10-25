@@ -184,7 +184,7 @@ public final class DurableEvaluationRepository {
         var result = new ArrayList<HistoryItem>();
         try (var q =
                 c.prepareStatement(
-                        "SELECT id, CASE WHEN length(snapshot)<=2000000 AND"
+                        "SELECT id, CASE WHEN length(CAST(snapshot AS BLOB))<=2000000 AND"
                             + " length(command_id)+length(presentation_id)+length(request_sha)+length(snapshot_sha)"
                             + "+length(artifact_sha)+length(executable_sha)+length(family_id)+length(variant_id)"
                             + "+length(state)+length(coalesce(run_token,''))+length(coalesce(owner_started,''))+length(coalesce(child_started,''))+length(coalesce(staged_run,''))<=4096"
@@ -234,7 +234,7 @@ public final class DurableEvaluationRepository {
                         try (var p =
                                 c.prepareStatement(
                                         "SELECT"
-                                            + " length(payload),length(digest),length(change_kind),length(reason),length(actor),length(coalesce(previous_evidence_id,''))"
+                                            + " length(CAST(payload AS BLOB)),length(digest),length(change_kind),length(reason),length(actor),length(coalesce(previous_evidence_id,''))"
                                             + " FROM evolution_evaluation_revisions WHERE"
                                             + " submission_id=? AND revision=?")) {
                             p.setLong(1, submission.id());
@@ -250,7 +250,8 @@ public final class DurableEvaluationRepository {
                         var revision = revision(c, submission, submission.revision());
                         validateResult(snapshot, revision.result());
                         evaluatedAt = revision.result().finishedAt();
-                        if (evaluatedAt.isBefore(snapshot.submittedAt()))
+                        if (revision.result().startedAt().isBefore(snapshot.submittedAt())
+                                || evaluatedAt.isBefore(revision.result().startedAt()))
                             throw new IllegalStateException("Invalid historical time");
                         withdrawn = revision.change() == Change.RETRACTION;
                         if (!withdrawn) outcome = revision.result().outcome().name();

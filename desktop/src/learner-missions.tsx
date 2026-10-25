@@ -30,7 +30,6 @@ export function LearnerMissionsConsole({
     setBusy(true);
     setData(undefined);
     setError(false);
-    setSelected("");
     void window.codefit
       .readLearnerMissions()
       .then((raw) => {
@@ -44,10 +43,12 @@ export function LearnerMissionsConsole({
         )
           throw Error();
         setData(reply.result);
-        setSelected(reply.result.activities[0]?.command ?? "");
       })
       .catch(() => {
-        if (generation.current === current) setError(true);
+        if (generation.current === current) {
+          setSelected("");
+          setError(true);
+        }
       })
       .finally(() => {
         if (generation.current === current) setBusy(false);
@@ -56,7 +57,15 @@ export function LearnerMissionsConsole({
       generation.current++;
     };
   }, [profile.profileId, profile.sessionId, profile.capturedAt, reload]);
-  const activity = data?.activities.find((a) => a.command === selected);
+  const visibleActivities = (data?.activities ?? []).filter(
+    (a) =>
+      filter === "all" ||
+      (filter === "unfinished" ? a.stage !== "FINALIZED" : a.stage === filter),
+  );
+  // Selection is a view of the visible journal, never of hidden records.
+  const activity =
+    visibleActivities.find((a) => a.command === selected) ??
+    visibleActivities[0];
   const quest =
     activity &&
     data?.quests.find(
@@ -167,7 +176,12 @@ export function LearnerMissionsConsole({
                     <span className="sr-only">Filter recorded submissions</span>
                     <select
                       value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
+                      onChange={(e) => {
+                        // Carry forward the effective selection, including a prior fallback.
+                        // The derived selection below falls back again if the new filter hides it.
+                        setSelected(activity?.command ?? "");
+                        setFilter(e.target.value);
+                      }}
                     >
                       <option value="all">All recorded stages</option>
                       <option value="FINALIZED">Finalized records</option>
@@ -194,57 +208,54 @@ export function LearnerMissionsConsole({
                       screen.
                     </p>
                   </div>
+                ) : visibleActivities.length === 0 ? (
+                  <div className="mission-empty" role="status">
+                    <h3>No submissions match this filter</h3>
+                    <p>Choose another filter to inspect the saved records.</p>
+                  </div>
                 ) : (
                   <div className="mission-history-list">
-                    {data.activities
-                      .filter(
-                        (a) =>
-                          filter === "all" ||
-                          (filter === "unfinished"
-                            ? a.stage !== "FINALIZED"
-                            : a.stage === filter),
-                      )
-                      .map((a) => {
-                        const q = data.quests.find(
-                          (q) =>
-                            q.id === a.questId && q.version === a.questVersion,
-                        );
-                        return (
-                          <button
-                            key={a.command}
-                            aria-pressed={selected === a.command}
-                            className={`mission-record ${selected === a.command ? "selected" : ""}`}
-                            onClick={() => setSelected(a.command)}
-                          >
-                            <div>
-                              <span className="eyebrow">
-                                {snapshotTime(a.submittedAt)}
-                              </span>
-                              <strong>
-                                {q?.title ?? "Exact quest metadata unavailable"}
-                              </strong>
-                              <code>{a.command}</code>
-                            </div>
-                            <div>
-                              <Badge tone={a.withdrawn ? "violet" : "cyan"}>
-                                {a.withdrawn
-                                  ? "WITHDRAWN"
-                                  : a.outcome
-                                    ? words(a.outcome)
-                                    : words(a.stage)}
-                              </Badge>
-                              <small>Recorded · not current status</small>
-                              <Icon name="chevron" size={15} />
-                            </div>
-                          </button>
-                        );
-                      })}
+                    {visibleActivities.map((a) => {
+                      const q = data.quests.find(
+                        (q) =>
+                          q.id === a.questId && q.version === a.questVersion,
+                      );
+                      return (
+                        <button
+                          key={a.command}
+                          aria-pressed={activity?.command === a.command}
+                          className={`mission-record ${activity?.command === a.command ? "selected" : ""}`}
+                          onClick={() => setSelected(a.command)}
+                        >
+                          <div>
+                            <span className="eyebrow">
+                              {snapshotTime(a.submittedAt)}
+                            </span>
+                            <strong>
+                              {q?.title ?? "Exact quest metadata unavailable"}
+                            </strong>
+                            <code>{a.command}</code>
+                          </div>
+                          <div>
+                            <Badge tone={a.withdrawn ? "violet" : "cyan"}>
+                              {a.withdrawn
+                                ? "WITHDRAWN"
+                                : a.outcome
+                                  ? words(a.outcome)
+                                  : words(a.stage)}
+                            </Badge>
+                            <small>Recorded · not current status</small>
+                            <Icon name="chevron" size={15} />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
                 {data.historyTruncated && (
                   <p className="fine-print">
-                    Showing the latest 20 saved submissions by durable sequence.
-                    Older records remain in JavaFX history.
+                    History is limited to the latest 20 saved submissions by
+                    durable sequence. Older records remain in JavaFX history.
                   </p>
                 )}
               </section>
@@ -311,7 +322,7 @@ export function LearnerMissionsConsole({
                   </>
                 ) : (
                   <>
-                    <h2>The context behind the record</h2>
+                    <h2>No visible submission selected</h2>
                     <p>
                       Select a saved submission to inspect its exact identities
                       and historical outcome. Private code, answers and

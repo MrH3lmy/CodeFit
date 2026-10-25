@@ -192,7 +192,7 @@ high or critical npm advisory was reported.
 No migrations, dependency changes, protected content assets, JavaFX controller
 changes or writable production commands are included.
 
-## Verification (2026-10-25)
+## Initial implementation verification (b2e97a4, 2026-10-25)
 
 All fixtures use temporary isolated SQLite files; no real learner profile was
 opened or changed. Full packaged tests ran with Chromium sandbox enabled under
@@ -228,3 +228,52 @@ width difference. Inspection confirms readable labels, distinct frozen submissio
 identity, visible keyboard focus, disabled action controls and no horizontal
 page overflow. Screenshot reproduction uses
 `CODEFIT_CAPTURE_MISSION_SCREENSHOTS=1` with the packaged Electron suite.
+
+## Independent review response (#5642751773)
+
+The filtered journal and inspector now share one `visibleActivities` collection.
+The inspector resolves the selected identity only within that collection, falling
+back to its first row or showing an explicit empty state. Filter changes carry
+forward the effective visible selection; returning from an empty filter selects
+the first visible row rather than restoring a hidden old selection. Refresh keeps
+the filter and a still-visible selection. There is no selection synchronization
+effect or render-time state update. Failed reads clear selection; session-keyed
+components, existing generation checks and unmount on disconnect prevent late
+responses from restoring an old profile's record.
+
+Two new packaged regressions were first run against the prior package and both
+failed on the reported stale-inspector behavior. They cover hidden finalized
+selection, empty filtered results, stable matching selection, filter return and
+refresh. Existing profile-switch, cancellation and Java-crash tests now begin
+with an actual selected record and exercise delayed refresh or failed reads.
+Keyboard selection, visible focus and focus retention on the filter are checked.
+
+Twelve additional isolated Java corruption cases exercise invalid revision kind,
+reason, actor and digest; malformed/oversized result payloads; oversized frozen
+submission payloads; mismatched presentation identity/time; execution starting
+before submission, finishing before execution starts, and future completion.
+The reader now bounds payload **bytes** even for malformed SQLite TEXT storage
+and checks `submittedAt <= startedAt <= finishedAt <= capturedAt`. Invalid
+history becomes unavailable, not an inferred failure or mastery conclusion.
+Existing withdrawn-result coverage remains authoritative. All corruption bypasses
+occur only in isolated test fixtures; writer validation is not weakened.
+
+Reserved-cohort label exposure remains limited to the existing explicit-consent,
+local Linux frozen-snapshot scope. Exact bundled title/cohort metadata (including
+PILOT_POST) is not challenge authorization, readiness, approval or an unlock.
+This PR does not broaden distribution or audience. Any broader preview/release
+must first obtain an explicit owner-reviewed exposure policy for reserved labels;
+metadata-only visibility must not silently become mission-content access.
+
+Updated packaged visual evidence includes the four theme/width captures above,
+plus [unfinished selection](screenshots/missions-filter-unfinished-1280-dark.png)
+and [zero filter matches](screenshots/missions-filter-empty-1280-dark.png).
+The truncation note describes the retained history limit, not the number of rows
+currently shown by a filter. Learning actions stay disabled in both states.
+
+Review-correction verification: **24 focused Java tests**, **65 full Node tests**,
+and **58 full packaged Electron tests** passed. TypeScript build, Java runtime
+packaging, Linux packaging and `git diff --check` pass. Final-head full Java and
+GitHub CI results are maintained in PR #274, separately from the initial
+implementation results above. The dependency audit remains one existing low
+esbuild development-server advisory, with no dependency changes.

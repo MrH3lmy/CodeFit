@@ -156,4 +156,119 @@ class LearnerMissionProjectionTest {
         assertTrue(p.quests().isEmpty());
         assertTrue(p.activities().stream().allMatch(a -> a.metadata().equals("UNAVAILABLE")));
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(
+            strings = {
+                "change",
+                "reason",
+                "actor",
+                "digest",
+                "payload",
+                "oversized-result",
+                "oversized-submission",
+                "presentation",
+                "presentation-time",
+                "started-before",
+                "finished-before-start",
+                "future-finish"
+            })
+    void malformedPrivateHistoryFailsClosedWithoutWrites(String corruption) throws Exception {
+        Path file = fixture("recorded");
+        try (var c = DriverManager.getConnection("jdbc:sqlite:" + file);
+                var statement = c.createStatement()) {
+            // Deliberately corrupt only this isolated fixture, bypassing writer protections.
+            statement.execute("PRAGMA ignore_check_constraints=ON");
+            statement.execute("DROP TRIGGER evolution_evaluation_revisions_no_update");
+            statement.execute("DROP TRIGGER evolution_submission_snapshot_immutable");
+            statement.execute("DROP TRIGGER evolution_challenge_presentations_no_update");
+            String column =
+                    switch (corruption) {
+                        case "change" -> "change_kind";
+                        case "reason", "actor", "digest" -> corruption;
+                        default -> null;
+                    };
+            if (column != null)
+                statement.executeUpdate(
+                        "UPDATE evolution_evaluation_revisions SET "
+                                + column
+                                + "='PRIVATE-INVALID'");
+            else
+                switch (corruption) {
+                    case "payload" ->
+                            statement.executeUpdate(
+                                    "UPDATE evolution_evaluation_revisions SET payload=X'00'");
+                    case "oversized-result" ->
+                            statement.executeUpdate(
+                                    "UPDATE evolution_evaluation_revisions SET"
+                                        + " payload=zeroblob(2000001)");
+                    case "oversized-submission" ->
+                            statement.executeUpdate(
+                                    "UPDATE evolution_submissions SET snapshot=zeroblob(2000001)");
+                    case "presentation" ->
+                            statement.executeUpdate(
+                                    "UPDATE evolution_challenge_presentations SET"
+                                        + " challenge_id='PRIVATE-OTHER'");
+                    case "presentation-time" ->
+                            statement.executeUpdate(
+                                    "UPDATE evolution_challenge_presentations SET"
+                                        + " presented_at='invalid-time'");
+                    default -> {
+                        byte[] bytes;
+                        try (var rows =
+                                statement.executeQuery(
+                                        "SELECT payload FROM evolution_evaluation_revisions WHERE"
+                                            + " submission_id=1")) {
+                            assertTrue(rows.next());
+                            bytes = rows.getBytes(1);
+                        }
+                        var old = com.codefit.evolution.evaluation.EvaluationCodec.result(bytes);
+                        Instant start =
+                                corruption.equals("started-before")
+                                        ? MissionFixture.AT.minusSeconds(1)
+                                        : corruption.equals("finished-before-start")
+                                                ? MissionFixture.AT.plusSeconds(1)
+                                                : old.startedAt();
+                        Instant finish =
+                                corruption.equals("future-finish")
+                                        ? captured.plusSeconds(1)
+                                        : old.finishedAt();
+                        var changed =
+                                new com.codefit.evolution.evaluation.EvaluationResult(
+                                        old.outcome(),
+                                        old.checks(),
+                                        old.diagnostics(),
+                                        start,
+                                        finish,
+                                        old.evaluatorVersion(),
+                                        old.runtime());
+                        byte[] payload =
+                                com.codefit.evolution.evaluation.EvaluationCodec.encode(changed);
+                        try (var update =
+                                c.prepareStatement(
+                                        "UPDATE evolution_evaluation_revisions SET"
+                                            + " payload=?,digest=? WHERE submission_id=1")) {
+                            update.setBytes(1, payload);
+                            update.setString(
+                                    2, com.codefit.evolution.quest.CatalogCodec.digest(payload));
+                            update.executeUpdate();
+                        }
+                    }
+                }
+        }
+        byte[] before = Files.readAllBytes(file);
+        var result = read(file);
+        assertEquals("UNAVAILABLE", result.historyStatus());
+        assertTrue(result.activities().isEmpty());
+        assertFalse(result.historyTruncated());
+        assertArrayEquals(before, Files.readAllBytes(file));
+        String wire =
+                new String(
+                        LearnerProtocol.result(session, result),
+                        java.nio.charset.StandardCharsets.UTF_8);
+        assertFalse(wire.contains("PRIVATE-"));
+        assertFalse(wire.contains("class Counter"));
+        assertTrue(wire.contains("\"currentEligibility\":\"NOT_EVALUATED\""));
+        assertTrue(wire.contains("\"actionsEnabled\":false"));
+    }
 }

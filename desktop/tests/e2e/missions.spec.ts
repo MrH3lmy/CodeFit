@@ -211,6 +211,12 @@ test("unauthorized frames and parameters cannot access mission history", async (
 test("profile replacement fences withheld mission responses and reload/restart require consent", async () => {
   const p = await app.firstWindow();
   await connect(p);
+  await missions(p);
+  await expect(p.locator(".mission-record")).toHaveCount(3);
+  await p.locator(".mission-record").last().click();
+  await expect(p.locator(".mission-record-inspector")).toContainText(
+    "mission-submission-1",
+  );
   await app.evaluate(({ ipcMain }) => {
     const original = (ipcMain as any)._invokeHandlers.get(
       "codefit:learner:missions",
@@ -228,7 +234,7 @@ test("profile replacement fences withheld mission responses and reload/restart r
       return r;
     });
   });
-  await missions(p);
+  await p.getByRole("button", { name: "Refresh frozen view" }).click();
   await expect(
     p.getByRole("button", { name: "Cancel mission read and disconnect" }),
   ).toBeVisible();
@@ -257,6 +263,9 @@ test("profile replacement fences withheld mission responses and reload/restart r
 test("Java crash never fabricates available missions", async () => {
   const p = await app.firstWindow();
   await connect(p);
+  await missions(p);
+  await expect(p.locator(".mission-record")).toHaveCount(3);
+  await p.locator(".mission-record").last().click();
   // Kill only the consented reader discovered by the host test, never the real application database.
   const readers = execFileSync("ps", ["-eo", "pid=,ppid=,args="], {
     encoding: "utf8",
@@ -271,7 +280,7 @@ test("Java crash never fabricates available missions", async () => {
     );
   expect(readers).toHaveLength(1);
   process.kill(Number(readers[0]![1]), "SIGKILL");
-  await missions(p);
+  await p.getByRole("button", { name: "Refresh frozen view" }).click();
   await expect(
     p.getByRole("heading", { name: "Mission history unavailable" }),
   ).toBeVisible();
@@ -280,7 +289,10 @@ test("Java crash never fabricates available missions", async () => {
 
 test("cancelling a pending mission read disconnects and suppresses late content", async () => {
   const p = await app.firstWindow();
-  await connect(p, "empty");
+  await connect(p);
+  await missions(p);
+  await expect(p.locator(".mission-record")).toHaveCount(3);
+  await p.locator(".mission-record").last().click();
   await app.evaluate(({ ipcMain }) => {
     const original = (ipcMain as any)._invokeHandlers.get(
       "codefit:learner:missions",
@@ -294,7 +306,7 @@ test("cancelling a pending mission read disconnects and suppresses late content"
       return result;
     });
   });
-  await missions(p);
+  await p.getByRole("button", { name: "Refresh frozen view" }).click();
   await expect
     .poll(() =>
       app.evaluate(() => typeof (globalThis as any).cancelledMissionRelease),
@@ -308,4 +320,79 @@ test("cancelling a pending mission read disconnects and suppresses late content"
     p.getByRole("region", { name: "Recorded Mission Console" }),
   ).toHaveCount(0);
   await expect(p.locator(".provenance")).toContainText("DESIGN PREVIEW");
+});
+
+test("inspector selection belongs to the active filter and remains stable on refresh", async () => {
+  const p = await app.firstWindow();
+  await connect(p);
+  await missions(p);
+  const rows = p.locator(".mission-record");
+  const inspector = p.locator(".mission-record-inspector");
+  const filter = p.getByLabel("Filter recorded submissions");
+  await expect(rows).toHaveCount(3);
+  await rows.last().focus();
+  await p.keyboard.press("Enter");
+  await expect(inspector).toContainText("mission-submission-1");
+  await filter.focus();
+  await filter.selectOption("unfinished");
+  await expect(rows).toHaveCount(1);
+  await expect(inspector).toContainText("mission-submission-3");
+  await expect(inspector).not.toContainText("mission-submission-1");
+  await expect(rows.first()).toHaveAttribute("aria-pressed", "true");
+  await expect(filter).toBeFocused();
+  await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].setContentSize(1280, 900),
+  );
+  await capture(p, "missions-filter-unfinished-1280-dark");
+  await filter.selectOption("all");
+  await expect(inspector).toContainText("mission-submission-3");
+  await rows.last().click();
+  await filter.selectOption("FINALIZED");
+  await expect(rows).toHaveCount(2);
+  await expect(inspector).toContainText("mission-submission-1");
+  await p.getByRole("button", { name: "Refresh frozen view" }).click();
+  await expect(filter).toHaveValue("FINALIZED");
+  await expect(rows).toHaveCount(2);
+  await expect(inspector).toContainText("mission-submission-1");
+  await expect(rows.last()).toHaveAttribute("aria-pressed", "true");
+  await filter.selectOption("unfinished");
+  await p.getByRole("button", { name: "Refresh frozen view" }).click();
+  await expect(filter).toHaveValue("unfinished");
+  await expect(rows).toHaveCount(1);
+  await expect(inspector).toContainText("mission-submission-3");
+});
+
+test("a filter with zero matches clears the inspector through refresh and filter return", async () => {
+  const p = await app.firstWindow();
+  await connect(p, "large");
+  await missions(p);
+  const rows = p.locator(".mission-record");
+  const inspector = p.locator(".mission-record-inspector");
+  const filter = p.getByLabel("Filter recorded submissions");
+  await expect(rows).toHaveCount(20);
+  await rows.last().click();
+  await expect(inspector).toContainText("mission-submission-6");
+  await filter.selectOption("FINALIZED");
+  await expect(rows).toHaveCount(0);
+  await expect(
+    p.getByRole("heading", { name: "No submissions match this filter" }),
+  ).toBeVisible();
+  await expect(inspector).toContainText("No visible submission selected");
+  await expect(inspector).not.toContainText("mission-submission-");
+  await expect(
+    p.getByText("History is limited to the latest 20 saved submissions", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await p.getByRole("button", { name: "Refresh frozen view" }).click();
+  await expect(filter).toHaveValue("FINALIZED");
+  await expect(inspector).toContainText("No visible submission selected");
+  await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].setContentSize(1280, 900),
+  );
+  await capture(p, "missions-filter-empty-1280-dark");
+  await filter.selectOption("all");
+  await expect(rows).toHaveCount(20);
+  await expect(inspector).toContainText("mission-submission-25");
+  await expect(rows.first()).toHaveAttribute("aria-pressed", "true");
 });

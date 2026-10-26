@@ -9,8 +9,8 @@ import {
   type PracticeResult as Result,
   type PracticeCommand as Command,
 } from "../src/practice-contract";
-const MAX_FRAME_BYTES = 65536,
-  MAX_REQUEST_BYTES = 4096;
+const MAX_FRAME_BYTES = 524288,
+  MAX_REQUEST_BYTES = 524288;
 import type { RuntimeLocation } from "./java-session";
 
 /** One process, one in-flight request. Failed transports cannot be reused; application command identity survives in the journal. */
@@ -160,7 +160,10 @@ export class PracticeSession {
               reply.sessionId !== this.sessionId
             )
               throw new Error("wrong identity");
-            if (reply.method !== "practice.list") {
+            if (
+              reply.method === "practice.open" ||
+              reply.method === "practice.status"
+            ) {
               if (
                 !("commandId" in pending.command) ||
                 reply.commandId !== pending.command.commandId ||
@@ -177,6 +180,34 @@ export class PracticeSession {
                     pending.command.challengeVersion)
               )
                 throw new Error("wrong receipt");
+            }
+          }
+          if (reply.ok && "presentationId" in reply) {
+            if (
+              !("presentationId" in pending.command) ||
+              reply.presentationId !== pending.command.presentationId ||
+              ("draft" in reply &&
+                reply.draft.presentationId !== reply.presentationId) ||
+              ("receipt" in reply &&
+                reply.receipt.presentationId !== reply.presentationId)
+            )
+              throw new Error("wrong presentation");
+            if ("saved" in reply) {
+              if (
+                !("commandId" in pending.command) ||
+                reply.commandId !== pending.command.commandId ||
+                (reply.saved &&
+                  (reply.saved.commandId !== reply.commandId ||
+                    reply.saved.presentationId !== reply.presentationId))
+              )
+                throw new Error("wrong save");
+              if (
+                reply.saved &&
+                pending.command.method === "practice.draft.save" &&
+                reply.saved.expectedRevision !==
+                  pending.command.expectedRevision
+              )
+                throw new Error("wrong revision");
             }
           }
           this.pending = undefined;

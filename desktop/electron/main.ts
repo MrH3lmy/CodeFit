@@ -88,6 +88,28 @@ function authorized(
   );
 }
 
+let practiceDirty = false;
+let draftUnloadApproved = false;
+function confirmDraftLoss(force = false): boolean {
+  if ((!practiceDirty && !force) || !window) return true;
+  const discard =
+    dialog.showMessageBoxSync(window, {
+      type: "warning",
+      buttons: ["Keep editing", "Discard unconfirmed edits"],
+      defaultId: 0,
+      cancelId: 0,
+      title: "Unconfirmed Java draft",
+      message: "Only Java-acknowledged saves survive restart.",
+      detail:
+        "There are unsaved edits or unresolved save recovery. A forced exit cannot guarantee saving them.",
+    }) === 1;
+  if (discard) {
+    practiceDirty = false;
+    draftUnloadApproved = true;
+  }
+  return discard;
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -99,6 +121,7 @@ if (!app.requestSingleInstanceLock()) {
     if (quitReady) return;
     event.preventDefault();
     if (quitting) return;
+    if (!confirmDraftLoss()) return;
     quitting = true;
     learnerGeneration++;
     void Promise.allSettled([
@@ -154,6 +177,16 @@ if (!app.requestSingleInstanceLock()) {
         },
       });
       window.removeMenu();
+      window.on("close", (event) => {
+        if (!confirmDraftLoss()) event.preventDefault();
+      });
+      window.webContents.on("will-prevent-unload", (event) => {
+        // Renderer beforeunload is authoritative even if its dirty IPC has not arrived yet.
+        if (draftUnloadApproved || confirmDraftLoss(true))
+          event.preventDefault();
+        draftUnloadApproved = false;
+      });
+
       window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
       window.webContents.on("will-navigate", (event) => event.preventDefault());
       window.webContents.on("will-attach-webview", (event) =>
@@ -171,6 +204,7 @@ if (!app.requestSingleInstanceLock()) {
         },
       );
       window.webContents.on("render-process-gone", () => {
+        practiceDirty = false;
         learnerGeneration++;
         void engine.stop();
         void learner.disconnect();
@@ -185,6 +219,12 @@ if (!app.requestSingleInstanceLock()) {
         void curriculum.shutdown();
         void practice.disconnect();
       });
+      ipcMain.handle("codefit:practice:dirty", (event, ...args: unknown[]) => {
+        if (authorized(event, args, 1) && typeof args[0] === "boolean") {
+          practiceDirty = args[0];
+          if (practiceDirty) draftUnloadApproved = false;
+        }
+      });
       ipcMain.handle("codefit:practice:connect", (event, ...args: unknown[]) =>
         practice.connect(
           () => !quitting && !learnerDialogBusy && authorized(event, args, 0),
@@ -197,6 +237,44 @@ if (!app.requestSingleInstanceLock()) {
           args[2],
           () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
         ),
+      );
+      ipcMain.handle("codefit:practice:resume", (event, ...args: unknown[]) =>
+        practice.resume(
+          args[0],
+          args[1],
+          args[2],
+          () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+        ),
+      );
+      ipcMain.handle(
+        "codefit:practice:draft-read",
+        (event, ...args: unknown[]) =>
+          practice.readDraft(
+            args[0],
+            args[1],
+            args[2],
+            () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+          ),
+      );
+      ipcMain.handle(
+        "codefit:practice:draft-save",
+        (event, ...args: unknown[]) =>
+          practice.saveDraft(
+            args[0],
+            args[1],
+            args[2],
+            () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+          ),
+      );
+      ipcMain.handle(
+        "codefit:practice:draft-reconcile",
+        (event, ...args: unknown[]) =>
+          practice.reconcileDraft(
+            args[0],
+            args[1],
+            args[2],
+            () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+          ),
       );
       ipcMain.handle("codefit:practice:recover", (event, ...args: unknown[]) =>
         practice.recover(

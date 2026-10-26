@@ -87,6 +87,7 @@ final class ExperimentalProfile implements AutoCloseable {
                         profile.database,
                         java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
             profile.verifyAndRecover();
+            if (learning) PracticeDraftSchema.install(profile);
             return profile;
         } catch (IOException | SQLException | RuntimeException failure) {
             profile.close();

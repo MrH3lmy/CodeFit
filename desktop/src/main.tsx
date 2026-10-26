@@ -16,6 +16,7 @@ import {
   profileName,
   useLearnerProfile,
 } from "./learner-profile";
+import { mayLeaveDraft } from "./draft-navigation";
 import { PracticeWorkspace } from "./practice-workspace";
 import { CurriculumAtlas } from "./curriculum-preview";
 import "./style.css";
@@ -80,6 +81,7 @@ function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
   const navigate = (next: Screen) => {
+    if (next !== screen && !mayLeaveDraft()) return;
     if (next === "library") setLibraryOpened(true);
     setScreen(next);
     setState("ready");
@@ -384,7 +386,9 @@ function App() {
                 key={learner.profile.sessionId}
                 profile={learner.profile}
                 onProfile={() => setModal("profile")}
-                onDisconnect={() => void learner.disconnect()}
+                onDisconnect={() => {
+                  if (mayLeaveDraft()) void learner.disconnect();
+                }}
               />
             ) : (
               <Tree
@@ -398,7 +402,9 @@ function App() {
                 key={learner.profile.sessionId}
                 profile={learner.profile}
                 onProfile={() => setModal("profile")}
-                onDisconnect={() => void learner.disconnect()}
+                onDisconnect={() => {
+                  if (mayLeaveDraft()) void learner.disconnect();
+                }}
               />
             ) : (
               <MissionConsole onMission={setMission} />
@@ -446,6 +452,7 @@ function App() {
                   className={state === value ? "selected" : ""}
                   key={value}
                   onClick={() => {
+                    if (!mayLeaveDraft()) return;
                     setState(value);
                     if (
                       screen === "curriculum" ||
@@ -510,8 +517,12 @@ function App() {
             profile={learner.profile}
             busy={learner.busy}
             error={learner.error}
-            onChoose={() => void learner.choose()}
-            onDisconnect={() => void learner.disconnect()}
+            onChoose={() => {
+              if (mayLeaveDraft()) void learner.choose();
+            }}
+            onDisconnect={() => {
+              if (mayLeaveDraft()) void learner.disconnect();
+            }}
           />
         </Dialog>
       )}

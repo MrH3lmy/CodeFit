@@ -23,7 +23,7 @@ import { strictJson } from "./strict-json";
 /** One current user intent, owned by main, durably recorded BEFORE transport. No renderer storage. */
 export class PracticeJournal {
   private readonly file: string;
-  constructor(private readonly directory: string) {
+  constructor(readonly directory: string) {
     this.file = join(directory, "pending-practice.json");
   }
   private directoryReady() {

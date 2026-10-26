@@ -50,7 +50,7 @@ cpSync(
 // Full engine dependencies stay intact for the spike; JavaFX classes are never initialized here.
 run(executable("jlink"), [
   "--add-modules",
-  "java.base,java.sql,java.desktop,java.logging,java.naming,java.management,java.prefs,java.xml,jdk.unsupported,jdk.crypto.ec",
+  "java.base,java.sql,java.desktop,java.logging,java.naming,java.management,java.prefs,java.xml,jdk.compiler,jdk.unsupported,jdk.crypto.ec",
   "--strip-debug",
   "--no-header-files",
   "--no-man-pages",

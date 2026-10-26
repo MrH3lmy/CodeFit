@@ -18,12 +18,33 @@ final class ExperimentalProfile implements AutoCloseable {
     private final Path directory;
     private final Path database;
     private final ProfileLock owner;
+    private final boolean learning;
     private String id;
     private boolean closed;
 
     static ExperimentalProfile open(Path path) throws IOException, SQLException {
+        return open(path, MARKER);
+    }
+
+    static ExperimentalProfile openLearning(Path path) throws IOException, SQLException {
+        if (!System.getProperty("os.name").equals("Linux"))
+            throw new IOException("PROFILE_INVALID");
+        return open(path, "CodeFit disposable experimental practice / version 1\n");
+    }
+
+    private static ExperimentalProfile open(Path path, String expectedMarker)
+            throws IOException, SQLException {
         Path absolute = path.toAbsolutePath().normalize();
-        Files.createDirectories(absolute);
+        boolean learning = !expectedMarker.equals(MARKER);
+        if (learning) {
+            Files.createDirectories(
+                    absolute,
+                    java.nio.file.attribute.PosixFilePermissions.asFileAttribute(
+                            java.nio.file.attribute.PosixFilePermissions.fromString("rwx------")));
+            if (!Files.getPosixFilePermissions(absolute)
+                    .equals(java.nio.file.attribute.PosixFilePermissions.fromString("rwx------")))
+                throw new IOException("PROFILE_INVALID");
+        } else Files.createDirectories(absolute);
         if (!absolute.toRealPath().equals(absolute)) throw new IOException("PROFILE_INVALID");
         Path marker = absolute.resolve("experimental-profile.txt");
         if (!Files.exists(marker, LinkOption.NOFOLLOW_LINKS)) {
@@ -31,8 +52,8 @@ final class ExperimentalProfile implements AutoCloseable {
                 if (entries.findAny().isPresent()) throw new IOException("PROFILE_INVALID");
             }
         } else if (Files.isSymbolicLink(marker)
-                || Files.size(marker) != MARKER.length()
-                || !Files.readString(marker).equals(MARKER))
+                || Files.size(marker) != expectedMarker.length()
+                || !Files.readString(marker).equals(expectedMarker))
             throw new IOException("PROFILE_INVALID");
         for (String name :
                 Set.of(
@@ -50,13 +71,21 @@ final class ExperimentalProfile implements AutoCloseable {
                 throw new IOException("PROFILE_INVALID");
         }
         ProfileLock owner = ProfileLock.acquire(absolute.resolve("codefit.db"));
-        ExperimentalProfile profile = new ExperimentalProfile(absolute, owner);
+        ExperimentalProfile profile = new ExperimentalProfile(absolute, owner, learning);
         try {
             if (!Files.exists(marker)) {
-                Files.writeString(marker, MARKER, StandardOpenOption.CREATE_NEW);
+                Files.writeString(marker, expectedMarker, StandardOpenOption.CREATE_NEW);
+                if (learning)
+                    Files.setPosixFilePermissions(
+                            marker,
+                            java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
                 force(marker);
             }
             if (!Files.exists(profile.database)) profile.bootstrap();
+            if (learning)
+                Files.setPosixFilePermissions(
+                        profile.database,
+                        java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
             profile.verifyAndRecover();
             return profile;
         } catch (IOException | SQLException | RuntimeException failure) {
@@ -65,7 +94,8 @@ final class ExperimentalProfile implements AutoCloseable {
         }
     }
 
-    private ExperimentalProfile(Path directory, ProfileLock owner) {
+    private ExperimentalProfile(Path directory, ProfileLock owner, boolean learning) {
+        this.learning = learning;
         this.directory = directory;
         this.database = directory.resolve("codefit.db");
         this.owner = owner;
@@ -101,7 +131,7 @@ final class ExperimentalProfile implements AutoCloseable {
                     Statement s = c.createStatement()) {
                 s.execute(
                         "CREATE TABLE desktop_profile (id TEXT PRIMARY KEY, version INTEGER NOT"
-                            + " NULL CHECK(version=1))");
+                                + " NULL CHECK(version=1))");
                 try (var insert = c.prepareStatement("INSERT INTO desktop_profile VALUES (?,1)")) {
                     insert.setString(1, UUID.randomUUID().toString());
                     insert.executeUpdate();
@@ -120,6 +150,21 @@ CREATE TABLE desktop_commands (
         AND deck_description IS NOT NULL) OR (status='rejected' AND deck_id IS NULL))
 )
 """);
+                if (learning) {
+                    s.execute(
+                            "CREATE TABLE desktop_practice_commands (command_id TEXT PRIMARY KEY,"
+                                + " quest_id TEXT NOT NULL, quest_version INTEGER NOT NULL,"
+                                + " challenge_id TEXT NOT NULL, challenge_version INTEGER NOT"
+                                + " NULL)");
+                    s.execute(
+                            "CREATE TRIGGER desktop_practice_commands_no_update BEFORE UPDATE ON"
+                                + " desktop_practice_commands BEGIN SELECT RAISE(ABORT,'Immutable"
+                                + " practice command'); END");
+                    s.execute(
+                            "CREATE TRIGGER desktop_practice_commands_no_delete BEFORE DELETE ON"
+                                + " desktop_practice_commands BEGIN SELECT RAISE(ABORT,'Immutable"
+                                + " practice command'); END");
+                }
             }
         } finally {
             DatabaseConfig.useDatabaseUrl(previous);
@@ -144,6 +189,16 @@ CREATE TABLE desktop_commands (
                 id = r.getString(1);
                 if (!ApplicationProtocol.uuid(id) || r.next())
                     throw new IOException("PROFILE_INVALID");
+            }
+            if (learning) {
+                try (ResultSet r = s.executeQuery("PRAGMA foreign_key_check")) {
+                    if (r.next()) throw new IOException("PROFILE_INVALID");
+                }
+                try (ResultSet ignored =
+                        s.executeQuery(
+                                "SELECT"
+                                    + " command_id,quest_id,quest_version,challenge_id,challenge_version"
+                                    + " FROM desktop_practice_commands LIMIT 0")) {}
             }
             // Gate2 is deliberately not a migration entrypoint. Require exactly the audited base
             // schema; a future release must review migration + backup before raising this version.

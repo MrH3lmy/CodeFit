@@ -4851,3 +4851,30 @@ select {
     padding: 12px;
   }
 }
+
+/* Live exploratory practice has no earned-state styling. */
+.practice-workspace { display: grid; gap: 24px; }
+.practice-hero { padding: 32px; display: flex; align-items: flex-start; gap: 28px; background: linear-gradient(120deg,var(--surface),rgba(43,163,196,.08)); }
+.practice-hero h2 { font-size: clamp(26px,3vw,38px); margin: 14px 0; }
+.practice-hero p, .practice-panel p { line-height: 1.7; max-width: 72ch; }
+.practice-badges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.practice-panel { padding: 26px; min-width: 0; }
+.practice-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); gap: 20px; }
+.practice-identity { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; overflow-wrap:anywhere; }
+.practice-reference { color: var(--cyan); font-family: monospace; }
+.practice-panel dd { margin: 6px 0 16px; overflow-wrap:anywhere; }
+.practice-panel dt { font-size:12px; text-transform:uppercase; letter-spacing:.1em; }
+.practice-instructions { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; padding:24px; border:1px solid var(--line); border-radius:12px; background:var(--bg); color:var(--ink); font-family:inherit; }
+@media(max-width:900px) { .practice-hero {flex-direction:column;padding:24px;} .practice-panel {padding:20px;} }
+
+.practice-workspace .panel { background-color:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow); }
+/* An additional destination must not push keyboard-accessible rail controls off-screen. */
+.rail { overflow-y:auto; }
+.rail > * { flex-shrink:0; }
+@media(min-width:1101px) and (max-height:980px) {
+  .rail-journey { padding:16px 12px; margin-top:0; }
+  .rail-journey .journey-line {height:16px;margin-bottom:12px;}
+}
+.practice-panel h3 {margin:12px 0;}
+.practice-panel p + p {margin-top:10px;}
+.practice-panel .button {margin-top:18px;}

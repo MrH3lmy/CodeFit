@@ -16,10 +16,17 @@ import {
   profileName,
   useLearnerProfile,
 } from "./learner-profile";
+import { PracticeWorkspace } from "./practice-workspace";
 import { CurriculumAtlas } from "./curriculum-preview";
 import "./style.css";
 
-type Screen = "command" | "tree" | "missions" | "library" | "curriculum";
+type Screen =
+  | "command"
+  | "tree"
+  | "missions"
+  | "library"
+  | "curriculum"
+  | "practice";
 type Modal = "states" | "profile" | "activity" | "boss" | null;
 const nav: { id: Screen; label: string; sub: string; icon: IconName }[] = [
   {
@@ -38,6 +45,12 @@ const nav: { id: Screen; label: string; sub: string; icon: IconName }[] = [
     id: "missions",
     label: "Mission Console",
     sub: "Turn intent into practice",
+    icon: "mission",
+  },
+  {
+    id: "practice",
+    label: "Practice Workspace",
+    sub: "Authorized Java exploration",
     icon: "mission",
   },
   {
@@ -196,33 +209,37 @@ function App() {
         <div className="provenance">
           <span>
             <i />
-            {screen === "curriculum"
-              ? "AUTHOR-DRAFT PREVIEW"
-              : screen === "library"
-                ? "EXPERIMENTAL DATA"
-                : (screen === "command" ||
-                      screen === "tree" ||
-                      screen === "missions") &&
-                    learner.profile
-                  ? "LEARNER SNAPSHOT"
-                  : "DESIGN PREVIEW"}
+            {screen === "practice"
+              ? "Disposable Java practice · real learner profiles remain read-only"
+              : screen === "curriculum"
+                ? "AUTHOR-DRAFT PREVIEW"
+                : screen === "library"
+                  ? "EXPERIMENTAL DATA"
+                  : (screen === "command" ||
+                        screen === "tree" ||
+                        screen === "missions") &&
+                      learner.profile
+                    ? "LEARNER SNAPSHOT"
+                    : "DESIGN PREVIEW"}
           </span>
           <p>
-            {screen === "curriculum"
-              ? "Bundled metadata. Separate from learner evidence; no learning operations enabled."
-              : screen === "library"
-                ? learner.profile
-                  ? "Live experimental profile. This library is separate from learner data."
-                  : "Live experimental profile. Your learner profile is not connected."
-                : learner.profile
-                  ? screen === "command" ||
-                    screen === "tree" ||
-                    screen === "missions"
-                    ? "Recorded learner data. Read-only snapshot; newer changes need a new capture."
-                    : "Demonstration data. These examples are separate from your connected learner snapshot."
-                  : "Demonstration data. Your learner profile is not connected."}
+            {screen === "practice"
+              ? "Explicit opt-in required. Published practice only; no grading, rewards or real-profile writes."
+              : screen === "curriculum"
+                ? "Bundled metadata. Separate from learner evidence; no learning operations enabled."
+                : screen === "library"
+                  ? learner.profile
+                    ? "Live experimental profile. This library is separate from learner data."
+                    : "Live experimental profile. Your learner profile is not connected."
+                  : learner.profile
+                    ? screen === "command" ||
+                      screen === "tree" ||
+                      screen === "missions"
+                      ? "Recorded learner data. Read-only snapshot; newer changes need a new capture."
+                      : "Demonstration data. These examples are separate from your connected learner snapshot."
+                    : "Demonstration data. Your learner profile is not connected."}
           </p>
-          {screen !== "curriculum" && (
+          {screen !== "curriculum" && screen !== "practice" && (
             <button
               onClick={() =>
                 setModal(
@@ -388,6 +405,12 @@ function App() {
             )
           ) : null}
           {screen === "curriculum" && <CurriculumAtlas />}
+          {screen === "practice" && (
+            <PracticeWorkspace
+              key={`${learner.busy}:${learner.profile?.sessionId ?? "disconnected"}`}
+              onBack={() => navigate("missions")}
+            />
+          )}
           <div hidden={screen !== "library"}>
             {libraryOpened && <Library />}
           </div>
@@ -396,7 +419,10 @@ function App() {
               <Mark /> BUILT THROUGH PRACTICE.
             </span>
             <span>
-              Gate 2 · Read-only learner view <i /> Engine authority preserved
+              {screen === "practice"
+                ? "Gate 2 · Disposable learning action"
+                : "Gate 2 · Read-only learner view"}{" "}
+              <i /> Engine authority preserved
             </span>
           </footer>
         </main>

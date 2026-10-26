@@ -8,6 +8,9 @@ import {
 } from "electron";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { PracticeOwner } from "./practice-owner";
+import { PracticeSession } from "./practice-session";
+import { PracticeJournal } from "./practice-journal";
 import { JavaSession, runtimeLocation } from "./java-session";
 import { DesktopApplication } from "./desktop-application";
 import { OperationJournal } from "./operation-journal";
@@ -38,6 +41,17 @@ const engine = new EngineOwner(
       runtimeLocation(javaRoot),
       join(app.getPath("userData"), "experimental-library-v1"),
     ),
+);
+
+const practice = new PracticeOwner(
+  () =>
+    new PracticeSession(
+      runtimeLocation(javaRoot),
+      join(app.getPath("userData"), "experimental-practice-v1"),
+    ),
+  new PracticeJournal(
+    join(app.getPath("userData"), "experimental-practice-operations-v1"),
+  ),
 );
 
 const learner = new LearnerOwner(
@@ -89,6 +103,7 @@ if (!app.requestSingleInstanceLock()) {
     learnerGeneration++;
     void Promise.allSettled([
       engine.shutdown(),
+      practice.disconnect(),
       learner.shutdown(),
       curriculum.shutdown(),
     ]).finally(() => {
@@ -151,6 +166,7 @@ if (!app.requestSingleInstanceLock()) {
             learnerGeneration++;
             void learner.disconnect();
             void curriculum.cancel();
+            void practice.disconnect();
           }
         },
       );
@@ -159,6 +175,7 @@ if (!app.requestSingleInstanceLock()) {
         void engine.stop();
         void learner.disconnect();
         void curriculum.cancel();
+        void practice.disconnect();
       });
       window.on("closed", () => {
         window = undefined;
@@ -166,7 +183,45 @@ if (!app.requestSingleInstanceLock()) {
         void engine.shutdown();
         void learner.shutdown();
         void curriculum.shutdown();
+        void practice.disconnect();
       });
+      ipcMain.handle("codefit:practice:connect", (event, ...args: unknown[]) =>
+        practice.connect(
+          () => !quitting && !learnerDialogBusy && authorized(event, args, 0),
+        ),
+      );
+      ipcMain.handle("codefit:practice:open", (event, ...args: unknown[]) =>
+        practice.open(
+          args[0],
+          args[1],
+          args[2],
+          () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+        ),
+      );
+      ipcMain.handle("codefit:practice:recover", (event, ...args: unknown[]) =>
+        practice.recover(
+          args[0],
+          args[1],
+          () => !quitting && !learnerDialogBusy && authorized(event, args, 2),
+        ),
+      );
+      ipcMain.handle(
+        "codefit:practice:acknowledge",
+        (event, ...args: unknown[]) =>
+          practice.acknowledge(
+            args[0],
+            args[1],
+            args[2],
+            () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+          ),
+      );
+      ipcMain.handle(
+        "codefit:practice:disconnect",
+        async (event, ...args: unknown[]) => {
+          if (!quitting && authorized(event, args, 0))
+            await practice.disconnect();
+        },
+      );
       ipcMain.handle("codefit:curriculum:read", (event, ...args: unknown[]) =>
         curriculum.read(() => !quitting && authorized(event, args, 0)),
       );
@@ -191,6 +246,7 @@ if (!app.requestSingleInstanceLock()) {
             authorized(event, args, 0);
           const owner = window!;
           try {
+            await practice.disconnect();
             await learner.disconnect();
             if (!permitted()) return { ok: false, code: "CANCELLED" };
             // No renderer-supplied path, SQL, command, runtime or backup destination is accepted.
@@ -265,6 +321,7 @@ if (!app.requestSingleInstanceLock()) {
         async (event, ...args: unknown[]) => {
           if (!quitting && authorized(event, args, 0)) {
             learnerGeneration++;
+            await practice.disconnect();
             await learner.disconnect();
           }
         },

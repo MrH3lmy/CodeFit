@@ -114,11 +114,15 @@ test("real experimental profile works offline with sandbox, narrow bridge and da
   ).toEqual({
     keys: [
       "acknowledgeDeck",
+      "acknowledgePractice",
       "cancelCurriculumPreview",
       "cancelOperation",
       "chooseLearnerProfile",
+      "connectPractice",
       "createDeck",
       "disconnectLearnerProfile",
+      "disconnectPractice",
+      "openAuthorizedPracticeChallenge",
       "pendingDeck",
       "readCurriculumPreview",
       "readLearnerMissions",
@@ -126,6 +130,7 @@ test("real experimental profile works offline with sandbox, narrow bridge and da
       "readLearnerSkills",
       "readState",
       "recoverDeck",
+      "recoverPractice",
     ],
     node: "undefined",
     process: "undefined",

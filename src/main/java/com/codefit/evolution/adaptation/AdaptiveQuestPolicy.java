@@ -238,7 +238,7 @@ public final class AdaptiveQuestPolicy {
         for (var c : in.candidates()) {
             var reject = baseExclusions(in, c);
             boolean practice = c.cohort() == Cohort.PRACTICE;
-            if (practice && reject.isEmpty()) exploratory.add(c.key());
+            if (exploratoryEligible(in, c)) exploratory.add(c.key());
             if (!c.targets(target.skill(), required)) reject.add(Reason.WRONG_BEHAVIOR);
             if (!c.graph().equals(in.graph())) reject.add(Reason.WRONG_GRAPH);
             // Baseline diagnoses do not assert prerequisite mastery. Ordinary practice does not
@@ -454,6 +454,15 @@ public final class AdaptiveQuestPolicy {
             pending.values().forEach(p -> p.removeAll(ready));
         }
         return true;
+    }
+
+    /** Shared explicit exploration rule; not a recommendation or a mastery prerequisite claim. */
+    static boolean exploratoryEligible(AdaptationInput in, Candidate candidate) {
+        return in.graphAvailable()
+                && in.preferences().track() == Track.EVOLUTION
+                && !in.preferences().paused()
+                && candidate.cohort() == Cohort.PRACTICE
+                && baseExclusions(in, candidate).isEmpty();
     }
 
     private static List<Reason> baseExclusions(AdaptationInput in, Candidate c) {

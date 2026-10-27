@@ -34,7 +34,9 @@ export function PracticeEvaluation({
   const result = rows.find((r) => r.commandId === selected);
   useEffect(() => {
     live.current = true;
-    void refresh();
+    // The editor becomes interactive without background IPC competing with autosave/recovery.
+    // The separate read-only inspector has no editor and may load its history immediately.
+    if (!draft) void refresh();
     return () => {
       live.current = false;
     };
@@ -207,6 +209,12 @@ export function PracticeEvaluation({
           Refresh submission status
         </Button>
       </div>
+      {!loaded && !busy && (
+        <p className="fine-print">
+          Refresh submission status to inspect saved results and enable a new
+          submission.
+        </p>
+      )}
       {!canSubmit && (
         <p className="fine-print">
           {draft

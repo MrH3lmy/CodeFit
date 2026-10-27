@@ -60,6 +60,7 @@ async function start() {
   await expect(
     p.getByRole("textbox", { name: "Java source editor" }),
   ).toBeVisible();
+  await p.getByRole("button", { name: "Refresh submission status" }).click();
   await expect(
     p.getByRole("button", { name: "Submit saved revision" }),
   ).toBeEnabled();
@@ -135,6 +136,7 @@ test("real evaluation freezes saved revision, preserves later edits and resumes 
     .getByRole("button", { name: "Resume saved practice" })
     .first()
     .click();
+  await p.getByRole("button", { name: "Refresh submission status" }).click();
   await expect(p.locator(".practice-evaluation-result")).toContainText(
     "FINALIZED",
   );

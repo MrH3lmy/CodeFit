@@ -39,7 +39,7 @@ final class PracticeDraftService {
         this.clock = clock;
     }
 
-    private <T> T transaction(QuestCatalogRepository.Work<T> work) throws SQLException {
+    <T> T transaction(QuestCatalogRepository.Work<T> work) throws SQLException {
         try (var c = profile.connection(false)) {
             c.setAutoCommit(false);
             try {
@@ -54,7 +54,7 @@ final class PracticeDraftService {
         }
     }
 
-    private ChallengePresentationService.SubmissionContext authorized(Connection c, String id)
+    ChallengePresentationService.SubmissionContext authorized(Connection c, String id)
             throws SQLException {
         if (id == null
                 || !id.startsWith("desktop-practice-")
@@ -130,7 +130,7 @@ final class PracticeDraftService {
         return transaction(c -> read(c, authorized(c, id)));
     }
 
-    private Draft read(Connection c, ChallengePresentationService.SubmissionContext ctx)
+    Draft read(Connection c, ChallengePresentationService.SubmissionContext ctx)
             throws SQLException {
         // Bound private rows BEFORE materialization; the starter includes the published harness.
         try (var s =

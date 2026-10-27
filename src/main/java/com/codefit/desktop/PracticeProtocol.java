@@ -32,7 +32,8 @@ final class PracticeProtocol {
             String presentation,
             long revision,
             String source,
-            String reflection) {}
+            String reflection,
+            String assistance) {}
 
     static Request parse(byte[] frame) throws IOException {
         if (frame.length > 524288) throw new IOException("INVALID_INPUT");
@@ -65,7 +66,11 @@ final class PracticeProtocol {
                         "practice.status",
                         "practice.open",
                         "practice.draft.save",
-                        "practice.draft.status")
+                        "practice.draft.status",
+                        "practice.submission.prepare",
+                        "practice.submission.status",
+                        "practice.submission.resume",
+                        "practice.submission.cancel")
                 .contains(method)) keys.add("commandId");
         if (method.equals("practice.open"))
             keys.addAll(Set.of("questId", "questVersion", "challengeId", "challengeVersion"));
@@ -73,10 +78,17 @@ final class PracticeProtocol {
                         "practice.presentation.resume",
                         "practice.draft.read",
                         "practice.draft.save",
-                        "practice.draft.status")
+                        "practice.draft.status",
+                        "practice.submissions",
+                        "practice.submission.prepare",
+                        "practice.submission.status",
+                        "practice.submission.resume",
+                        "practice.submission.cancel")
                 .contains(method)) keys.add("presentationId");
         if (method.equals("practice.draft.save"))
             keys.addAll(Set.of("expectedRevision", "source", "reflection"));
+        if (method.equals("practice.submission.prepare"))
+            keys.addAll(Set.of("expectedRevision", "assistance"));
         if (!Set.of(
                                 "practice.list",
                                 "practice.status",
@@ -85,7 +97,12 @@ final class PracticeProtocol {
                                 "practice.presentation.resume",
                                 "practice.draft.read",
                                 "practice.draft.save",
-                                "practice.draft.status")
+                                "practice.draft.status",
+                                "practice.submissions",
+                                "practice.submission.prepare",
+                                "practice.submission.status",
+                                "practice.submission.resume",
+                                "practice.submission.cancel")
                         .contains(method)
                 || !keys.equals(values.keySet())
                 || !ApplicationProtocol.uuid(id)
@@ -102,13 +119,18 @@ final class PracticeProtocol {
                         || !ApplicationProtocol.uuid(presentation.substring(17))))
             throw new IOException("INVALID_INPUT");
         long revision = 0;
-        if (method.equals("practice.draft.save")) {
+        if (method.equals("practice.draft.save") || method.equals("practice.submission.prepare")) {
             if (!(values.get("expectedRevision") instanceof Long n)
                     || n < 0
                     || n >= 9007199254740000L) throw new IOException("INVALID_INPUT");
             revision = n;
-            if (str(values, "reflection").length() > 8000) throw new IOException("INVALID_INPUT");
+            if (method.equals("practice.draft.save") && str(values, "reflection").length() > 8000)
+                throw new IOException("INVALID_INPUT");
         }
+        if (method.equals("practice.submission.prepare")
+                && !Set.of("UNKNOWN", "NONE_DECLARED", "DECLARED")
+                        .contains(str(values, "assistance")))
+            throw new IOException("INVALID_INPUT");
         return new Request(
                 id,
                 method,
@@ -120,7 +142,8 @@ final class PracticeProtocol {
                 presentation,
                 revision,
                 values.containsKey("source") ? str(values, "source") : null,
-                values.containsKey("reflection") ? str(values, "reflection") : null);
+                values.containsKey("reflection") ? str(values, "reflection") : null,
+                values.containsKey("assistance") ? str(values, "assistance") : null);
     }
 
     private static String str(Map<String, Object> v, String k) throws IOException {
@@ -148,6 +171,38 @@ final class PracticeProtocol {
         }
         if (out.size() > 524288) throw new IOException("RESPONSE_LIMIT");
         return out.toByteArray();
+    }
+
+    static void evaluation(JsonGenerator g, PracticeEvaluationService.Result r) throws IOException {
+        if (r == null) {
+            g.writeNull();
+            return;
+        }
+        g.writeStartObject();
+        g.writeStringField("commandId", r.commandId());
+        g.writeStringField("presentationId", r.presentationId());
+        g.writeNumberField("draftRevision", r.draftRevision());
+        g.writeStringField("assistance", r.assistance());
+        g.writeStringField("challengeId", r.challengeId());
+        g.writeNumberField("challengeVersion", r.challengeVersion());
+        g.writeStringField("submittedAt", r.submittedAt());
+        g.writeStringField("artifactSha256", r.artifactSha256());
+        g.writeBooleanField("active", r.active());
+        g.writeBooleanField("cancellationRequested", r.cancellationRequested());
+        g.writeStringField("stage", r.view().stage().name());
+        g.writeStringField(
+                "outcome", r.view().outcome() == null ? null : r.view().outcome().name());
+        g.writeBooleanField("withdrawn", r.view().withdrawn());
+        g.writeArrayFieldStart("checks");
+        for (var check : r.view().checks()) {
+            g.writeStartObject();
+            g.writeStringField("id", check.id());
+            g.writeStringField("status", check.status().name());
+            g.writeStringField("feedback", check.feedback());
+            g.writeEndObject();
+        }
+        g.writeEndArray();
+        g.writeEndObject();
     }
 
     static void draft(JsonGenerator g, PracticeDraftService.Draft d) throws IOException {

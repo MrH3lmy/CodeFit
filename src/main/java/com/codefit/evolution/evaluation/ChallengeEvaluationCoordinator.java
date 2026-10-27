@@ -89,103 +89,95 @@ public final class ChallengeEvaluationCoordinator {
     }
 
     public View prepare(SubmissionRequest request) {
-        View view =
-                catalog.transaction(
-                        c -> {
-                            var existing = repository.find(c, request.id());
-                            if (existing.isPresent()) {
-                                if (!existing.get().snapshot().request().equals(request))
-                                    throw new IllegalArgumentException(
-                                            "Command ID already binds a different payload");
-                                return view(c, existing.get());
-                            }
-                            var context =
-                                    presentations.contextForSubmission(c, request.presentationId());
-                            var spec = context.challenge();
-                            assets.validate(spec);
-                            var quest =
-                                    catalog.findQuest(c, context.receipt().quest()).orElseThrow();
-                            if (!quest.challenges().contains(spec.ref()))
-                                throw new IllegalArgumentException(
-                                        "Presentation quest does not contain challenge");
-                            int family = 0, variant = 0;
-                            try (var s =
-                                    c.prepareStatement(
-                                            "SELECT variant_id,COUNT(*) AS n FROM"
-                                                + " evolution_submissions WHERE family_id=? GROUP"
-                                                + " BY variant_id")) {
-                                s.setString(1, spec.familyId());
-                                try (var r = s.executeQuery()) {
-                                    while (r.next()) {
-                                        family += r.getInt("n");
-                                        if (r.getString(1).equals(spec.variantId()))
-                                            variant = r.getInt("n");
-                                    }
-                                }
-                            }
-                            ProblemSolvingSession session =
-                                    context.backing().problemId() == null
-                                            ? null
-                                            : new ProblemSolvingSessionRepository()
-                                                    .findByProblemId(
-                                                            c, context.backing().problemId())
-                                                    .orElse(null);
-                            var frozen =
-                                    new SubmissionSnapshot(
-                                            request,
-                                            context.receipt(),
-                                            CatalogCodec.encode(quest),
-                                            CatalogCodec.encode(spec),
-                                            context.backing().problemId(),
-                                            context.backing().assessmentItemId(),
-                                            context.currentContext(),
-                                            family,
-                                            variant,
-                                            clock.instant(),
-                                            JavaChallengeEvaluator.VERSION,
-                                            RunnerProfile.defaults(),
-                                            JavaChallengeEvaluator.assemble(
-                                                    spec, request.artifact(), assets),
-                                            session == null
-                                                    ? null
-                                                    : session.getReadingSecondsElapsed(),
-                                            session == null
-                                                    ? null
-                                                    : session.getThinkingSecondsElapsed(),
-                                            session == null
-                                                    ? null
-                                                    : session.getCodingSecondsElapsed(),
-                                            session == null
-                                                    ? null
-                                                    : session.getDebuggingSecondsElapsed(),
-                                            session == null
-                                                    ? null
-                                                    : session.getHighestHintLevelOpened());
-                            new EvidenceMappingRepository().publish(c, mapping(frozen));
-                            byte[] bytes = EvaluationCodec.encode(frozen);
-                            update(
-                                    c,
-                                    "INSERT INTO"
-                                        + " evolution_submissions(command_id,presentation_id,request_sha,snapshot,snapshot_sha,artifact_sha,executable_sha,family_id,variant_id,state)"
-                                        + " VALUES(?,?,?,?,?,?,?,?,?,'PREPARED')",
-                                    request.id(),
-                                    request.presentationId(),
-                                    EvaluationCodec.requestDigest(request),
-                                    bytes,
-                                    CatalogCodec.digest(bytes),
-                                    frozen.artifactSha256(),
-                                    frozen.executableSha256(),
-                                    spec.familyId(),
-                                    spec.variantId());
-                            return view(c, repository.find(c, request.id()).orElseThrow());
-                        });
+        View view = catalog.transaction(c -> prepare(c, request));
         faults.at(Boundary.PREPARED);
         return view;
     }
 
+    /** Caller holds the writer transaction; no execution, commit or mutable-draft read here. */
+    public View prepare(Connection c, SubmissionRequest request) throws SQLException {
+        if (c.getAutoCommit()) throw new IllegalArgumentException("Caller transaction required");
+        var existing = repository.find(c, request.id());
+        if (existing.isPresent()) {
+            if (!existing.get().snapshot().request().equals(request))
+                throw new IllegalArgumentException("Command ID already binds a different payload");
+            return view(c, existing.get());
+        }
+        var context = presentations.contextForSubmission(c, request.presentationId());
+        var spec = context.challenge();
+        assets.validate(spec);
+        var quest = catalog.findQuest(c, context.receipt().quest()).orElseThrow();
+        if (!quest.challenges().contains(spec.ref()))
+            throw new IllegalArgumentException("Presentation quest does not contain challenge");
+        int family = 0, variant = 0;
+        try (var s =
+                c.prepareStatement(
+                        "SELECT variant_id,COUNT(*) AS n FROM"
+                                + " evolution_submissions WHERE family_id=? GROUP"
+                                + " BY variant_id")) {
+            s.setString(1, spec.familyId());
+            try (var r = s.executeQuery()) {
+                while (r.next()) {
+                    family += r.getInt("n");
+                    if (r.getString(1).equals(spec.variantId())) variant = r.getInt("n");
+                }
+            }
+        }
+        ProblemSolvingSession session =
+                context.backing().problemId() == null
+                        ? null
+                        : new ProblemSolvingSessionRepository()
+                                .findByProblemId(c, context.backing().problemId())
+                                .orElse(null);
+        var frozen =
+                new SubmissionSnapshot(
+                        request,
+                        context.receipt(),
+                        CatalogCodec.encode(quest),
+                        CatalogCodec.encode(spec),
+                        context.backing().problemId(),
+                        context.backing().assessmentItemId(),
+                        context.currentContext(),
+                        family,
+                        variant,
+                        clock.instant(),
+                        JavaChallengeEvaluator.VERSION,
+                        RunnerProfile.defaults(),
+                        JavaChallengeEvaluator.assemble(spec, request.artifact(), assets),
+                        session == null ? null : session.getReadingSecondsElapsed(),
+                        session == null ? null : session.getThinkingSecondsElapsed(),
+                        session == null ? null : session.getCodingSecondsElapsed(),
+                        session == null ? null : session.getDebuggingSecondsElapsed(),
+                        session == null ? null : session.getHighestHintLevelOpened());
+        new EvidenceMappingRepository().publish(c, mapping(frozen));
+        byte[] bytes = EvaluationCodec.encode(frozen);
+        update(
+                c,
+                "INSERT INTO"
+                    + " evolution_submissions(command_id,presentation_id,request_sha,snapshot,snapshot_sha,artifact_sha,executable_sha,family_id,variant_id,state)"
+                    + " VALUES(?,?,?,?,?,?,?,?,?,'PREPARED')",
+                request.id(),
+                request.presentationId(),
+                EvaluationCodec.requestDigest(request),
+                bytes,
+                CatalogCodec.digest(bytes),
+                frozen.artifactSha256(),
+                frozen.executableSha256(),
+                spec.familyId(),
+                spec.variantId());
+        return view(c, repository.find(c, request.id()).orElseThrow());
+    }
+
     public View status(String command) {
         SubmissionRequest.identity(command);
-        return catalog.transaction(c -> view(c, required(c, command)));
+        return catalog.transaction(c -> status(c, command));
+    }
+
+    /** Redacted view on the caller's coherent transaction. */
+    public View status(Connection c, String command) throws SQLException {
+        SubmissionRequest.identity(command);
+        if (c.getAutoCommit()) throw new IllegalArgumentException("Caller transaction required");
+        return view(c, required(c, command));
     }
 
     public View resume(String command) {

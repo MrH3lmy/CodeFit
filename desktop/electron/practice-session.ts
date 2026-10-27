@@ -210,6 +210,32 @@ export class PracticeSession {
                 throw new Error("wrong revision");
             }
           }
+          if (reply.ok && "evaluation" in reply) {
+            if (
+              !("commandId" in pending.command) ||
+              reply.commandId !== pending.command.commandId ||
+              (reply.evaluation &&
+                (reply.evaluation.commandId !== reply.commandId ||
+                  reply.evaluation.presentationId !== reply.presentationId))
+            )
+              throw new Error("wrong evaluation");
+            if (
+              pending.command.method === "practice.submission.prepare" &&
+              (!reply.evaluation ||
+                reply.evaluation.draftRevision !==
+                  pending.command.expectedRevision ||
+                reply.evaluation.assistance !== pending.command.assistance)
+            )
+              throw new Error("wrong frozen revision");
+          }
+          if (
+            reply.ok &&
+            "submissions" in reply &&
+            reply.submissions.some(
+              (r) => r.presentationId !== reply.presentationId,
+            )
+          )
+            throw new Error("wrong history");
           this.pending = undefined;
           clearTimeout(pending.timer);
           pending.resolve(reply);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PracticeEvaluation } from "./practice-evaluation";
 import { PracticeEditor } from "./practice-editor";
 import { mayLeaveDraft } from "./draft-navigation";
 import { Badge, Button, Dialog } from "./components";
@@ -11,6 +12,7 @@ import type {
 
 export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<Extract<PracticeState, { ok: true }>>();
+  const [inspect, setInspect] = useState<string>();
   const [draft, setDraft] = useState<PracticeDraft>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +33,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError("");
     setOpened(undefined);
+    setInspect(undefined);
     try {
       const result = await window.codefit.connectPractice();
       if (token !== generation.current) return;
@@ -55,6 +58,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
     setError("");
     setConfirm(undefined);
     setOpened(undefined);
+    setInspect(undefined);
     try {
       const result = candidate
         ? await window.codefit.openAuthorizedPracticeChallenge(
@@ -91,6 +95,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
         else {
           setState(undefined);
           setOpened(undefined);
+          setInspect(undefined);
           setError(refreshed.code);
         }
       }
@@ -98,6 +103,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
       if (token === generation.current) {
         setState(undefined);
         setOpened(undefined);
+        setInspect(undefined);
         setError("UNAVAILABLE");
       }
     } finally {
@@ -108,6 +114,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
     if (!mayLeaveDraft()) return;
     generation.current++;
     setOpened(undefined);
+    setInspect(undefined);
     setState(undefined);
     setConfirm(undefined);
     setError("");
@@ -119,6 +126,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
     const token = ++generation.current;
     setBusy(true);
     setOpened(undefined);
+    setInspect(undefined);
     try {
       if (!state.pending) {
         await connect();
@@ -151,6 +159,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError("");
     setOpened(undefined);
+    setInspect(undefined);
     setDraft(undefined);
     try {
       const result = await window.codefit.resumePractice(
@@ -194,7 +203,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
           </p>
           <div className="practice-badges">
             <Badge tone="cyan">Original published content</Badge>
-            <Badge>No grading or rewards</Badge>
+            <Badge>Java-owned evaluation</Badge>
             <Badge>Linux experimental profile</Badge>
           </div>
         </div>
@@ -296,8 +305,25 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
                   >
                     Resume saved practice
                   </Button>
+                  <Button
+                    secondary
+                    disabled={busy}
+                    onClick={() => setInspect(p.presentationId)}
+                  >
+                    Inspect saved submissions
+                  </Button>
                 </div>
               ))}
+            </div>
+          )}
+          {!opened && inspect && (
+            <div className="panel practice-panel">
+              <PracticeEvaluation
+                key={inspect}
+                presentationId={inspect}
+                identity={state}
+                canSubmit={false}
+              />
             </div>
           )}
           {!opened && (
@@ -376,7 +402,10 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
               pending={!!state.pendingSave}
             />
           )}
-          <p>Hints, solutions, submission and evaluation remain unavailable.</p>
+          <p>
+            Hints and solutions remain unavailable. Evaluation is explicit and
+            uses a frozen saved revision.
+          </p>
           <Button
             disabled={busy}
             secondary

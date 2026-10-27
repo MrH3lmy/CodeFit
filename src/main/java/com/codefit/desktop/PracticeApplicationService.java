@@ -10,7 +10,7 @@ import java.sql.*;
 import java.time.*;
 import java.util.*;
 
-/** Dedicated live owner only. Opening is the sole learning write; no grader/reward entry point. */
+/** Dedicated live owner only. Presentation authorization only; evaluation has a separate explicit boundary. */
 final class PracticeApplicationService {
     record Candidate(
             String questId,

@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   PracticeInputSchema,
+  SubmissionInputSchema,
+  SubmissionActionSchema,
   DraftInputSchema,
   PresentationIdSchema,
   type DraftInput,
@@ -10,6 +12,7 @@ import {
   type PracticeState,
 } from "../src/practice-contract";
 import { join } from "node:path";
+import { SubmissionJournal } from "./submission-journal";
 import { DraftJournal } from "./draft-journal";
 import { PracticeSession } from "./practice-session";
 import { PracticeJournal } from "./practice-journal";
@@ -21,10 +24,14 @@ export class PracticeOwner {
   private busy = false;
   private closing?: Promise<void>;
   private readonly drafts: DraftJournal;
+  private readonly submissions: SubmissionJournal;
   constructor(
     private readonly create: () => PracticeSession,
     private readonly journal: PracticeJournal,
   ) {
+    this.submissions = new SubmissionJournal(
+      join(journal.directory, "submissions"),
+    );
     this.drafts = new DraftJournal(join(journal.directory, "drafts"));
   }
   async connect(authorized: () => boolean): Promise<PracticeState> {
@@ -66,6 +73,12 @@ export class PracticeOwner {
       const pendingSave = this.drafts.read();
       if (pendingSave && pendingSave.profileId !== identity.profileId)
         return { ok: false, code: "JOURNAL_INVALID" };
+      const pendingSubmission = this.submissions.read();
+      if (
+        pendingSubmission &&
+        pendingSubmission.profileId !== identity.profileId
+      )
+        return { ok: false, code: "JOURNAL_INVALID" };
       return {
         ok: true,
         ...identity,
@@ -73,6 +86,7 @@ export class PracticeOwner {
         pending,
         presentations: recent.presentations,
         pendingSave,
+        pendingSubmission,
       };
     } catch (error) {
       await this.disconnect();
@@ -295,6 +309,96 @@ export class PracticeOwner {
       }
       return result;
     });
+  }
+  async prepareSubmission(
+    input: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const parsed = SubmissionInputSchema.safeParse(input);
+    if (!parsed.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, async (s, i) => {
+      if (this.submissions.read() || this.drafts.read())
+        return { ok: false, code: "RECOVERY_REQUIRED" };
+      const intent = {
+        v: 1 as const,
+        profileId: i.profileId,
+        commandId: randomUUID(),
+        ...parsed.data,
+      };
+      this.submissions.write(intent);
+      const result = await s.request({
+        method: "practice.submission.prepare",
+        ...i,
+        commandId: intent.commandId,
+        ...parsed.data,
+      });
+      if (!authorized() || this.current !== s)
+        return { ok: false, code: "CANCELLED" };
+      // Clear only a validated durable receipt. Errors/unknown completion require explicit status.
+      if (result.ok && "evaluation" in result && result.evaluation)
+        this.submissions.clear(intent.commandId);
+      return result;
+    });
+  }
+  async submissionAction(
+    input: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const parsed = SubmissionActionSchema.safeParse(input);
+    if (!parsed.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, async (s, i) => {
+      const { action, ...context } = parsed.data;
+      const intent = this.submissions.read();
+      if (
+        intent &&
+        (intent.profileId !== i.profileId ||
+          intent.commandId !== context.commandId ||
+          intent.presentationId !== context.presentationId ||
+          action !== "status")
+      )
+        return { ok: false, code: "RECOVERY_REQUIRED" };
+      const result = await s.request({
+        method: `practice.submission.${action}`,
+        ...i,
+        ...context,
+      });
+      if (!authorized() || this.current !== s)
+        return { ok: false, code: "CANCELLED" };
+      if (intent && result.ok && "evaluation" in result) {
+        if (
+          result.evaluation &&
+          (result.evaluation.draftRevision !== intent.expectedRevision ||
+            result.evaluation.assistance !== intent.assistance)
+        )
+          return { ok: false, code: "PROTOCOL_ERROR" };
+        // Absence is definitive under this exclusive owner. Never reprepare from today's draft.
+        this.submissions.clear(intent.commandId);
+      }
+      return result;
+    });
+  }
+  async submissionsFor(
+    presentationId: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const id = PresentationIdSchema.safeParse(presentationId);
+    if (!id.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, (s, i) =>
+      s.request({
+        method: "practice.submissions",
+        ...i,
+        presentationId: id.data,
+      }),
+    );
   }
   private async perform(
     profileId: unknown,

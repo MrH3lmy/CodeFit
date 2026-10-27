@@ -233,35 +233,36 @@ public final class PlayerSystemService {
     }
 
     public void save(Draft draft) {
-        catalog.transaction(
-                c -> {
-                    var ctx = presentations.contextForSubmission(c, draft.presentationId());
-                    boolean java = ctx.backing().problemId() != null;
-                    if (java) {
-                        var repository = new JavaSolutionDraftRepository();
-                        var old =
-                                repository
-                                        .findByProblemId(c, ctx.backing().problemId())
-                                        .orElseThrow();
-                        old.setSourceCode(draft.source());
-                        repository.update(c, old);
-                    }
-                    try (var s =
-                            c.prepareStatement(
-                                    "INSERT INTO"
-                                        + " evolution_working_notes(presentation_id,response,reflection,assistance,updated_at)"
-                                        + " VALUES(?,?,?,?,?) ON CONFLICT(presentation_id) DO"
-                                        + " UPDATE SET"
-                                        + " response=excluded.response,reflection=excluded.reflection,assistance=excluded.assistance,updated_at=excluded.updated_at")) {
-                        s.setString(1, draft.presentationId());
-                        s.setString(2, java ? null : draft.source());
-                        s.setString(3, draft.reflection());
-                        s.setString(4, draft.assistance().name());
-                        s.setString(5, clock.instant().toString());
-                        s.executeUpdate();
-                    }
-                    return null;
-                });
+        catalog.transaction(c -> { save(c, draft); return null; });
+    }
+
+    /** Caller-owned transaction: desktop CAS and durable receipt commit with existing draft/notes. */
+    public void save(java.sql.Connection c, Draft draft) throws java.sql.SQLException {
+        var ctx = presentations.contextForSubmission(c, draft.presentationId());
+        boolean java = ctx.backing().problemId() != null;
+        if (java) {
+            var repository = new JavaSolutionDraftRepository();
+            var old =
+                    repository
+                            .findByProblemId(c, ctx.backing().problemId())
+                            .orElseThrow();
+            old.setSourceCode(draft.source());
+            repository.update(c, old);
+        }
+        try (var s =
+                c.prepareStatement(
+                        "INSERT INTO"
+                            + " evolution_working_notes(presentation_id,response,reflection,assistance,updated_at)"
+                            + " VALUES(?,?,?,?,?) ON CONFLICT(presentation_id) DO"
+                            + " UPDATE SET"
+                            + " response=excluded.response,reflection=excluded.reflection,assistance=excluded.assistance,updated_at=excluded.updated_at")) {
+            s.setString(1, draft.presentationId());
+            s.setString(2, java ? null : draft.source());
+            s.setString(3, draft.reflection());
+            s.setString(4, draft.assistance().name());
+            s.setString(5, clock.instant().toString());
+            s.executeUpdate();
+        }
     }
 
     public String hint(String presentation, String command, int level) {

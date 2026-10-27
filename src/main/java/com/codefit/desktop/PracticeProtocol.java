@@ -16,8 +16,8 @@ final class PracticeProtocol {
                     .streamReadConstraints(
                             StreamReadConstraints.builder()
                                     .maxNestingDepth(2)
-                                    .maxStringLength(128)
-                                    .maxNumberLength(10)
+                                    .maxStringLength(32768)
+                                    .maxNumberLength(16)
                                     .build())
                     .build();
 
@@ -28,10 +28,14 @@ final class PracticeProtocol {
             String session,
             String command,
             CatalogRef quest,
-            CatalogRef challenge) {}
+            CatalogRef challenge,
+            String presentation,
+            long revision,
+            String source,
+            String reflection) {}
 
     static Request parse(byte[] frame) throws IOException {
-        if (frame.length > 4096) throw new IOException("INVALID_INPUT");
+        if (frame.length > 524288) throw new IOException("INVALID_INPUT");
         var values = new HashMap<String, Object>();
         try (var p =
                 JSON.createParser(
@@ -57,10 +61,32 @@ final class PracticeProtocol {
         if (!Long.valueOf(1).equals(values.get("v"))) throw new IOException("INVALID_INPUT");
         String id = str(values, "id"), method = str(values, "method");
         var keys = new HashSet<>(Set.of("v", "id", "method", "profileId", "sessionId"));
-        if (Set.of("practice.status", "practice.open").contains(method)) keys.add("commandId");
+        if (Set.of(
+                        "practice.status",
+                        "practice.open",
+                        "practice.draft.save",
+                        "practice.draft.status")
+                .contains(method)) keys.add("commandId");
         if (method.equals("practice.open"))
             keys.addAll(Set.of("questId", "questVersion", "challengeId", "challengeVersion"));
-        if (!Set.of("practice.list", "practice.status", "practice.open").contains(method)
+        if (Set.of(
+                        "practice.presentation.resume",
+                        "practice.draft.read",
+                        "practice.draft.save",
+                        "practice.draft.status")
+                .contains(method)) keys.add("presentationId");
+        if (method.equals("practice.draft.save"))
+            keys.addAll(Set.of("expectedRevision", "source", "reflection"));
+        if (!Set.of(
+                                "practice.list",
+                                "practice.status",
+                                "practice.open",
+                                "practice.presentations",
+                                "practice.presentation.resume",
+                                "practice.draft.read",
+                                "practice.draft.save",
+                                "practice.draft.status")
+                        .contains(method)
                 || !keys.equals(values.keySet())
                 || !ApplicationProtocol.uuid(id)
                 || !ApplicationProtocol.uuid(str(values, "profileId"))
@@ -69,6 +95,20 @@ final class PracticeProtocol {
         String command = values.containsKey("commandId") ? str(values, "commandId") : null;
         if (command != null && !ApplicationProtocol.uuid(command))
             throw new IOException("INVALID_INPUT");
+        String presentation =
+                values.containsKey("presentationId") ? str(values, "presentationId") : null;
+        if (presentation != null
+                && (!presentation.startsWith("desktop-practice-")
+                        || !ApplicationProtocol.uuid(presentation.substring(17))))
+            throw new IOException("INVALID_INPUT");
+        long revision = 0;
+        if (method.equals("practice.draft.save")) {
+            if (!(values.get("expectedRevision") instanceof Long n)
+                    || n < 0
+                    || n >= 9007199254740000L) throw new IOException("INVALID_INPUT");
+            revision = n;
+            if (str(values, "reflection").length() > 8000) throw new IOException("INVALID_INPUT");
+        }
         return new Request(
                 id,
                 method,
@@ -76,7 +116,11 @@ final class PracticeProtocol {
                 str(values, "sessionId"),
                 command,
                 method.equals("practice.open") ? ref(values, "quest") : null,
-                method.equals("practice.open") ? ref(values, "challenge") : null);
+                method.equals("practice.open") ? ref(values, "challenge") : null,
+                presentation,
+                revision,
+                values.containsKey("source") ? str(values, "source") : null,
+                values.containsKey("reflection") ? str(values, "reflection") : null);
     }
 
     private static String str(Map<String, Object> v, String k) throws IOException {
@@ -102,8 +146,33 @@ final class PracticeProtocol {
             writer.write(g);
             g.writeEndObject();
         }
-        if (out.size() > 65536) throw new IOException("RESPONSE_LIMIT");
+        if (out.size() > 524288) throw new IOException("RESPONSE_LIMIT");
         return out.toByteArray();
+    }
+
+    static void draft(JsonGenerator g, PracticeDraftService.Draft d) throws IOException {
+        g.writeObjectFieldStart("draft");
+        g.writeStringField("presentationId", d.presentationId());
+        g.writeNumberField("revision", d.revision());
+        g.writeStringField("source", d.source());
+        g.writeStringField("reflection", d.reflection());
+        g.writeEndObject();
+    }
+
+    static void saved(JsonGenerator g, PracticeDraftService.Saved r) throws IOException {
+        g.writeFieldName("saved");
+        if (r == null) {
+            g.writeNull();
+            return;
+        }
+        g.writeStartObject();
+        g.writeStringField("commandId", r.commandId());
+        g.writeStringField("presentationId", r.presentationId());
+        g.writeStringField("digest", r.digest());
+        g.writeNumberField("expectedRevision", r.expectedRevision());
+        g.writeNumberField("revision", r.revision());
+        g.writeStringField("outcome", r.outcome());
+        g.writeEndObject();
     }
 
     static void receipt(JsonGenerator g, PracticeApplicationService.Receipt r) throws IOException {

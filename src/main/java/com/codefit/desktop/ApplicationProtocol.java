@@ -126,10 +126,14 @@ final class ApplicationProtocol {
     }
 
     static byte[] readFrame(InputStream input) throws IOException {
+        return readFrame(input, MAX_REQUEST_BYTES);
+    }
+
+    static byte[] readFrame(InputStream input, int limit) throws IOException {
         ByteArrayOutputStream frame = new ByteArrayOutputStream();
         for (int value; (value = input.read()) != -1; ) {
             if (value == '\n') return frame.toByteArray();
-            if (frame.size() == MAX_REQUEST_BYTES) throw new IOException("REQUEST_TOO_LARGE");
+            if (frame.size() == limit) throw new IOException("REQUEST_TOO_LARGE");
             frame.write(value);
         }
         if (frame.size() != 0) throw new IOException("INCOMPLETE_REQUEST");

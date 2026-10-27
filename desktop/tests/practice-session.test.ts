@@ -134,7 +134,7 @@ test("practice transport rejects malformed/private/oversized responses and termi
       sessionId = randomUUID();
     const reply =
       mode === "oversized"
-        ? "process.stdout.write('x'.repeat(65537));"
+        ? "process.stdout.write('x'.repeat(524289));"
         : mode === "timeout"
           ? ""
           : mode === "crash"

@@ -144,14 +144,17 @@ final class PracticeApplicationService {
                                                 && x.challengeId().equals(challenge.id())
                                                 && x.challengeVersion() == challenge.version()))
                     throw new IllegalArgumentException("NOT_ELIGIBLE");
-                presentations.present(
-                        c,
-                        new ChallengePresentation.Request(
-                                id,
-                                quest,
-                                challenge,
-                                QuestTypes.Cohort.PRACTICE,
-                                QuestTypes.Familiarity.UNKNOWN));
+                // A committed Start is a resume, never a repair/initialization command.
+                // Missing drafts/sessions must not be silently recreated by replay.
+                if (previous.isEmpty())
+                    presentations.present(
+                            c,
+                            new ChallengePresentation.Request(
+                                    id,
+                                    quest,
+                                    challenge,
+                                    QuestTypes.Cohort.PRACTICE,
+                                    QuestTypes.Familiarity.UNKNOWN));
                 c.commit();
             } catch (SQLException | RuntimeException e) {
                 c.rollback();
@@ -177,7 +180,7 @@ final class PracticeApplicationService {
                 try (var s =
                         c.prepareStatement(
                                 "SELECT quest_id,quest_version,challenge_id,challenge_version FROM"
-                                    + " desktop_practice_commands WHERE command_id=?")) {
+                                        + " desktop_practice_commands WHERE command_id=?")) {
                     s.setString(1, commandId);
                     try (var r = s.executeQuery()) {
                         if (r.next()) {

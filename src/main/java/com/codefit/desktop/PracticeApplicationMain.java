@@ -38,6 +38,7 @@ public final class PracticeApplicationMain {
                     TimeUnit.MILLISECONDS);
             try (var profile = ExperimentalProfile.openLearning(Path.of(args[3]))) {
                 var service = new PracticeApplicationService(profile, Clock.systemUTC());
+                var drafts = new PracticeDraftService(profile, Clock.systemUTC());
                 ApplicationProtocol.write(
                         System.out,
                         PracticeProtocol.message(
@@ -48,11 +49,37 @@ public final class PracticeApplicationMain {
                                 }));
                 ready = true;
                 byte[] frame;
-                while ((frame = ApplicationProtocol.readFrame(System.in)) != null) {
+                while ((frame = ApplicationProtocol.readFrame(System.in, 524288)) != null) {
                     var request = PracticeProtocol.parse(frame);
                     byte[] response;
                     try {
                         service.authorize(request.profile(), request.session());
+                        var resumed =
+                                request.method().equals("practice.presentation.resume")
+                                        ? drafts.resume(request.presentation())
+                                        : null;
+                        var draft =
+                                resumed != null
+                                        ? resumed.draft()
+                                        : request.method().equals("practice.draft.read")
+                                                ? drafts.read(request.presentation())
+                                                : null;
+                        var recent =
+                                request.method().equals("practice.presentations")
+                                        ? drafts.recent()
+                                        : null;
+                        var saved =
+                                request.method().equals("practice.draft.save")
+                                        ? drafts.save(
+                                                request.command(),
+                                                request.presentation(),
+                                                request.revision(),
+                                                request.source(),
+                                                request.reflection())
+                                        : request.method().equals("practice.draft.status")
+                                                ? drafts.status(
+                                                        request.command(), request.presentation())
+                                                : null;
                         var candidates =
                                 request.method().equals("practice.list") ? service.list() : null;
                         var opened =
@@ -76,7 +103,27 @@ public final class PracticeApplicationMain {
                                             g.writeStringField("profileId", service.profileId());
                                             g.writeStringField("sessionId", service.session());
                                             g.writeStringField("method", request.method());
-                                            if (candidates != null) {
+                                            if (recent != null) {
+                                                g.writeArrayFieldStart("presentations");
+                                                for (var r : recent) PracticeProtocol.receipt(g, r);
+                                                g.writeEndArray();
+                                            } else if (draft != null) {
+                                                g.writeStringField(
+                                                        "presentationId", request.presentation());
+                                                PracticeProtocol.draft(g, draft);
+                                                if (resumed != null) {
+                                                    g.writeFieldName("receipt");
+                                                    PracticeProtocol.receipt(g, resumed.receipt());
+                                                    g.writeStringField(
+                                                            "instructions", resumed.instructions());
+                                                }
+                                            } else if (request.method()
+                                                    .startsWith("practice.draft.")) {
+                                                g.writeStringField("commandId", request.command());
+                                                g.writeStringField(
+                                                        "presentationId", request.presentation());
+                                                PracticeProtocol.saved(g, saved);
+                                            } else if (candidates != null) {
                                                 g.writeArrayFieldStart("candidates");
                                                 for (var c : candidates) {
                                                     g.writeStartObject();
@@ -105,7 +152,13 @@ public final class PracticeApplicationMain {
                                         });
                     } catch (Exception error) {
                         String code =
-                                Set.of("SESSION_MISMATCH", "COMMAND_ID_CONFLICT", "NOT_ELIGIBLE")
+                                Set.of(
+                                                        "SESSION_MISMATCH",
+                                                        "COMMAND_ID_CONFLICT",
+                                                        "NOT_ELIGIBLE",
+                                                        "NOT_AUTHORIZED",
+                                                        "INVALID_INPUT",
+                                                        "CONTENT_UNAVAILABLE")
                                                 .contains(
                                                         error.getMessage() == null
                                                                 ? ""

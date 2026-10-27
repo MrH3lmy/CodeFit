@@ -1,11 +1,16 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   PracticeInputSchema,
+  DraftInputSchema,
+  PresentationIdSchema,
+  type DraftInput,
   PracticeErrorSchema,
   type PracticeIntent,
   type PracticeResult,
   type PracticeState,
 } from "../src/practice-contract";
+import { join } from "node:path";
+import { DraftJournal } from "./draft-journal";
 import { PracticeSession } from "./practice-session";
 import { PracticeJournal } from "./practice-journal";
 
@@ -15,10 +20,13 @@ export class PracticeOwner {
   private generation = 0;
   private busy = false;
   private closing?: Promise<void>;
+  private readonly drafts: DraftJournal;
   constructor(
     private readonly create: () => PracticeSession,
     private readonly journal: PracticeJournal,
-  ) {}
+  ) {
+    this.drafts = new DraftJournal(join(journal.directory, "drafts"));
+  }
   async connect(authorized: () => boolean): Promise<PracticeState> {
     if (!authorized() || process.platform !== "linux")
       return { ok: false, code: "UNAVAILABLE" };
@@ -46,7 +54,26 @@ export class PracticeOwner {
       const pending = this.journal.read();
       if (pending && pending.profileId !== identity.profileId)
         return { ok: false, code: "JOURNAL_INVALID" };
-      return { ok: true, ...identity, candidates: result.candidates, pending };
+      const recent = await selected.request({
+        method: "practice.presentations",
+        ...identity,
+      });
+      if (!authorized() || generation !== this.generation)
+        return { ok: false, code: "CANCELLED" };
+      if (!recent.ok) return recent;
+      if (recent.method !== "practice.presentations")
+        return { ok: false, code: "PROTOCOL_ERROR" };
+      const pendingSave = this.drafts.read();
+      if (pendingSave && pendingSave.profileId !== identity.profileId)
+        return { ok: false, code: "JOURNAL_INVALID" };
+      return {
+        ok: true,
+        ...identity,
+        candidates: result.candidates,
+        pending,
+        presentations: recent.presentations,
+        pendingSave,
+      };
     } catch (error) {
       await this.disconnect();
       const code = PracticeErrorSchema.safeParse(
@@ -155,6 +182,120 @@ export class PracticeOwner {
       },
     );
   }
+  async resume(
+    presentationId: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const id = PresentationIdSchema.safeParse(presentationId);
+    if (!id.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, (s, i) =>
+      s.request({
+        method: "practice.presentation.resume",
+        ...i,
+        presentationId: id.data,
+      }),
+    );
+  }
+  async readDraft(
+    presentationId: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const id = PresentationIdSchema.safeParse(presentationId);
+    if (!id.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, (s, i) =>
+      s.request({
+        method: "practice.draft.read",
+        ...i,
+        presentationId: id.data,
+      }),
+    );
+  }
+  async saveDraft(
+    input: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const parsed = DraftInputSchema.safeParse(input);
+    if (!parsed.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, async (s, i) => {
+      const digest = draftDigest(parsed.data);
+      let intent = this.drafts.read();
+      if (
+        intent &&
+        (intent.profileId !== i.profileId || intent.digest !== digest)
+      )
+        return { ok: false, code: "RECOVERY_REQUIRED" };
+      if (!intent) {
+        intent = {
+          v: 1,
+          profileId: i.profileId,
+          commandId: randomUUID(),
+          presentationId: parsed.data.presentationId,
+          expectedRevision: parsed.data.expectedRevision,
+          digest,
+        };
+        this.drafts.write(intent);
+      }
+      const result = await s.request({
+        method: "practice.draft.save",
+        ...i,
+        commandId: intent.commandId,
+        ...parsed.data,
+      });
+      if (!authorized() || this.current !== s)
+        return { ok: false, code: "CANCELLED" };
+      if (result.ok && result.method === "practice.draft.save") {
+        if (result.saved.digest !== digest)
+          return { ok: false, code: "PROTOCOL_ERROR" };
+        this.drafts.clear(intent.commandId);
+      }
+      return result;
+    });
+  }
+  async reconcileDraft(
+    presentationId: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const id = PresentationIdSchema.safeParse(presentationId);
+    if (!id.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, async (s, i) => {
+      const intent = this.drafts.read();
+      if (!intent)
+        return s.request({
+          method: "practice.draft.read",
+          ...i,
+          presentationId: id.data,
+        });
+      if (intent.profileId !== i.profileId || intent.presentationId !== id.data)
+        return { ok: false, code: "RECOVERY_REQUIRED" };
+      const result = await s.request({
+        method: "practice.draft.status",
+        ...i,
+        commandId: intent.commandId,
+        presentationId: id.data,
+      });
+      if (!authorized() || this.current !== s)
+        return { ok: false, code: "CANCELLED" };
+      if (result.ok && result.method === "practice.draft.status") {
+        if (result.saved && result.saved.digest !== intent.digest)
+          return { ok: false, code: "PROTOCOL_ERROR" };
+        // No receipt under exclusive owner means this command did not commit. Explicit reconciliation only.
+        this.drafts.clear(intent.commandId);
+      }
+      return result;
+    });
+  }
   private async perform(
     profileId: unknown,
     sessionId: unknown,
@@ -203,4 +344,21 @@ export class PracticeOwner {
       }
     } else if (this.closing) await this.closing;
   }
+}
+
+export function draftDigest(input: DraftInput): string {
+  const hash = createHash("sha256");
+  for (const value of [
+    input.presentationId,
+    String(input.expectedRevision),
+    input.source,
+    input.reflection,
+  ]) {
+    const bytes = Buffer.from(value, "utf8"),
+      length = Buffer.alloc(4);
+    length.writeUInt32BE(bytes.length);
+    hash.update(length);
+    hash.update(bytes);
+  }
+  return hash.digest("hex");
 }

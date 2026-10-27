@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { PracticeEditor } from "./practice-editor";
+import { mayLeaveDraft } from "./draft-navigation";
 import { Badge, Button, Dialog } from "./components";
 import type {
+  PracticeDraft,
   PracticeCandidate,
   PracticeResult,
   PracticeState,
@@ -8,6 +11,7 @@ import type {
 
 export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<Extract<PracticeState, { ok: true }>>();
+  const [draft, setDraft] = useState<PracticeDraft>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirm, setConfirm] = useState<PracticeCandidate>();
@@ -22,6 +26,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
     [],
   );
   async function connect() {
+    if (!mayLeaveDraft()) return;
     const token = ++generation.current;
     setBusy(true);
     setError("");
@@ -67,8 +72,18 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
             state.sessionId,
           );
       if (token !== generation.current) return;
-      if (result.ok && result.method === "practice.open") setOpened(result);
-      else setError(result.ok ? "PROTOCOL_ERROR" : result.code);
+      if (result.ok && result.method === "practice.open") {
+        const resumed = await window.codefit.resumePractice(
+          result.receipt.presentationId,
+          state.profileId,
+          state.sessionId,
+        );
+        if (token !== generation.current) return;
+        if (resumed.ok && resumed.method === "practice.presentation.resume") {
+          setOpened(result);
+          setDraft(resumed.draft);
+        } else setError(resumed.ok ? "PROTOCOL_ERROR" : resumed.code);
+      } else setError(result.ok ? "PROTOCOL_ERROR" : result.code);
       // Refresh metadata and the durable intent, never generate a replacement command.
       const refreshed = await window.codefit.connectPractice();
       if (token === generation.current) {
@@ -90,6 +105,7 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
     }
   }
   async function disconnect() {
+    if (!mayLeaveDraft()) return;
     generation.current++;
     setOpened(undefined);
     setState(undefined);
@@ -99,11 +115,15 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
     await window.codefit.disconnectPractice();
   }
   async function closeInstructions() {
-    if (!opened || !state) return;
+    if (!opened || !state || !mayLeaveDraft()) return;
     const token = ++generation.current;
     setBusy(true);
     setOpened(undefined);
     try {
+      if (!state.pending) {
+        await connect();
+        return;
+      }
       const result = await window.codefit.acknowledgePractice(
         opened.commandId,
         state.profileId,
@@ -121,6 +141,34 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
         setState(undefined);
         setError("UNAVAILABLE");
       }
+    } finally {
+      if (token === generation.current) setBusy(false);
+    }
+  }
+  async function resume(presentationId: string) {
+    if (!state || !mayLeaveDraft()) return;
+    const token = ++generation.current;
+    setBusy(true);
+    setError("");
+    setOpened(undefined);
+    setDraft(undefined);
+    try {
+      const result = await window.codefit.resumePractice(
+        presentationId,
+        state.profileId,
+        state.sessionId,
+      );
+      if (token !== generation.current) return;
+      if (result.ok && result.method === "practice.presentation.resume") {
+        setOpened({
+          ...result,
+          method: "practice.open",
+          commandId: result.receipt.commandId,
+        });
+        setDraft(result.draft);
+      } else setError(result.ok ? "PROTOCOL_ERROR" : result.code);
+    } catch {
+      if (token === generation.current) setError("UNAVAILABLE");
     } finally {
       if (token === generation.current) setBusy(false);
     }
@@ -222,6 +270,36 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
               </Button>
             </div>
           )}
+          {!opened && state.presentations.length > 0 && (
+            <div
+              className="panel practice-panel"
+              aria-label="Saved practice presentations"
+            >
+              <p className="eyebrow">CONTINUE YOUR WORK</p>
+              <h3>Previously opened practice</h3>
+              <p>
+                Resume the same authorized presentation and latest Java draft.
+                No new exposure is recorded. Showing the latest 32
+                presentations.
+              </p>
+              {state.presentations.map((p) => (
+                <div className="practice-resume-row" key={p.presentationId}>
+                  <p>
+                    {p.challengeId} · v{p.challengeVersion}
+                    <br />
+                    <small>{p.presentationId}</small>
+                  </p>
+                  <Button
+                    secondary
+                    disabled={busy}
+                    onClick={() => void resume(p.presentationId)}
+                  >
+                    Resume saved practice
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
           {!opened && (
             <div
               className="practice-grid"
@@ -284,13 +362,21 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
             <dt>Recorded at</dt>
             <dd>{opened.receipt.presentedAt}</dd>
           </dl>
-          <pre className="practice-instructions" data-protected-content>
-            {opened.instructions}
-          </pre>
-          <p>
-            Instructions only. Editing, hints, solutions, submission and
-            evaluation are unavailable in this slice.
-          </p>
+          <details className="practice-instruction-details" open>
+            <summary>Authorized instructions</summary>
+            <pre className="practice-instructions" data-protected-content>
+              {opened.instructions}
+            </pre>
+          </details>
+          {draft && state && !busy && (
+            <PracticeEditor
+              key={draft.presentationId}
+              initial={draft}
+              identity={state}
+              pending={!!state.pendingSave}
+            />
+          )}
+          <p>Hints, solutions, submission and evaluation remain unavailable.</p>
           <Button
             disabled={busy}
             secondary

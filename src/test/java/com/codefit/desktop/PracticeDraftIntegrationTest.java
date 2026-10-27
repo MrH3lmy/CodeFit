@@ -260,7 +260,7 @@ class PracticeDraftIntegrationTest {
                     var q = c.createStatement()) {
                 q.execute(
                         "UPDATE java_solution_drafts SET"
-                            + " source_code=char(0)||printf('%0100001d',0)");
+                                + " source_code=char(0)||printf('%0100001d',0)");
             }
             assertThrows(RuntimeException.class, () -> s.read(presentation));
             try (var c = p.connection(false);
@@ -326,6 +326,37 @@ class PracticeDraftIntegrationTest {
             assertEquals("class PreviouslySaved {}", resumed.draft().source());
             assertEquals("existing notes", resumed.draft().reflection());
             assertEquals(0, resumed.draft().revision());
+        }
+    }
+
+    @Test
+    void committedStartReplayNeverRecreatesAMissingDraft() throws Exception {
+        try (var p = ExperimentalProfile.openLearning(temporary.resolve("p"))) {
+            String presentation = open(p);
+            var app = new PracticeApplicationService(p, Clock.systemUTC());
+            var receipt = app.status(presentation.substring(17));
+            var drafts = service(p);
+            var draft = drafts.read(presentation);
+            drafts.save(
+                    id(), presentation, draft.revision(), "class Acknowledged {}", "saved notes");
+            try (var c = p.connection(false);
+                    var s = c.createStatement()) {
+                s.executeUpdate("DELETE FROM java_solution_drafts");
+            }
+            assertThrows(
+                    RuntimeException.class,
+                    () ->
+                            app.open(
+                                    receipt.commandId(),
+                                    new CatalogRef(receipt.questId(), receipt.questVersion()),
+                                    new CatalogRef(
+                                            receipt.challengeId(), receipt.challengeVersion())));
+            try (var c = p.connection(true);
+                    var s = c.createStatement();
+                    var r = s.executeQuery("SELECT COUNT(*) FROM java_solution_drafts")) {
+                assertTrue(r.next());
+                assertEquals(0, r.getInt(1));
+            }
         }
     }
 }

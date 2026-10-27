@@ -71,6 +71,7 @@ Review checked source-to-presentation binding, committed exposure, stale CAS, du
 
 Confirmed issues addressed during implementation:
 
+- Replaying a committed Start could recreate a missing draft through the original initialization path. A regression reproduced this; committed replay now skips initialization and fails closed on a missing draft rather than replacing acknowledged work with a starter.
 - The old unversioned draft update was insufficient for optimistic concurrency: added a SQLite CAS and triggers scoped to the experimental profile.
 - Editor visibility before the post-open metadata refresh could race another IPC call: editor waits until refresh completes.
 - Quit initially stopped the Java owner before the last renderer leave decision. Window close/beforeunload now completes before service shutdown, so declining quit retains a usable owner.
@@ -104,6 +105,6 @@ Commands: `DISPLAY=:109 mvn -B test`; `JAVA_HOME=<Java21> CODEFIT_MAVEN=<Maven> 
 
 No npm or Maven dependency/lockfile change. DejaVu Sans Mono is copied from the environment's DejaVu package with its redistribution license (`desktop/public/fonts/DEJAVU-LICENSE.txt`); SHA-256 `54bf827eb99404e8f430c330ad30f063334f637eba0109b6a18d4f566a8e9dd8`. `npm audit` reports the same existing low-severity esbuild development-server advisory as the baseline, with zero moderate/high/critical findings. The packaged app has no development server. No download, network, telemetry or new native module is introduced.
 
-Local verification completed during review: full Java 21/Xvfb **1,957 tests, zero failures/errors/skips**; final focused draft/opening/PlayerSystem regression **26 passed**, including 10 new isolated draft tests; full Node **75 passed**; full sandboxed packaged Electron **72 passed**. Final hardening is followed by another complete desktop run and final-commit GitHub CI, reported in the PR. TypeScript/Vite build, Java runtime preparation and Linux packaging pass. An initial Electron launch attempt used a stale X socket and was rerun with a live Xvfb server; a stale-editor fixture race was corrected by waiting for completed opening. Assertions and isolation were not weakened.
+Local verification completed during review: full Java 21/Xvfb **1,957 tests, zero failures/errors/skips**; final focused draft/opening/PlayerSystem regression **27 passed**, including 11 new isolated draft tests; full Node **75 passed**; full sandboxed packaged Electron **72 passed**. Final hardening is followed by another complete desktop run and final-commit GitHub CI, reported in the PR. TypeScript/Vite build, Java runtime preparation and Linux packaging pass. An initial Electron launch attempt used a stale X socket and was rerun with a live Xvfb server; a stale-editor fixture race was corrected by waiting for completed opening. Assertions and isolation were not weakened.
 
 Saved receipts remain auditable; the existing one-row draft model intentionally retains the latest source rather than a historical source archive. Undo/redo is in-memory editor history. Restoring an older source revision after a newer acknowledged save is outside this slice.

@@ -230,6 +230,36 @@ if (!app.requestSingleInstanceLock()) {
           if (practiceDirty) draftUnloadApproved = false;
         }
       });
+      ipcMain.handle(
+        "codefit:practice:submission-prepare",
+        (event, ...args: unknown[]) =>
+          practice.prepareSubmission(
+            args[0],
+            args[1],
+            args[2],
+            () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+          ),
+      );
+      ipcMain.handle(
+        "codefit:practice:submission-action",
+        (event, ...args: unknown[]) =>
+          practice.submissionAction(
+            args[0],
+            args[1],
+            args[2],
+            () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+          ),
+      );
+      ipcMain.handle(
+        "codefit:practice:submissions",
+        (event, ...args: unknown[]) =>
+          practice.submissionsFor(
+            args[0],
+            args[1],
+            args[2],
+            () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+          ),
+      );
       ipcMain.handle("codefit:practice:connect", (event, ...args: unknown[]) =>
         practice.connect(
           () => !quitting && !learnerDialogBusy && authorized(event, args, 0),

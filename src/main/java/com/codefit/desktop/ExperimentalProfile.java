@@ -87,7 +87,10 @@ final class ExperimentalProfile implements AutoCloseable {
                         profile.database,
                         java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
             profile.verifyAndRecover();
-            if (learning) PracticeDraftSchema.install(profile);
+            if (learning) {
+                PracticeDraftSchema.install(profile);
+                PracticeSubmissionSchema.install(profile);
+            }
             return profile;
         } catch (IOException | SQLException | RuntimeException failure) {
             profile.close();
@@ -154,9 +157,9 @@ CREATE TABLE desktop_commands (
                 if (learning) {
                     s.execute(
                             "CREATE TABLE desktop_practice_commands (command_id TEXT PRIMARY KEY,"
-                                + " quest_id TEXT NOT NULL, quest_version INTEGER NOT NULL,"
-                                + " challenge_id TEXT NOT NULL, challenge_version INTEGER NOT"
-                                + " NULL)");
+                                    + " quest_id TEXT NOT NULL, quest_version INTEGER NOT NULL,"
+                                    + " challenge_id TEXT NOT NULL, challenge_version INTEGER NOT"
+                                    + " NULL)");
                     s.execute(
                             "CREATE TRIGGER desktop_practice_commands_no_update BEFORE UPDATE ON"
                                 + " desktop_practice_commands BEGIN SELECT RAISE(ABORT,'Immutable"

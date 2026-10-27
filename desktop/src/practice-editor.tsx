@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Badge } from "./components";
+import { PracticeEvaluation } from "./practice-evaluation";
 import { JavaEditor } from "./java-editor";
 import { registerDraftGuard } from "./draft-navigation";
 import type { PracticeDraft } from "./practice-contract";
@@ -203,8 +204,8 @@ export function PracticeEditor({
       />
       <p id="java-editor-help" className="fine-print">
         Ctrl/Cmd+S saves · Tab inserts four spaces · Ctrl/Cmd+Z undoes ·
-        Shift+Tab leaves the editor. 32,768 source characters maximum. No code
-        execution or grading.
+        Shift+Tab leaves the editor. 32,768 source characters maximum. Saving
+        does not execute code.
       </p>
       <label className="draft-notes">
         Working reflection
@@ -278,6 +279,12 @@ export function PracticeEditor({
         unacknowledged edits. This draft is shared by presentations of the same
         published problem.
       </p>
+      <PracticeEvaluation
+        draft={persisted}
+        presentationId={initial.presentationId}
+        identity={session.current}
+        canSubmit={!dirty && !saving && !blocked}
+      />
     </section>
   );
 }

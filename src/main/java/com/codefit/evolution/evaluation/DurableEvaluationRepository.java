@@ -282,7 +282,8 @@ public final class DurableEvaluationRepository {
         return transactions.transaction(c -> find(c, command));
     }
 
-    Optional<Submission> find(Connection c, String command) throws SQLException {
+    /** Same-connection immutable snapshot lookup for transactional application boundaries. */
+    public Optional<Submission> find(Connection c, String command) throws SQLException {
         try (var s = c.prepareStatement("SELECT * FROM evolution_submissions WHERE command_id=?")) {
             s.setString(1, command);
             try (var r = s.executeQuery()) {

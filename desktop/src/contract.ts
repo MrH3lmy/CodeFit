@@ -166,6 +166,22 @@ export type Operation = z.infer<typeof OperationSchema>;
 export type OperationResult = z.infer<typeof OperationResultSchema>;
 export type AckResult = z.infer<typeof AckResultSchema>;
 export interface CodeFitBridge {
+  preparePracticeSubmission(
+    input: import("./practice-contract").SubmissionInput,
+    profileId: string,
+    sessionId: string,
+  ): Promise<import("./practice-contract").PracticeResult>;
+  practiceSubmissionAction(
+    input: import("./practice-contract").SubmissionAction,
+    profileId: string,
+    sessionId: string,
+  ): Promise<import("./practice-contract").PracticeResult>;
+  listPracticeSubmissions(
+    presentationId: string,
+    profileId: string,
+    sessionId: string,
+  ): Promise<import("./practice-contract").PracticeResult>;
+
   setPracticeDraftDirty(dirty: boolean): Promise<void>;
   resumePractice(
     presentationId: string,

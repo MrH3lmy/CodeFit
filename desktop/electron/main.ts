@@ -121,7 +121,12 @@ if (!app.requestSingleInstanceLock()) {
     if (quitReady) return;
     event.preventDefault();
     if (quitting) return;
-    if (!confirmDraftLoss()) return;
+    // Let close/beforeunload finish before stopping Java. A cancelled quit must leave
+    // the current editor and owner usable, even if the dirty notification arrives late.
+    if (window && !window.isDestroyed()) {
+      window.close();
+      return;
+    }
     quitting = true;
     learnerGeneration++;
     void Promise.allSettled([

@@ -400,4 +400,15 @@ test("dirty close and renderer reload are blocked even before the main dirty not
   await expect(
     p.getByRole("textbox", { name: "Java source editor" }),
   ).toHaveValue(synthetic);
+  await p.evaluate(() => window.codefit.setPracticeDraftDirty(false));
+  await app.evaluate(({ app }) => app.quit());
+  await expect
+    .poll(() => app.evaluate(() => (globalThis as any).discardPrompts))
+    .toBe(3);
+  await expect(
+    p.getByRole("textbox", { name: "Java source editor" }),
+  ).toHaveValue(synthetic);
+  expect(
+    await p.evaluate(async () => (await window.codefit.connectPractice()).ok),
+  ).toBe(true);
 });

@@ -73,6 +73,7 @@ Confirmed issues addressed during implementation:
 
 - The old unversioned draft update was insufficient for optimistic concurrency: added a SQLite CAS and triggers scoped to the experimental profile.
 - Editor visibility before the post-open metadata refresh could race another IPC call: editor waits until refresh completes.
+- Quit initially stopped the Java owner before the last renderer leave decision. Window close/beforeunload now completes before service shutdown, so declining quit retains a usable owner.
 - An early dirty notification could lag a reload: beforeunload now independently prompts rather than relying only on main's boolean.
 - Prototype-state navigation could bypass a dirty editor's leave guard: it now uses the same explicit guard.
 - Repeated recovery could retain an earlier comparison approval: each failed save now requires a fresh reconciliation before keep/load controls unlock.

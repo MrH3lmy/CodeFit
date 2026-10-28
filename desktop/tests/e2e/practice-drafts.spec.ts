@@ -333,6 +333,11 @@ test("saved draft survives renderer reload and force quit without another exposu
   await p
     .getByRole("button", { name: "Close instructions and acknowledge receipt" })
     .click();
+  // A click starts async acknowledgement/readback; reload only after that action settles.
+  // Reloading during it exercises transport cancellation instead of acknowledged resume.
+  await expect(
+    p.getByRole("button", { name: "Resume saved practice" }).first(),
+  ).toBeEnabled();
   await p.reload();
   p = await app.firstWindow();
   await p

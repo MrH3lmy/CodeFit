@@ -83,3 +83,5 @@ npm audit
 ```
 
 The focused Java suite passes 15 tests; Node passes 89; focused packaged Electron passes 3. The PR records final full-suite counts and CI links on its exact commit. `npm audit` reports one pre-existing low-severity esbuild development-tool advisory; no dependencies or lockfile changed. Visual inspection confirms readable light/dark cards at 1280 and 760 pixels, with single-column narrow layout and visible keyboard focus. Initial local Node invocation omitted fixture `JAVA_HOME` and overlapped execution tests; the complete correctly configured standalone rerun passed without changing assertions or deadlines.
+
+The first full local packaged run passed all 86 tests. CI exposed an existing draft-test sequencing race: clicking asynchronous close/acknowledge was followed immediately by reload, before its acknowledgement/readback settled. The test now additionally asserts the resume control is enabled before reloading; it retains all exact-source, restart and single-exposure assertions. Five consecutive packaged repetitions passed. No production draft behavior or timeout was changed.

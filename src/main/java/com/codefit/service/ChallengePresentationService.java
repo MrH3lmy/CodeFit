@@ -134,6 +134,12 @@ public final class ChallengePresentationService {
     /** #214 may capture this on the SAME writer transaction as its prepared submission record. */
     public SubmissionContext contextForSubmission(Connection c, String id) throws SQLException {
         catalog.lock(c);
+        return persistedContext(c, id);
+    }
+
+    /** Inspect committed metadata on a caller-owned read snapshot; never acquires a writer lock. */
+    public SubmissionContext persistedContext(Connection c, String id) throws SQLException {
+        if (c.getAutoCommit()) throw new IllegalArgumentException("Caller-owned snapshot required");
         var receipt =
                 exposures
                         .find(c, id)

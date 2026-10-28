@@ -70,7 +70,8 @@ final class PracticeProtocol {
                         "practice.submission.prepare",
                         "practice.submission.status",
                         "practice.submission.resume",
-                        "practice.submission.cancel")
+                        "practice.submission.cancel",
+                        "practice.submission.debrief")
                 .contains(method)) keys.add("commandId");
         if (method.equals("practice.open"))
             keys.addAll(Set.of("questId", "questVersion", "challengeId", "challengeVersion"));
@@ -83,7 +84,8 @@ final class PracticeProtocol {
                         "practice.submission.prepare",
                         "practice.submission.status",
                         "practice.submission.resume",
-                        "practice.submission.cancel")
+                        "practice.submission.cancel",
+                        "practice.submission.debrief")
                 .contains(method)) keys.add("presentationId");
         if (method.equals("practice.draft.save"))
             keys.addAll(Set.of("expectedRevision", "source", "reflection"));
@@ -102,7 +104,8 @@ final class PracticeProtocol {
                                 "practice.submission.prepare",
                                 "practice.submission.status",
                                 "practice.submission.resume",
-                                "practice.submission.cancel")
+                                "practice.submission.cancel",
+                                "practice.submission.debrief")
                         .contains(method)
                 || !keys.equals(values.keySet())
                 || !ApplicationProtocol.uuid(id)

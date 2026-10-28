@@ -197,6 +197,206 @@ export const SubmissionResultSchema = z
       ? r.outcome !== null
       : r.outcome === null && r.checks.length === 0,
   );
+export const DebriefInputSchema = z.strictObject({
+  commandId: uuid,
+  presentationId: presentation,
+});
+const code = z.string().regex(/^[A-Z][A-Z0-9_]{0,95}$/);
+const sha = z.string().regex(/^[0-9a-f]{64}$/);
+const band = z.enum([
+  "UNKNOWN",
+  "DEVELOPING",
+  "INDEPENDENT",
+  "TRANSFER_SUPPORTED",
+  "RETENTION_SUPPORTED",
+]);
+const interpretation = z
+  .strictObject({
+    status: z.enum(["missing", "unavailable", "historical"]),
+    reason: code.nullable(),
+    revision: z
+      .number()
+      .int()
+      .positive()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
+    asOf: z.string().datetime().nullable(),
+    policyVersion: ref.nullable(),
+    band: band.nullable(),
+    support: z.enum(["INSUFFICIENT", "LIMITED", "DIVERSE"]).nullable(),
+    freshness: z.enum(["NO_OBSERVATION", "CURRENT", "STALE"]).nullable(),
+    contradicted: z.boolean().nullable(),
+    exclusionCount: z.number().int().min(0).max(10000),
+    currentSupport: z.literal("NOT_EVALUATED"),
+    supportedBehaviors: z.array(z.number().int().min(0).max(15)).max(16),
+    reasons: z.array(code).max(128),
+    warnings: z.array(code).max(32),
+  })
+  .refine((i) =>
+    i.status === "historical"
+      ? i.revision !== null &&
+        i.asOf !== null &&
+        i.band !== null &&
+        i.support !== null &&
+        i.freshness !== null
+      : i.revision === null && i.asOf === null && i.band === null,
+  );
+export const DebriefSchema = z
+  .strictObject({
+    v: z.literal(1),
+    readOnly: z.literal(true),
+    readAt: z.string().datetime(),
+    currentEligibility: z.literal("NOT_EVALUATED"),
+    nextAction: z.literal("EXPLORATORY_PRACTICE"),
+    evaluation: SubmissionResultSchema.refine(
+      (r) => r.stage === "FINALIZED" && !r.active,
+    ),
+    questId: ref,
+    questVersion: version,
+    graphId: ref,
+    graphVersion: version,
+    rubricId: ref,
+    rubricVersion: version,
+    evaluationRevision: z.number().int().min(1).max(64),
+    corrected: z.boolean(),
+    familyId: ref,
+    variantId: ref,
+    cohort: z.literal("PRACTICE"),
+    familiarity: z.enum([
+      "UNKNOWN",
+      "DECLARED_UNFAMILIAR",
+      "DECLARED_FAMILIAR",
+    ]),
+    solutionRevealed: z.boolean(),
+    priorFamilySubmissions: z
+      .number()
+      .int()
+      .min(0)
+      .max(Number.MAX_SAFE_INTEGER),
+    limitations: z.string().max(4096),
+    checks: z
+      .array(
+        z.strictObject({
+          id: ref,
+          kind: z.enum([
+            "DETERMINISTIC_IO",
+            "KEYED_DIAGNOSTIC",
+            "CONTROLLED_TRACE",
+            "OBSERVED_CONCURRENCY",
+            "TERMINATION",
+            "REFLECTION",
+          ]),
+          required: z.boolean(),
+          status: SubmissionResultSchema.shape.checks.element.shape.status,
+          feedback: z.string().max(2048),
+          limitations: z.string().max(4096),
+          targets: z
+            .array(
+              z.strictObject({
+                skillId: ref,
+                skillVersion: version,
+                behavior: z.number().int().min(0).max(15),
+              }),
+            )
+            .max(16),
+        }),
+      )
+      .max(64),
+    evidence: z
+      .strictObject({
+        status: z.enum([
+          "RECORDED",
+          "LIMIT_EXCEEDED",
+          "SOURCE_UNAVAILABLE",
+          "SUPERSEDED_OR_INVALID",
+        ]),
+        id: sha.nullable(),
+        revision: z.number().int().min(1).max(64).nullable(),
+        previousId: sha.nullable(),
+        recordedAt: z.string().datetime().nullable(),
+        provenance: z.literal("LOCAL_CHECK").nullable(),
+        outcome: z.enum(["PASS", "FAIL", "PARTIAL", "UNAVAILABLE"]).nullable(),
+        availability: z
+          .enum([
+            "AVAILABLE",
+            "SOURCE_UNAVAILABLE",
+            "RETRACTED",
+            "UNSUPPORTED_VERSION",
+          ])
+          .nullable(),
+        assistance: z
+          .enum([
+            "UNKNOWN",
+            "HINT",
+            "NO_IN_APP_HINT_RECORDED",
+            "NONE_OBSERVED",
+            "EXPLANATION_OR_SOLUTION",
+            "DECLARED_EXTERNAL",
+          ])
+          .nullable(),
+        exposure: z
+          .enum([
+            "UNKNOWN",
+            "FAMILIAR_RECALL",
+            "REPEAT",
+            "RELATED_VARIANT",
+            "FIRST_PRESENTATION",
+            "HELD_OUT_TRANSFER",
+            "DELAYED_RETENTION",
+          ])
+          .nullable(),
+        change: z.enum(["ORIGINAL", "SUPERSESSION", "RETRACTION"]).nullable(),
+        limitations: z.array(code).max(32),
+        mappingId: ref.nullable(),
+        mappingVersion: version.nullable(),
+        mappingStatus: z.enum(["EXACT", "UNAVAILABLE", "SUPERSEDED"]),
+      })
+      .refine((e) =>
+        e.status === "RECORDED"
+          ? e.id !== null &&
+            e.revision !== null &&
+            e.recordedAt !== null &&
+            e.outcome !== null
+          : e.id === null && e.revision === null,
+      ),
+    skillStatus: z.enum(["available", "GRAPH_UNAVAILABLE"]),
+    skills: z
+      .array(
+        z.strictObject({
+          id: ref,
+          version,
+          name: z.string().min(1).max(160),
+          behaviors: z.array(z.string().min(1).max(1024)).max(16),
+          interpretation,
+        }),
+      )
+      .max(16),
+  })
+  .refine(
+    (d) =>
+      d.corrected === d.evaluationRevision > 1 &&
+      d.checks.length === d.evaluation.checks.length &&
+      new Set(d.checks.map((c) => c.id)).size === d.checks.length &&
+      d.checks.every((c) =>
+        d.evaluation.checks.some(
+          (e) =>
+            e.id === c.id && e.status === c.status && e.feedback === c.feedback,
+        ),
+      ) &&
+      (d.skillStatus === "available" || d.skills.length === 0) &&
+      d.skills.every(
+        (s) =>
+          s.interpretation.asOf === null ||
+          Date.parse(s.interpretation.asOf) <= Date.parse(d.readAt),
+      ),
+  );
+export type LearningDebrief = z.infer<typeof DebriefSchema>;
+export type DebriefInput = z.infer<typeof DebriefInputSchema>;
+const debriefRead = z.strictObject({
+  method: z.literal("practice.submission.debrief"),
+  ...identity,
+  ...DebriefInputSchema.shape,
+});
 const submissionPrepare = z.strictObject({
   method: z.literal("practice.submission.prepare"),
   ...identity,
@@ -243,6 +443,7 @@ export const PracticeCommandSchema = z.discriminatedUnion("method", [
   submissionResume,
   submissionCancel,
   submissions,
+  debriefRead,
 ]);
 const envelope = { v: z.literal(1), id: uuid };
 export const PracticeRequestSchema = z.discriminatedUnion("method", [
@@ -259,9 +460,16 @@ export const PracticeRequestSchema = z.discriminatedUnion("method", [
   submissionResume.extend(envelope),
   submissionCancel.extend(envelope),
   submissions.extend(envelope),
+  debriefRead.extend(envelope),
 ]);
 const success = { ...envelope, ok: z.literal(true), ...identity };
 export const PracticeWireSchema = z.union([
+  z.strictObject({
+    ...success,
+    method: z.literal("practice.submission.debrief"),
+    ...DebriefInputSchema.shape,
+    debrief: DebriefSchema,
+  }),
   z.strictObject({
     ...success,
     method: z.literal("practice.submissions"),

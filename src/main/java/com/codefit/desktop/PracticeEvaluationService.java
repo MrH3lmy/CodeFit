@@ -25,6 +25,8 @@ final class PracticeEvaluationService implements AutoCloseable {
             ChallengeEvaluationCoordinator.View view) {}
 
     private final PracticeDraftService drafts;
+    private final ExperimentalProfile profile;
+    private final Clock clock;
     private final ChallengeEvaluationCoordinator coordinator;
     private final DurableEvaluationRepository repository = new DurableEvaluationRepository();
     private final ExecutorService worker =
@@ -38,6 +40,8 @@ final class PracticeEvaluationService implements AutoCloseable {
     private boolean closed;
 
     PracticeEvaluationService(ExperimentalProfile profile, Clock clock) {
+        this.profile = profile;
+        this.clock = clock;
         drafts = new PracticeDraftService(profile, clock);
         coordinator = new ChallengeEvaluationCoordinator(clock);
     }
@@ -126,6 +130,62 @@ final class PracticeEvaluationService implements AutoCloseable {
                 });
     }
 
+    /** No writer lock, reconciliation, artifact execution or receipt mutation. */
+    synchronized PracticeDebrief.Projection debrief(String command, String presentation)
+            throws SQLException {
+        identity(command);
+        try (var c = profile.connection(true)) {
+            c.setAutoCommit(false);
+            try (var q =
+                    c.prepareStatement(
+                            "SELECT final_revision FROM evolution_submissions WHERE"
+                                    + " command_id=?")) {
+                q.setString(1, command);
+                try (var rows = q.executeQuery()) {
+                    if (!rows.next() || rows.getInt(1) < 1 || rows.getInt(1) > 64)
+                        throw new IllegalArgumentException("OPERATION_UNAVAILABLE");
+                }
+            }
+            for (String table :
+                    List.of("evolution_evaluation_runs", "evolution_evaluation_revisions")) {
+                try (var q =
+                        c.prepareStatement(
+                                "SELECT COUNT(*),COALESCE(SUM(length(CAST(payload AS BLOB))),0)"
+                                    + " FROM "
+                                        + table
+                                        + " WHERE submission_id=(SELECT id FROM"
+                                        + " evolution_submissions WHERE command_id=?)")) {
+                    q.setString(1, command);
+                    try (var rows = q.executeQuery()) {
+                        rows.next();
+                        if (rows.getLong(1) > 64 || rows.getLong(2) > 8 * 1024 * 1024)
+                            throw new IllegalArgumentException("OPERATION_UNAVAILABLE");
+                    }
+                }
+            }
+            var submission = required(c, command, presentation, true);
+            if (submission.stage() != Stage.FINALIZED)
+                throw new IllegalArgumentException("OPERATION_UNAVAILABLE");
+            var receipt = receipt(c, command, presentation);
+            var result =
+                    new Result(
+                            command,
+                            presentation,
+                            receipt.revision(),
+                            receipt.assistance().name(),
+                            submission.snapshot().challenge().ref().id(),
+                            submission.snapshot().challenge().ref().version(),
+                            submission.snapshot().submittedAt().toString(),
+                            submission.snapshot().artifactSha256(),
+                            false,
+                            submission.cancel(),
+                            coordinator.status(c, command));
+            var projection = PracticeDebrief.read(c, submission, result, clock.instant());
+            c.commit();
+            return projection;
+        }
+    }
+
     synchronized List<Result> recent(String presentation) throws SQLException {
         var ids =
                 drafts.transaction(
@@ -207,6 +267,12 @@ final class PracticeEvaluationService implements AutoCloseable {
 
     private DurableEvaluationRepository.Submission required(
             Connection c, String command, String presentation) throws SQLException {
+        return required(c, command, presentation, false);
+    }
+
+    private DurableEvaluationRepository.Submission required(
+            Connection c, String command, String presentation, boolean readOnly)
+            throws SQLException {
         // Bound private blobs before repository decoding; never allocate corrupted oversized rows.
         try (var q =
                 c.prepareStatement(
@@ -233,7 +299,7 @@ final class PracticeEvaluationService implements AutoCloseable {
         }
         var s = repository.find(c, command).orElseThrow();
         var receipt = receipt(c, command, presentation);
-        var context = drafts.authorized(c, presentation);
+        var context = drafts.authorized(c, presentation, readOnly);
         if (!s.snapshot().presentation().equals(context.receipt())
                 || !s.snapshot().challenge().equals(context.challenge()))
             throw new SQLException("PROFILE_INVALID");

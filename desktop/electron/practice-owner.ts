@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   PracticeInputSchema,
+  DebriefInputSchema,
   SubmissionInputSchema,
   SubmissionActionSchema,
   DraftInputSchema,
@@ -382,6 +383,23 @@ export class PracticeOwner {
       }
       return result;
     });
+  }
+  async readDebrief(
+    input: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const parsed = DebriefInputSchema.safeParse(input);
+    if (!parsed.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, (s, i) =>
+      s.request({
+        method: "practice.submission.debrief",
+        ...i,
+        ...parsed.data,
+      }),
+    );
   }
   async submissionsFor(
     presentationId: unknown,

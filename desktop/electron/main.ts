@@ -230,6 +230,14 @@ if (!app.requestSingleInstanceLock()) {
           if (practiceDirty) draftUnloadApproved = false;
         }
       });
+      ipcMain.handle("codefit:practice:skills", (event, ...args: unknown[]) =>
+        practice.skillAction(
+          args[0],
+          args[1],
+          args[2],
+          () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+        ),
+      );
       ipcMain.handle("codefit:practice:debrief", (event, ...args: unknown[]) =>
         practice.readDebrief(args[0], args[1], args[2], () =>
           authorized(event, args, 3),

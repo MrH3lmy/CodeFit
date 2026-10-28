@@ -1,3 +1,4 @@
+import { SkillsJournal } from "./skills-journal";
 import { createHash, randomUUID } from "node:crypto";
 import {
   PracticeInputSchema,
@@ -26,10 +27,12 @@ export class PracticeOwner {
   private closing?: Promise<void>;
   private readonly drafts: DraftJournal;
   private readonly submissions: SubmissionJournal;
+  private readonly skills: SkillsJournal;
   constructor(
     private readonly create: () => PracticeSession,
     private readonly journal: PracticeJournal,
   ) {
+    this.skills = new SkillsJournal(join(journal.directory, "skills"));
     this.submissions = new SubmissionJournal(
       join(journal.directory, "submissions"),
     );
@@ -417,6 +420,56 @@ export class PracticeOwner {
         presentationId: id.data,
       }),
     );
+  }
+  async skillAction(
+    action: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    if (action !== "read" && action !== "publish")
+      return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, async (s, i) => {
+      const pending = this.skills.read();
+      if (pending) {
+        if (pending.profileId !== i.profileId)
+          return { ok: false, code: "JOURNAL_INVALID" };
+        // Recovery checks the original command only; never re-dispatch publication.
+        const result = await s.request({
+          method: "practice.skills.status",
+          ...i,
+          commandId: pending.commandId,
+          originSessionId: pending.originSessionId,
+        });
+        if (!authorized() || this.current !== s)
+          return { ok: false, code: "CANCELLED" };
+        if (result.ok && result.method === "practice.skills.status")
+          this.skills.clear(pending.commandId);
+        return result;
+      }
+      if (action === "read")
+        return s.request({ method: "practice.skills.state", ...i });
+      const intent = {
+        v: 1 as const,
+        profileId: i.profileId,
+        originSessionId: i.sessionId,
+        commandId: randomUUID(),
+        operation: "pilot-ordinal-v1" as const,
+      };
+      this.skills.write(intent);
+      const result = await s.request({
+        method: "practice.skills.reconcile",
+        ...i,
+        commandId: intent.commandId,
+        originSessionId: intent.originSessionId,
+      });
+      if (!authorized() || this.current !== s)
+        return { ok: false, code: "CANCELLED" };
+      if (result.ok && result.method === "practice.skills.reconcile")
+        this.skills.clear(intent.commandId);
+      return result;
+    });
   }
   private async perform(
     profileId: unknown,

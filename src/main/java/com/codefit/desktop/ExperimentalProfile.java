@@ -90,6 +90,7 @@ final class ExperimentalProfile implements AutoCloseable {
             if (learning) {
                 PracticeDraftSchema.install(profile);
                 PracticeSubmissionSchema.install(profile);
+                PracticeSkillsSchema.install(profile);
             }
             return profile;
         } catch (IOException | SQLException | RuntimeException failure) {
@@ -218,6 +219,10 @@ CREATE TABLE desktop_commands (
                             "SELECT command_id, input_name, input_description, status, deck_id,"
                                 + " deck_name, deck_description FROM desktop_commands LIMIT 0")) {}
         }
+    }
+
+    boolean isLearning() {
+        return learning;
     }
 
     String id() {

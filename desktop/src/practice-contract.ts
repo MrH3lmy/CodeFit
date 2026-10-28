@@ -1,3 +1,10 @@
+import {
+  SkillsStateCommand,
+  SkillsReconcileCommand,
+  SkillsStatusCommand,
+  SkillsStateResponse,
+  SkillsCommandResponse,
+} from "./practice-skills-contract";
 import { z } from "zod";
 const uuid = z.string().uuid();
 const ref = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/);
@@ -437,6 +444,9 @@ export const SubmissionActionSchema = z.strictObject({
 });
 export type SubmissionAction = z.infer<typeof SubmissionActionSchema>;
 export const PracticeCommandSchema = z.discriminatedUnion("method", [
+  SkillsStateCommand,
+  SkillsReconcileCommand,
+  SkillsStatusCommand,
   list,
   status,
   open,
@@ -454,6 +464,9 @@ export const PracticeCommandSchema = z.discriminatedUnion("method", [
 ]);
 const envelope = { v: z.literal(1), id: uuid };
 export const PracticeRequestSchema = z.discriminatedUnion("method", [
+  SkillsStateCommand.extend(envelope),
+  SkillsReconcileCommand.extend(envelope),
+  SkillsStatusCommand.extend(envelope),
   list.extend(envelope),
   status.extend(envelope),
   open.extend(envelope),
@@ -471,6 +484,8 @@ export const PracticeRequestSchema = z.discriminatedUnion("method", [
 ]);
 const success = { ...envelope, ok: z.literal(true), ...identity };
 export const PracticeWireSchema = z.union([
+  SkillsStateResponse,
+  SkillsCommandResponse,
   z.strictObject({
     ...success,
     method: z.literal("practice.submission.debrief"),

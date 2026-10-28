@@ -125,6 +125,7 @@ test("real experimental profile works offline with sandbox, narrow bridge and da
       "listPracticeSubmissions",
       "openAuthorizedPracticeChallenge",
       "pendingDeck",
+      "practiceSkillAction",
       "practiceSubmissionAction",
       "preparePracticeSubmission",
       "readCurriculumPreview",

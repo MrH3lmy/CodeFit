@@ -175,6 +175,28 @@ public final class EstimateRevisionRepository {
         }
     }
 
+    /** Exact historical revision on the caller's coherent snapshot; bounded before decoding. */
+    public Optional<Revision> find(Connection c, long revision) throws SQLException {
+        try (var q =
+                c.prepareStatement(
+                        "SELECT length(inputs) FROM evolution_estimate_revisions WHERE"
+                            + " revision=?")) {
+            q.setLong(1, revision);
+            try (var r = q.executeQuery()) {
+                if (!r.next()) return Optional.empty();
+                if (r.getLong(1) > 1024 * 1024)
+                    throw new SQLException("Estimate input exceeds read bound");
+            }
+        }
+        try (var q =
+                c.prepareStatement("SELECT * FROM evolution_estimate_revisions WHERE revision=?")) {
+            q.setLong(1, revision);
+            try (var r = q.executeQuery()) {
+                return r.next() ? Optional.of(read(r)) : Optional.empty();
+            }
+        }
+    }
+
     public Optional<Revision> find(long revision) {
         try (var c = DatabaseConfig.getConnection();
                 var s =

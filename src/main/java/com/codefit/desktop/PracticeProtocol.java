@@ -33,7 +33,8 @@ final class PracticeProtocol {
             long revision,
             String source,
             String reflection,
-            String assistance) {}
+            String assistance,
+            String originSession) {}
 
     static Request parse(byte[] frame) throws IOException {
         if (frame.length > 524288) throw new IOException("INVALID_INPUT");
@@ -71,8 +72,12 @@ final class PracticeProtocol {
                         "practice.submission.status",
                         "practice.submission.resume",
                         "practice.submission.cancel",
-                        "practice.submission.debrief")
+                        "practice.submission.debrief",
+                        "practice.skills.reconcile",
+                        "practice.skills.status")
                 .contains(method)) keys.add("commandId");
+        if (method.equals("practice.skills.reconcile") || method.equals("practice.skills.status"))
+            keys.add("originSessionId");
         if (method.equals("practice.open"))
             keys.addAll(Set.of("questId", "questVersion", "challengeId", "challengeVersion"));
         if (Set.of(
@@ -105,7 +110,10 @@ final class PracticeProtocol {
                                 "practice.submission.status",
                                 "practice.submission.resume",
                                 "practice.submission.cancel",
-                                "practice.submission.debrief")
+                                "practice.submission.debrief",
+                                "practice.skills.state",
+                                "practice.skills.reconcile",
+                                "practice.skills.status")
                         .contains(method)
                 || !keys.equals(values.keySet())
                 || !ApplicationProtocol.uuid(id)
@@ -114,6 +122,9 @@ final class PracticeProtocol {
             throw new IOException("INVALID_INPUT");
         String command = values.containsKey("commandId") ? str(values, "commandId") : null;
         if (command != null && !ApplicationProtocol.uuid(command))
+            throw new IOException("INVALID_INPUT");
+        if (values.containsKey("originSessionId")
+                && !ApplicationProtocol.uuid(str(values, "originSessionId")))
             throw new IOException("INVALID_INPUT");
         String presentation =
                 values.containsKey("presentationId") ? str(values, "presentationId") : null;
@@ -146,7 +157,8 @@ final class PracticeProtocol {
                 revision,
                 values.containsKey("source") ? str(values, "source") : null,
                 values.containsKey("reflection") ? str(values, "reflection") : null,
-                values.containsKey("assistance") ? str(values, "assistance") : null);
+                values.containsKey("assistance") ? str(values, "assistance") : null,
+                values.containsKey("originSessionId") ? str(values, "originSessionId") : null);
     }
 
     private static String str(Map<String, Object> v, String k) throws IOException {

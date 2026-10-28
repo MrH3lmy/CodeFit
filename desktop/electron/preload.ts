@@ -3,6 +3,12 @@ import type { CodeFitBridge, DeckInput } from "../src/contract";
 
 // This file is bundled as a single sandbox-compatible CJS preload; no Node APIs cross the bridge.
 const bridge: CodeFitBridge = Object.freeze({
+  practiceSkillAction: (
+    action: "read" | "publish",
+    profileId: string,
+    sessionId: string,
+  ) =>
+    ipcRenderer.invoke("codefit:practice:skills", action, profileId, sessionId),
   readPracticeDebrief: (
     input: import("../src/practice-contract").DebriefInput,
     profileId: string,

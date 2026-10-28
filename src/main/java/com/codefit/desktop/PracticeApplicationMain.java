@@ -38,6 +38,7 @@ public final class PracticeApplicationMain {
                     TimeUnit.MILLISECONDS);
             try (var profile = ExperimentalProfile.openLearning(Path.of(args[3]))) {
                 var service = new PracticeApplicationService(profile, Clock.systemUTC());
+                var skills = new PracticeSkillsService(profile, Clock.systemUTC());
                 var drafts = new PracticeDraftService(profile, Clock.systemUTC());
                 var evaluations = new PracticeEvaluationService(profile, Clock.systemUTC());
                 try (evaluations) {
@@ -56,6 +57,20 @@ public final class PracticeApplicationMain {
                         byte[] response;
                         try {
                             service.authorize(request.profile(), request.session());
+                            if (request.method().equals("practice.skills.reconcile")
+                                    && !service.session().equals(request.originSession()))
+                                throw new IllegalArgumentException("SESSION_MISMATCH");
+                            var skillResult =
+                                    switch (request.method()) {
+                                        case "practice.skills.reconcile" ->
+                                                skills.reconcile(
+                                                        request.command(), request.originSession());
+                                        case "practice.skills.status" ->
+                                                skills.status(
+                                                        request.command(), request.originSession());
+                                        case "practice.skills.state" -> skills.latest();
+                                        default -> null;
+                                    };
                             var evaluation =
                                     switch (request.method()) {
                                         case "practice.submission.prepare" ->
@@ -138,6 +153,16 @@ public final class PracticeApplicationMain {
                                                 g.writeStringField("sessionId", service.session());
                                                 g.writeStringField("method", request.method());
                                                 if (request.method()
+                                                        .startsWith("practice.skills.")) {
+                                                    if (request.command() != null) {
+                                                        g.writeStringField(
+                                                                "commandId", request.command());
+                                                        g.writeStringField(
+                                                                "originSessionId",
+                                                                request.originSession());
+                                                    }
+                                                    PracticeSkillsProtocol.write(g, skillResult);
+                                                } else if (request.method()
                                                         .startsWith("practice.submission")) {
                                                     g.writeStringField(
                                                             "presentationId",

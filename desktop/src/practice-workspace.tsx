@@ -1,3 +1,4 @@
+import { PracticeSkills } from "./practice-skills";
 import { useEffect, useRef, useState } from "react";
 import { PracticeEvaluation } from "./practice-evaluation";
 import { PracticeEditor } from "./practice-editor";
@@ -281,6 +282,11 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
               </Button>
             </div>
           )}
+          <PracticeSkills
+            key={`${state.profileId}:${state.sessionId}`}
+            identity={state}
+            disabled={busy}
+          />
           {!opened && state.presentations.length > 0 && (
             <div
               className="panel practice-panel"

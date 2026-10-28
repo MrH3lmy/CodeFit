@@ -182,6 +182,18 @@ export class PracticeSession {
                 throw new Error("wrong receipt");
             }
           }
+          if (
+            reply.ok &&
+            "reconciliation" in reply &&
+            reply.method !== "practice.skills.state"
+          ) {
+            if (
+              !("originSessionId" in pending.command) ||
+              reply.commandId !== pending.command.commandId ||
+              reply.originSessionId !== pending.command.originSessionId
+            )
+              throw new Error("wrong skill command");
+          }
           if (reply.ok && "presentationId" in reply) {
             if (
               !("presentationId" in pending.command) ||

@@ -195,7 +195,9 @@ export function PracticeWorkspace({ onBack }: { onBack: () => void }) {
       <div className="practice-hero panel">
         <div>
           <p className="eyebrow">JAVA TRAINING PACK / LIVE EXPERIMENT</p>
-          <h2>Begin with a real problem.</h2>
+          <h2 id="practice-controls" tabIndex={-1}>
+            Begin with a real problem.
+          </h2>
           <p>
             Explore published engineering practice in a disposable Java-owned
             profile. Your learner snapshot and real learning records stay

@@ -111,4 +111,82 @@ public final class EvaluationTestFixtures {
                     }
                 });
     }
+
+    /**
+     * Projection fixture: persist a bounded report through the real finalizer, not an engine claim.
+     */
+    public static void finalizeProjectionFixture(String command, EvaluationTypes.Outcome outcome) {
+        var repository = new DurableEvaluationRepository();
+        new QuestCatalogRepository()
+                .transaction(
+                        c -> {
+                            var s = repository.find(c, command).orElseThrow();
+                            var checks = new java.util.ArrayList<CheckResult>();
+                            int index = 0;
+                            for (var check : s.snapshot().challenge().rubric().checks()) {
+                                var status =
+                                        check.kind()
+                                                        == com.codefit.evolution.quest.QuestTypes
+                                                                .CheckKind.REFLECTION
+                                                ? EvaluationTypes.CheckStatus.UNGRADED
+                                                : switch (outcome) {
+                                                    case PASSED ->
+                                                            EvaluationTypes.CheckStatus.PASSED;
+                                                    case FAILED ->
+                                                            EvaluationTypes.CheckStatus.FAILED;
+                                                    case PARTIAL ->
+                                                            index++ == 0
+                                                                    ? EvaluationTypes.CheckStatus
+                                                                            .PASSED
+                                                                    : EvaluationTypes.CheckStatus
+                                                                            .FAILED;
+                                                    case UNSUPPORTED ->
+                                                            EvaluationTypes.CheckStatus.UNSUPPORTED;
+                                                    case INCONCLUSIVE ->
+                                                            EvaluationTypes.CheckStatus
+                                                                    .INCONCLUSIVE;
+                                                    case CANCELLED ->
+                                                            EvaluationTypes.CheckStatus.CANCELLED;
+                                                    default -> EvaluationTypes.CheckStatus.NOT_RUN;
+                                                };
+                                checks.add(
+                                        new CheckResult(
+                                                check.id(),
+                                                status,
+                                                "PRIVATE_DIAGNOSTIC_SENTINEL",
+                                                java.util.List.of()));
+                            }
+                            var at = s.snapshot().submittedAt();
+                            var report =
+                                    new EvaluationResult(
+                                            outcome,
+                                            checks,
+                                            "PRIVATE_REPORT_SENTINEL",
+                                            at,
+                                            at,
+                                            s.snapshot().evaluatorVersion(),
+                                            "test projection fixture");
+                            var bytes = EvaluationCodec.encode(report);
+                            String token = java.util.UUID.randomUUID().toString();
+                            DurableEvaluationRepository.update(
+                                    c,
+                                    "INSERT INTO"
+                                        + " evolution_evaluation_runs(token,submission_id,execution_number,payload,digest)"
+                                        + " VALUES(?,?,?,?,?)",
+                                    token,
+                                    s.id(),
+                                    1,
+                                    bytes,
+                                    com.codefit.evolution.quest.CatalogCodec.digest(bytes));
+                            DurableEvaluationRepository.update(
+                                    c,
+                                    "UPDATE evolution_submissions SET"
+                                        + " state='EVALUATED',staged_run=?,execution_number=1 WHERE"
+                                        + " id=?",
+                                    token,
+                                    s.id());
+                            return null;
+                        });
+        new ChallengeEvaluationCoordinator().resume(command);
+    }
 }

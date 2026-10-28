@@ -5071,3 +5071,26 @@ select {
 .practice-evaluation-result dl dt { color: var(--muted); font-size: .75rem; }
 .practice-evaluation-result dl dd { font-size: .8rem; }
 @media (max-width: 800px) { .practice-evaluation-result dl { grid-template-columns: 7rem minmax(0, 1fr); gap: .6rem; } }
+
+/* Read-only learning debrief; existing themes and practice surface remain authoritative. */
+.learning-debrief { margin-top:24px; padding-top:24px; border-top:1px solid var(--line); }
+.debrief-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+.debrief-heading h3 { margin:8px 0; font-size:25px; }
+.debrief-heading p { max-width:580px; }
+.debrief-provenance { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:18px 0; font-size:12px; color:var(--muted); }
+.debrief-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.debrief-card { min-width:0; padding:22px; border:1px solid var(--line); border-radius:16px; background:var(--surface); }
+.debrief-summary { border-top:2px solid var(--cyan); }
+.debrief-next { border-top:2px solid var(--violet); }
+.debrief-card h4 { font-size:20px; margin:12px 0; }
+.debrief-card p, .debrief-card li { line-height:1.65; overflow-wrap:anywhere; }
+.debrief-card summary { cursor:pointer; padding:12px 0; font-weight:600; }
+.debrief-card summary:focus-visible { outline:2px solid var(--focus); outline-offset:3px; }
+.debrief-card details { margin-top:14px; border-top:1px solid var(--line); }
+.debrief-id { font-family:monospace; font-size:12px; overflow-wrap:anywhere; color:var(--muted); }
+.debrief-facts { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:10px; font-size:12px; }
+.debrief-facts dd { margin:0; overflow-wrap:anywhere; }
+.debrief-checks { padding:0; list-style:none; }
+.debrief-checks li, .debrief-skill { padding:12px 0; border-bottom:1px solid var(--line); }
+.debrief-skill h5 { font-size:16px; margin:0 0 8px; }
+@media (max-width:900px) { .debrief-grid { grid-template-columns:1fr; } .debrief-card { padding:18px; } }

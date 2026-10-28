@@ -1,3 +1,4 @@
+import { PracticeDebrief } from "./practice-debrief";
 import { useEffect, useRef, useState } from "react";
 import { Badge, Button, Dialog } from "./components";
 import type {
@@ -347,6 +348,14 @@ export function PracticeEvaluation({
             result.
           </p>
         </article>
+      )}
+      {result?.stage === "FINALIZED" && (
+        <PracticeDebrief
+          key={result.commandId}
+          evaluation={result}
+          identity={session.current}
+          disabled={busy}
+        />
       )}
       {confirm !== undefined && (
         <Dialog

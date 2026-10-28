@@ -210,6 +210,15 @@ export class PracticeSession {
                 throw new Error("wrong revision");
             }
           }
+          if (
+            reply.ok &&
+            "debrief" in reply &&
+            (!("commandId" in pending.command) ||
+              reply.commandId !== pending.command.commandId ||
+              reply.debrief.evaluation.commandId !== reply.commandId ||
+              reply.debrief.evaluation.presentationId !== reply.presentationId)
+          )
+            throw new Error("wrong debrief");
           if (reply.ok && "evaluation" in reply) {
             if (
               !("commandId" in pending.command) ||

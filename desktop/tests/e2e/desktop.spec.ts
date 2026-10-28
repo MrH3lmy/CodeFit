@@ -131,6 +131,7 @@ test("real experimental profile works offline with sandbox, narrow bridge and da
       "readLearnerMissions",
       "readLearnerProfile",
       "readLearnerSkills",
+      "readPracticeDebrief",
       "readPracticeDraft",
       "readState",
       "reconcilePracticeDraft",

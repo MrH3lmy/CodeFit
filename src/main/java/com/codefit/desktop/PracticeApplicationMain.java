@@ -75,6 +75,11 @@ public final class PracticeApplicationMain {
                                                         request.command(), request.presentation());
                                         default -> null;
                                     };
+                            var debrief =
+                                    request.method().equals("practice.submission.debrief")
+                                            ? evaluations.debrief(
+                                                    request.command(), request.presentation())
+                                            : null;
                             var submissions =
                                     request.method().equals("practice.submissions")
                                             ? evaluations.recent(request.presentation())
@@ -145,8 +150,14 @@ public final class PracticeApplicationMain {
                                                     } else {
                                                         g.writeStringField(
                                                                 "commandId", request.command());
-                                                        g.writeFieldName("evaluation");
-                                                        PracticeProtocol.evaluation(g, evaluation);
+                                                        if (debrief != null)
+                                                            PracticeDebriefProtocol.write(
+                                                                    g, debrief);
+                                                        else {
+                                                            g.writeFieldName("evaluation");
+                                                            PracticeProtocol.evaluation(
+                                                                    g, evaluation);
+                                                        }
                                                     }
                                                 } else if (recent != null) {
                                                     g.writeArrayFieldStart("presentations");

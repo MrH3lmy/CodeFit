@@ -56,11 +56,19 @@ final class PracticeDraftService {
 
     ChallengePresentationService.SubmissionContext authorized(Connection c, String id)
             throws SQLException {
+        return authorized(c, id, false);
+    }
+
+    ChallengePresentationService.SubmissionContext authorized(
+            Connection c, String id, boolean readOnly) throws SQLException {
         if (id == null
                 || !id.startsWith("desktop-practice-")
                 || !ApplicationProtocol.uuid(id.substring(17)))
             throw new IllegalArgumentException("NOT_AUTHORIZED");
-        var ctx = presentations.contextForSubmission(c, id);
+        var ctx =
+                readOnly
+                        ? presentations.persistedContext(c, id)
+                        : presentations.contextForSubmission(c, id);
         var q =
                 JavaTrainingPack.quests().stream()
                         .filter(

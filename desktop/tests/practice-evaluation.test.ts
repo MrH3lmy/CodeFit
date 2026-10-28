@@ -1,3 +1,4 @@
+import { debriefIdentity } from "../src/practice-debrief-identity";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
@@ -62,6 +63,7 @@ test("evaluation DTOs reject private extras, inconsistent stages and unbounded f
     commandId: randomUUID(),
     presentationId: `desktop-practice-${randomUUID()}`,
     draftRevision: 1,
+    evaluationRevision: 1,
     assistance: "UNKNOWN",
     challengeId: "regression-localize",
     challengeVersion: 1,
@@ -82,6 +84,9 @@ test("evaluation DTOs reject private extras, inconsistent stages and unbounded f
     { ...r, checks: Array(65).fill(r.checks[0]) },
     { ...r, stage: "PREPARED" },
     { ...r, outcome: null },
+    { ...r, evaluationRevision: 0 },
+    { ...r, evaluationRevision: 1.5 },
+    { ...r, evaluationRevision: undefined },
     { ...r, checks: [{ ...r.checks[0], feedback: "x".repeat(2049) }] },
     { ...r, checks: [{ ...r.checks[0], expectedOutput: "secret" }] },
   ])
@@ -401,4 +406,42 @@ test("hard-killed RUNNING Java owner recovers the same frozen artifact", async (
     await owner.disconnect();
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("debrief cache identity follows authoritative revisions and exact sessions, not object identity", () => {
+  const r = SubmissionResultSchema.parse({
+    commandId: randomUUID(),
+    presentationId: `desktop-practice-${randomUUID()}`,
+    draftRevision: 1,
+    evaluationRevision: 1,
+    assistance: "UNKNOWN",
+    challengeId: "regression-localize",
+    challengeVersion: 1,
+    submittedAt: "2026-10-27T00:00:00Z",
+    artifactSha256: "a".repeat(64),
+    active: false,
+    cancellationRequested: false,
+    withdrawn: false,
+    stage: "FINALIZED",
+    outcome: "CANCELLED",
+    checks: [],
+  });
+  const identity = { profileId: randomUUID(), sessionId: randomUUID() };
+  const key = debriefIdentity(r, identity);
+  assert.equal(debriefIdentity(structuredClone(r), { ...identity }), key);
+  for (const changed of [
+    { ...r, evaluationRevision: 2 }, // same outcome, genuine correction
+    { ...r, withdrawn: true },
+    { ...r, commandId: randomUUID() },
+    { ...r, presentationId: `desktop-practice-${randomUUID()}` },
+  ])
+    assert.notEqual(debriefIdentity(changed, identity), key);
+  assert.notEqual(
+    debriefIdentity(r, { ...identity, sessionId: randomUUID() }),
+    key,
+  );
+  assert.notEqual(
+    debriefIdentity(r, { ...identity, profileId: randomUUID() }),
+    key,
+  );
 });

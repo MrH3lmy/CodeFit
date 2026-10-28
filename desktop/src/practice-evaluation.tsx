@@ -1,3 +1,4 @@
+import { debriefIdentity } from "./practice-debrief-identity";
 import { PracticeDebrief } from "./practice-debrief";
 import { useEffect, useRef, useState } from "react";
 import { Badge, Button, Dialog } from "./components";
@@ -351,7 +352,7 @@ export function PracticeEvaluation({
       )}
       {result?.stage === "FINALIZED" && (
         <PracticeDebrief
-          key={result.commandId}
+          key={debriefIdentity(result, session.current)}
           evaluation={result}
           identity={session.current}
           disabled={busy}

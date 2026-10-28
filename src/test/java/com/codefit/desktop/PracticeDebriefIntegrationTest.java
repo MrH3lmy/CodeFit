@@ -218,13 +218,23 @@ class PracticeDebriefIntegrationTest {
             e.prepare(command, presentation, d.revision(), "NONE_DECLARED");
             EvaluationTestFixtures.finalizeProjectionFixture(command, Outcome.PASSED);
             var original = e.debrief(command, presentation);
+            assertEquals(1, e.status(command, presentation).evaluationRevision());
             new ChallengeEvaluationCoordinator().invalidate(command, id(), false);
             var corrected = e.debrief(command, presentation);
             assertTrue(corrected.corrected());
             assertEquals(2, corrected.evaluationRevision());
+            assertEquals(2, e.status(command, presentation).evaluationRevision());
+            assertEquals(2, corrected.evaluation().evaluationRevision());
             assertEquals(Outcome.INCONCLUSIVE, corrected.evaluation().view().outcome());
             assertEquals(original.evidence().id(), corrected.evidence().previousId());
+            // Another correction has the same effective outcome but a distinct durable revision.
+            new ChallengeEvaluationCoordinator().invalidate(command, id(), false);
+            assertEquals(3, e.status(command, presentation).evaluationRevision());
+            assertEquals(
+                    corrected.evaluation().view().outcome(),
+                    e.status(command, presentation).view().outcome());
             new ChallengeEvaluationCoordinator().invalidate(command, id(), true);
+            assertEquals(4, e.status(command, presentation).evaluationRevision());
             var withdrawn = e.debrief(command, presentation);
             assertTrue(withdrawn.evaluation().view().withdrawn());
             assertEquals("RETRACTED", withdrawn.evidence().availability());

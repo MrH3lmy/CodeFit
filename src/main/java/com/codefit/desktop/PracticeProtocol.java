@@ -185,6 +185,8 @@ final class PracticeProtocol {
         g.writeStringField("commandId", r.commandId());
         g.writeStringField("presentationId", r.presentationId());
         g.writeNumberField("draftRevision", r.draftRevision());
+        if (r.evaluationRevision() == null) g.writeNullField("evaluationRevision");
+        else g.writeNumberField("evaluationRevision", r.evaluationRevision());
         g.writeStringField("assistance", r.assistance());
         g.writeStringField("challengeId", r.challengeId());
         g.writeNumberField("challengeVersion", r.challengeVersion());

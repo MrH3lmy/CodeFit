@@ -120,6 +120,18 @@ test("debrief survives restart, repeated reads preserve records, and failed read
   let p = await start();
   await debrief(p);
   const before = await counts();
+  const captured = p.locator(".debrief-provenance > span:last-child");
+  const originalCapture = await captured.innerText();
+  await p.getByRole("button", { name: "Check this submission" }).click();
+  await expect(
+    p.getByRole("button", { name: "Check this submission" }),
+  ).toBeEnabled();
+  await expect(captured).toHaveText(originalCapture);
+  await p.getByRole("button", { name: "Refresh submission status" }).click();
+  await expect(
+    p.getByRole("button", { name: "Refresh submission status" }),
+  ).toBeEnabled();
+  await expect(captured).toHaveText(originalCapture);
   await expect(
     p.getByRole("region", { name: "Learning debrief" }),
   ).toContainText("Not yet evaluated");
@@ -127,6 +139,7 @@ test("debrief survives restart, repeated reads preserve records, and failed read
   await expect(
     p.getByRole("heading", { name: "One correlated observation" }),
   ).toBeVisible();
+  await expect(captured).not.toHaveText(originalCapture);
   expect(await counts()).toEqual(before);
   await app.evaluate(({ ipcMain }) => {
     ipcMain.removeHandler("codefit:practice:debrief");
@@ -206,10 +219,22 @@ test("debrief owning-frame boundary rejects extra arguments and disconnect suppr
   await expect
     .poll(() => app.evaluate(() => typeof (globalThis as any).releaseDebrief))
     .toBe("function");
+  await connect();
+  await p
+    .getByRole("button", { name: "Inspect saved submissions" })
+    .first()
+    .click();
+  await expect(
+    p.getByRole("button", { name: "Read learning debrief", exact: true }),
+  ).toBeVisible();
   await app.evaluate(() => (globalThis as any).releaseDebrief());
-  await expect(p.getByRole("region", { name: "Learning debrief" })).toHaveCount(
-    0,
-  );
+  await p.getByRole("button", { name: "Check this submission" }).click();
+  await expect(
+    p.getByRole("button", { name: "Check this submission" }),
+  ).toBeEnabled();
+  await expect(
+    p.getByRole("heading", { name: "One correlated observation" }),
+  ).toHaveCount(0);
 });
 test("packaged learning debrief screenshots and keyboard scope inspection", async () => {
   const p = await start();
@@ -269,3 +294,114 @@ test("packaged learning debrief screenshots and keyboard scope inspection", asyn
         });
     }
 });
+
+test("selecting another real finalized submission clears the captured debrief", async () => {
+  const p = await start();
+  await debrief(p);
+  const first = await p.getByLabel("Recorded submissions").inputValue();
+  await debrief(p); // another deliberate, cancelled submission on the same presentation
+  const second = await p.getByLabel("Recorded submissions").inputValue();
+  expect(second).not.toBe(first);
+  await p.getByLabel("Recorded submissions").selectOption(first);
+  await expect(
+    p.getByRole("heading", { name: "One correlated observation" }),
+  ).toHaveCount(0);
+  await p
+    .getByRole("button", { name: "Read learning debrief", exact: true })
+    .click();
+  await expect(
+    p.getByRole("heading", { name: "One correlated observation" }),
+  ).toBeVisible();
+  await p.getByLabel("Recorded submissions").selectOption(second);
+  await expect(
+    p.getByRole("heading", { name: "One correlated observation" }),
+  ).toHaveCount(0);
+});
+
+for (const withdrawn of [false, true])
+  test(`authoritative ${withdrawn ? "withdrawal" : "same-outcome correction"} invalidates a pending captured read`, async () => {
+    const p = await start();
+    await debrief(p);
+    const before = await counts();
+    // Simulate a newer Java status response without changing the isolated database.
+    // Java integration tests separately verify durable correction revision projection.
+    await app.evaluate(({ ipcMain }, withdrawn) => {
+      const handlers = (ipcMain as any)._invokeHandlers;
+      const read = handlers.get("codefit:practice:debrief");
+      ipcMain.removeHandler("codefit:practice:debrief");
+      (globalThis as any).changedStatus = true;
+      ipcMain.handle("codefit:practice:debrief", async (e, ...args) => {
+        const r = await read(e, ...args);
+        if (!(globalThis as any).holdRead) return r;
+        await new Promise<void>(
+          (resolve) => ((globalThis as any).releaseDebrief = resolve),
+        );
+        (globalThis as any).readReleased = true;
+        return r;
+      });
+      const status = handlers.get("codefit:practice:submission-action");
+      ipcMain.removeHandler("codefit:practice:submission-action");
+      ipcMain.handle(
+        "codefit:practice:submission-action",
+        async (e, ...args) => {
+          const r = await status(e, ...args);
+          if (!r.ok || !r.evaluation)
+            throw new Error("Fixture requires real finalized result");
+          if (!(globalThis as any).changedStatus) return r;
+          return {
+            ...r,
+            evaluation: {
+              ...r.evaluation,
+              evaluationRevision: r.evaluation.evaluationRevision + 1,
+              withdrawn,
+            },
+          };
+        },
+      );
+    }, withdrawn);
+    await p.getByRole("button", { name: "Check this submission" }).click();
+    await expect(
+      p.getByRole("button", { name: "Check this submission" }),
+    ).toBeEnabled();
+    await expect(
+      p.getByRole("heading", { name: "One correlated observation" }),
+    ).toHaveCount(0);
+    await app.evaluate(() => {
+      (globalThis as any).changedStatus = false;
+    });
+    await p.getByRole("button", { name: "Check this submission" }).click();
+    await expect(
+      p.getByRole("button", { name: "Check this submission" }),
+    ).toBeEnabled();
+    await p
+      .getByRole("button", { name: "Read learning debrief", exact: true })
+      .click();
+    await expect(
+      p.getByRole("heading", { name: "One correlated observation" }),
+    ).toBeVisible();
+    await app.evaluate(() => {
+      (globalThis as any).changedStatus = true;
+      (globalThis as any).holdRead = true;
+    });
+    await p.getByRole("button", { name: "Refresh learning debrief" }).click();
+    await expect
+      .poll(() => app.evaluate(() => typeof (globalThis as any).releaseDebrief))
+      .toBe("function");
+    await p.getByRole("button", { name: "Check this submission" }).click();
+    await expect(
+      p.getByRole("button", { name: "Read learning debrief", exact: true }),
+    ).toBeEnabled();
+    await app.evaluate(() => (globalThis as any).releaseDebrief());
+    await expect
+      .poll(() => app.evaluate(() => (globalThis as any).readReleased))
+      .toBe(true);
+    // A second IPC round-trip drains the delayed response, with the newer identity still selected.
+    await p.getByRole("button", { name: "Check this submission" }).click();
+    await expect(
+      p.getByRole("button", { name: "Check this submission" }),
+    ).toBeEnabled();
+    await expect(
+      p.getByRole("heading", { name: "One correlated observation" }),
+    ).toHaveCount(0);
+    expect(await counts()).toEqual(before);
+  });

@@ -17,15 +17,14 @@ export function PracticeDebrief({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const fence = useRef(0);
-  useEffect(() => {
-    fence.current++;
-    setData(undefined);
-    setFailed(false);
-    setBusy(false);
-    return () => {
+  // The parent keys this component by authoritative semantic identity. An unchanged
+  // status object does not invalidate the captured read; unmount fences pending IPC.
+  useEffect(
+    () => () => {
       fence.current++;
-    };
-  }, [evaluation, identity.profileId, identity.sessionId]);
+    },
+    [],
+  );
   async function read() {
     const token = ++fence.current;
     setBusy(true);
@@ -102,6 +101,10 @@ export function PracticeDebrief({
               {data.evaluationRevision}
             </span>
           </div>
+          <p className="fine-print">
+            Captured learning record, not live state. Evidence and mappings can
+            change independently; refresh this debrief to read them again.
+          </p>
           <div className="debrief-grid">
             <article className="debrief-card debrief-summary">
               <span className="eyebrow">01 / EVALUATION SUMMARY</span>

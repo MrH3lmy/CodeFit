@@ -145,6 +145,7 @@ export const SubmissionResultSchema = z
     commandId: uuid,
     presentationId: presentation,
     draftRevision: revision,
+    evaluationRevision: z.number().int().min(1).max(2147483647).nullable(),
     assistance: SubmissionInputSchema.shape.assistance,
     challengeId: ref,
     challengeVersion: version,
@@ -192,6 +193,11 @@ export const SubmissionResultSchema = z
       )
       .max(64),
   })
+  .refine((r) =>
+    r.stage === "FINALIZED"
+      ? r.evaluationRevision !== null
+      : r.evaluationRevision === null,
+  )
   .refine((r) =>
     r.stage === "FINALIZED" || r.stage === "EVALUATED"
       ? r.outcome !== null
@@ -374,6 +380,7 @@ export const DebriefSchema = z
   })
   .refine(
     (d) =>
+      d.evaluation.evaluationRevision === d.evaluationRevision &&
       d.corrected === d.evaluationRevision > 1 &&
       d.checks.length === d.evaluation.checks.length &&
       new Set(d.checks.map((c) => c.id)).size === d.checks.length &&

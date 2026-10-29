@@ -182,6 +182,14 @@ export class PracticeSession {
                 throw new Error("wrong receipt");
             }
           }
+          if (reply.ok && reply.method === "practice.analytics.read") {
+            if (
+              pending.command.method !== "practice.analytics.read" ||
+              reply.page !== pending.command.page ||
+              (reply.page > 0 && reply.snapshot !== pending.command.snapshot)
+            )
+              throw new Error("wrong analytics page");
+          }
           if (
             reply.ok &&
             "reconciliation" in reply &&

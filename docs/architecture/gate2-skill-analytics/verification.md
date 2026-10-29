@@ -1,6 +1,17 @@
 # Verification — Skill Analytics (#283)
 
-Final verification is in progress. The PR description will record the final commit SHA and GitHub Actions links; do not treat earlier focused runs as final CI approval.
+Local verification on 2026-10-29 uses Java 21 and Linux/Xvfb. The PR description records the final commit SHA and GitHub Actions links.
+
+- Full Java 21/Xvfb CI: **2,009 tests, zero failures/errors/skips**, including all 11 new analytics tests and real JavaFX controller tests.
+- Full Node: **91 tests, zero failures/cancellations/skips**, locally and in CI.
+- Packaged Electron CI: **90 tests passed**, including four new analytics tests.
+- Java runtime preparation, TypeScript/Vite/Electron build and Linux packaging: passed.
+- Actual packaged screenshots: all five charts at 1280px and 760px in dark/light themes, using synthetic Java records.
+- `git diff --check`: clean.
+
+Implementation commit `8ec60f79934824c0560a43cefbf6379cf1978ab0` passed [Java CI](https://github.com/MrH3lmy/CodeFit/actions/runs/40902385726) and [Desktop CI](https://github.com/MrH3lmy/CodeFit/actions/runs/40902386119). The final documentation/screenshot commit's CI links and the completed local offline run are recorded in [draft PR #284](https://github.com/MrH3lmy/CodeFit/pull/284).
+
+An initial local green 1,933-test run lacked a live display and omitted 76 dynamic JavaFX tests; it is **not** the acceptance count. Verification uses a live Xvfb server, and the local full suite was rerun with one. No tests were disabled or weakened.
 
 ## Commands
 

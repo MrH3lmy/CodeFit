@@ -34,7 +34,9 @@ final class PracticeProtocol {
             String source,
             String reflection,
             String assistance,
-            String originSession) {}
+            String originSession,
+            int analyticsPage,
+            String analyticsSnapshot) {}
 
     static Request parse(byte[] frame) throws IOException {
         if (frame.length > 524288) throw new IOException("INVALID_INPUT");
@@ -78,6 +80,7 @@ final class PracticeProtocol {
                 .contains(method)) keys.add("commandId");
         if (method.equals("practice.skills.reconcile") || method.equals("practice.skills.status"))
             keys.add("originSessionId");
+        if (method.equals("practice.analytics.read")) keys.addAll(Set.of("page", "snapshot"));
         if (method.equals("practice.open"))
             keys.addAll(Set.of("questId", "questVersion", "challengeId", "challengeVersion"));
         if (Set.of(
@@ -112,6 +115,7 @@ final class PracticeProtocol {
                                 "practice.submission.cancel",
                                 "practice.submission.debrief",
                                 "practice.skills.state",
+                                "practice.analytics.read",
                                 "practice.skills.reconcile",
                                 "practice.skills.status")
                         .contains(method)
@@ -145,6 +149,16 @@ final class PracticeProtocol {
                 && !Set.of("UNKNOWN", "NONE_DECLARED", "DECLARED")
                         .contains(str(values, "assistance")))
             throw new IOException("INVALID_INPUT");
+        int page = 0;
+        String snapshot = "";
+        if (method.equals("practice.analytics.read")) {
+            if (!(values.get("page") instanceof Long n) || n < 0 || n > 63)
+                throw new IOException("INVALID_INPUT");
+            page = ((Long) values.get("page")).intValue();
+            snapshot = str(values, "snapshot");
+            if (page == 0 ? !snapshot.isEmpty() : !snapshot.matches("[0-9a-f]{64}"))
+                throw new IOException("INVALID_INPUT");
+        }
         return new Request(
                 id,
                 method,
@@ -158,7 +172,9 @@ final class PracticeProtocol {
                 values.containsKey("source") ? str(values, "source") : null,
                 values.containsKey("reflection") ? str(values, "reflection") : null,
                 values.containsKey("assistance") ? str(values, "assistance") : null,
-                values.containsKey("originSessionId") ? str(values, "originSessionId") : null);
+                values.containsKey("originSessionId") ? str(values, "originSessionId") : null,
+                page,
+                snapshot);
     }
 
     private static String str(Map<String, Object> v, String k) throws IOException {

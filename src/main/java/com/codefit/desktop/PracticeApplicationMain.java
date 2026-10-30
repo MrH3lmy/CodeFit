@@ -60,6 +60,14 @@ public final class PracticeApplicationMain {
                             if (request.method().equals("practice.skills.reconcile")
                                     && !service.session().equals(request.originSession()))
                                 throw new IllegalArgumentException("SESSION_MISMATCH");
+                            var analytics =
+                                    request.method().equals("practice.analytics.read")
+                                            ? PracticeAnalytics.read(
+                                                    profile,
+                                                    Clock.systemUTC(),
+                                                    request.analyticsPage(),
+                                                    request.analyticsSnapshot())
+                                            : null;
                             var skillResult =
                                     switch (request.method()) {
                                         case "practice.skills.reconcile" ->
@@ -152,7 +160,9 @@ public final class PracticeApplicationMain {
                                                         "profileId", service.profileId());
                                                 g.writeStringField("sessionId", service.session());
                                                 g.writeStringField("method", request.method());
-                                                if (request.method()
+                                                if (analytics != null) {
+                                                    PracticeAnalytics.write(g, analytics);
+                                                } else if (request.method()
                                                         .startsWith("practice.skills.")) {
                                                     if (request.command() != null) {
                                                         g.writeStringField(

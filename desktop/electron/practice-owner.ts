@@ -1,3 +1,4 @@
+import { AnalyticsQuery } from "../src/analytics-contract";
 import { SkillsJournal } from "./skills-journal";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -419,6 +420,18 @@ export class PracticeOwner {
         ...i,
         presentationId: id.data,
       }),
+    );
+  }
+  async analytics(
+    input: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    const query = AnalyticsQuery.safeParse(input);
+    if (!query.success) return { ok: false, code: "INVALID_INPUT" };
+    return this.perform(profileId, sessionId, authorized, (s, i) =>
+      s.request({ method: "practice.analytics.read", ...i, ...query.data }),
     );
   }
   async skillAction(

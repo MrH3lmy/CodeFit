@@ -183,7 +183,7 @@ final class LearnerSkillProjection {
         }
     }
 
-    private static SkillGraph graph(Connection c) throws SQLException {
+    static SkillGraph graph(Connection c) throws SQLException {
         try (var s =
                 c.prepareStatement(
                         "SELECT typeof(graph_version),typeof(published) FROM evolution_skill_graphs"
@@ -393,7 +393,7 @@ final class LearnerSkillProjection {
         }
     }
 
-    private static void validateInput(EstimateInput input) {
+    static void validateInput(EstimateInput input) {
         if (input.observations().size() > MAX_HISTORY
                 || input.activities().size() > MAX_HISTORY
                 || input.mappings().size() > 64
@@ -421,7 +421,7 @@ final class LearnerSkillProjection {
             if (a.behaviors().size() > MAX_BEHAVIORS) invalid("LIMIT_EXCEEDED");
     }
 
-    private static List<String> warnings(Connection c, EstimateInput input) throws SQLException {
+    static List<String> warnings(Connection c, EstimateInput input) throws SQLException {
         var warnings = new TreeSet<String>();
         // These headers disclose a known lifecycle change, not validation of source facts or
         // current support.

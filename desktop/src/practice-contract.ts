@@ -1,3 +1,4 @@
+import { AnalyticsCommand, AnalyticsResponse } from "./analytics-contract";
 import {
   SkillsStateCommand,
   SkillsReconcileCommand,
@@ -444,6 +445,7 @@ export const SubmissionActionSchema = z.strictObject({
 });
 export type SubmissionAction = z.infer<typeof SubmissionActionSchema>;
 export const PracticeCommandSchema = z.discriminatedUnion("method", [
+  AnalyticsCommand,
   SkillsStateCommand,
   SkillsReconcileCommand,
   SkillsStatusCommand,
@@ -464,6 +466,7 @@ export const PracticeCommandSchema = z.discriminatedUnion("method", [
 ]);
 const envelope = { v: z.literal(1), id: uuid };
 export const PracticeRequestSchema = z.discriminatedUnion("method", [
+  AnalyticsCommand.safeExtend(envelope),
   SkillsStateCommand.extend(envelope),
   SkillsReconcileCommand.extend(envelope),
   SkillsStatusCommand.extend(envelope),
@@ -484,6 +487,7 @@ export const PracticeRequestSchema = z.discriminatedUnion("method", [
 ]);
 const success = { ...envelope, ok: z.literal(true), ...identity };
 export const PracticeWireSchema = z.union([
+  AnalyticsResponse,
   SkillsStateResponse,
   SkillsCommandResponse,
   z.strictObject({

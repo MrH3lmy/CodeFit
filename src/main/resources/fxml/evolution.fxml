@@ -3,12 +3,12 @@
 <?import javafx.scene.layout.*?>
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.codefit.controller.EvolutionController" styleClass="evolution" spacing="16">
   <HBox spacing="12" alignment="CENTER_LEFT">
-    <VBox spacing="4" HBox.hgrow="ALWAYS">
+    <VBox spacing="4" minWidth="0" HBox.hgrow="ALWAYS">
       <Label text="PLAYER SYSTEM" styleClass="evolution-eyebrow"/>
-      <Label text="Build ability. Understand the evidence." styleClass="evolution-title" wrapText="true"/>
-      <Label text="Java Debugging &amp; Concurrency · local and offline" styleClass="evolution-muted"/>
+      <Label text="Build ability. Understand the evidence." styleClass="evolution-title" wrapText="true" minHeight="-Infinity"/>
+      <Label text="Java Debugging &amp; Concurrency · local and offline" styleClass="evolution-muted" wrapText="true"/>
     </VBox>
-    <Button fx:id="refreshButton" text="Refresh" onAction="#refresh" accessibleText="Refresh current estimates and recommendation"/>
+    <Button fx:id="refreshButton" text="Refresh" minWidth="-Infinity" onAction="#refresh" accessibleText="Refresh current estimates and recommendation"/>
   </HBox>
   <HBox spacing="10" alignment="CENTER_LEFT">
     <ProgressIndicator fx:id="loading" prefWidth="22" prefHeight="22" visible="false" managed="false"/>

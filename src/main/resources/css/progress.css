@@ -70,5 +70,5 @@
 
 .list-cell:selected .skill-stat-title,
 .list-cell:selected .skill-stat-detail {
-    -fx-text-fill: white;
+    -fx-text-fill: -color-on-accent;
 }

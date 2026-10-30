@@ -2,7 +2,10 @@
 
 .root {
     -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
 }
+
+.label { -fx-text-fill: -color-text-primary; }
 
 .app-root {
     -fx-background-color: -color-background;

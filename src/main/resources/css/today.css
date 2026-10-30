@@ -113,3 +113,6 @@
     -fx-font-size: 12px;
     -fx-font-weight: 700;
 }
+
+/* The current due label is a sentence, not a bare metric. */
+.system-hero .due-value { -fx-font-size: 18px; }

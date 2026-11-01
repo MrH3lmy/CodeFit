@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "graphId": "sql-transactional-consistency",
+  "graphVersion": 1,
+  "status": "AUTHOR_DRAFT_PENDING_EXTERNAL_REVIEW",
+  "independentApprovals": 0,
+  "productionPublication": false,
+  "assessmentAvailable": false,
+  "skills": [
+    {
+      "id": "sql.relational-integrity",
+      "version": 1,
+      "domain": "software-engineering",
+      "name": "Enforce relational integrity",
+      "description": "Designs a schema that preserves stated business invariants under valid and adversarial writes.",
+      "lifecycle": "ACTIVE",
+      "behaviors": [
+        "Derives candidate keys and functional dependencies from an explicit business contract and justifies a lossless decomposition without assuming normalization alone enforces every invariant.",
+        "Implements and tests primary, unique, foreign-key, NOT NULL and CHECK constraints, including nullable inputs and transaction-boundary violations.",
+        "Distinguishes row-local constraints from cross-row invariants and demonstrates a counterexample when the proposed schema does not enforce the latter."
+      ]
+    },
+    {
+      "id": "sql.transactional-atomicity",
+      "version": 1,
+      "domain": "software-engineering",
+      "name": "Choose atomic transaction boundaries",
+      "description": "Preserves an explicitly scoped multi-write business operation across rollback and partial failure.",
+      "lifecycle": "ACTIVE",
+      "behaviors": [
+        "Places all database writes for a stated invariant inside one transaction and demonstrates complete rollback after a failure between writes.",
+        "Reproduces a partial-commit failure caused by autocommit or an incorrect transaction boundary and verifies the corrected committed state from another connection.",
+        "Distinguishes a committed database transaction from an uncoordinated external effect and identifies the uncertain outcome after connection loss at commit."
+      ]
+    },
+    {
+      "id": "sql.isolation-concurrency",
+      "version": 1,
+      "domain": "software-engineering",
+      "name": "Reproduce isolation anomalies",
+      "description": "Uses controlled concurrent transaction histories to distinguish isolation guarantees and preserve a specified invariant.",
+      "lifecycle": "ACTIVE",
+      "behaviors": [
+        "Constructs a barrier-coordinated two-session lost-update history and verifies both the anomaly and a correction on changed input values.",
+        "Distinguishes nonrepeatable reads, predicate-result phantoms and write skew using explicit snapshots and transaction histories for a pinned PostgreSQL isolation level.",
+        "Demonstrates that a cross-row invariant can fail under snapshot isolation and verifies that a serializable transaction strategy either preserves it or returns a retryable serialization failure."
+      ]
+    },
+    {
+      "id": "sql.locking-conflicts",
+      "version": 1,
+      "domain": "software-engineering",
+      "name": "Resolve transactional conflicts safely",
+      "description": "Selects and verifies a locking or version-check protocol with bounded conflict recovery and preserved business effects.",
+      "lifecycle": "ACTIVE",
+      "behaviors": [
+        "Implements a version-checked update that detects a stale writer by affected-row count and retries the whole business transaction without losing a concurrent update.",
+        "Uses a stated lock acquisition order to repair a reproduced deadlock while preserving all required writes, and identifies gaps when a predicate has no existing row to lock.",
+        "Classifies serialization failure and deadlock signals separately from validation errors, and verifies bounded whole-transaction retries with rollback and no duplicated external effect."
+      ]
+    },
+    {
+      "id": "sql.query-plans-indexing",
+      "version": 1,
+      "domain": "software-engineering",
+      "name": "Evaluate query and index trade-offs",
+      "description": "Uses reproducible query-plan evidence to improve a specified workload while preserving result semantics.",
+      "lifecycle": "ACTIVE",
+      "behaviors": [
+        "Captures EXPLAIN evidence with pinned schema, data distribution, statistics, parameters and PostgreSQL version, and identifies the actual scan and join operations rather than equating an index with speed.",
+        "Compares a justified index and query rewrite on selective and nonselective inputs, verifying identical results including duplicates and NULL cases.",
+        "Measures the read, write, storage and maintenance effects of a candidate index and explains when the planner can reasonably prefer a sequential scan."
+      ]
+    },
+    {
+      "id": "sql.idempotent-workflows",
+      "version": 1,
+      "domain": "software-engineering",
+      "name": "Preserve effects under duplicate requests",
+      "description": "Implements a bounded database-backed workflow with explicit duplicate, crash and delivery semantics.",
+      "lifecycle": "ACTIVE",
+      "behaviors": [
+        "Atomically binds an idempotency key and request fingerprint to the business writes and saved result; identical replay returns the prior result and conflicting key reuse is rejected.",
+        "Coordinates an outbox entry with the business transaction and demonstrates eventual at-least-once delivery with consumer-side deduplication, without claiming globally exactly-once transport.",
+        "Reproduces crashes before commit, after commit before reply and after delivery before acknowledgement, verifying one effective scoped business transition under retries."
+      ]
+    }
+  ],
+  "prerequisites": [
+    {
+      "from": "sql.relational-integrity",
+      "fromVersion": 1,
+      "to": "sql.transactional-atomicity",
+      "toVersion": 1
+    },
+    {
+      "from": "sql.relational-integrity",
+      "fromVersion": 1,
+      "to": "sql.query-plans-indexing",
+      "toVersion": 1
+    },
+    {
+      "from": "sql.transactional-atomicity",
+      "fromVersion": 1,
+      "to": "sql.isolation-concurrency",
+      "toVersion": 1
+    },
+    {
+      "from": "sql.isolation-concurrency",
+      "fromVersion": 1,
+      "to": "sql.locking-conflicts",
+      "toVersion": 1
+    },
+    {
+      "from": "sql.transactional-atomicity",
+      "fromVersion": 1,
+      "to": "sql.idempotent-workflows",
+      "toVersion": 1
+    },
+    {
+      "from": "sql.locking-conflicts",
+      "fromVersion": 1,
+      "to": "sql.idempotent-workflows",
+      "toVersion": 1
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "packetId": "sql-transactions-author-candidate",
+  "packetVersion": 1,
+  "graphId": "sql-transactional-consistency",
+  "graphVersion": 1,
+  "status": "AUTHOR_DRAFT_PENDING_EXTERNAL_REVIEW",
+  "independentApprovals": 0,
+  "productionPublication": false,
+  "assessmentAvailable": false,
+  "licenseDecision": "PENDING_OWNER_AUTHORIZATION",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 9278,
+      "sha256": "a986b29a89e2c1cd238a0561f25ccb06cdd91214bd34dd8fa3f0ff21880fe8e5"
+    },
+    {
+      "path": "assessment-matrix.md",
+      "bytes": 6841,
+      "sha256": "c3af2cd4292a34d2e0f307ced4bbf67e6182bd2110c1f1bde7d238250c0822eb"
+    },
+    {
+      "path": "graph.json",
+      "bytes": 6454,
+      "sha256": "5a2fdbb975e78c9852ea8e25bb30895a05ae9c816c294e1a5f4a87fe68dec90b"
+    },
+    {
+      "path": "mapping-proposal.json",
+      "bytes": 1525,
+      "sha256": "892996881edb844be3afb5aad76d86c04fc798fe9665649ed349056e3f9626ae"
+    },
+    {
+      "path": "pedagogical-review.json",
+      "bytes": 304,
+      "sha256": "81f3f67ab39163c755f6d14a157a9e73148c051c818acf2ea990fd4903161ba9"
+    },
+    {
+      "path": "provenance.md",
+      "bytes": 1702,
+      "sha256": "8b8444be15dc11828966783034c38dc95ab848560f97342740689e27b235308d"
+    },
+    {
+      "path": "release-policy.md",
+      "bytes": 4714,
+      "sha256": "6a4375efb07492cd91bfc2b4b600820902577b83106d9a981b7de75b8eef7241"
+    },
+    {
+      "path": "review.md",
+      "bytes": 6473,
+      "sha256": "c88d9f4855dc6d474b210739d9d162dc4838c449487d5df11a77acb5dba78dca"
+    },
+    {
+      "path": "technical-review.json",
+      "bytes": 302,
+      "sha256": "e6e079ef15c1835eefc16e86981395cdc32e35ccb3af76d8a4d4345049e9a1cf"
+    }
+  ]
+}

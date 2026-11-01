@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "reviewKind": "technical",
+  "packetVersion": 1,
+  "status": "PENDING",
+  "reviewerIdentity": null,
+  "credentials": null,
+  "conflicts": null,
+  "reviewedManifestSha256": null,
+  "decisionAt": null,
+  "evidenceReferences": [],
+  "findings": [],
+  "ownerAdjudication": null
+}

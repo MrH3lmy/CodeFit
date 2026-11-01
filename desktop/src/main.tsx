@@ -1,3 +1,4 @@
+import { GraphCatalog } from "./graph-catalog";
 import { SkillAnalytics } from "./skill-analytics";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -29,7 +30,8 @@ type Screen =
   | "library"
   | "curriculum"
   | "practice"
-  | "analytics";
+  | "analytics"
+  | "graphs";
 type Modal = "states" | "profile" | "activity" | "boss" | null;
 const nav: { id: Screen; label: string; sub: string; icon: IconName }[] = [
   {
@@ -55,6 +57,12 @@ const nav: { id: Screen; label: string; sub: string; icon: IconName }[] = [
     label: "Practice Workspace",
     sub: "Authorized Java exploration",
     icon: "mission",
+  },
+  {
+    id: "graphs",
+    label: "Engineering Graphs",
+    sub: "Inspect exact published versions",
+    icon: "tree",
   },
   {
     id: "analytics",
@@ -219,7 +227,9 @@ function App() {
         <div className="provenance">
           <span>
             <i />
-            {screen === "practice" || screen === "analytics"
+            {screen === "practice" ||
+            screen === "analytics" ||
+            screen === "graphs"
               ? "Disposable Java practice · real learner profiles remain read-only"
               : screen === "curriculum"
                 ? "AUTHOR-DRAFT PREVIEW"
@@ -233,10 +243,14 @@ function App() {
                     : "DESIGN PREVIEW"}
           </span>
           <p>
-            {screen === "practice" || screen === "analytics"
-              ? screen === "analytics"
-                ? "Historical records only. No publication, evaluation, rewards or real-profile writes."
-                : "Explicit opt-in required. Published practice only; no rewards or real-profile writes."
+            {screen === "practice" ||
+            screen === "analytics" ||
+            screen === "graphs"
+              ? screen === "graphs"
+                ? "Exact catalog inspection and explicit planning selection. No automatic learning operations."
+                : screen === "analytics"
+                  ? "Historical records only. No publication, evaluation, rewards or real-profile writes."
+                  : "Explicit opt-in required. Published practice only; no rewards or real-profile writes."
               : screen === "curriculum"
                 ? "Bundled metadata. Separate from learner evidence; no learning operations enabled."
                 : screen === "library"
@@ -253,7 +267,8 @@ function App() {
           </p>
           {screen !== "curriculum" &&
             screen !== "practice" &&
-            screen !== "analytics" && (
+            screen !== "analytics" &&
+            screen !== "graphs" && (
               <button
                 onClick={() =>
                   setModal(
@@ -423,6 +438,11 @@ function App() {
             )
           ) : null}
           {screen === "curriculum" && <CurriculumAtlas />}
+          {screen === "graphs" && (
+            <GraphCatalog
+              key={`${learner.busy}:${learner.profile?.sessionId ?? "disconnected"}`}
+            />
+          )}
           {screen === "analytics" && (
             <SkillAnalytics
               key={`${learner.busy}:${learner.profile?.sessionId ?? "disconnected"}`}
@@ -442,7 +462,9 @@ function App() {
               <Mark /> BUILT THROUGH PRACTICE.
             </span>
             <span>
-              {screen === "practice" || screen === "analytics"
+              {screen === "practice" ||
+              screen === "analytics" ||
+              screen === "graphs"
                 ? "Gate 2 · Disposable learning action"
                 : "Gate 2 · Read-only learner view"}{" "}
               <i /> Engine authority preserved

@@ -91,6 +91,7 @@ final class ExperimentalProfile implements AutoCloseable {
                 PracticeDraftSchema.install(profile);
                 PracticeSubmissionSchema.install(profile);
                 PracticeSkillsSchema.install(profile);
+                PracticeGraphSchema.install(profile);
             }
             return profile;
         } catch (IOException | SQLException | RuntimeException failure) {

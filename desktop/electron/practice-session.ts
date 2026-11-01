@@ -182,6 +182,38 @@ export class PracticeSession {
                 throw new Error("wrong receipt");
             }
           }
+          if (
+            reply.ok &&
+            "view" in reply &&
+            reply.method.startsWith("practice.graphs.")
+          ) {
+            const cmd = pending.command;
+            if (cmd.method === "practice.graphs.read") {
+              if (
+                !reply.view ||
+                reply.commandId !== "" ||
+                (cmd.graphId !== "" &&
+                  (reply.view.inspected.graphId !== cmd.graphId ||
+                    reply.view.inspected.graphVersion !== cmd.graphVersion))
+              )
+                throw Error("wrong graph");
+            } else if (
+              cmd.method === "practice.graphs.select" ||
+              cmd.method === "practice.graphs.status"
+            ) {
+              if (
+                reply.commandId !== cmd.commandId ||
+                reply.originSessionId !== cmd.originSessionId ||
+                (reply.receipt &&
+                  (reply.receipt.target.graphId !== cmd.graphId ||
+                    reply.receipt.target.graphVersion !== cmd.graphVersion ||
+                    reply.receipt.expectedRevision !== cmd.selectionRevision))
+              )
+                throw Error("wrong graph receipt");
+            } else throw Error("wrong graph command");
+            if (reply.pending !== null)
+              throw Error("Java cannot supply main journal intent");
+          }
           if (reply.ok && reply.method === "practice.analytics.read") {
             if (
               pending.command.method !== "practice.analytics.read" ||

@@ -349,7 +349,7 @@ final class PracticeSkillsService {
                                     + " BLOB))+length(CAST(description AS BLOB))),0) FROM"
                                     + " evolution_skill_definitions")) {
             r.next();
-            if (r.getInt(1) > 32 || r.getLong(2) > 24000) throw new SQLException("INPUT_LIMIT");
+            if (r.getInt(1) > 2048 || r.getLong(2) > 24000) throw new SQLException("INPUT_LIMIT");
         }
         try (var q = c.createStatement();
                 var r = q.executeQuery("SELECT COUNT(*) FROM evolution_skill_graphs")) {
@@ -407,14 +407,7 @@ final class PracticeSkillsService {
                 .findGraph(c, JavaDebuggingSkillSeed.GRAPH)
                 .filter(JavaDebuggingSkillSeed.graph()::equals)
                 .isPresent()) throw new SQLException("GRAPH_UNAVAILABLE");
-        try (var q = c.createStatement();
-                var r =
-                        q.executeQuery(
-                                "SELECT 1 FROM evolution_skill_graphs WHERE"
-                                    + " graph_id='java-debugging-concurrency' AND graph_version>1"
-                                    + " AND published=1 LIMIT 1")) {
-            if (r.next()) throw new SQLException("GRAPH_CONFLICT");
-        }
+        if (!PracticeGraphService.pilotAvailable(c)) throw new SQLException("GRAPH_UNAVAILABLE");
         try (var q = c.createStatement();
                 var r =
                         q.executeQuery(

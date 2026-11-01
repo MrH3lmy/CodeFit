@@ -39,6 +39,7 @@ public final class PracticeApplicationMain {
             try (var profile = ExperimentalProfile.openLearning(Path.of(args[3]))) {
                 var service = new PracticeApplicationService(profile, Clock.systemUTC());
                 var skills = new PracticeSkillsService(profile, Clock.systemUTC());
+                var graphs = new PracticeGraphService(profile, Clock.systemUTC());
                 var drafts = new PracticeDraftService(profile, Clock.systemUTC());
                 var evaluations = new PracticeEvaluationService(profile, Clock.systemUTC());
                 try (evaluations) {
@@ -60,6 +61,13 @@ public final class PracticeApplicationMain {
                             if (request.method().equals("practice.skills.reconcile")
                                     && !service.session().equals(request.originSession()))
                                 throw new IllegalArgumentException("SESSION_MISMATCH");
+                            var graphView=request.method().equals("practice.graphs.read")?graphs.read(request.graph()):null;
+                            com.codefit.repository.GraphSelectionRepository.Receipt graphReceipt=null;
+                            if(request.method().equals("practice.graphs.select") || request.method().equals("practice.graphs.status")) {
+                                var graphCommand=new com.codefit.repository.GraphSelectionRepository.Command(request.command(),request.profile(),request.originSession(),PracticeGraphService.TRACK,request.graph(),request.selectionRevision());
+                                graphReceipt=request.method().equals("practice.graphs.select")?graphs.choose(graphCommand):graphs.status(graphCommand);
+                            }
+                            final var finalGraphReceipt=graphReceipt;
                             var analytics =
                                     request.method().equals("practice.analytics.read")
                                             ? PracticeAnalytics.read(
@@ -160,7 +168,9 @@ public final class PracticeApplicationMain {
                                                         "profileId", service.profileId());
                                                 g.writeStringField("sessionId", service.session());
                                                 g.writeStringField("method", request.method());
-                                                if (analytics != null) {
+                                                if (request.method().startsWith("practice.graphs.")) {
+                                                    PracticeGraphProtocol.write(g,request,graphView,finalGraphReceipt);
+                                                } else if (analytics != null) {
                                                     PracticeAnalytics.write(g, analytics);
                                                 } else if (request.method()
                                                         .startsWith("practice.skills.")) {

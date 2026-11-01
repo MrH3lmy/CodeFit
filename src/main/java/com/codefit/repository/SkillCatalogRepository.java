@@ -23,6 +23,38 @@ import java.util.Optional;
  * conflicting reuse of a version is rejected. Caller-owned transaction overloads never commit.
  */
 public class SkillCatalogRepository {
+    /** Bounded catalog browsing. No implicit active/latest graph and no publication side effects. */
+    public List<GraphRef> publishedGraphs(Connection c) throws SQLException {
+        List<GraphRef> result = new ArrayList<>();
+        try (var q=c.createStatement(); var r=q.executeQuery("SELECT CASE WHEN length(CAST(graph_id AS BLOB))<=128 THEN graph_id END,graph_version,typeof(graph_version) FROM evolution_skill_graphs WHERE published=1 ORDER BY graph_id,graph_version LIMIT 33")) {
+            while(r.next()) {
+                if(result.size()==32 || r.getString(1)==null || !r.getString(3).equals("integer") || r.getLong(2)>Integer.MAX_VALUE) throw new SQLException("INPUT_LIMIT");
+                result.add(new GraphRef(r.getString(1),r.getInt(2)));
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    /** Guard text/row sizes in SQLite before hydrating a potentially damaged local catalog. */
+    public Optional<SkillGraph> findBoundedGraph(Connection c, GraphRef ref) throws SQLException {
+        long bytes=0;
+        String[] queries={
+            "SELECT COUNT(*),COALESCE(MAX(length(CAST(d.name AS BLOB))),0),COALESCE(MAX(length(CAST(d.description AS BLOB))),0),COALESCE(SUM(length(CAST(d.name AS BLOB))+length(CAST(d.description AS BLOB))),0),COALESCE(MAX(length(m.skill_id)+length(d.domain_id)),0) FROM evolution_graph_skills m LEFT JOIN evolution_skill_definitions d ON d.skill_id=m.skill_id AND d.definition_version=m.definition_version WHERE m.graph_id=? AND m.graph_version=?",
+            "SELECT COUNT(*),COALESCE(MAX(length(CAST(b.behavior AS BLOB))),0),0,COALESCE(SUM(length(CAST(b.behavior AS BLOB))),0),0 FROM evolution_graph_skills m JOIN evolution_skill_behaviors b ON b.skill_id=m.skill_id AND b.definition_version=m.definition_version WHERE m.graph_id=? AND m.graph_version=?",
+            "SELECT COUNT(*),0,0,0,COALESCE(MAX(length(prerequisite_skill_id)+length(dependent_skill_id)),0) FROM evolution_skill_prerequisites WHERE graph_id=? AND graph_version=?"
+        };
+        for(int i=0;i<queries.length;i++)try(var q=c.prepareStatement(queries[i])){
+            bindGraph(q,ref);
+            try(var r=q.executeQuery()){
+                r.next(); bytes+=r.getLong(4);
+                if(r.getLong(1)>(i==0?64:i==1?512:256) || r.getLong(2)>(i==0?160:512) || r.getLong(3)>2048 || r.getLong(5)>256 || bytes>96000)throw new SQLException("INPUT_LIMIT");
+            }
+        }
+        var graph=findGraph(c,ref);
+        if(graph.isPresent() && graph.get().definitions().stream().anyMatch(d->d.observableBehaviors().size()>8 || d.ref().skillId().length()>128 || d.domainId().length()>128))throw new SQLException("INPUT_LIMIT");
+        return graph;
+    }
+
     public void publishDefinition(SkillDefinition definition) {
         write(connection -> publishDefinition(connection, definition));
     }

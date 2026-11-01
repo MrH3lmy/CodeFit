@@ -1,3 +1,9 @@
+import {
+  GraphReadCommand,
+  GraphSelectCommand,
+  GraphStatusCommand,
+  GraphResponse,
+} from "./graph-contract";
 import { AnalyticsCommand, AnalyticsResponse } from "./analytics-contract";
 import {
   SkillsStateCommand,
@@ -445,6 +451,9 @@ export const SubmissionActionSchema = z.strictObject({
 });
 export type SubmissionAction = z.infer<typeof SubmissionActionSchema>;
 export const PracticeCommandSchema = z.discriminatedUnion("method", [
+  GraphReadCommand,
+  GraphSelectCommand,
+  GraphStatusCommand,
   AnalyticsCommand,
   SkillsStateCommand,
   SkillsReconcileCommand,
@@ -466,6 +475,9 @@ export const PracticeCommandSchema = z.discriminatedUnion("method", [
 ]);
 const envelope = { v: z.literal(1), id: uuid };
 export const PracticeRequestSchema = z.discriminatedUnion("method", [
+  GraphReadCommand.safeExtend(envelope),
+  GraphSelectCommand.extend(envelope),
+  GraphStatusCommand.extend(envelope),
   AnalyticsCommand.safeExtend(envelope),
   SkillsStateCommand.extend(envelope),
   SkillsReconcileCommand.extend(envelope),
@@ -487,6 +499,7 @@ export const PracticeRequestSchema = z.discriminatedUnion("method", [
 ]);
 const success = { ...envelope, ok: z.literal(true), ...identity };
 export const PracticeWireSchema = z.union([
+  GraphResponse,
   AnalyticsResponse,
   SkillsStateResponse,
   SkillsCommandResponse,

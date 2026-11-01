@@ -230,6 +230,14 @@ if (!app.requestSingleInstanceLock()) {
           if (practiceDirty) draftUnloadApproved = false;
         }
       });
+      ipcMain.handle("codefit:practice:graphs", (event, ...args: unknown[]) =>
+        practice.graphAction(
+          args[0],
+          args[1],
+          args[2],
+          () => !quitting && !learnerDialogBusy && authorized(event, args, 3),
+        ),
+      );
       ipcMain.handle(
         "codefit:practice:analytics",
         (event, ...args: unknown[]) =>

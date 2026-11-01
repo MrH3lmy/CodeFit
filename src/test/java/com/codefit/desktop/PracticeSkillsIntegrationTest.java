@@ -433,6 +433,7 @@ class PracticeSkillsIntegrationTest {
                                                 old.definitions(),
                                                 old.prerequisites()));
                         c.commit();
+                        new PracticeGraphService(p, CLOCK).choose(new com.codefit.repository.GraphSelectionRepository.Command(uuid(), p.id(), uuid(), PracticeGraphService.TRACK, new com.codefit.evolution.GraphRef(old.ref().graphId(), 2), 0));
                     } else if (mode.equals("oversized")) {
                         try (var q =
                                 c.prepareStatement(

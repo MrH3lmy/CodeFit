@@ -73,10 +73,48 @@ export function GraphCatalog() {
         r.sessionId !== identity.sessionId
       )
         throw Error();
-      setReply((old) => ({ ...r, view: r.view ?? old?.view ?? null }));
+      if (r.view) {
+        // A read must not erase the durable receipt displayed for the last action.
+        setReply((old) => ({ ...r, receipt: old?.receipt ?? null }));
+      } else if (r.receipt) {
+        // Any terminal receipt can reveal a newer head (including a rejected CAS).
+        // Clear the old head before a bounded query-only refresh; never select again.
+        setReply({ ...r, view: null });
+        setError("Refreshing the authoritative graph selection…");
+        try {
+          const current = GraphResponse.parse(
+            await window.codefit.practiceGraphAction(
+              { kind: "read", graphId: "", graphVersion: 0 },
+              identity.profileId,
+              identity.sessionId,
+            ),
+          );
+          if (token !== fence.current) return;
+          if (
+            current.profileId !== identity.profileId ||
+            current.sessionId !== identity.sessionId ||
+            !current.view ||
+            current.view.revision < r.receipt.revision ||
+            (current.view.revision === r.receipt.revision &&
+              (current.view.selected.graphId !== r.receipt.selected.graphId ||
+                current.view.selected.graphVersion !==
+                  r.receipt.selected.graphVersion))
+          )
+            throw Error();
+          setReply({ ...current, receipt: r.receipt });
+          setError("");
+        } catch {
+          if (token === fence.current)
+            setError(
+              "Selection receipt saved. Current catalog unavailable; read the catalog to refresh. No new selection was sent.",
+            );
+        }
+      } else {
+        setReply((old) => ({ ...r, view: old?.view ?? null }));
+      }
     } catch {
       if (token === fence.current) {
-        setReply(undefined);
+        setReply((old) => (old ? { ...old, view: null } : undefined));
         setError(
           "Response unavailable. Read the catalog to recover the original pending command before choosing again.",
         );
@@ -161,7 +199,10 @@ export function GraphCatalog() {
       )}
       {view && (
         <>
-          <section className="panel practice-panel">
+          <section
+            className="panel practice-panel"
+            aria-label="Selected planning graph"
+          >
             <h3>Selected planning graph</h3>
             <p className="practice-reference">
               {view.selected.graphId} v{view.selected.graphVersion} · selection

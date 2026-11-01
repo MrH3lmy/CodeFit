@@ -1,3 +1,4 @@
+import { expectPracticeReady } from "./practice-readiness";
 import {
   _electron as electron,
   expect,
@@ -53,9 +54,7 @@ async function open() {
   await p
     .getByRole("button", { name: "Connect analytics practice profile" })
     .click();
-  await expect(
-    p.getByRole("button", { name: "Refresh analytics" }),
-  ).toBeEnabled();
+  await expectPracticeReady(p.getByRole("button", { name: "Refresh analytics" }));
   return p;
 }
 async function read(p: Page) {

@@ -93,3 +93,5 @@ Actual packaged Linux Electron captures (published pilot only):
 - [Light narrow](screenshots/graphs-light-760.png)
 
 Serial packaged checks passed the previously failing analytics scenarios and graph inspection/selection. The complete suite remains in progress; intermediate screenshots and passed scenarios are not a substitute for final CI verification.
+
+A serial draft test also hit its five-second startup assertion before reaching any draft authorization assertion. Connection helpers now wait for the actual ready UI using the existing 15-second supervised native-startup bound. This is scoped to native connection readiness; normal assertion, command, transport and security deadlines are unchanged. The ready state still requires successful Java authorization and catalogue initialization, not elapsed time. No sleep or unconditional test retry is introduced.

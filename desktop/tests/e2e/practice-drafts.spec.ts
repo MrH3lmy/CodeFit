@@ -1,3 +1,4 @@
+import { expectPracticeReady } from "./practice-readiness";
 import {
   _electron as electron,
   expect,
@@ -51,7 +52,7 @@ async function connect() {
   await p
     .getByRole("button", { name: "Connect disposable practice profile" })
     .click();
-  await expect(p.getByText("Live Java owner", { exact: true })).toBeVisible();
+  await expectPracticeReady(p.getByText("Live Java owner", { exact: true }));
   return p;
 }
 async function start() {

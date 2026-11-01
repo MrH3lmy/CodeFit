@@ -36,7 +36,9 @@ final class PracticeProtocol {
             String assistance,
             String originSession,
             int analyticsPage,
-            String analyticsSnapshot) {}
+            String analyticsSnapshot,
+            com.codefit.evolution.GraphRef graph,
+            long selectionRevision) {}
 
     static Request parse(byte[] frame) throws IOException {
         if (frame.length > 524288) throw new IOException("INVALID_INPUT");
@@ -81,6 +83,8 @@ final class PracticeProtocol {
         if (method.equals("practice.skills.reconcile") || method.equals("practice.skills.status"))
             keys.add("originSessionId");
         if (method.equals("practice.analytics.read")) keys.addAll(Set.of("page", "snapshot"));
+        if (method.startsWith("practice.graphs.")) keys.addAll(Set.of("graphId","graphVersion"));
+        if (method.equals("practice.graphs.select") || method.equals("practice.graphs.status")) keys.addAll(Set.of("commandId","originSessionId","selectionRevision"));
         if (method.equals("practice.open"))
             keys.addAll(Set.of("questId", "questVersion", "challengeId", "challengeVersion"));
         if (Set.of(
@@ -116,6 +120,9 @@ final class PracticeProtocol {
                                 "practice.submission.debrief",
                                 "practice.skills.state",
                                 "practice.analytics.read",
+                                "practice.graphs.read",
+                                "practice.graphs.select",
+                                "practice.graphs.status",
                                 "practice.skills.reconcile",
                                 "practice.skills.status")
                         .contains(method)
@@ -159,6 +166,18 @@ final class PracticeProtocol {
             if (page == 0 ? !snapshot.isEmpty() : !snapshot.matches("[0-9a-f]{64}"))
                 throw new IOException("INVALID_INPUT");
         }
+        com.codefit.evolution.GraphRef graph = null;
+        long selectionRevision = 0;
+        if (method.startsWith("practice.graphs.")) {
+            String graphId=str(values,"graphId");
+            if (!(values.get("graphVersion") instanceof Long n) || n<0 || n>Integer.MAX_VALUE || graphId.length()>128) throw new IOException("INVALID_INPUT");
+            if (graphId.isEmpty() && n==0 && method.equals("practice.graphs.read")) { /* current exact selection */ }
+            else try { graph=new com.codefit.evolution.GraphRef(graphId,n.intValue()); } catch(IllegalArgumentException e){throw new IOException("INVALID_INPUT");}
+            if (!method.equals("practice.graphs.read")) {
+                if (!(values.get("selectionRevision") instanceof Long nRevision) || nRevision<0 || nRevision>9007199254740990L) throw new IOException("INVALID_INPUT");
+                selectionRevision=nRevision;
+            }
+        }
         return new Request(
                 id,
                 method,
@@ -174,7 +193,7 @@ final class PracticeProtocol {
                 values.containsKey("assistance") ? str(values, "assistance") : null,
                 values.containsKey("originSessionId") ? str(values, "originSessionId") : null,
                 page,
-                snapshot);
+                snapshot,graph,selectionRevision);
     }
 
     private static String str(Map<String, Object> v, String k) throws IOException {

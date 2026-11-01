@@ -76,6 +76,7 @@ final class PracticeApplicationService {
     }
 
     private List<Candidate> candidates(Connection c) throws SQLException {
+        if (!PracticeGraphService.pilotAvailable(c)) return List.of();
         return new PracticeEligibilityService()
                 .eligible(c, clock.instant(), runnerAvailable).stream()
                         .map(

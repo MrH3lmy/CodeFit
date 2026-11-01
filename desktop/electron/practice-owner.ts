@@ -1,3 +1,5 @@
+import { GraphActionSchema } from "../src/graph-contract";
+import { GraphJournal } from "./graph-journal";
 import { AnalyticsQuery } from "../src/analytics-contract";
 import { SkillsJournal } from "./skills-journal";
 import { createHash, randomUUID } from "node:crypto";
@@ -29,10 +31,12 @@ export class PracticeOwner {
   private readonly drafts: DraftJournal;
   private readonly submissions: SubmissionJournal;
   private readonly skills: SkillsJournal;
+  private readonly graphs: GraphJournal;
   constructor(
     private readonly create: () => PracticeSession,
     private readonly journal: PracticeJournal,
   ) {
+    this.graphs = new GraphJournal(join(journal.directory, "graphs"));
     this.skills = new SkillsJournal(join(journal.directory, "skills"));
     this.submissions = new SubmissionJournal(
       join(journal.directory, "submissions"),
@@ -421,6 +425,89 @@ export class PracticeOwner {
         presentationId: id.data,
       }),
     );
+  }
+  async graphAction(
+    input: unknown,
+    profileId: unknown,
+    sessionId: unknown,
+    authorized: () => boolean,
+  ): Promise<PracticeResult> {
+    if (!authorized()) return { ok: false, code: "UNAVAILABLE" };
+    const parsed = GraphActionSchema.safeParse(input);
+    if (!parsed.success) return { ok: false, code: "INVALID_INPUT" };
+    const action = parsed.data;
+    return this.perform(profileId, sessionId, authorized, async (s, i) => {
+      let pending = this.graphs.read();
+      if (pending && pending.profileId !== i.profileId)
+        return { ok: false, code: "JOURNAL_INVALID" };
+      if (action.kind === "read") {
+        const result = await s.request({
+          method: "practice.graphs.read",
+          ...i,
+          graphId: action.graphId,
+          graphVersion: action.graphVersion,
+        });
+        if (!authorized() || this.current !== s)
+          return { ok: false, code: "CANCELLED" };
+        return result.ok && result.method === "practice.graphs.read"
+          ? { ...result, pending }
+          : result;
+      }
+      if (action.kind === "select") {
+        if (pending) return { ok: false, code: "RECOVERY_REQUIRED" };
+        pending = {
+          v: 1,
+          operation: "graph-selection-v1",
+          profileId: i.profileId,
+          originSessionId: i.sessionId,
+          commandId: randomUUID(),
+          graphId: action.graphId,
+          graphVersion: action.graphVersion,
+          selectionRevision: action.selectionRevision,
+        };
+        this.graphs.write(pending);
+      }
+      if (!pending) return { ok: false, code: "RECOVERY_REQUIRED" };
+      const fields = {
+        ...i,
+        commandId: pending.commandId,
+        originSessionId: pending.originSessionId,
+        graphId: pending.graphId,
+        graphVersion: pending.graphVersion,
+        selectionRevision: pending.selectionRevision,
+      };
+      let result = await s.request({
+        method:
+          action.kind === "select"
+            ? "practice.graphs.select"
+            : "practice.graphs.status",
+        ...fields,
+      });
+      if (!authorized() || this.current !== s)
+        return { ok: false, code: "CANCELLED" };
+      if (
+        action.kind === "retry" &&
+        result.ok &&
+        result.method === "practice.graphs.status" &&
+        result.receipt === null
+      ) {
+        result = await s.request({
+          method: "practice.graphs.select",
+          ...fields,
+        });
+        if (!authorized() || this.current !== s)
+          return { ok: false, code: "CANCELLED" };
+      }
+      if (
+        result.ok &&
+        (result.method === "practice.graphs.select" ||
+          result.method === "practice.graphs.status")
+      ) {
+        if (result.receipt) this.graphs.clear(pending.commandId);
+        return { ...result, pending: result.receipt ? null : pending };
+      }
+      return result;
+    });
   }
   async analytics(
     input: unknown,

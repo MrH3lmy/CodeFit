@@ -1,3 +1,4 @@
+import { expectNativeLibrary } from "./library-readiness";
 import {
   _electron as electron,
   expect,
@@ -81,9 +82,7 @@ test("real experimental profile works offline with sandbox, narrow bridge and da
     .getByRole("button", { name: /Java Library/ })
     .click();
   await page.context().setOffline(true);
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions received from Java",
-  );
+  await expectNativeLibrary(page, "8 deck descriptions received from Java");
   expect(children(application.process().pid!)).toHaveLength(1);
   const preferences = await application.evaluate(({ BrowserWindow }) => {
     const p = (
@@ -228,16 +227,12 @@ test("cancel closes the Java process and the next read creates a fresh session",
     .getByRole("navigation")
     .getByRole("button", { name: /Java Library/ })
     .click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
   const previous = children(application.process().pid!)[0];
   await page.evaluate(() => window.codefit.cancelOperation());
   await expect.poll(() => alive(previous)).toBe(false);
   await page.getByRole("button", { name: "Refresh from Java" }).click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
   expect(children(application.process().pid!)).toHaveLength(1);
   expect(children(application.process().pid!)[0]).not.toBe(previous);
 });
@@ -248,9 +243,7 @@ test("Java crash is explained and retry recovers without changing the learner se
     .getByRole("navigation")
     .getByRole("button", { name: /Java Library/ })
     .click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
   process.kill(children(application.process().pid!)[0], "SIGKILL");
   await expect.poll(() => children(application.process().pid!).length).toBe(0);
   await page.getByRole("button", { name: "Refresh from Java" }).click();
@@ -258,9 +251,7 @@ test("Java crash is explained and retry recovers without changing the learner se
     page.getByRole("heading", { name: "Connection needs attention" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Refresh from Java" }).click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
 });
 
 test("renderer crash and ordinary window close stop their owned Java process", async () => {
@@ -269,9 +260,7 @@ test("renderer crash and ordinary window close stop their owned Java process", a
     .getByRole("navigation")
     .getByRole("button", { name: /Java Library/ })
     .click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
   const first = children(application.process().pid!)[0];
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].webContents.forcefullyCrashRenderer(),
@@ -284,9 +273,7 @@ test("renderer crash and ordinary window close stop their owned Java process", a
     .getByRole("navigation")
     .getByRole("button", { name: /Java Library/ })
     .click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
   const second = children(application.process().pid!)[0];
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].close(),
@@ -300,9 +287,7 @@ test("main process hard crash terminates the owned Java child", async () => {
     .getByRole("navigation")
     .getByRole("button", { name: /Java Library/ })
     .click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
   const child = children(application.process().pid!)[0];
   application.process().kill("SIGKILL");
   await expect.poll(() => alive(child), { timeout: 7000 }).toBe(false);
@@ -314,9 +299,7 @@ test("second application instance exits without another Java engine", async () =
     .getByRole("navigation")
     .getByRole("button", { name: /Java Library/ })
     .click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
   const child = children(application.process().pid!)[0];
   const duplicate = spawn(executable, args, {
     cwd: directory,
@@ -340,9 +323,7 @@ async function library() {
     .getByRole("navigation")
     .getByRole("button", { name: /Java Library/ })
     .click();
-  await expect(page.locator(".library > .status")).toContainText(
-    "8 deck descriptions",
-  );
+  await expectNativeLibrary(page);
   return page;
 }
 async function capture(

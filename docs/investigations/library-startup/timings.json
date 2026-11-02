@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "baseline": "5eaf823b303081cfc9725ca3b4383588421b3434",
+  "cpuQuota": "200000/100000",
+  "units": "milliseconds",
+  "phases": {
+    "loaded-original": [
+      {
+        "sample": 0,
+        "windowMs": 1981,
+        "visibleMs": 10052,
+        "assertionMs": 7854,
+        "cleanupMs": 507,
+        "loadProcesses": 2,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 1821
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 1946
+          },
+          {
+            "stage": "java_ready",
+            "ms": 9325
+          },
+          {
+            "stage": "state_success",
+            "ms": 9443
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 9492
+          },
+          {
+            "stage": "pending_success",
+            "ms": 9497
+          }
+        ]
+      },
+      {
+        "sample": 1,
+        "windowMs": 2164,
+        "visibleMs": 16514,
+        "assertionMs": 14521,
+        "cleanupMs": 304,
+        "loadProcesses": 2,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 1722
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 1910
+          },
+          {
+            "stage": "java_ready",
+            "ms": 15979
+          },
+          {
+            "stage": "state_success",
+            "ms": 16159
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 16173
+          },
+          {
+            "stage": "pending_success",
+            "ms": 16174
+          }
+        ]
+      },
+      {
+        "sample": 2,
+        "windowMs": 2409,
+        "visibleMs": 7520,
+        "assertionMs": 6495,
+        "cleanupMs": 250,
+        "loadProcesses": 2,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 877
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 977
+          },
+          {
+            "stage": "java_ready",
+            "ms": 6702
+          },
+          {
+            "stage": "state_success",
+            "ms": 6905
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 6937
+          },
+          {
+            "stage": "pending_success",
+            "ms": 6938
+          }
+        ]
+      }
+    ],
+    "fixed-helper-control": [
+      {
+        "sample": 0,
+        "windowMs": 1616,
+        "visibleMs": 4473,
+        "assertionMs": 3741,
+        "cleanupMs": 280,
+        "loadProcesses": 2,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 489
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 523
+          },
+          {
+            "stage": "java_ready",
+            "ms": 4263
+          },
+          {
+            "stage": "state_success",
+            "ms": 4340
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 4348
+          },
+          {
+            "stage": "pending_success",
+            "ms": 4349
+          }
+        ]
+      },
+      {
+        "sample": 1,
+        "windowMs": 553,
+        "visibleMs": 3870,
+        "assertionMs": 3502,
+        "cleanupMs": 282,
+        "loadProcesses": 2,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 309
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 347
+          },
+          {
+            "stage": "java_ready",
+            "ms": 3679
+          },
+          {
+            "stage": "state_success",
+            "ms": 3721
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 3738
+          },
+          {
+            "stage": "pending_success",
+            "ms": 3739
+          }
+        ]
+      },
+      {
+        "sample": 2,
+        "windowMs": 576,
+        "visibleMs": 3949,
+        "assertionMs": 3524,
+        "cleanupMs": 169,
+        "loadProcesses": 2,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 370
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 398
+          },
+          {
+            "stage": "java_ready",
+            "ms": 3804
+          },
+          {
+            "stage": "state_success",
+            "ms": 3861
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 3893
+          },
+          {
+            "stage": "pending_success",
+            "ms": 3899
+          }
+        ]
+      }
+    ],
+    "no-extra-jvm": [
+      {
+        "sample": 0,
+        "windowMs": 733,
+        "visibleMs": 2348,
+        "assertionMs": 1873,
+        "cleanupMs": 83,
+        "loadProcesses": 0,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 384
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 460
+          },
+          {
+            "stage": "java_ready",
+            "ms": 1908
+          },
+          {
+            "stage": "state_success",
+            "ms": 1961
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 1965
+          },
+          {
+            "stage": "pending_success",
+            "ms": 1966
+          }
+        ]
+      },
+      {
+        "sample": 1,
+        "windowMs": 614,
+        "visibleMs": 2237,
+        "assertionMs": 1885,
+        "cleanupMs": 63,
+        "loadProcesses": 0,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 314
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 335
+          },
+          {
+            "stage": "java_ready",
+            "ms": 1756
+          },
+          {
+            "stage": "state_success",
+            "ms": 1794
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 1800
+          },
+          {
+            "stage": "pending_success",
+            "ms": 1802
+          }
+        ]
+      },
+      {
+        "sample": 2,
+        "windowMs": 583,
+        "visibleMs": 2565,
+        "assertionMs": 1991,
+        "cleanupMs": 61,
+        "loadProcesses": 0,
+        "events": [
+          {
+            "stage": "state_enter",
+            "ms": 547
+          },
+          {
+            "stage": "java_spawn",
+            "ms": 564
+          },
+          {
+            "stage": "java_ready",
+            "ms": 2167
+          },
+          {
+            "stage": "state_success",
+            "ms": 2196
+          },
+          {
+            "stage": "pending_enter",
+            "ms": 2200
+          },
+          {
+            "stage": "pending_success",
+            "ms": 2200
+          }
+        ]
+      }
+    ]
+  }
+}

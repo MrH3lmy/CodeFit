@@ -71,10 +71,13 @@ public final class TimeoutScenario {
         } catch (Throwable failure) {
             exit = 1; // Exception messages/stack traces can contain private inputs: not exported.
         } finally {
-            TimeoutEvents.dump(output, exit);
-            try (var files = Files.walk(directory)) {
-                for (Path p : files.sorted(Comparator.reverseOrder()).toList())
-                    Files.deleteIfExists(p);
+            try {
+                TimeoutEvents.dump(output, exit);
+            } finally {
+                try (var files = Files.walk(directory)) {
+                    for (Path p : files.sorted(Comparator.reverseOrder()).toList())
+                        Files.deleteIfExists(p);
+                }
             }
         }
         System.exit(exit);

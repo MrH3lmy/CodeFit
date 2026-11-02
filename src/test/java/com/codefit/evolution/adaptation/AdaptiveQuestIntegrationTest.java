@@ -729,16 +729,135 @@ class AdaptiveQuestIntegrationTest {
 
     @Test
     void concurrentIdenticalResponsesCommitExactlyOneChoice() throws Exception {
+        verifyConcurrentResponseContract();
+    }
+
+    interface ResponseTrace {
+        void record(String actor, long queueMs, long elapsedMs, long cpuMs);
+    }
+
+    int verifyConcurrentResponseContract() throws Exception {
+        return verifyConcurrentResponseContract((actor, queue, elapsed, cpu) -> {});
+    }
+
+    int verifyConcurrentResponseContract(ResponseTrace trace) throws Exception {
         var service = service(0);
         var decision = service.recommend(T);
         var command = choose("simultaneous", CommandKind.ACCEPT, decision);
+        Choice first, second;
         try (var pool = Executors.newFixedThreadPool(2)) {
-            var a = pool.submit(() -> service.respond(command));
-            var b = pool.submit(() -> service(0).respond(command));
-            assertEquals(a.get(20, TimeUnit.SECONDS), b.get(20, TimeUnit.SECONDS));
+            long submitA = System.nanoTime();
+            var a = pool.submit(() -> tracedResponse(service, command, submitA, "a", trace));
+            long submitB = System.nanoTime();
+            var b = pool.submit(() -> tracedResponse(service(0), command, submitB, "b", trace));
+            first = completedOrBoundedPending(a);
+            second = completedOrBoundedPending(b);
         }
+        // The documented three-snapshot budget can expire under concurrent writes. After both
+        // workers finish, one explicit same-command response must converge; no replacement ID.
+        assertTrue(count("evolution_adaptation_choices") <= 1);
+        var receipt = service.respond(command);
+        if (first != null) assertEquals(receipt, first);
+        if (second != null) assertEquals(receipt, second);
+        assertEquals(receipt, service(0).respond(command));
         assertEquals(1, count("evolution_adaptation_choices"));
         assertEquals(0, count("evolution_challenge_presentations"));
+        assertEquals(0, count("evolution_evidence_observations"));
+        assertEquals(0, count("evolution_evaluation_revisions"));
+        assertEquals(0, count("evolution_reward_entitlements"));
+        return (first == null ? 1 : 0) + (second == null ? 1 : 0);
+    }
+
+    private Choice tracedResponse(
+            AdaptiveQuestService service,
+            LearnerCommand command,
+            long submitted,
+            String actor,
+            ResponseTrace trace) {
+        var threads = java.lang.management.ManagementFactory.getThreadMXBean();
+        long cpu =
+                threads.isCurrentThreadCpuTimeSupported() ? threads.getCurrentThreadCpuTime() : -1;
+        long start = System.nanoTime();
+        try {
+            return service.respond(command);
+        } finally {
+            long endCpu = cpu < 0 ? -1 : threads.getCurrentThreadCpuTime();
+            trace.record(
+                    actor,
+                    (start - submitted) / 1_000_000,
+                    (System.nanoTime() - start) / 1_000_000,
+                    endCpu < 0 ? -1 : (endCpu - cpu) / 1_000_000);
+        }
+    }
+
+    private Choice completedOrBoundedPending(Future<Choice> response) throws Exception {
+        try {
+            return response.get(20, TimeUnit.SECONDS);
+        } catch (ExecutionException failure) {
+            var cause = failure.getCause();
+            // Accept ONLY the two documented snapshot-budget outcomes. Eligibility, SQL,
+            // cancellation, arbitrary exceptions and executor timeouts must still fail this test.
+            if (cause != null
+                    && cause.getClass() == IllegalStateException.class
+                    && Set.of(
+                                    "Learning state changed during adaptation; recommendation"
+                                            + " pending, retry on demand",
+                                    "Learning state changed during choice; retry same command")
+                            .contains(cause.getMessage())) return null;
+            throw failure;
+        }
+    }
+
+    @Test
+    void exhaustedSnapshotsPropagatePendingButReplayAnAlreadyCommittedIdenticalChoice()
+            throws Exception {
+        var normal = service(0);
+        var original = normal.recommend(T);
+        var command = choose("forced-contention", CommandKind.ACCEPT, original);
+        try (var c = DatabaseConfig.getConnection();
+                var q = c.createStatement()) {
+            q.execute("CREATE TABLE diagnostic_commits (n INTEGER NOT NULL)");
+        }
+        var captures = new java.util.concurrent.atomic.AtomicInteger();
+        var saved = new java.util.concurrent.atomic.AtomicReference<Choice>();
+        var contended =
+                new AdaptiveQuestService(
+                        clock(0),
+                        assets,
+                        () -> true,
+                        new ProblemLibraryService(),
+                        () -> {
+                            if (captures.incrementAndGet() == 1) saved.set(normal.respond(command));
+                            // A committed, independent writer invalidates this read
+                            // deterministically. The hook
+                            // executes outside the read/write transaction; no sleeps or scheduling
+                            // assumptions.
+                            try (var c = DatabaseConfig.getConnection();
+                                    var q = c.createStatement()) {
+                                q.executeUpdate("INSERT INTO diagnostic_commits VALUES(1)");
+                            } catch (SQLException failure) {
+                                throw new AssertionError(failure);
+                            }
+                        });
+        var pending = assertThrows(IllegalStateException.class, () -> contended.respond(command));
+        assertEquals(
+                "Learning state changed during adaptation; recommendation pending, retry on demand",
+                pending.getMessage());
+        assertEquals(3, captures.get());
+        assertEquals(1, count("evolution_adaptation_choices"));
+        assertEquals(saved.get(), contended.respond(command));
+        assertEquals(
+                3,
+                captures.get(),
+                "receipt replay must not derive or consume another snapshot budget");
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> normal.respond(choose(command.id(), CommandKind.DECLINE, original)));
+        assertEquals(1, count("evolution_adaptation_choices"));
+        assertEquals(0, count("evolution_challenge_presentations"));
+        assertEquals(0, count("evolution_evidence_observations"));
+        assertEquals(0, count("evolution_evaluation_revisions"));
+        assertEquals(0, count("evolution_reward_entitlements"));
     }
 
     @Test
@@ -815,8 +934,7 @@ class AdaptiveQuestIntegrationTest {
                                 () -> {
                                     ready.countDown();
                                     assertTrue(start.await(10, TimeUnit.SECONDS));
-                                    return service(0)
-                                            .start(command.id(), Familiarity.UNKNOWN);
+                                    return service(0).start(command.id(), Familiarity.UNKNOWN);
                                 }));
             }
             assertTrue(ready.await(10, TimeUnit.SECONDS));
@@ -825,8 +943,7 @@ class AdaptiveQuestIntegrationTest {
             for (var result : results) assertEquals(first, result.get(20, TimeUnit.SECONDS));
         }
         DatabaseConfig.initialize();
-        assertEquals(
-                first, service(0).start(command.id(), Familiarity.UNKNOWN));
+        assertEquals(first, service(0).start(command.id(), Familiarity.UNKNOWN));
         assertEquals(1, count("evolution_challenge_presentations"));
         assertEquals(0, count("evolution_evidence_observations"));
     }

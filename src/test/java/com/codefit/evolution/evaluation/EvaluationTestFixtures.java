@@ -14,11 +14,17 @@ public final class EvaluationTestFixtures {
     private EvaluationTestFixtures() {}
 
     public static ChallengeEvaluationCoordinator service(Clock clock) {
+        return service(clock, new JavaCodeRunner());
+    }
+
+    /** Test-only delegation hook for bounded phase metrics; never a production runner endpoint. */
+    public static ChallengeEvaluationCoordinator service(
+            Clock clock, com.codefit.service.CodeRunner runner) {
         var assets = new BundledAssets();
         return new ChallengeEvaluationCoordinator(
                 new QuestCatalogRepository(),
                 assets,
-                new JavaChallengeEvaluator(new JavaCodeRunner(), assets, clock),
+                new JavaChallengeEvaluator(runner, assets, clock),
                 clock,
                 b -> {});
     }

@@ -82,10 +82,11 @@ class AdaptationContentionProbeTest {
                                             + (System.nanoTime() - begin) / 1000000
                                             + " outcome="
                                             + result.outcome());
-                            assertEquals(EvaluationTypes.Outcome.PASSED, result.outcome());
                             assertFalse(
                                     JavaExecutionCoordinator.hasActiveOperation(),
-                                    "evaluation gate must release on completion");
+                                    "evaluation gate must release on completion, including"
+                                        + " timeout");
+                            assertEquals(EvaluationTypes.Outcome.PASSED, result.outcome());
                             return request;
                         }
                     };

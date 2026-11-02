@@ -309,4 +309,48 @@ class PracticeAnalyticsTest {
             assertEquals(before, hashes(p));
         }
     }
+
+    @Test
+    void mixedHistoricalMomentsPreserveExactMetadataWithoutBatchInferenceOrWrites()
+            throws Exception {
+        String old = DatabaseConfig.currentDatabaseUrl();
+        try (var p = ExperimentalProfile.openLearning(dir.resolve("mixed"))) {
+            DatabaseConfig.useDatabaseFile(p.database());
+            AnalyticsFixture.mixed();
+            var before = hashes(p);
+            var view = PracticeAnalytics.read(p, CLOCK, 0, "");
+            assertEquals(5, view.revisions().size());
+            assertEquals(
+                    4,
+                    view.revisions().stream()
+                            .map(PracticeAnalytics.Revision::epoch)
+                            .distinct()
+                            .count());
+            assertEquals(
+                    4,
+                    view.revisions().stream()
+                            .map(PracticeAnalytics.Revision::asOf)
+                            .distinct()
+                            .count());
+            assertEquals(
+                    2,
+                    view.revisions().stream()
+                            .map(PracticeAnalytics.Revision::policy)
+                            .distinct()
+                            .count());
+            var incompatible = view.revisions().getFirst();
+            assertEquals("historical-policy-fixture", incompatible.policy());
+            assertEquals("INCOMPATIBLE", incompatible.status());
+            assertNull(incompatible.estimate());
+            assertTrue(
+                    view.revisions().stream()
+                            .anyMatch(
+                                    r ->
+                                            r.skill().equals(incompatible.skill())
+                                                    && r.estimate() != null));
+            assertEquals(before, hashes(p));
+        } finally {
+            DatabaseConfig.useDatabaseUrl(old);
+        }
+    }
 }

@@ -133,3 +133,34 @@ test("analytics late replies never cross disconnect or replacement sessions", as
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("mixed saved moments retain exact epochs, times and incompatible policy through real IPC", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "analytics-mixed-"));
+  seedAnalytics(join(dir, "p"), "mixed");
+  const owner = new PracticeOwner(
+    () => new PracticeSession(runtimeLocation(resolve("java")), join(dir, "p")),
+    new PracticeJournal(join(dir, "j")),
+  );
+  try {
+    const i = await owner.connect(() => true);
+    assert.ok(i.ok);
+    const before = databaseHashes(join(dir, "p/codefit.db"));
+    const r = AnalyticsResponse.parse(
+      await owner.analytics(
+        { page: 0, snapshot: "" },
+        i.profileId,
+        i.sessionId,
+        () => true,
+      ),
+    );
+    assert.equal(new Set(r.revisions.map((x) => x.epoch)).size, 4);
+    assert.equal(new Set(r.revisions.map((x) => x.asOf)).size, 4);
+    assert.equal(new Set(r.revisions.map((x) => x.policy)).size, 2);
+    assert.equal(r.revisions[0].status, "INCOMPATIBLE");
+    assert.equal(r.revisions[0].interpretation, null);
+    assert.deepEqual(databaseHashes(join(dir, "p/codefit.db")), before);
+  } finally {
+    await owner.disconnect();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

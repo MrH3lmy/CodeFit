@@ -4,6 +4,9 @@ set -eu
 cd "$(dirname "$0")/../.."
 : "${JAVA_HOME:?Java 21 JDK required}"
 probe_maven=${CODEFIT_MAVEN:-mvn}
+# A failed preparation must never leave a prior agent looking runnable.
+rm -f target/timeout-trace-agent.jar target/timeout-trace-runtime.txt
+rm -rf target/timeout-trace-classes
 "$probe_maven" -q test-compile org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath -Dmdep.outputFile=target/timeout-trace-classpath.txt
 "$probe_maven" -f scripts/diagnostics/pom.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath -Dmdep.outputFile="$PWD/target/timeout-asm-classpath.txt"
 probe_cp="target/test-classes:target/classes:$(cat target/timeout-trace-classpath.txt):$(cat target/timeout-asm-classpath.txt)"

@@ -83,7 +83,7 @@ public final class TimeoutScenario {
         System.exit(exit);
     }
 
-    private static void regression() {
+    private static void regression() throws Exception {
         var runner = new JavaCodeRunner();
         TimeoutEvents.submission("bounded-loop", "synthetic@1");
         try (var compiled =

@@ -53,6 +53,21 @@
         </dependency>
     </dependencies>
 
+    <!-- Explicit investigation tooling only; absent from production and ordinary test runtime. -->
+    <profiles>
+        <profile>
+            <id>timeout-trace</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.ow2.asm</groupId>
+                    <artifactId>asm-tree</artifactId>
+                    <version>9.8</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
     <build>
         <plugins>
             <plugin>

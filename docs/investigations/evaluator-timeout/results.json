@@ -1,0 +1,878 @@
+{
+  "schemaVersion": 1,
+  "productionBaseline": "375ca68cd4439c772d2ec1fa45ff3dd57048b028",
+  "captureAgentSha256": "95f92c1745bd54a8f3203c6933d869d2dc42c8baf54e3875b47b5e430d4df54c",
+  "cgroupQuota": "200000/100000",
+  "trials": [
+    {
+      "trial": "quiet-1",
+      "exit": 0,
+      "traceSha256": "5bf89091d3542fb52f5d966428d69f15bc918b8f2a3b749d21d4e2681852218d",
+      "observerNanos": 37935830,
+      "events": 179,
+      "phases": [
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 1593893283,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 123149037,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 102165784,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 114153075,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 122565392,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 1735011400,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 115774638,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 98005782,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 85005169,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 130365513,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 1419823328,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 95918332,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 104504448,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 84700069,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 58189519,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        }
+      ],
+      "trace": "traces/quiet-1.json"
+    },
+    {
+      "trial": "one-cpu-1",
+      "exit": 0,
+      "traceSha256": "aa131f518f05a9c60b6cec5f87570576eb598635396a2cae84b5c921b82b22d1",
+      "observerNanos": 18562629,
+      "events": 179,
+      "phases": [
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 5687602205,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 198555038,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 142422443,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 153131673,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 123201618,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 2981931856,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 166489908,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 114240327,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 96192551,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 73855253,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 3040668852,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 113590310,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 102486515,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 98521931,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 96216594,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        }
+      ],
+      "trace": "traces/one-cpu-1.json"
+    },
+    {
+      "trial": "two-cpu-1",
+      "exit": 0,
+      "traceSha256": "fb01ecf7a8a00a147332d3c974c4134b9bffff704b5d29dab34527df467d8769",
+      "observerNanos": 24725313,
+      "events": 179,
+      "phases": [
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 1752115235,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 146334391,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 127471637,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 125548484,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 144950790,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 2096514270,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 132363659,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 87295186,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 142008407,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 96038009,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 1868118042,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 86386480,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 121315662,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 88982174,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 73728208,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        }
+      ],
+      "trace": "traces/two-cpu-1.json"
+    },
+    {
+      "trial": "startup-two-cpu",
+      "exit": 0,
+      "traceSha256": "4f3b9ac5a817a23bfe507e1871101552a7cb64c283a8fbe70626091630940b33",
+      "observerNanos": 107929801,
+      "events": 179,
+      "phases": [
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 4260373503,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 1144083546,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 680950893,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 439361022,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 439087647,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 6171506667,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 416552743,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 185129891,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 179610207,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 113991496,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 7734466890,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 149740983,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 105881707,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 73576989,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 154183204,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        }
+      ],
+      "trace": "traces/startup-two-cpu.json"
+    },
+    {
+      "trial": "electron-one-cpu-1",
+      "exit": 1,
+      "traceSha256": "763d7ba79b0c071b90a88bb081acc96c0dc0641fc897365387fd2d8024530edb",
+      "observerNanos": 158143487,
+      "events": 78,
+      "phases": [
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 6415641137,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 1840839097,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 1570069838,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 685412702,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 371465374,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "TIMED_OUT",
+          "deadlineElapsedNanos": 16045977839,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        }
+      ],
+      "trace": "traces/electron-one-cpu-1.json"
+    },
+    {
+      "trial": "electron-one-cpu-2",
+      "exit": 0,
+      "traceSha256": "da849f8ac55ec6d7930b52f8fa0149fef8e88687d07a7006cb825ae9aaf13483",
+      "observerNanos": 88947565,
+      "events": 180,
+      "phases": [
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 6388553025,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 2223517813,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 782747861,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 800427479,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-1",
+          "challenge": "counter-repair@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 843797180,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 11333335298,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 872852463,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 956346248,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 944485774,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-2",
+          "challenge": "remaining-capacity@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 672787758,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "COMPILE",
+          "check": "COMPILE",
+          "status": "SUCCEEDED",
+          "deadlineElapsedNanos": 4495073430,
+          "budgetNanos": 15000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 515474836,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 486837251,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "concurrent-observation",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 523691035,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        },
+        {
+          "invocation": "submission-3",
+          "challenge": "inventory-transfer@1",
+          "phase": "RUN",
+          "check": "functional",
+          "status": "EXITED",
+          "deadlineElapsedNanos": 428934385,
+          "budgetNanos": 10000000000,
+          "childAliveAtReturn": false
+        }
+      ],
+      "trace": "traces/electron-one-cpu-2.json"
+    }
+  ]
+}

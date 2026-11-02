@@ -13,7 +13,13 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
       - name: Run tests
         run: xvfb-run -a mvn -B test
+      - name: Validate opt-in timeout diagnostics (synthetic timeout and cancellation)
+        run: |
+          sh scripts/diagnostics/prepare-timeout-trace.sh
+          java -javaagent:target/timeout-trace-agent.jar -cp "$(cat target/timeout-trace-runtime.txt)" com.codefit.evolution.adaptation.TimeoutScenario runner-regression target/timeout-regression.json
+          python3 scripts/diagnostics/verify_timeout_trace.py target/timeout-regression.json
+          python3 -m unittest discover -s scripts/diagnostics -p 'test_*.py'

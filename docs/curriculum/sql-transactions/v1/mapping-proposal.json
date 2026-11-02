@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "proposalId": "sql-transactions-evidence-proposal",
+  "proposalVersion": 1,
+  "graphId": "sql-transactional-consistency",
+  "graphVersion": 1,
+  "published": false,
+  "runtimeMappingRef": null,
+  "targets": [
+    {
+      "skillId": "sql.relational-integrity",
+      "skillVersion": 1,
+      "behaviors": [
+        1,
+        2,
+        3
+      ],
+      "mechanism": "UNAVAILABLE",
+      "verification": "UNVERIFIED"
+    },
+    {
+      "skillId": "sql.transactional-atomicity",
+      "skillVersion": 1,
+      "behaviors": [
+        1,
+        2,
+        3
+      ],
+      "mechanism": "UNAVAILABLE",
+      "verification": "UNVERIFIED"
+    },
+    {
+      "skillId": "sql.isolation-concurrency",
+      "skillVersion": 1,
+      "behaviors": [
+        1,
+        2,
+        3
+      ],
+      "mechanism": "UNAVAILABLE",
+      "verification": "UNVERIFIED"
+    },
+    {
+      "skillId": "sql.locking-conflicts",
+      "skillVersion": 1,
+      "behaviors": [
+        1,
+        2,
+        3
+      ],
+      "mechanism": "UNAVAILABLE",
+      "verification": "UNVERIFIED"
+    },
+    {
+      "skillId": "sql.query-plans-indexing",
+      "skillVersion": 1,
+      "behaviors": [
+        1,
+        2,
+        3
+      ],
+      "mechanism": "UNAVAILABLE",
+      "verification": "UNVERIFIED"
+    },
+    {
+      "skillId": "sql.idempotent-workflows",
+      "skillVersion": 1,
+      "behaviors": [
+        1,
+        2,
+        3
+      ],
+      "mechanism": "UNAVAILABLE",
+      "verification": "UNVERIFIED"
+    }
+  ]
+}

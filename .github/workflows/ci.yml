@@ -25,9 +25,10 @@ jobs:
           python3 -m unittest discover -s scripts/diagnostics -p 'test_*.py'
           mkdir target/timeout-export-failure
           cp target/timeout-regression.json target/timeout-export-failure/existing.json
-          if java -Djava.io.tmpdir="$PWD/target/timeout-export-failure" -javaagent:target/timeout-trace-agent.jar -cp "$(cat target/timeout-trace-runtime.txt)" com.codefit.evolution.adaptation.TimeoutScenario runner-regression target/timeout-export-failure/existing.json; then
+          if java -Djava.io.tmpdir="$PWD/target/timeout-export-failure" -javaagent:target/timeout-trace-agent.jar -cp "$(cat target/timeout-trace-runtime.txt)" com.codefit.evolution.adaptation.TimeoutScenario runner-regression target/timeout-export-failure/existing.json > target/timeout-export-rejection.log 2>&1; then
             echo "Existing trace was unexpectedly overwritten"
             exit 1
           fi
+          python3 -c "from pathlib import Path; assert 'java.nio.file.FileAlreadyExistsException' in Path('target/timeout-export-rejection.log').read_text()[:8192]"
           cmp target/timeout-regression.json target/timeout-export-failure/existing.json
           test "$(find target/timeout-export-failure -mindepth 1 -maxdepth 1 | wc -l)" -eq 1

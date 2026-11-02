@@ -48,3 +48,16 @@ class TraceValidatorTest(unittest.TestCase):
         data['events'][1]['invocation'] = 'another-submission'
         with self.assertRaises(AssertionError):
             validate(data)
+
+    def test_native_schema_requires_observation_and_preserves_v1_meaning(self):
+        data = self.valid()
+        data['schemaVersion'] = 2
+        with self.assertRaises(AssertionError):
+            validate(data)
+        event = data['events'][5]
+        event.update(nativeHandleAlive=True, kernelState='R', kernelSampleAtNanos=6,
+                     childCpuAvailable=True)
+        self.assertEqual((1, 0), validate(data))
+        data['schemaVersion'] = 1
+        with self.assertRaises(AssertionError):
+            validate(data)

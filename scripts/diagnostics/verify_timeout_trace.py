@@ -6,7 +6,8 @@ import sys
 ROOT = {'schemaVersion', 'scenarioExit', 'synchronousObserverNanos', 'observerErrors', 'truncated', 'anchors', 'events'}
 FIELDS = {'event', 'atNanos', 'utc', 'invocation', 'challenge', 'phase', 'phaseId', 'check', 'status',
           'remainingNanos', 'budgetNanos', 'childAlive', 'childCpuNanos', 'cpuQuota', 'nr_throttled',
-          'throttled_usec', 'jvmProcesses', 'available', 'evidenceOutcome', 'gateActive', 'replayEqual'}
+          'throttled_usec', 'jvmProcesses', 'available', 'evidenceOutcome', 'gateActive', 'replayEqual',
+          'nativeHandleAlive', 'kernelState', 'kernelSampleAtNanos', 'childCpuAvailable'}
 EVENTS = {'SUBMISSION_BEGIN', 'SUBMISSION_ENVIRONMENT', 'PHASE_ENVIRONMENT', 'PHASE_END_ENVIRONMENT',
           'FINAL_ENVIRONMENT', 'REQUEST', 'DEADLINE_STARTED', 'SPAWN_RETURNED', 'REGISTRATION_RETURNED',
           'WAIT_ENTER', 'WAIT_RETURNED', 'TERMINATION_REQUESTED', 'FIRST_OBSERVED_CHILD_CPU',
@@ -14,7 +15,7 @@ EVENTS = {'SUBMISSION_BEGIN', 'SUBMISSION_ENVIRONMENT', 'PHASE_ENVIRONMENT', 'PH
 
 
 def validate(data):
-    assert set(data) == ROOT and data['schemaVersion'] == 1
+    assert set(data) == ROOT and data['schemaVersion'] in (1, 2)
     assert data['observerErrors'] == 0 and data['truncated'] is False
     assert data['scenarioExit'] in (0, 1)
     assert data['anchors'] == {
@@ -27,6 +28,15 @@ def validate(data):
         assert set(e) <= FIELDS and e['event'] in EVENTS
         for k, v in e.items():
             assert isinstance(v, (str, int, bool)) and (not isinstance(v, str) or len(v) < 160)
+        native_fields = {'nativeHandleAlive', 'kernelState', 'kernelSampleAtNanos', 'childCpuAvailable'}
+        if data['schemaVersion'] == 1 or e['event'] != 'WAIT_RETURNED':
+            assert not (set(e) & native_fields)
+        if e['event'] == 'FIRST_OBSERVED_CHILD_CPU':
+            assert e['status'] == 'CPU_NONZERO' and e['childCpuNanos'] > 0
+        if data['schemaVersion'] == 2 and e['event'] == 'WAIT_RETURNED':
+            assert all(k in e for k in ('nativeHandleAlive', 'kernelState', 'kernelSampleAtNanos', 'childCpuAvailable'))
+            assert e['kernelState'] in ('R', 'S', 'D', 'Z', 'T', 'X', 't', 'K', 'W', 'P', 'I', 'ABSENT', 'UNAVAILABLE')
+            assert e['kernelSampleAtNanos'] >= e['atNanos']
         if e.get('phaseId', 0):
             phases.setdefault(e['phaseId'], []).append(e)
         if e['event'] == 'INTEGRITY':

@@ -214,6 +214,32 @@ public final class TimeoutEvents {
         m.put("budgetNanos", p == null ? 0 : p.budget);
         m.put("childAlive", p != null && p.child != null && p.child.isAlive());
         m.put("childCpuNanos", childCpuNanos);
+        if (event.equals("WAIT_RETURNED") && p != null && p.child != null) {
+            // Independent Linux observation AFTER the original wait computed its result.
+            // Never export PID, comm, command line or any other /proc contents.
+            var cpu = p.child.info().totalCpuDuration();
+            m.put("childCpuAvailable", cpu.isPresent());
+            if (cpu.isPresent()) m.put("childCpuNanos", cpu.get().toNanos());
+            m.put("nativeHandleAlive", p.child.toHandle().isAlive());
+            String state = "UNAVAILABLE";
+            try (var input =
+                    Files.newInputStream(Path.of("/proc", Long.toString(p.child.pid()), "stat"))) {
+                String stat =
+                        new String(
+                                input.readNBytes(4096), java.nio.charset.StandardCharsets.US_ASCII);
+                int offset = stat.lastIndexOf(')') + 2;
+                if (offset > 1
+                        && offset < stat.length()
+                        && "RSDZTXtKWPI".indexOf(stat.charAt(offset)) >= 0)
+                    state = Character.toString(stat.charAt(offset));
+            } catch (NoSuchFileException exited) {
+                state = "ABSENT";
+            } catch (IOException unsupported) {
+                // An absent/unsupported native observation is not guessed to be alive or exited.
+            }
+            m.put("kernelState", state);
+            m.put("kernelSampleAtNanos", System.nanoTime() - ORIGIN);
+        }
         add(m);
     }
 
@@ -275,7 +301,7 @@ public final class TimeoutEvents {
                                         StandardOpenOption.WRITE,
                                         LinkOption.NOFOLLOW_LINKS))) {
             out.writeStartObject();
-            out.writeNumberField("schemaVersion", 1);
+            out.writeNumberField("schemaVersion", 2);
             out.writeNumberField("scenarioExit", exit);
             out.writeNumberField("synchronousObserverNanos", OVERHEAD.get());
             out.writeNumberField("observerErrors", ERRORS.get());

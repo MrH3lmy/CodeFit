@@ -23,3 +23,11 @@ jobs:
           java -javaagent:target/timeout-trace-agent.jar -cp "$(cat target/timeout-trace-runtime.txt)" com.codefit.evolution.adaptation.TimeoutScenario runner-regression target/timeout-regression.json
           python3 scripts/diagnostics/verify_timeout_trace.py target/timeout-regression.json
           python3 -m unittest discover -s scripts/diagnostics -p 'test_*.py'
+          mkdir target/timeout-export-failure
+          cp target/timeout-regression.json target/timeout-export-failure/existing.json
+          if java -Djava.io.tmpdir="$PWD/target/timeout-export-failure" -javaagent:target/timeout-trace-agent.jar -cp "$(cat target/timeout-trace-runtime.txt)" com.codefit.evolution.adaptation.TimeoutScenario runner-regression target/timeout-export-failure/existing.json; then
+            echo "Existing trace was unexpectedly overwritten"
+            exit 1
+          fi
+          cmp target/timeout-regression.json target/timeout-export-failure/existing.json
+          test "$(find target/timeout-export-failure -mindepth 1 -maxdepth 1 | wc -l)" -eq 1

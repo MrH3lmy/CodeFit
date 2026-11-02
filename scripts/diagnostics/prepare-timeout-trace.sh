@@ -4,8 +4,9 @@ set -eu
 cd "$(dirname "$0")/../.."
 : "${JAVA_HOME:?Java 21 JDK required}"
 probe_maven=${CODEFIT_MAVEN:-mvn}
-"$probe_maven" -Ptimeout-trace -q test-compile dependency:build-classpath -Dmdep.outputFile=target/timeout-trace-classpath.txt
-probe_cp="target/test-classes:target/classes:$(cat target/timeout-trace-classpath.txt)"
+"$probe_maven" -q test-compile org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath -Dmdep.outputFile=target/timeout-trace-classpath.txt
+"$probe_maven" -f scripts/diagnostics/pom.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath -Dmdep.outputFile="$PWD/target/timeout-asm-classpath.txt"
+probe_cp="target/test-classes:target/classes:$(cat target/timeout-trace-classpath.txt):$(cat target/timeout-asm-classpath.txt)"
 mkdir -p target/timeout-trace-classes
 if command -v rg >/dev/null 2>&1; then
     probe_sources=$(rg --files src/diagnostics/java -g '*.java')

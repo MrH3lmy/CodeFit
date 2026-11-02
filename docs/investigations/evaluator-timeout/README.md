@@ -33,7 +33,7 @@ The compiler made observable CPU progress (10ms CPU at the first positive sample
 
 ## Instrumentation and observer limits
 
-`src/diagnostics/java` is compiled only by the explicit preparation script. An opt-in `timeout-trace` Maven profile resolves pinned **ASM/ASM Tree 9.8**, test scope only, to insert memory-only callbacks into the test JVM's loaded copies of:
+`src/diagnostics/java` is compiled only by the explicit preparation script. A standalone diagnostic-only POM (`scripts/diagnostics/pom.xml`) resolves pinned **ASM/ASM Tree 9.8**, test scope only, to insert memory-only callbacks into the test JVM's loaded copies of:
 
 - `JavaCodeRunner`: phase request, original nanoTime deadline, successful spawn, successful original attach, wait entry/result and return.
 - `RunCancellationToken.killTree`: termination requests, including cancellation/finally.
@@ -47,7 +47,7 @@ Events stay in memory (maximum 512), then a strict JSON writer exports scalar id
 
 Instrumentation is not zero overhead. The failed trial measured **158.143ms synchronous observer wall time over all six phases**, including initialization/reflection/descheduling inside hooks. Pre-deadline environment reads and asynchronous sampling add further experimental perturbation; no claim is made that the same scheduler history would occur uninstrumented. This overhead could tip a near-boundary request. It cannot make the observed original wait return false before its real deadline: that return and its still-alive child were captured directly. The finding is correct enforcement in the observed instrumented invocation, not proof of one precise OS starvation mechanism or universal correctness under every race.
 
-Capture producer SHA-256: `95f92c1745bd54a8f3203c6933d869d2dc42c8baf54e3875b47b5e430d4df54c`. Captures preceded final tooling hardening (null-name transformer guard, non-overwriting output creation, cross-thread cancellation correlation and formatting); phase hooks/event schema are unchanged. The final tooling's fresh synthetic timeout/cancellation regression also passed. The baseline product bytecode and published challenge assets were unchanged throughout.
+Capture producer SHA-256: `95f92c1745bd54a8f3203c6933d869d2dc42c8baf54e3875b47b5e430d4df54c`. Captures preceded final tooling hardening (null-name transformer guard, non-overwriting output creation, cross-thread cancellation correlation, standalone dependency isolation and formatting); phase hooks/event schema are unchanged. The final tooling's fresh synthetic timeout/cancellation regression also passed. The baseline product bytecode and published challenge assets were unchanged throughout.
 
 ## Fixed controlled sample
 
@@ -68,7 +68,7 @@ The published performance claim is deliberately limited: quiet reference submiss
 
 ## Reproduce and validate
 
-Use a Java 21 JDK, Maven, Python 3 and Linux. Optional tooling requires its own full JDK; it is not part of the stripped packaged runtime. From repository root:
+Use a Java 21 JDK, Maven, Python 3 and Linux. Optional tooling requires its own full JDK; it is not part of the stripped packaged runtime. The application POM and its strict dependency guard remain unchanged. From repository root:
 
 ```sh
 export JAVA_HOME=/path/to/jdk-21
@@ -90,7 +90,7 @@ For native overlap, concurrently run the existing `desktop/scripts/offline-linux
 
 ## Verification, security and disposition
 
-Ordinary full Java, Node, sandboxed packaged Electron, startup, Linux packaging and production audit results plus exact-head GitHub CI are recorded in the associated draft PR completion ledger. They remain separate from the failed stress trials above. Runtime binaries contain neither agent classes nor ASM diagnostic dependencies; the Maven profile is opt-in and test-scoped. No renderer or IPC command can activate the agent.
+Ordinary full Java, Node, sandboxed packaged Electron, startup, Linux packaging and production audit results plus exact-head GitHub CI are recorded in the associated draft PR completion ledger. They remain separate from the failed stress trials above. Runtime binaries contain neither agent classes nor ASM diagnostic dependencies; the standalone tooling dependency is opt-in and test-scoped. No renderer or IPC command can activate the agent.
 
 No evaluator/mastery/evidence policy, profile ownership, real learner database, SQL curriculum release gate, immutable submission or reward behavior changes. Tests check actual finalization, UNAVAILABLE timeout evidence, released execution gate and identical finalized replay. Existing full regressions cover cancellation, correction, recovery and duplicate prevention. No debugger pauses, sleeps, test skips, blanket retries or timeout inflation were used.
 

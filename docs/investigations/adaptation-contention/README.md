@@ -7,7 +7,7 @@ Baseline: main `9397de43d7862c0350791c8cc7cef3a5743d6243`. This packet separates
 - `AdaptiveQuestIntegrationTest.realRehearsalDefersRetentionAndAllHeldOutContentRemainsUnpresented`: real reference submissions are required to return PASSED before adaptation assertions. A prior overlapping Java/Electron run returned TIMED_OUT in `pass` instead. Original failure output did not identify the timed-out phase; that information cannot be reconstructed honestly.
 - `AdaptiveQuestIntegrationTest.concurrentIdenticalResponsesCommitExactlyOneChoice`: two fixed-pool workers call `respond` with the identical command. Prior local runs received the documented pending/retry exception instead of two immediate Choice values. Isolated reruns and main CI also passed; neither result establishes deterministic success under all schedules.
 
-A new pre-change, no-competing-workload sample reproduced bounded retry in **1/5** concurrent trials (542–853ms total); all five committed exactly one choice with zero exposure/evidence. Two original retention trials passed (9,736 / 7,721ms). Thus the concurrent outcome does not require CPU overload. Raw learner inputs, source, hidden checks, evaluation bodies and profile paths are not retained in this packet.
+A new pre-change, no-competing-workload sample reproduced bounded retry in **1/5** concurrent trials (542–853ms total); all five committed exactly one choice with zero exposure/evidence. Two original retention trials passed (9,736 / 7,721ms). Thus the concurrent outcome does not require CPU overload. Raw learner inputs, source, hidden checks, evaluation bodies and profile paths are not retained in this packet. `original-failures.txt` preserves only the relevant original assertion/exception lines, including a separately recorded isolated retry failure. Original phase timestamps were not captured.
 
 ## Actual owners and budgets
 
@@ -35,7 +35,23 @@ The test-only probe runs five independent concurrency trials and two real retent
 
 The phase budget at runner API entry is available. **Exact remaining budget when the OS first schedules the child is not measured**; no number is invented. The wrapper does not replace the cancellation token or bypass durable registration merely to instrument it. There is no executor queue to measure inside evaluation; response-test queue delay is measured at the real two-thread pool boundary. SQLite lock-wait time is not separately exposed: the 5s connection bound and the deterministic independent-writer experiment establish the guard behavior, not a fabricated lock-duration trace.
 
-Full normal, CPU-affinity constrained and overlapping Electron/JVM experiments are recorded separately as they finish. A failure under stress must not be relabeled as a green verification. Final counts, commands, exact head CI and remaining limitations belong in the PR/issue evidence.
+## Verification record and controlled matrix
+
+The no-competing-workload full Java 21 run completed with **2,026 tests, zero failures/errors/skips**, aggregate reported test time 1,254.587s. The full Node suite passed **94/94**, and TypeScript build, Java runtime assembly, Linux packaging and production dependency audit passed (zero vulnerabilities). These are completed observations, not predictions for the stressed runs.
+
+The experiment driver serializes normal Java, desktop build/Node and one-CPU Java before the deliberately overlapping workloads. All use the same production code, limits and assertions. Chromium sandbox remains enabled and packaged E2E runs through the existing offline Linux wrapper. The quota is `200000/100000` (two CPU equivalents), with CPU affinity `0` for the constrained run.
+
+| Condition              | Command / workload                                                                                                         | Purpose                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Quiet focused baseline | original affected methods, two retention / five concurrency trials                                                         | Establish whether overload is necessary                         |
+| Normal full            | `DISPLAY=:98 /workspace/run216 -q test`                                                                                    | Full Java21 and real JavaFX regressions                         |
+| Constrained full       | `DISPLAY=:98 taskset -c 0 /workspace/run216 -q test`                                                                       | One-CPU scheduling, original budgets                            |
+| Full overlap           | full Java + `npm run test:e2e -- --trace off` + existing startup diagnostic with `CODEFIT_STARTUP_LOAD=2`                  | Whole-suite contention / competing JVM initialization           |
+| Direct overlap         | the three focused integration methods plus `AdaptationContentionProbeTest`, concurrent packaged E2E and startup diagnostic | Ensure the affected requests themselves overlap native activity |
+
+`/workspace/run216` is this environment's Java21 Maven wrapper; it does not change tests or runner limits. The direct focused selection is `AdaptiveQuestIntegrationTest#realRehearsalDefersRetentionAndAllHeldOutContentRemainsUnpresented+concurrentIdenticalResponsesCommitExactlyOneChoice+exhaustedSnapshotsPropagatePendingButReplayAnAlreadyCommittedIdenticalChoice,AdaptationContentionProbeTest`. Startup diagnostics use `playwright.startup-diagnostic.config.ts`. Separate Playwright output directories prevent competing reporters from deleting one another's output. Every experiment records its actual exit code; stress failures are not retried until green.
+
+The **final completed matrix, exact-head CI links, residual failures and timing ranges are maintained in [draft PR #296](https://github.com/MrH3lmy/CodeFit/pull/296)**, so recording later observations does not unnecessarily rebuild an unchanged test artifact. A failure under stress must not be relabeled as green verification. This source packet establishes the audit, original evidence, assertions and collection method; the PR is the completion ledger.
 
 ## Boundaries
 

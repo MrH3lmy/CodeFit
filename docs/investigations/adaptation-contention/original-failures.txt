@@ -1,0 +1,28 @@
+Prior observation: matrix-java-full.log (wall-clock phase timestamps were not recorded)
+[ERROR] Tests run: 27, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 115.4 s <<< FAILURE! -- in com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest
+[ERROR] com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.realRehearsalDefersRetentionAndAllHeldOutContentRemainsUnpresented -- Time elapsed: 21.30 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <PASSED> but was: <TIMED_OUT>
+	at com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.pass(AdaptiveQuestIntegrationTest.java:129)
+	at com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.realRehearsalDefersRetentionAndAllHeldOutContentRemainsUnpresented(AdaptiveQuestIntegrationTest.java:552)
+[ERROR]   AdaptiveQuestIntegrationTest.realRehearsalDefersRetentionAndAllHeldOutContentRemainsUnpresented:552->pass:129 expected: <PASSED> but was: <TIMED_OUT>
+[ERROR] Tests run: 2023, Failures: 1, Errors: 0, Skipped: 0
+
+Prior observation: library-java-full.log (wall-clock phase timestamps were not recorded)
+[ERROR] Tests run: 27, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 49.38 s <<< FAILURE! -- in com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest
+[ERROR] com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.concurrentIdenticalResponsesCommitExactlyOneChoice -- Time elapsed: 0.564 s <<< ERROR!
+java.util.concurrent.ExecutionException: java.lang.IllegalStateException: Learning state changed during adaptation; recommendation pending, retry on demand
+	at com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.concurrentIdenticalResponsesCommitExactlyOneChoice(AdaptiveQuestIntegrationTest.java:738)
+Caused by: java.lang.IllegalStateException: Learning state changed during adaptation; recommendation pending, retry on demand
+	at com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.lambda$concurrentIdenticalResponsesCommitExactlyOneChoice$42(AdaptiveQuestIntegrationTest.java:736)
+[ERROR]   AdaptiveQuestIntegrationTest.concurrentIdenticalResponsesCommitExactlyOneChoice:738 » Execution java.lang.IllegalStateException: Learning state changed during adaptation; recommendation pending, retry on demand
+[ERROR] Tests run: 2022, Failures: 0, Errors: 1, Skipped: 0
+
+Prior observation: library-adaptation-isolated.log (wall-clock phase timestamps were not recorded)
+[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 6.488 s <<< FAILURE! -- in com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest
+[ERROR] com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.concurrentIdenticalResponsesCommitExactlyOneChoice -- Time elapsed: 4.419 s <<< ERROR!
+java.util.concurrent.ExecutionException: java.lang.IllegalStateException: Learning state changed during adaptation; recommendation pending, retry on demand
+	at com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.concurrentIdenticalResponsesCommitExactlyOneChoice(AdaptiveQuestIntegrationTest.java:738)
+Caused by: java.lang.IllegalStateException: Learning state changed during adaptation; recommendation pending, retry on demand
+	at com.codefit.evolution.adaptation.AdaptiveQuestIntegrationTest.lambda$concurrentIdenticalResponsesCommitExactlyOneChoice$43(AdaptiveQuestIntegrationTest.java:737)
+[ERROR]   AdaptiveQuestIntegrationTest.concurrentIdenticalResponsesCommitExactlyOneChoice:738 » Execution java.lang.IllegalStateException: Learning state changed during adaptation; recommendation pending, retry on demand
+[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0

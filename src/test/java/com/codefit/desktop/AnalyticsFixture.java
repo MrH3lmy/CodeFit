@@ -27,6 +27,10 @@ public final class AnalyticsFixture {
         try (var p = ExperimentalProfile.openLearning(path)) {
             DatabaseConfig.useDatabaseUrl("jdbc:sqlite:" + path.resolve("codefit.db"));
             if (args.length > 1 && args[1].equals("empty")) return;
+            if (args.length > 1 && args[1].equals("mixed")) {
+                mixed();
+                return;
+            }
             seed(p);
         } finally {
             DatabaseConfig.useDatabaseUrl(previous);
@@ -44,6 +48,36 @@ public final class AnalyticsFixture {
         new ChallengeEvaluationCoordinator(clock(6))
                 .invalidate(first, UUID.randomUUID().toString(), true);
         reconcile(p, 7);
+    }
+
+    static void mixed() throws Exception {
+        var graph = JavaDebuggingSkillSeed.graph();
+        var service = new MasteryEstimateService();
+        int day = 0;
+        for (var skill : graph.topologicalOrder()) {
+            if (day > 0)
+                new EstimateRevisionRepository()
+                        .reset(graph.ref(), "analytics-epoch-" + day, clock(day));
+            service.estimate(
+                    graph.ref(),
+                    skill.ref(),
+                    service.pilotMappings(),
+                    TIME.plusSeconds(day * 86400L));
+            day++;
+        }
+        // Synthetic unsupported historical policy header. Preserve original valid rows, do not
+        // pretend its private input is interpretable under an implementation that does not exist.
+        try (var c = DatabaseConfig.getConnection();
+                var q =
+                        c.prepareStatement(
+                                "INSERT INTO"
+                                    + " evolution_estimate_revisions(input_sha,policy,graph_id,graph_version,skill_id,skill_version,epoch_id,as_of,inputs)"
+                                    + " SELECT"
+                                    + " input_sha,'historical-policy-fixture',graph_id,graph_version,skill_id,skill_version,epoch_id,as_of,inputs"
+                                    + " FROM evolution_estimate_revisions WHERE revision=(SELECT"
+                                    + " MAX(revision) FROM evolution_estimate_revisions)")) {
+            q.executeUpdate();
+        }
     }
 
     static void reconcile(ExperimentalProfile p, int days) throws Exception {

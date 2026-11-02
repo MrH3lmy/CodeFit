@@ -5576,3 +5576,6 @@ select {
     transition: none !important;
   }
 }
+
+/* Exact historical metadata can contain long opaque epoch identities. */
+.coverage-moment { overflow-wrap: anywhere; text-align: left; line-height: 1.6; }

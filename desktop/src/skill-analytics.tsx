@@ -487,12 +487,13 @@ export function SkillAnalytics() {
             <ChartTitle
               n="03"
               title="What was actually supported"
-              subtitle="Exact observable behaviors × saved interpretations. Coverage is historical and is not a mastery percentage."
+              subtitle="Independent historical saved moments, not one synchronized cross-skill assessment. Each cell retains its own revision, as-of time, evidence epoch and policy."
             />
             <div
               className="analytics-matrix"
               role="table"
               aria-label="Behavior coverage matrix"
+              aria-describedby="coverage-historical-context"
             >
               <div role="row" className="analytics-matrix-head">
                 <span role="columnheader">Published behavior</span>
@@ -520,6 +521,7 @@ export function SkillAnalytics() {
                         <button
                           className={`coverage-cell ${state.toLowerCase()}`}
                           onClick={() => pick(s.id, r?.id)}
+                          aria-label={`${s.name}: ${words(state)}. ${r ? `Saved revision ${r.id}; as of ${r.asOf}; evidence epoch ${r.epoch}; policy ${r.policy}; ${r.status}.` : "No saved revision on this page and filter; timestamp, epoch and policy unavailable."}`}
                         >
                           {words(state)}
                           <small>
@@ -527,6 +529,17 @@ export function SkillAnalytics() {
                               ? `revision ${r.id}`
                               : "No saved revision on page"}
                           </small>
+                          {r && (
+                            <small className="coverage-moment">
+                              As of <time dateTime={r.asOf}>{r.asOf}</time>
+                              <br />
+                              Evidence epoch: {r.epoch}
+                              <br />
+                              Policy: {r.policy}
+                              <br />
+                              Interpretation: {words(r.status)}
+                            </small>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -534,10 +547,15 @@ export function SkillAnalytics() {
                 });
               })}
             </div>
-            <p className="fine-print">
-              Supported · unsupported · contradicted · excluded · not evaluated.
-              Exclusions and assistance remain part of the saved policy
-              interpretation; a check is not an independent family.
+            <p className="fine-print" id="coverage-historical-context">
+              Batch membership is not provided by this projection; similar
+              timestamps do not establish a common reconciliation. Rows may span
+              different epochs and policies. Other skills use their latest saved
+              revision on this page within the active date filter, without
+              substituting a compatible adjacent revision. Supported ·
+              unsupported · contradicted · excluded · not evaluated. Exclusions
+              and assistance remain part of the saved policy interpretation; a
+              check is not an independent family.
             </p>
           </section>
           <section

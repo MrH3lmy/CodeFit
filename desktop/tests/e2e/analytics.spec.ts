@@ -54,7 +54,9 @@ async function open() {
   await p
     .getByRole("button", { name: "Connect analytics practice profile" })
     .click();
-  await expectPracticeReady(p.getByRole("button", { name: "Refresh analytics" }));
+  await expectPracticeReady(
+    p.getByRole("button", { name: "Refresh analytics" }),
+  );
   return p;
 }
 async function read(p: Page) {
@@ -248,4 +250,72 @@ test("packaged screenshots for all five charts in four theme and width combinati
           });
       }
     }
+});
+
+test("coverage cells identify independent exact saved times epochs and policies without publishing", async () => {
+  seedAnalytics(file.replace(/\/codefit.db$/, ""), "mixed");
+  const p = await open();
+  const before = databaseHashes(file);
+  await read(p);
+  const result = await p.evaluate(async () => {
+    const i = await window.codefit.connectPractice();
+    if (!i.ok) throw Error();
+    return window.codefit.readPracticeAnalytics(
+      { page: 0, snapshot: "" },
+      i.profileId,
+      i.sessionId,
+    );
+  });
+  if (!result.ok || !("revisions" in result)) throw Error();
+  const matrix = p.getByRole("table", { name: "Behavior coverage matrix" });
+  await expect(
+    p.getByRole("region", { name: "Observable behavior coverage" }),
+  ).toContainText("not one synchronized cross-skill assessment");
+  for (const skill of result.skills) {
+    const revision = result.revisions.find((r) => r.skill === skill.id)!;
+    const cell = matrix.getByRole("button", {
+      name: new RegExp(`^${skill.name}:`),
+    });
+    await expect(cell).toHaveAccessibleName(
+      new RegExp(
+        `Saved revision ${revision.id}; as of ${revision.asOf}; evidence epoch ${revision.epoch}; policy ${revision.policy}`,
+      ),
+    );
+    await expect(cell).toContainText(revision.asOf);
+    await expect(cell).toContainText(revision.epoch);
+    await expect(cell).toContainText(revision.policy);
+  }
+  const unsupported = result.revisions[0];
+  await expect(
+    matrix.getByRole("button", {
+      name: new RegExp(`Saved revision ${unsupported.id};`),
+    }),
+  ).toContainText("unavailable");
+  await p.getByLabel("From (UTC)").fill("2099-01-01");
+  await expect(
+    matrix.getByRole("button", { name: /No saved revision on this page/ }),
+  ).toHaveCount(4);
+  await p.getByRole("button", { name: "Clear dates" }).click();
+  await read(p);
+  const out = resolve(
+    "../docs/architecture/analytics-historical-matrix/screenshots",
+  );
+  mkdirSync(out, { recursive: true });
+  for (const theme of ["dark", "light"]) {
+    if ((await p.locator("html").getAttribute("data-theme")) !== theme)
+      await p.getByRole("button", { name: `Switch to ${theme} theme` }).click();
+    for (const width of [1280, 760]) {
+      await app.evaluate(
+        ({ BrowserWindow }, width) =>
+          BrowserWindow.getAllWindows()[0].setContentSize(width, 1100),
+        width,
+      );
+      await p.locator("#analytics-2").scrollIntoViewIfNeeded();
+      await p.screenshot({
+        path: join(out, `matrix-${theme}-${width}.png`),
+        fullPage: true,
+      });
+    }
+  }
+  expect(databaseHashes(file)).toEqual(before);
 });

@@ -21,7 +21,7 @@ public enum Route {
     GUIDED_TRAINING("guided-training.fxml", "Today's Training", "CodeFit - Today's Training", null),
     REFLECTION("reflection.fxml", "Reflection", "CodeFit - Reflection", null),
     ASSESSMENT("weekly-assessment.fxml", "Assessment", "CodeFit - Weekly Transfer Assessment", null),
-    SETTINGS("settings.fxml", "Settings", "CodeFit - Settings", null);
+    SETTINGS("settings.fxml", "Settings", "CodeFit - Settings", NavItem.SETTINGS);
 
     private final String fxmlResource;
     private final String shortLabel;
@@ -66,6 +66,7 @@ public enum Route {
         PROBLEMS,
         INTERVIEW,
         PROGRESS,
-        PEERS
+        PEERS,
+        SETTINGS
     }
 }

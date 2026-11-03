@@ -1,26 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
-<fx:root type="VBox" styleClass="sidebar" spacing="14" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
-    <VBox styleClass="brand-block" spacing="3">
+<fx:root type="VBox" styleClass="sidebar" spacing="16" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+    <VBox styleClass="brand-block" spacing="5">
+        <Label text="C / F" styleClass="brand-sigil" />
         <Label text="CodeFit" styleClass="sidebar-title" />
-        <Label fx:id="subtitleLabel" text="Train your dev memory" styleClass="sidebar-subtitle" />
+        <Label fx:id="subtitleLabel" text="THE SYSTEM" styleClass="sidebar-subtitle" />
     </VBox>
-
-    <VBox styleClass="nav-group" spacing="8">
-        <Label text="MAIN" styleClass="nav-section-label" />
-        <Button fx:id="todayButton" text="Today" onAction="#goToday" maxWidth="Infinity" />
-        <Button fx:id="evolutionButton" text="Evolution" onAction="#goEvolution" maxWidth="Infinity" />
-        <Button fx:id="reviewButton" text="Review" onAction="#goReview" maxWidth="Infinity" />
-        <Button fx:id="libraryButton" text="Library" onAction="#goLibrary" maxWidth="Infinity" />
-        <Button fx:id="problemsButton" text="Problems" onAction="#goProblems" maxWidth="Infinity" />
-        <Button fx:id="interviewButton" text="Interview" onAction="#goInterview" maxWidth="Infinity" />
-        <Button fx:id="progressButton" text="Progress" onAction="#goProgress" maxWidth="Infinity" />
-        <Button fx:id="peersButton" text="Peers" onAction="#goPeers" maxWidth="Infinity" />
+    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="sidebar-scroll" VBox.vgrow="ALWAYS" minHeight="0">
+        <VBox styleClass="nav-group" spacing="6">
+            <Label text="WORKSPACE" styleClass="nav-section-label" wrapText="true" />
+            <Button fx:id="todayButton" text="Today" onAction="#goToday" maxWidth="Infinity" />
+            <Button fx:id="evolutionButton" text="Evolution" onAction="#goEvolution" maxWidth="Infinity" />
+            <Label text="PRACTICE" styleClass="nav-section-label" wrapText="true" />
+            <Button fx:id="reviewButton" text="Review" onAction="#goReview" maxWidth="Infinity" />
+            <Button fx:id="libraryButton" text="Library" onAction="#goLibrary" maxWidth="Infinity" />
+            <Button fx:id="problemsButton" text="Problems" onAction="#goProblems" maxWidth="Infinity" />
+            <Button fx:id="interviewButton" text="Interview" onAction="#goInterview" maxWidth="Infinity" />
+            <Label text="REFLECT / CONNECT" styleClass="nav-section-label" wrapText="true" />
+            <Button fx:id="progressButton" text="Progress" onAction="#goProgress" maxWidth="Infinity" />
+            <Button fx:id="peersButton" text="Peers" onAction="#goPeers" maxWidth="Infinity" />
+        </VBox>
+    </ScrollPane>
+    <VBox styleClass="sidebar-footer-card" spacing="5">
+        <Label text="LOCAL WORKSPACE" styleClass="system-eyebrow" wrapText="true" />
+        <Label fx:id="localNote" text="Your learning, on your device." styleClass="sidebar-footer-text" wrapText="true" />
     </VBox>
-
-    <Region VBox.vgrow="ALWAYS" />
-
     <Button fx:id="settingsButton" text="Settings" onAction="#goSettings" maxWidth="Infinity" styleClass="nav-item" />
 </fx:root>

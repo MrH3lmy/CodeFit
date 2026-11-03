@@ -59,6 +59,9 @@ When adding packaging, ensure the generated artifact includes the JavaFX runtime
 
 The desktop UI is a persistent application shell rather than a per-screen window stack.
 
+[The System visual foundation](docs/ui/system/phase-1.md) defines the native Phase 1 palette,
+shared components, reduced-motion behavior and visual verification for #244 / #249.
+
 - **Shell**: `AppShellController` (`fxml/app-shell.fxml`) owns the sidebar and top bar for the
   lifetime of the application. `NavigationService` builds this shell once and, on every
   navigation, swaps only the shell's content host — the sidebar, top bar, and theme selection are

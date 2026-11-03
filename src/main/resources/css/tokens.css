@@ -1,39 +1,42 @@
-/*
- * Semantic token contract shared by every theme and every screen. A theme only ever needs to
- * define these eleven custom properties; screens and shared components reference the tokens
- * below instead of hard-coded colors so switching themes never requires touching screen CSS.
- */
-
+/* Eleven existing semantic tokens remain the screen contract. System extensions add selection
+ * and on-fill ink; define them in both themes so legacy screens inherit readable controls. */
 .theme-dark {
-    -color-background: #0B0D12;
-    -color-surface: #12151C;
-    -color-surface-raised: #191D27;
-    -color-border: #292E3A;
-    -color-text-primary: #F3F4F6;
-    -color-text-secondary: #9CA3AF;
-    -color-accent: #7C5CFC;
-    -color-accent-hover: #6D4CE8;
-    -color-success: #22C55E;
-    -color-warning: #F59E0B;
-    -color-danger: #EF4444;
-
+    -color-background: #090D19;
+    -color-surface: #151E31;
+    -color-surface-raised: #1B2840;
+    -color-border: #354664;
+    -color-text-primary: #EDF3FF;
+    -color-text-secondary: #A8B8D2;
+    -color-accent: #AF98FF;
+    -color-accent-hover: #C5B5FF;
+    -color-success: #6BE3B9;
+    -color-warning: #FFD184;
+    -color-danger: #FF8C9D;
+    -color-selection: #74E8FF;
+    -color-on-accent: #090D19;
+    -color-on-status: #090D19;
     -fx-background-color: -color-background;
     -fx-text-fill: -color-text-primary;
+    -fx-focus-color: -color-selection;
+    -fx-faint-focus-color: transparent;
 }
-
 .theme-light {
-    -color-background: #F6F7F9;
+    -color-background: #F0F3FA;
     -color-surface: #FFFFFF;
-    -color-surface-raised: #FFFFFF;
-    -color-border: #E3E5E8;
-    -color-text-primary: #16181D;
-    -color-text-secondary: #667085;
-    -color-accent: #6D4AFF;
-    -color-accent-hover: #5C3DE0;
-    -color-success: #16A34A;
-    -color-warning: #D97706;
-    -color-danger: #DC2626;
-
+    -color-surface-raised: #E7EDF8;
+    -color-border: #8594AE;
+    -color-text-primary: #142139;
+    -color-text-secondary: #4C5D77;
+    -color-accent: #6542B2;
+    -color-accent-hover: #51318F;
+    -color-success: #146C50;
+    -color-warning: #835700;
+    -color-danger: #B32641;
+    -color-selection: #006C83;
+    -color-on-accent: #FFFFFF;
+    -color-on-status: #FFFFFF;
     -fx-background-color: -color-background;
     -fx-text-fill: -color-text-primary;
+    -fx-focus-color: -color-selection;
+    -fx-faint-focus-color: transparent;
 }

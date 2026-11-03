@@ -27,6 +27,18 @@ public class AppShellController {
     private Route currentRoute;
     private boolean distractionFree;
 
+    @FXML
+    private void initialize() {
+        shellRoot.widthProperty().addListener((observable, before, width) -> {
+            boolean narrow = width.doubleValue() > 0 && width.doubleValue() < 920;
+            if (narrow && !shellRoot.getStyleClass().contains("shell-narrow")) {
+                shellRoot.getStyleClass().add("shell-narrow");
+            } else if (!narrow) {
+                shellRoot.getStyleClass().remove("shell-narrow");
+            }
+        });
+    }
+
     void showRoute(Route route) {
         long generation = ++navigationGeneration;
         Runnable display =
@@ -46,9 +58,7 @@ public class AppShellController {
         contentHost.getChildren().setAll(content);
         currentRoute = route;
 
-        if (route.navItem() != null) {
-            sidebar.setActiveRoute(route.navItem());
-        }
+        sidebar.setActiveRoute(route.navItem());
         if (topBarTitleLabel != null) {
             topBarTitleLabel.setText(route.shortLabel());
         }

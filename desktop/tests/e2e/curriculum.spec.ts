@@ -149,8 +149,9 @@ test("real Java metadata, four responsive theme compositions, keyboard inspector
   await p.getByText("Book coverage provenance", { exact: true }).click();
   await p.getByRole("combobox", { name: "Author-draft status" }).selectOption("unknown-author");
   await expect(p.locator(".atlas-book-card")).toHaveCount(4);
-  await expect(bookInspector.getByRole("heading", { level: 2 })).toHaveText("OCP Java SE 17 Guide");
-  await expect(p.locator(".atlas-book-card").first()).toHaveAttribute("aria-pressed", "true");
+  // The previously selected book remains selected when it still matches the filter.
+  await expect(bookInspector.getByRole("heading", { level: 2 })).toHaveText("Complete Coding Interview Guide in Java");
+  await expect(p.locator(".atlas-book-card").last()).toHaveAttribute("aria-pressed", "true");
   await p.getByLabel("Find a reported book").fill("java-coding-problems");
   await expect(p.locator(".atlas-book-card")).toHaveCount(1);
   await expect(bookInspector.getByRole("heading", { level: 2 })).toHaveText("Java Coding Problems");

@@ -1,0 +1,234 @@
+{
+  "schema": "codefit-knowledge-atlas-acceptance-matrix/1",
+  "recordedAt": "2026-11-03",
+  "testedCodeCommit": "a8fd4d865b90fd7a3ab5d29efb8ee361a72a8580",
+  "mainBaselineCommit": "04fe1f78246ee090cf6a26d66116bdad7f81816f",
+  "environment": {
+    "os": "Ubuntu 24.04.5 LTS",
+    "architecture": "x86_64",
+    "java": "Temurin 21.0.13",
+    "node": "v22.23.4",
+    "npm": "10.9.9",
+    "electron": "44.9.3",
+    "playwright": "1.64.1"
+  },
+  "commands": [
+    {
+      "name": "Focused Java preview and coverage",
+      "command": "cd /home/runner/work/CodeFit/CodeFit && export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64 PATH=/usr/lib/jvm/temurin-21-jdk-amd64/bin:$PATH && mvn -B -Dtest=KnowledgePreviewTest,KnowledgeCoverageTest,KnowledgePreviewReadOnlyIntegrationTest test",
+      "result": "PASS",
+      "tests": 70,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testedCommit": "04fe1f78246ee090cf6a26d66116bdad7f81816f"
+    },
+    {
+      "name": "Full Java 21 regression suite",
+      "command": "cd /home/runner/work/CodeFit/CodeFit && export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64 PATH=/usr/lib/jvm/temurin-21-jdk-amd64/bin:$PATH && xvfb-run -a mvn -B test",
+      "result": "PASS",
+      "tests": 2111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testedCommit": "a8fd4d865b90fd7a3ab5d29efb8ee361a72a8580"
+    },
+    {
+      "name": "Desktop build, Java preparation, unit tests and Linux package",
+      "command": "cd /home/runner/work/CodeFit/CodeFit/desktop && export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64 PATH=/usr/lib/jvm/temurin-21-jdk-amd64/bin:$PATH && npm run build && npm run prepare:java && npm test && npm run package",
+      "result": "PASS",
+      "nodeTests": 99,
+      "failures": 0,
+      "skipped": 0,
+      "testedCommit": "a8fd4d865b90fd7a3ab5d29efb8ee361a72a8580"
+    },
+    {
+      "name": "Packaged Atlas E2E and real screenshots",
+      "command": "cd /home/runner/work/CodeFit/CodeFit/desktop && export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64 PATH=/usr/lib/jvm/temurin-21-jdk-amd64/bin:$PATH CODEFIT_CAPTURE_CURRICULUM_SCREENSHOTS=1 CODEFIT_DESKTOP_EXECUTABLE=\"$PWD/release/CodeFit-Gate0-linux-x64/codefit-gate0\" && xvfb-run -a -s \"-screen 0 2560x1800x24\" ./node_modules/.bin/playwright test tests/e2e/curriculum.spec.ts",
+      "sandboxSetup": "For this Ubuntu 24.04 host only, set the packaged chrome-sandbox helper to root:root mode 4755 before launching; Chromium sandbox remains enabled.",
+      "result": "PASS",
+      "tests": 9,
+      "failures": 0,
+      "skipped": 0,
+      "testedCommit": "a8fd4d865b90fd7a3ab5d29efb8ee361a72a8580"
+    },
+    {
+      "name": "Packaged app archive audit",
+      "artifact": "/home/runner/work/CodeFit/CodeFit/desktop/release/CodeFit-Gate0-linux-x64/resources/app.asar",
+      "result": "PASS",
+      "archiveBytes": 17599307,
+      "protectedSentinelMatches": 0,
+      "rendererJavaScriptSourcemaps": 0,
+      "testedCommit": "a8fd4d865b90fd7a3ab5d29efb8ee361a72a8580"
+    },
+    {
+      "name": "Handoff main CI",
+      "url": "https://github.com/MrH3lmy/CodeFit/actions/runs/41623983476",
+      "testedCommit": "04fe1f78246ee090cf6a26d66116bdad7f81816f",
+      "os": "ubuntu-latest",
+      "result": "PASS",
+      "javaTests": 2111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "Handoff packaged Desktop Gate 0",
+      "url": "https://github.com/MrH3lmy/CodeFit/actions/runs/41623983474",
+      "testedCommit": "04fe1f78246ee090cf6a26d66116bdad7f81816f",
+      "os": "ubuntu-22.04",
+      "result": "PASS",
+      "packagedE2eTests": 95,
+      "startupDiagnostics": 3,
+      "failures": 0,
+      "unsignedLinuxArtifactSha256": "a4c81641d83c002bbe888258289742c3f019681c90b4a1fa8ed9292a563cc946"
+    }
+  ],
+  "acceptance": [
+    {
+      "area": "Pinned Java preview and coverage readers",
+      "status": "PASS",
+      "evidence": [
+        "/home/runner/work/CodeFit/CodeFit/src/test/java/com/codefit/knowledge/KnowledgePreviewTest.java",
+        "/home/runner/work/CodeFit/CodeFit/src/test/java/com/codefit/knowledge/KnowledgeCoverageTest.java"
+      ],
+      "covers": [
+        "revision and byte-pin mismatch",
+        "duplicate identifiers and fields",
+        "unsupported stages and incomplete stage sets",
+        "malformed hashes, oversized metadata, absent or stale coverage",
+        "four unmapped skills and exactly six unresolved external prerequisites",
+        "immutable public preview with no approval, grading, XP, reward or mastery eligibility"
+      ]
+    },
+    {
+      "area": "Read-only persistence boundary",
+      "status": "PASS",
+      "evidence": [
+        "/home/runner/work/CodeFit/CodeFit/src/test/java/com/codefit/knowledge/KnowledgePreviewReadOnlyIntegrationTest.java",
+        "/home/runner/work/CodeFit/CodeFit/desktop/tests/e2e/curriculum.spec.ts"
+      ],
+      "covers": [
+        "seeded learner database remains byte-identical",
+        "absent profile is not initialized and no second database is created",
+        "draft inspection leaves connected learner evidence unchanged"
+      ]
+    },
+    {
+      "area": "Electron IPC, cancellation and concurrency",
+      "status": "PASS",
+      "evidence": [
+        "/home/runner/work/CodeFit/CodeFit/desktop/tests/curriculum-session.test.ts",
+        "/home/runner/work/CodeFit/CodeFit/desktop/tests/e2e/curriculum.spec.ts"
+      ],
+      "covers": [
+        "default-off release gate and caller authorization",
+        "bounded canceled, timed-out, malformed and stale reads",
+        "reader coalescing for concurrent requests",
+        "renderer reload and application restart",
+        "second Electron window is rejected by the owning-frame IPC check"
+      ]
+    },
+    {
+      "area": "Renderer and packaged-content leakage",
+      "status": "PASS",
+      "evidence": [
+        "/home/runner/work/CodeFit/CodeFit/desktop/tests/e2e/curriculum.spec.ts",
+        "/home/runner/work/CodeFit/CodeFit/desktop/release/CodeFit-Gate0-linux-x64/resources/app.asar"
+      ],
+      "covers": [
+        "synthetic protected-field and private-link sentinels absent from rendered markup and browser logs",
+        "search for a synthetic prompt sentinel returns no draft",
+        "offline window makes no external HTTP(S) requests",
+        "packaged archive contains no tested private sentinels or renderer JavaScript sourcemaps"
+      ],
+      "limitation": "Offline Electron context and request observation are tested; an OS network namespace was not used or claimed."
+    },
+    {
+      "area": "Packaged Atlas UX",
+      "status": "PASS",
+      "evidence": [
+        "/home/runner/work/CodeFit/CodeFit/desktop/tests/e2e/curriculum.spec.ts",
+        "/home/runner/work/CodeFit/CodeFit/docs/architecture/gate2-curriculum/screenshots/curriculum-1280-dark.png",
+        "/home/runner/work/CodeFit/CodeFit/docs/architecture/gate2-curriculum/screenshots/curriculum-1280-light.png",
+        "/home/runner/work/CodeFit/CodeFit/docs/architecture/gate2-curriculum/screenshots/curriculum-760-dark.png",
+        "/home/runner/work/CodeFit/CodeFit/docs/architecture/gate2-curriculum/screenshots/curriculum-760-light.png"
+      ],
+      "covers": [
+        "offline packaged launch",
+        "760px and 1280px light/dark layouts",
+        "keyboard navigation and focus visibility",
+        "reduced-motion emulation",
+        "filtered selection, zero-match details and restored selection"
+      ],
+      "limitations": [
+        "Screen-reader walkthrough remains manual.",
+        "Screenshot hashes identify the captured images, not owner design approval."
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "/home/runner/work/CodeFit/CodeFit/docs/architecture/gate2-curriculum/screenshots/curriculum-1280-dark.png",
+      "sha256": "5b5403fe1190bd6cfb4b8e22d92bb0da6c4312de8911af5f5ebd6c6dca620c07",
+      "pixels": "1265x3782"
+    },
+    {
+      "path": "/home/runner/work/CodeFit/CodeFit/docs/architecture/gate2-curriculum/screenshots/curriculum-1280-light.png",
+      "sha256": "37b9071ef2ff447e2693c6f65c6ec1a8d2d38be8e8825eadaba96f54182706b5",
+      "pixels": "1265x3782"
+    },
+    {
+      "path": "/home/runner/work/CodeFit/CodeFit/docs/architecture/gate2-curriculum/screenshots/curriculum-760-dark.png",
+      "sha256": "f3c947ceb3f372f46cce3cf341b64e5cd48d8f8c7e936fa68e4de7f2a87d0e0e",
+      "pixels": "745x5599"
+    },
+    {
+      "path": "/home/runner/work/CodeFit/CodeFit/docs/architecture/gate2-curriculum/screenshots/curriculum-760-light.png",
+      "sha256": "2333d9243d38af6bd37b53eeff26eb7ad1fe98ec9553f103f5c79d7dcbabe87f",
+      "pixels": "745x5599"
+    }
+  ],
+  "relatedIssueGates": {
+    "267": {
+      "issueState": "OPEN",
+      "status": "PARTIAL",
+      "summary": "The Java-backed metadata-only preview, honest blockers, filters, keyboard flows and bounded rendering have regression evidence; this is not curriculum approval or full GUI-gate signoff."
+    },
+    "268": {
+      "issueState": "OPEN",
+      "status": "BLOCKED",
+      "summary": "Atlas stage metadata is preview-only. Mission execution remains unavailable; no Predict/Debug/Build/Defend learner workspace or graded journey is claimed."
+    },
+    "269": {
+      "issueState": "OPEN",
+      "status": "BLOCKED",
+      "summary": "No independent approvals or production graders exist. The production/release gate remains off; this matrix does not implement a grading adapter."
+    },
+    "270": {
+      "issueState": "OPEN",
+      "status": "PARTIAL",
+      "summary": "This is bounded read-only Linux QA evidence, not the full cross-platform, licensing, sandbox, review or release gate."
+    }
+  },
+  "deferred": [
+    "Manual Windows packaged startup, screenshots and signing/distribution review.",
+    "Manual macOS packaged startup, screenshots and signing/notarization review.",
+    "Screen-reader walkthrough and owner visual/design approval.",
+    "Independent content review, JDK 21 content verification, production grader approval, pilot readiness and learner validation.",
+    "Full release acceptance for #267, #268, #269 and #270."
+  ],
+  "environmentIncidents": [
+    {
+      "attempt": "Initial full desktop npm test without exporting JDK 21",
+      "result": "FAIL_ENVIRONMENT",
+      "detail": "Eight unrelated Java fixture tests invoked system javac 17 with --release 21; rerunning with JAVA_HOME and PATH set to Temurin 21 passed all 99 tests."
+    },
+    {
+      "attempt": "Initial packaged E2E on Ubuntu 24.04 with the default packaged chrome-sandbox ownership/mode",
+      "result": "FAIL_ENVIRONMENT",
+      "detail": "Electron aborted because chrome-sandbox was runner:runner mode 0755. Setting the ignored local package helper to root:root mode 4755, without disabling the Chromium sandbox, allowed all 9 curriculum E2E tests to pass."
+    }
+  ],
+  "releaseDecision": "NOT_A_RELEASE_APPROVAL"
+}

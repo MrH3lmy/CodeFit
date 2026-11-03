@@ -1,0 +1,90 @@
+{
+  "schema": "codefit-original-only/1",
+  "revision": "synthetic-r1",
+  "sourceKind": "ORIGINAL_ONLY",
+  "permittedRelease": "METADATA_ONLY",
+  "books": [
+    {"id": "synthetic-book-one"},
+    {"id": "synthetic-book-two"},
+    {"id": "synthetic-book-three"},
+    {"id": "synthetic-book-four"},
+    {"id": "synthetic-book-five"}
+  ],
+  "units": [
+    {"id": "synthetic-unit-one", "bookId": "synthetic-book-one", "coverage": "AUTHOR_REPORTED", "skillIds": ["synthetic-skill-one"]},
+    {"id": "synthetic-unit-two", "bookId": "synthetic-book-two", "coverage": "AUTHOR_REPORTED", "skillIds": ["synthetic-skill-two"]},
+    {"id": "synthetic-unit-three", "bookId": "synthetic-book-three", "coverage": "UNREPORTED", "skillIds": []},
+    {"id": "synthetic-unit-four", "bookId": "synthetic-book-four", "coverage": "UNREPORTED", "skillIds": []},
+    {"id": "synthetic-unit-five", "bookId": "synthetic-book-five", "coverage": "UNREPORTED", "skillIds": []}
+  ],
+  "skills": [
+    {
+      "id": "synthetic-skill-one", "bookId": "synthetic-book-one", "unitId": "synthetic-unit-one",
+      "mappingStatus": "UNMAPPED", "prerequisites": [],
+      "stages": [
+        {
+          "id": "synthetic-one-predict", "bookId": "synthetic-book-one", "unitId": "synthetic-unit-one",
+          "skillId": "synthetic-skill-one", "stage": "PREDICT", "status": "UNREVIEWED", "coverage": "AUTHOR_REPORTED",
+          "brief": {"status": "ORIGINAL_AUTHOR_DRAFT", "text": "Synthetic author note for validator testing only"},
+          "independentReview": {"revision": "synthetic-r1", "technical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}, "pedagogical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}},
+          "permittedRelease": "METADATA_ONLY"
+        },
+        {
+          "id": "synthetic-one-debug", "bookId": "synthetic-book-one", "unitId": "synthetic-unit-one",
+          "skillId": "synthetic-skill-one", "stage": "DEBUG", "status": "REVIEW_PENDING", "coverage": "AUTHOR_REPORTED",
+          "brief": {"status": "ORIGINAL_AUTHOR_DRAFT", "text": "Synthetic pending note with no learning content"},
+          "independentReview": {"revision": "synthetic-r1", "technical": {"status": "REVIEW_PENDING", "history": ["UNREVIEWED", "REVIEW_PENDING"]}, "pedagogical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}},
+          "permittedRelease": "METADATA_ONLY"
+        },
+        {
+          "id": "synthetic-one-build", "bookId": "synthetic-book-one", "unitId": "synthetic-unit-one",
+          "skillId": "synthetic-skill-one", "stage": "BUILD", "status": "UNSUPPORTED", "coverage": "UNREPORTED",
+          "brief": {"status": "UNSUPPORTED", "text": ""},
+          "independentReview": {"revision": "synthetic-r1", "technical": {"status": "UNSUPPORTED", "history": ["UNREVIEWED", "UNSUPPORTED"]}, "pedagogical": {"status": "UNSUPPORTED", "history": ["UNREVIEWED", "UNSUPPORTED"]}},
+          "permittedRelease": "METADATA_ONLY"
+        },
+        {
+          "id": "synthetic-one-defend", "bookId": "synthetic-book-one", "unitId": "synthetic-unit-one",
+          "skillId": "synthetic-skill-one", "stage": "DEFEND", "status": "ABSENT", "coverage": "UNREPORTED",
+          "brief": {"status": "ABSENT", "text": ""},
+          "independentReview": {"revision": "synthetic-r1", "technical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}, "pedagogical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}},
+          "permittedRelease": "METADATA_ONLY"
+        }
+      ]
+    },
+    {
+      "id": "synthetic-skill-two", "bookId": "synthetic-book-two", "unitId": "synthetic-unit-two",
+      "mappingStatus": "UNMAPPED", "prerequisites": ["synthetic-skill-one"],
+      "stages": [
+        {
+          "id": "synthetic-two-predict", "bookId": "synthetic-book-two", "unitId": "synthetic-unit-two",
+          "skillId": "synthetic-skill-two", "stage": "PREDICT", "status": "ABSENT", "coverage": "UNREPORTED",
+          "brief": {"status": "ABSENT", "text": ""},
+          "independentReview": {"revision": "synthetic-r1", "technical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}, "pedagogical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}},
+          "permittedRelease": "METADATA_ONLY"
+        },
+        {
+          "id": "synthetic-two-debug", "bookId": "synthetic-book-two", "unitId": "synthetic-unit-two",
+          "skillId": "synthetic-skill-two", "stage": "DEBUG", "status": "ABSENT", "coverage": "UNREPORTED",
+          "brief": {"status": "ABSENT", "text": ""},
+          "independentReview": {"revision": "synthetic-r1", "technical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}, "pedagogical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}},
+          "permittedRelease": "METADATA_ONLY"
+        },
+        {
+          "id": "synthetic-two-build", "bookId": "synthetic-book-two", "unitId": "synthetic-unit-two",
+          "skillId": "synthetic-skill-two", "stage": "BUILD", "status": "ABSENT", "coverage": "UNREPORTED",
+          "brief": {"status": "ABSENT", "text": ""},
+          "independentReview": {"revision": "synthetic-r1", "technical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}, "pedagogical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}},
+          "permittedRelease": "METADATA_ONLY"
+        },
+        {
+          "id": "synthetic-two-defend", "bookId": "synthetic-book-two", "unitId": "synthetic-unit-two",
+          "skillId": "synthetic-skill-two", "stage": "DEFEND", "status": "ABSENT", "coverage": "UNREPORTED",
+          "brief": {"status": "ABSENT", "text": ""},
+          "independentReview": {"revision": "synthetic-r1", "technical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}, "pedagogical": {"status": "UNREVIEWED", "history": ["UNREVIEWED"]}},
+          "permittedRelease": "METADATA_ONLY"
+        }
+      ]
+    }
+  ]
+}

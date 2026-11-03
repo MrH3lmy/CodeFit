@@ -1,0 +1,197 @@
+ORIGINAL-ONLY FIVE-BOOK CONTRACT v1 — DEVELOPER REVIEW ONLY
+
+Boundary
+--------
+This is a future author-export format and a test-only offline validator, not a
+production importer, curriculum publication, challenge catalog or approval system.
+No private archive, PDF, source excerpt, proprietary example, private locator,
+reviewer credential, answer key or real learner data is required or permitted.
+Originality is an AUTHOR DECLARATION, not something a checksum/parser can prove.
+Only independently authored structural metadata and short original author notes
+belong here. Never copy book prose or examples into a note. If provenance is
+unclear, omit the note and use ABSENT. Human copyright review remains a blocker.
+
+The five book IDs are author-assigned canonical structural slots. The fixture
+uses synthetic-book-one through synthetic-book-five; these are NOT book titles,
+real coverage counts, author exports or mappings to the existing pilot. No
+five-book title list or private-source access is assumed.
+
+Files (all paths are absolute)
+-----------------------------
+Schema:
+ /home/runner/work/CodeFit/CodeFit/docs/knowledge-compiler/original-only-v1/input.schema.json
+Synthetic reference:
+ /home/runner/work/CodeFit/CodeFit/src/test/resources/knowledge/original-only-v1/catalog.json
+Developer validator and tests:
+ /home/runner/work/CodeFit/CodeFit/src/test/java/com/codefit/knowledge/export/OriginalOnlyCatalogValidator.java
+ /home/runner/work/CodeFit/CodeFit/src/test/java/com/codefit/knowledge/export/OriginalOnlyCatalogValidatorTest.java
+
+Wire format and semantic rules
+------------------------------
+The JSON Schema defines exhaustive required field sets and local constraints.
+The Java validator additionally enforces the relational/revision rules below.
+Neither validator nor schema resolves a schema URL or any network resource.
+UTF-8 only; maximum 131072 bytes, depth 12, 16384 parsed values, strings 512
+characters (IDs 128, notes 256), number token limit 8. Payload scalar values must
+be strings: null, booleans, numbers, duplicate keys and trailing data are errors.
+No type coercion, missing-field default, alias, unknown status or extra field.
+Unknown schema versions require a separately reviewed validator, never fallback.
+
+Exactly five unique books, 5..100 units with at least one per book, 0..100 skills.
+IDs are globally unique across books, units, skills and stages. Book/unit/skill
+and revision IDs match [a-z][a-z0-9]*(?:[.-][a-z0-9]+)*. Stage IDs instead match
+[A-Za-z][A-Za-z0-9]*(?:[.-][A-Za-z0-9]+)* to preserve legacy uppercase identities;
+comparison is exact and case-sensitive, never a case-folded alias.
+IDs are opaque, not filenames, suffix-derived
+definition versions, source locations, URLs or implicit approval claims.
+Every unit's skillIds must exactly equal the reverse skill.unitId association.
+Every skill has one unit and the same book as that unit; each stage repeats
+that exact book/unit/skill association. Each skill has exactly one each of
+PREDICT, DEBUG, BUILD, DEFEND, including unavailable stages. Never drop a stage
+to conceal an absence. A stage ID is opaque, globally unique and immutable for
+its input revision; its kind is the separate stage field.
+Prerequisites are at most 16 distinct catalog skill IDs; dangling external
+references, self-edges and cycles fail the entire document. Future unresolved
+external dependencies must be represented by explicitly unmapped skill metadata,
+not silently dropped, invented as CodeFit definitions or treated as satisfied.
+
+Coverage and categories
+-----------------------
+unit.coverage and stage.coverage are UNREPORTED or AUTHOR_REPORTED only.
+They are author claims, not validated coverage or inferred completion counts.
+unit.skillIds=[] explicitly records no skill mapping. Every skill.mappingStatus
+is UNMAPPED. Exact SkillRef/GraphRef proposals are unsupported in v1.
+brief.status distinguishes ABSENT, UNSUPPORTED and ORIGINAL_AUTHOR_DRAFT.
+brief.text is empty for ABSENT/UNSUPPORTED; otherwise it is 1..256 ASCII
+characters matching [A-Za-z0-9][A-Za-z0-9 ,;()'!?-]{0,255}. This deliberately
+limited note channel excludes URL/path syntax, code, markup and source locators;
+it is not a full mission brief format or a copyright detector. Do not encode
+protected prompts, answers, hints or rubrics as notes. NO note text is exported.
+
+Independent technical and pedagogical review are SEPARATE categories, bound to
+the exact root revision. Each has a status and exhaustive transition history:
+ UNREVIEWED   -> history [UNREVIEWED]
+ REVIEW_PENDING -> history [UNREVIEWED, REVIEW_PENDING]
+ UNSUPPORTED  -> history [UNREVIEWED, UNSUPPORTED]
+All other transitions, histories, review decisions and reviewer identity/proof
+fields are rejected. These are empty/pending decision slots, NOT authenticated
+review results. Author assertions cannot grant independent review eligibility.
+Actual approval/rejection/attestation exchange is out of scope; future review
+work must use an independently trusted, exact-byte-bound external decision
+channel, not trust input-controlled credentials, signatures or approval flags.
+
+Stage consistency:
+ ABSENT: UNREPORTED, ABSENT empty brief, both review categories UNREVIEWED.
+ UNSUPPORTED: UNREPORTED, UNSUPPORTED empty brief, both categories UNSUPPORTED.
+ UNREVIEWED: AUTHOR_REPORTED, original draft, both categories UNREVIEWED.
+ REVIEW_PENDING: AUTHOR_REPORTED, original draft, at least one category pending,
+                 other category UNREVIEWED or REVIEW_PENDING.
+UNMAPPED, UNREVIEWED, UNSUPPORTED and REVIEW_PENDING never mean approved,
+gradable, earned, mastered, released or challenge-authorized. Missing/unsupported
+data is never converted to an empty-but-approved exercise.
+
+permittedRelease must be METADATA_ONLY at root and every stage. No challenge or
+content release is supported, regardless of category status. This permits only
+local generation of the safe DTO for developer inspection; it is NOT authority
+to publish an unreviewed content package or change a production release flag.
+
+Exact revisions and atomic failure
+----------------------------------
+The developer supplies an external expected revision and SHA-256 of exact input
+bytes. These must come from the intentionally selected local review candidate,
+not a self-declared hash inside that candidate. Revisions and stage review
+revisions must match; whitespace, ordering, notes and all metadata changes
+invalidate the old byte pin. A matching pin proves identity only, not safety,
+originality or approval. Every invocation still runs ALL structural checks.
+Do not overwrite a revision's bytes or carry reviews to a changed hash. A new
+candidate needs a new revision/pin and reset reviews; no approval store or
+historical learner reference migration is introduced here.
+
+Validation builds only local memory. Any failure returns error only, with no DTO,
+manifest, files, catalog registration, SQLite initialization or learner mutation.
+CLI exit 0 emits one complete JSON envelope {manifest,preview}; exit 1 emits
+only {schema:"codefit-original-only-error/1",valid:false,category,code}.
+Diagnostics contain fixed codes only, not values, exception causes, paths,
+hashes or input fragments. Categories are FORMAT, ORIGINALITY, COVERAGE,
+MAPPING, LINKS, STAGES, REVIEW, REVISION, RELEASE. Success means syntax and
+revision validity only; category status remains explicit in the DTO.
+Atomicity is validation-level: no output is prepared until ALL checks succeed.
+A broken output pipe is not a transactional filesystem publisher. Consumers
+must parse the entire envelope and verify its manifest before using artifacts.
+The tool intentionally has no filesystem writer, path/HTTP input option,
+runtime entry point, IPC command, database dependency or release action.
+
+Public DTO and manifest allowlist
+--------------------------------
+DTO schema: codefit-original-only-public-preview/1 (NOT the existing 0.1 DTO).
+Root: schema, revision, exposure=PUBLIC_PREVIEW, reviewStatus=UNREVIEWED,
+permittedRelease=METADATA_ONLY, independentApprovals=0, books, units, skills;
+releaseEligible, productionImportSupported, challengeExposure, graderAvailable,
+xpEnabled, rewardsEnabled and masteryEnabled are always false.
+Books: id.
+Units: id, bookId, coverage, skillIds.
+Skills: id, bookId, unitId, mappingStatus=UNMAPPED, prerequisites, stages.
+Stages: id, stage, status, coverage, briefStatus, technicalStatus,
+pedagogicalStatus. The parent skill supplies the validated book/unit links.
+Never output notes, histories, review credentials, prompts, answers, rubrics,
+private checkpoint locators, source text, evidence, XP or learner records.
+Every input object is exhaustive, so protected preview fields are rejected,
+not merely stripped. This DTO cannot round-trip to a challenge import.
+Serialization: sorted object keys, original array order, compact UTF-8 JSON,
+one LF. Manifest schema codefit-original-only-manifest/1 includes revision,
+inputSha256, previewSha256 and permittedRelease=METADATA_ONLY. previewSha256
+hashes the standalone serialized preview including LF, not the whole envelope.
+The input hash is a local synthetic/export candidate pin, never a private ZIP
+hash. The input file itself remains private when future original notes exist.
+
+Reproduce without source/network access (cached build dependencies required)
+-------------------------------------------------------------------------
+cd /home/runner/work/CodeFit/CodeFit
+export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
+export PATH="$JAVA_HOME/bin:$PATH"
+mvn -o -B -Dtest=OriginalOnlyCatalogValidatorTest,KnowledgePreviewTest,KnowledgePreviewReadOnlyIntegrationTest test
+CP="/home/runner/work/CodeFit/CodeFit/target/test-classes:$HOME/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.22.4/jackson-core-2.22.4.jar"
+java -cp "$CP" com.codefit.knowledge.export.OriginalOnlyCatalogValidator \
+  synthetic-r1 bed9bec779f0e0766c95c17a0e4d437fa0787d58b1c2fcc4c116ba54ca246cfb \
+  < /home/runner/work/CodeFit/CodeFit/src/test/resources/knowledge/original-only-v1/catalog.json
+
+The shell opens the intentionally selected input; the Java tool reads bounded
+stdin only. Run explicitly, not at application startup or packaging time.
+Test sources/resources are excluded from the application JAR and Electron Java
+bundle by the existing build. No dependency, Maven profile or runtime file changes.
+
+Concrete v0.41 compatibility/migration proposal (NOT executed)
+-------------------------------------------------------------
+1. Keep KnowledgePreview.loadBundled(), its 0.1 DTO, JavaFX fallback, IPC,
+   four-skill resource and SHA-256 pin unchanged:
+   76377d04ecb0ff45690df32bbc001f66bfaa672e1935327e1c09b2b047a46f52.
+   Do not route that loader through this test-only validator.
+2. No automatic migration or fallback: v0.41 and 0.1 documents fail the new
+   schema. The old private checkpoint hash is NOT an original-only export pin.
+   Never access the private ZIP to fill missing information.
+3. In a separate review, an owner could propose five structural book IDs and
+   units without claiming coverage of the other four books. Preserve each exact
+   compiler skill ID and all sixteen stage IDs as opaque identities, keeping
+   existing source_item provenance in a separate private audit, not this DTO.
+   Do not publish that proposal or change mappings in this task.
+4. Preserve every prerequisite edge, including local-scope to enhanced-iteration.
+   All six external prerequisites must be explicitly resolved in a complete
+   candidate or represented by explicit UNMAPPED metadata with honest absent
+   stages. A partial candidate with dangling refs is rejected, never imported.
+5. Copy no protected material; stage IDs alone do not supply briefs. Use ABSENT
+   unless an authorized original note is separately provided. Start independent
+   categories UNREVIEWED and retain UNMAPPED. New revision + exact candidate hash
+   are mandatory. Do not strip .v1 or invent definitionVersion/graphVersion.
+6. A later reviewed mapping contract must pin exact SkillRef(skillId,
+   definitionVersion) and GraphRef(graphId,graphVersion), verify membership and
+   immutable historical definitions, and bind reviews to exact bytes. Independent
+   technical/pedagogical/content/JDK21 review, copyright clearance, grader and
+   challenge authorization and explicit host exposure remain separate gates.
+   No inference from graph similarity or successful validation is permitted.
+7. Any future production import must use the authoritative Java 21 catalog
+   boundary and existing single SQLite owner, with its own reviewed migration.
+   No second writer, production seed, rewards/evidence mutation, learner-history
+   rewrite or runtime importer is introduced here. Coverage UI can consume only
+   the separately reviewed safe shape above; no coverage runtime files are shared.
+
+Keep the PR draft and unmerged. No release flag activation.

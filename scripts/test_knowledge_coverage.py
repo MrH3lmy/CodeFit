@@ -36,6 +36,15 @@ class CoverageLedgerTest(unittest.TestCase):
         with self.assertRaisesRegex(knowledge_coverage.LedgerError, "do not reconcile"):
             knowledge_coverage.validate_ledger(ledger)
 
+    def test_v041_mapping_counts_cannot_be_silently_reallocated(self):
+        for mapped, unmapped in ((158, 346), (156, 348), (True, 503)):
+            ledger = copy.deepcopy(self.ledger)
+            ledger["reportedClaims"]["preliminaryMappedUnits"] = mapped
+            ledger["reportedClaims"]["reportedUnmappedUnits"] = unmapped
+            with self.subTest(mapped=mapped, unmapped=unmapped):
+                with self.assertRaisesRegex(knowledge_coverage.LedgerError, "baseline counts do not reconcile"):
+                    knowledge_coverage.validate_ledger(ledger)
+
     def test_duplicate_unit_ids_are_rejected(self):
         ledger = copy.deepcopy(self.ledger)
         ledger["books"][0]["unitIds"] = ["unit-1"] * ledger["books"][0]["structuralUnits"]

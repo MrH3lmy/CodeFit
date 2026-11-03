@@ -71,9 +71,12 @@ class CurriculumPreviewMainTest {
         String expected =
                 "{\"v\":1,\"id\":\""
                         + id
-                        + "\",\"ok\":true,\"result\":{\"v\":1,\"kind\":\"author-draft-curriculum-preview\",\"source\":\"bundled-author-metadata\",\"learnerBound\":false,\"preview\":"
+                        + "\",\"ok\":true,\"result\":{\"v\":2,\"kind\":\"author-draft-curriculum-preview\",\"source\":\"bundled-author-metadata\",\"learnerBound\":false,\"preview\":"
                         + new String(
                                 KnowledgePreviewCli.export(KnowledgePreview.loadBundled()),
+                                StandardCharsets.UTF_8)
+                        + ",\"coverage\":"
+                        + new String(KnowledgeCoverage.export(KnowledgeCoverage.loadBundled()),
                                 StandardCharsets.UTF_8)
                         + "}}";
         assertEquals(expected, new String(response, StandardCharsets.UTF_8));
@@ -82,6 +85,32 @@ class CurriculumPreviewMainTest {
         assertFalse(Files.exists(absent));
         try (var files = Files.list(directory)) {
             assertEquals(0, files.count());
+        }
+    }
+
+    @Test
+    void anyCoverageFailureRejectsEntireResponseWithoutInitializingOrChangingALearner() throws Exception {
+        Path absent = directory.resolve("absent.db");
+        DatabaseConfig.useDatabaseFile(absent);
+        String expected = "{\"v\":1,\"id\":\"" + id
+                + "\",\"ok\":false,\"code\":\"INVALID_CATALOG\"}";
+        var failures = CoverageFailureFixtures.rejectedSnapshots();
+        for (PreviewFailure failure : failures) {
+            assertEquals(expected, new String(CurriculumPreviewMain.response(id,
+                    () -> { throw failure; }), StandardCharsets.UTF_8));
+        }
+        assertFalse(Files.exists(absent));
+        Path file = directory.resolve("learner.db");
+        LearnerFixture.create(file);
+        DatabaseConfig.useDatabaseFile(file);
+        byte[] before = Files.readAllBytes(file);
+        for (PreviewFailure failure : failures) {
+            assertEquals(expected, new String(CurriculumPreviewMain.response(id,
+                    () -> { throw failure; }), StandardCharsets.UTF_8));
+        }
+        assertArrayEquals(before, Files.readAllBytes(file));
+        try (var files = Files.list(directory)) {
+            assertEquals(List.of(file), files.toList());
         }
     }
 

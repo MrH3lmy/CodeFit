@@ -11,11 +11,9 @@ import {
   readFileSync,
   writeFileSync,
   rmSync,
-  readdirSync,
   mkdirSync,
   existsSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createLearnerFixture } from "../learner-fixture";
 let app: ElectronApplication, dir: string;
@@ -40,7 +38,9 @@ async function launch(enabled = true) {
   });
 }
 test.beforeEach(async () => {
-  dir = mkdtempSync(join(tmpdir(), "codefit-atlas-e2e-"));
+  const fixtures = resolve("test-results", "curriculum-fixtures");
+  mkdirSync(fixtures, { recursive: true });
+  dir = mkdtempSync(join(fixtures, "codefit-atlas-e2e-"));
   writeFileSync(join(dir, "codefit.db"), "PRIVATE-LEARNER-SENTINEL");
   app = await launch();
 });
@@ -76,15 +76,88 @@ async function capture(p: Page, name: string) {
 }
 test("real Java metadata, four responsive theme compositions, keyboard inspector and honest unavailable stages", async () => {
   const p = await app.firstWindow();
+  const externalRequests: string[] = [];
+  const browserLogs: string[] = [];
+  const browserErrors: string[] = [];
+  p.on("request", (request) => {
+    if (/^https?:\/\//i.test(request.url())) externalRequests.push(request.url());
+  });
+  p.on("console", (message) => {
+    browserLogs.push(message.text());
+    if (message.type() === "error") browserErrors.push(message.text());
+  });
+  p.on("pageerror", (error) => browserErrors.push(error.message));
+  await p.context().setOffline(true);
   await open(p);
   await loaded(p);
-  await expect(p.locator(".atlas-card")).toHaveCount(4);
+  await expect(p.locator(".atlas-cards .atlas-card")).toHaveCount(4);
+  await expect(p.locator(".atlas-book-card")).toHaveCount(5);
   const result = await p.evaluate(() => window.codefit.readCurriculumPreview());
   expect(result.ok).toBe(true);
   if (!result.ok) throw Error(result.code);
+  expect(result.result.v).toBe(2);
+  const coverage = result.result.coverage;
+  expect(coverage.books.map((b) => [b.title, b.inventory.count])).toEqual([
+    ["OCP Java SE 17 Guide", 26],
+    ["Effective Java", 90],
+    ["100 Java Mistakes", 100],
+    ["Java Coding Problems", 269],
+    ["Complete Coding Interview Guide in Java", 19],
+  ]);
+  expect(coverage.reportedClaims).toMatchObject({
+    structuralUnits: 504,
+    preliminaryMappedUnits: 157,
+    reportedUnmappedUnits: 347,
+    missionBlueprintSlots: 419,
+    revisionEvents: { count: 424, additiveToMissionBlueprintSlots: false },
+    independentApprovals: 0,
+    hunterProductionImports: 0,
+  });
+  await expect(p.getByLabel("Historical reported totals")).toContainText("Nonadditive");
+  await expect(p.getByLabel("Source-attributed book coverage")).toContainText(coverage.provenance.source);
+  for (const book of coverage.books) {
+    expect(book.inventory.status).toBe("REPORTED_NOT_ENUMERATED");
+    expect(book.preliminaryMapped.status).toBe("UNKNOWN");
+    expect(book.independentReview).toMatchObject({ count: 0, status: "ZERO_REPORTED" });
+    expect(book.runtimeLearning).toMatchObject({ count: 0, status: "ZERO_REPORTED" });
+    const card = p.locator(".atlas-book-card").filter({ hasText: book.id });
+    await expect(card).toContainText(`Preliminary mapping ${book.preliminaryMapped.status}`);
+    await expect(card).toContainText(`Independent review ${book.independentReview.count} · ${book.independentReview.status}`);
+    await expect(card).toContainText(`Runtime imports ${book.runtimeLearning.count} · ${book.runtimeLearning.status}`);
+    await expect(card).toContainText(`Learner validation ${coverage.learnerValidated.status}`);
+    await card.focus();
+    await p.keyboard.press("Enter");
+    await expect(card).toHaveAttribute("aria-pressed", "true");
+    const inspector = p.getByRole("region", { name: "Selected book details" });
+    await expect(inspector.getByRole("heading", { level: 2 })).toHaveText(book.title);
+    await expect(inspector).toContainText("Learner validation");
+    await expect(inspector).toContainText("UNKNOWN · not supplied");
+    await expect(inspector).toContainText("Follow-up gaps");
+  }
+  await p.getByRole("combobox", { name: "Author-draft status" }).selectOption("first-pass");
+  await expect(p.locator(".atlas-book-card")).toHaveCount(1);
+  await expect(p.locator(".atlas-book-card")).toContainText("Effective Java");
+  await p.locator(".atlas-book-card").click();
+  await expect(p.getByRole("region", { name: "Selected book details" })).toContainText("90/90 first-pass author notes");
+  await p.getByRole("button", { name: "Go to selected book details" }).click();
+  await expect(p.locator(".atlas-book-inspector h2")).toBeFocused();
+  await p.getByText("Book coverage provenance", { exact: true }).click();
+  await expect(p.getByLabel("Public coverage ledger checksum")).toHaveText(coverage.ledgerSha256);
+  await p.getByText("Book coverage provenance", { exact: true }).click();
+  await p.getByRole("combobox", { name: "Author-draft status" }).selectOption("unknown-author");
+  await expect(p.locator(".atlas-book-card")).toHaveCount(4);
+  await expect(p.getByText("Selected book is outside the current filters.")).toBeVisible();
+  await p.getByLabel("Find a reported book").fill("java-coding-problems");
+  await expect(p.locator(".atlas-book-card")).toHaveCount(1);
+  await p.getByLabel("Find a reported book").fill("not-a-book");
+  await expect(p.getByText("No matching reported books.")).toBeVisible();
+  await p.getByRole("button", { name: "Clear book filters" }).click();
+  await expect(p.locator(".atlas-book-card")).toHaveCount(5);
   for (const skill of result.result.preview.skills) {
-    await p.locator(".atlas-card").filter({ hasText: skill.id }).click();
-    await expect(p.locator(".atlas-inspector h2")).toHaveText(skill.title);
+    await p.locator(".atlas-cards .atlas-card").filter({ hasText: skill.id }).click();
+    await expect(p.getByRole("region", { name: "Selected draft details" }).getByRole("heading", { level: 2 })).toHaveText(skill.title);
+    await expect(p.getByRole("region", { name: "Selected draft details" })).toContainText("Skill objectives");
+    await expect(p.getByRole("region", { name: "Selected draft details" })).toContainText("UNKNOWN · not supplied in author metadata.");
     await expect(
       p.getByRole("button", { name: "Mission execution unavailable" }),
     ).toBeDisabled();
@@ -105,7 +178,13 @@ test("real Java metadata, four responsive theme compositions, keyboard inspector
   await p.getByLabel("Find a draft skill").fill("no-match");
   await expect(p.getByText("No matching draft definitions.")).toBeVisible();
   await p.getByRole("button", { name: "Clear search" }).click();
-  await p.locator(".atlas-card").first().click();
+  const firstSkill = result.result.preview.skills[0];
+  await p.getByLabel("Find a draft skill").fill(firstSkill.stages[0].id);
+  await expect(p.locator(".atlas-cards .atlas-card")).toHaveCount(1);
+  await p.getByLabel("Find a draft skill").fill(firstSkill.prerequisites[0]);
+  await expect(p.locator(".atlas-cards .atlas-card").filter({ hasText: firstSkill.id })).toHaveCount(1);
+  await p.getByLabel("Find a draft skill").fill("");
+  await p.locator(".atlas-cards .atlas-card").first().click();
   await p
     .getByText("Open questions before integration", { exact: true })
     .click();
@@ -136,6 +215,9 @@ test("real Java metadata, four responsive theme compositions, keyboard inspector
   expect(JSON.stringify(result)).not.toMatch(
     /private_checkpoint|PRIVATE-|solution|answerKey/,
   );
+  expect(externalRequests).toEqual([]);
+  expect(browserErrors).toEqual([]);
+  expect(browserLogs.join("\n")).not.toMatch(/private_checkpoint|PRIVATE-|answerKey/);
   expect(existsSync(join(dir, "CodeFit-Gate0/experimental-library-v1"))).toBe(
     false,
   );
@@ -156,6 +238,7 @@ test("distribution gate defaults off and cannot be enabled by renderer arguments
     await p.evaluate(() => window.codefit.readCurriculumPreview()),
   ).toEqual({ ok: false, code: "RELEASE_DISABLED" });
   await expect(p.locator(".atlas-card")).toHaveCount(0);
+  await expect(p.locator(".atlas-book-card")).toHaveCount(0);
   expect(existsSync(join(dir, "CodeFit-Gate0/experimental-library-v1"))).toBe(
     false,
   );
@@ -252,7 +335,7 @@ test("connected learner evidence and database bytes are unchanged by draft inspe
   await expect(p.locator(".provenance")).toContainText(
     "Separate from learner evidence",
   );
-  await p.locator(".atlas-card").last().click();
+  await p.locator(".atlas-cards .atlas-card").last().click();
   await p.getByRole("button", { name: "Recheck catalog" }).click();
   await loaded(p);
   const after = await p.evaluate(() => window.codefit.readLearnerSkills());
@@ -300,6 +383,7 @@ test("cancelled UI reads ignore late success and malformed replies never become 
   await app.evaluate(() => (globalThis as any).releaseAtlasRead());
   await expect(p.getByRole("alert")).toContainText("cancelled");
   await expect(p.locator(".atlas-card")).toHaveCount(0);
+  await expect(p.getByRole("region", { name: "Source-attributed book coverage" })).toHaveCount(0);
   await p.getByRole("button", { name: "Retry preview read" }).click();
   await loaded(p);
   await app.evaluate(({ ipcMain }) => {
@@ -313,4 +397,74 @@ test("cancelled UI reads ignore late success and malformed replies never become 
   await expect(p.getByRole("alert")).toContainText("could not be verified");
   await expect(p.locator(".atlas-card")).toHaveCount(0);
   await expect(p.getByText("PRIVATE-MATERIAL")).toHaveCount(0);
+  await expect(p.locator(".atlas-book-card")).toHaveCount(0);
+});
+
+test("corrupt, stale and source-mismatched coverage fails closed without retained metadata", async () => {
+  const p = await app.firstWindow();
+  await open(p);
+  await loaded(p);
+  const original = await p.evaluate(() => window.codefit.readCurriculumPreview());
+  expect(original.ok).toBe(true);
+  if (!original.ok) throw Error(original.code);
+  for (const mutation of [
+    "stale-version",
+    "stale-source",
+    "source-mismatch",
+    "pin-mismatch",
+    "corrupt-count",
+    "invented-title",
+    "promoted-review",
+    "missing-coverage",
+  ]) {
+    await app.evaluate(({ ipcMain }, { original, mutation }) => {
+      const reply: any = structuredClone(original);
+      switch (mutation) {
+        case "stale-version": reply.result.v = 1; break;
+        case "stale-source": reply.result.coverage.provenance.sourceVersion = "v0.40"; break;
+        case "source-mismatch": reply.result.coverage.provenance.source = "Unverified substitute source"; break;
+        case "pin-mismatch": reply.result.coverage.ledgerSha256 = "0".repeat(64); break;
+        case "corrupt-count": reply.result.coverage.reportedClaims.structuralUnits = 505; break;
+        case "invented-title": reply.result.coverage.books[0].title = "Fabricated book"; break;
+        case "promoted-review": reply.result.coverage.books[0].independentReview.count = 90; break;
+        case "missing-coverage": delete reply.result.coverage; break;
+      }
+      ipcMain.removeHandler("codefit:curriculum:read");
+      ipcMain.handle("codefit:curriculum:read", () => reply);
+    }, { original, mutation });
+    const recheck = p.getByRole("button", { name: "Recheck catalog" });
+    if (await recheck.count()) await recheck.click();
+    else await p.getByRole("button", { name: "Retry preview read" }).click();
+    await expect(p.getByRole("alert")).toContainText("could not be verified");
+    await expect(p.locator(".atlas-card")).toHaveCount(0);
+    await expect(p.getByRole("region", { name: "Source-attributed book coverage" })).toHaveCount(0);
+    await expect(p.getByRole("region", { name: "Selected draft details" })).toHaveCount(0);
+    await expect(p.getByText("Fabricated book")).toHaveCount(0);
+    await expect(p.getByLabel("Public catalog checksum")).toHaveCount(0);
+  }
+});
+
+test("cancelling a recheck clears both previously displayed catalogs and fences late coverage", async () => {
+  const p = await app.firstWindow();
+  await open(p);
+  await loaded(p);
+  await app.evaluate(({ ipcMain }) => {
+    const original = (ipcMain as any)._invokeHandlers.get("codefit:curriculum:read");
+    ipcMain.removeHandler("codefit:curriculum:read");
+    ipcMain.handle("codefit:curriculum:read", async (event, ...args) => {
+      const reply = await original(event, ...args);
+      await new Promise<void>((resolve) => { (globalThis as any).releaseCoverageRecheck = resolve; });
+      return reply;
+    });
+  });
+  await p.getByRole("button", { name: "Recheck catalog" }).click();
+  await expect(p.getByRole("button", { name: "Cancel preview read" })).toBeVisible();
+  await expect(p.getByRole("region", { name: "Selected book details" })).toHaveCount(0);
+  await expect(p.getByRole("region", { name: "Selected draft details" })).toHaveCount(0);
+  await expect.poll(() => app.evaluate(() => typeof (globalThis as any).releaseCoverageRecheck)).toBe("function");
+  await p.getByRole("button", { name: "Cancel preview read" }).click();
+  await app.evaluate(() => (globalThis as any).releaseCoverageRecheck());
+  await expect(p.getByRole("alert")).toContainText("cancelled");
+  await expect(p.locator(".atlas-card")).toHaveCount(0);
+  await expect(p.getByLabel("Historical reported totals")).toHaveCount(0);
 });

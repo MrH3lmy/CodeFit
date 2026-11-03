@@ -5,6 +5,7 @@ import { strictJson } from "./strict-json";
 import {
   CURRICULUM_MAX_BYTES,
   PUBLIC_PREVIEW_SHA,
+  PUBLIC_COVERAGE_SHA,
   CurriculumRequestSchema,
   CurriculumWireSchema,
   type CurriculumResult,
@@ -126,9 +127,12 @@ export class CurriculumSession implements CurriculumReader {
             if (reply.id !== request.id) throw Error();
             if (
               reply.ok &&
-              createHash("sha256")
+              (createHash("sha256")
                 .update(JSON.stringify(reply.result.preview))
-                .digest("hex") !== PUBLIC_PREVIEW_SHA
+                .digest("hex") !== PUBLIC_PREVIEW_SHA ||
+                createHash("sha256")
+                  .update(JSON.stringify(reply.result.coverage))
+                  .digest("hex") !== PUBLIC_COVERAGE_SHA)
             )
               throw Error();
             result = reply.ok

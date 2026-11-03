@@ -5,6 +5,7 @@ import {
   CurriculumResultSchema,
   type CurriculumPreview,
   type CurriculumError,
+  type Coverage,
 } from "./curriculum-contract";
 
 const errors: Record<CurriculumError, string> = {
@@ -22,8 +23,117 @@ const errors: Record<CurriculumError, string> = {
     "The bundled Java reader could not start. No learner profile is needed for this view.",
 };
 const label = (stage: string) => stage[0] + stage.slice(1).toLowerCase();
+function CoverageBrowser({ coverage }: { coverage: Coverage }) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
+  const [selected, setSelected] = useState(coverage.books[0].id);
+  const details = useRef<HTMLHeadingElement>(null);
+  const book = coverage.books.find((b) => b.id === selected)!;
+  const books = coverage.books.filter(
+    (b) =>
+      `${b.title} ${b.id}`.toLowerCase().includes(query.toLowerCase().trim()) &&
+      (status === "all" ||
+        (status === "first-pass" && b.authorDraft.count !== null) ||
+        (status === "unknown-author" && b.authorDraft.status === "UNKNOWN")),
+  );
+  const claims = coverage.reportedClaims;
+  return (
+    <section className="atlas-coverage" aria-label="Source-attributed book coverage">
+      <div className="atlas-section-heading">
+        <h2>Book coverage ledger</h2>
+        <span>{coverage.books.length} REPORTED BOOKS</span>
+      </div>
+      <p className="atlas-ledger-note">
+        Historical claims · {coverage.provenance.source} · observed{" "}
+        <time dateTime={coverage.provenance.observedAt}>{coverage.provenance.observedAt}</time>.
+        {" "}Not independently enumerated, not learning completion.
+      </p>
+      <dl className="atlas-coverage-totals" aria-label="Historical reported totals">
+        <div><dt>Inventory units</dt><dd>{claims.structuralUnits}</dd><small>Reported, not enumerated</small></div>
+        <div><dt>Preliminary mapped</dt><dd>{claims.preliminaryMappedUnits}</dd><small>Historical mapping only</small></div>
+        <div><dt>Reported unmapped</dt><dd>{claims.reportedUnmappedUnits}</dd><small>Reported inventory remainder</small></div>
+        <div><dt>Mission blueprint slots</dt><dd>{claims.missionBlueprintSlots}</dd><small>Reported unique slots · not playable missions</small></div>
+        <div><dt>Revision events</dt><dd>{claims.revisionEvents.count}</dd><small>Nonadditive · not extra slots</small></div>
+      </dl>
+      <div className="atlas-layout">
+        <div>
+          <fieldset className="atlas-book-filters">
+            <legend>Filter reported books</legend>
+            <label className="atlas-search">
+              <Icon name="search" />
+              <span className="sr-only">Find a reported book</span>
+              <input type="search" value={query} maxLength={128}
+                placeholder="Book title or identifier"
+                onChange={(e) => setQuery(e.target.value)} />
+            </label>
+            <label className="atlas-status-filter">
+              Author-draft status
+              <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option value="all">All reported books</option>
+                <option value="first-pass">Reported first-pass author notes</option>
+                <option value="unknown-author">UNKNOWN author draft</option>
+              </select>
+            </label>
+          </fieldset>
+          <p className="atlas-ledger-note" role="status">{books.length} matching reported books</p>
+          <div className="atlas-book-list" aria-label="Reported books">
+            {books.map((b) => (
+              <button className={`atlas-card atlas-book-card ${selected === b.id ? "selected" : ""}`}
+                key={b.id} aria-pressed={selected === b.id} onClick={() => setSelected(b.id)}>
+                <strong>{b.title}</strong>
+                <code>{b.id}</code>
+                <span className="atlas-book-inventory">{b.inventory.count} inventory units · {b.inventory.status}</span>
+                <span className="atlas-book-card-statuses">
+                  <span>Preliminary mapping <strong>{b.preliminaryMapped.status}</strong></span>
+                  <span>Independent review <strong>{b.independentReview.count} · {b.independentReview.status}</strong></span>
+                  <span>Runtime imports <strong>{b.runtimeLearning.count} · {b.runtimeLearning.status}</strong></span>
+                  <span>Learner validation <strong>{coverage.learnerValidated.status}</strong></span>
+                </span>
+                <span className="atlas-card-bottom">
+                  <span>{b.authorDraft.status === "UNKNOWN" ? "Author draft UNKNOWN" : `Author draft · ${b.authorDraft.count}/${b.authorDraft.denominator} first-pass author notes · not approvals`}</span>
+                  <Icon name="arrow" size={18} />
+                </span>
+              </button>
+            ))}
+            {books.length === 0 && <p role="status">No matching reported books. <button onClick={() => { setQuery(""); setStatus("all"); }}>Clear book filters</button></p>}
+          </div>
+          <button className="atlas-inspect-link" onClick={() => details.current?.focus()}>
+            Go to selected book details <Icon name="arrow" size={14} />
+          </button>
+        </div>
+        <section className="atlas-inspector atlas-book-inspector" aria-label="Selected book details">
+          <p className="eyebrow">SOURCE-ATTRIBUTED / {coverage.provenance.sourceVersion}</p>
+          <h2 ref={details} tabIndex={-1}>{book.title}</h2>
+          <code className="atlas-exact-id">{book.id}</code>
+          {!books.some((b) => b.id === book.id) && <p className="atlas-unknown">Selected book is outside the current filters.</p>}
+          <dl className="atlas-book-stages">
+            <div><dt>Inventory</dt><dd>{book.inventory.count} · {book.inventory.status}</dd></div>
+            <div><dt>Preliminary mapping</dt><dd>{book.preliminaryMapped.status} · per-book count not supplied</dd></div>
+            <div><dt>Author draft</dt><dd>{book.authorDraft.count === null ? "UNKNOWN · not supplied" : `${book.authorDraft.count}/${book.authorDraft.denominator} first-pass author notes · ${book.authorDraft.status} · not approvals`}</dd></div>
+            <div><dt>Independent review</dt><dd>{book.independentReview.count} · {book.independentReview.status} · no reported approvals</dd></div>
+            <div><dt>Runtime imported</dt><dd>{book.runtimeLearning.count} · {book.runtimeLearning.status} · no reported imports</dd></div>
+            <div><dt>Learner validation</dt><dd>{coverage.learnerValidated.status} · not supplied</dd></div>
+          </dl>
+          <h3>Follow-up gaps</h3>
+          <p className="atlas-unknown">Source-unit IDs and per-book mappings need enumeration. First-pass author notes are not independent review, runtime import or learner validation.</p>
+          <ul className="atlas-followup">{coverage.followupGaps.map((gap) => <li key={gap}><code>{gap}</code></li>)}</ul>
+          <details className="atlas-source">
+            <summary>Book coverage provenance</summary>
+            <p>{coverage.provenance.source}</p>
+            <p>{coverage.provenance.verification}</p>
+            <code>{coverage.sourcePath}</code>
+            <code aria-label="Public coverage ledger checksum">{coverage.ledgerSha256}</code>
+            <ul>{coverage.provenance.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
+            <p>Private source bodies: {coverage.provenance.privateSourceBodies}. Previous checkpoint: {coverage.provenance.previousCheckpoint}.</p>
+          </details>
+        </section>
+      </div>
+    </section>
+  );
+}
 export function CurriculumAtlas() {
   const [preview, setPreview] = useState<CurriculumPreview>();
+  const [coverage, setCoverage] = useState<Coverage>();
   const [error, setError] = useState<CurriculumError>();
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState("");
@@ -36,6 +146,9 @@ export function CurriculumAtlas() {
     setBusy(true);
     setError(undefined);
     setPreview(undefined);
+    setCoverage(undefined);
+    setSelected("");
+    setStageId("");
     try {
       const result = CurriculumResultSchema.parse(
         await window.codefit.readCurriculumPreview(),
@@ -44,6 +157,7 @@ export function CurriculumAtlas() {
       if (!result.ok) setError(result.code);
       else {
         setPreview(result.result.preview);
+        setCoverage(result.result.coverage);
         setSelected(result.result.preview.skills[0].id);
         setStageId(result.result.preview.skills[0].stages[0].id);
       }
@@ -63,6 +177,10 @@ export function CurriculumAtlas() {
   async function cancel() {
     ++generation.current;
     setBusy(false);
+    setPreview(undefined);
+    setCoverage(undefined);
+    setSelected("");
+    setStageId("");
     setError("CANCELLED");
     await window.codefit.cancelCurriculumPreview();
   }
@@ -75,7 +193,7 @@ export function CurriculumAtlas() {
   const skill = preview?.skills.find((s) => s.id === selected);
   const stage = skill?.stages.find((s) => s.id === stageId);
   const filtered = preview?.skills.filter((s) =>
-    `${s.title} ${s.id} ${s.sourceItem}`
+    `${s.title} ${s.id} ${s.sourceItem} ${s.prerequisites.join(" ")} ${s.stages.map((t) => t.id).join(" ")}`
       .toLowerCase()
       .includes(query.toLowerCase()),
   );
@@ -206,6 +324,7 @@ export function CurriculumAtlas() {
               grading, XP, rewards, mastery or production import is available.
             </p>
           </div>
+          {coverage && <CoverageBrowser coverage={coverage} />}
           <div className="atlas-layout">
             <div className="atlas-catalog">
               <div className="atlas-section-heading">
@@ -218,7 +337,7 @@ export function CurriculumAtlas() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Find a title, identifier or source item"
+                  placeholder="Title, ID, source item, prerequisite or stage ID"
                   maxLength={128}
                 />
               </label>
@@ -271,6 +390,8 @@ export function CurriculumAtlas() {
                   {skill.title}
                 </h2>
                 <code className="atlas-exact-id">{skill.id}</code>
+                <h3>Skill objectives</h3>
+                <p className="atlas-unknown">UNKNOWN · not supplied in author metadata.</p>
                 <div className="atlas-mapping">
                   <Icon name="tree" />
                   <div>

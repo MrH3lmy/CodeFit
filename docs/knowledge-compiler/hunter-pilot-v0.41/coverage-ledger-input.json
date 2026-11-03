@@ -1,0 +1,73 @@
+{
+  "schema": "codefit-knowledge-coverage-ledger/1",
+  "ledgerVersion": "1.0.0",
+  "provenance": {
+    "observedAt": "2026-10-23",
+    "sourceVersion": "v0.41",
+    "source": "v0.41 delivery report, as attributed in CodeFit issue #298",
+    "verification": "SOURCE_ATTRIBUTED_NOT_INDEPENDENTLY_VERIFIED",
+    "privateSourceBodies": "NOT_INDEPENDENTLY_VERIFIED",
+    "previousCheckpoint": "NOT_AVAILABLE",
+    "limitations": [
+      "The delivery report is cited by the issue but is not checked in; reported totals are historical claims, not an independently enumerated inventory.",
+      "The private archive and source bodies are unavailable and are not read by this tool.",
+      "A checksum/readback report is not a CodeFit runtime, semantic accuracy, or content approval."
+    ]
+  },
+  "books": [
+    {
+      "id": "ocp-java-se-17-guide",
+      "title": "OCP Java SE 17 Guide",
+      "structuralUnits": 26,
+      "unitIds": null,
+      "firstPassAuthoredUnits": null
+    },
+    {
+      "id": "effective-java",
+      "title": "Effective Java",
+      "structuralUnits": 90,
+      "unitIds": null,
+      "firstPassAuthoredUnits": 90
+    },
+    {
+      "id": "100-java-mistakes",
+      "title": "100 Java Mistakes",
+      "structuralUnits": 100,
+      "unitIds": null,
+      "firstPassAuthoredUnits": null
+    },
+    {
+      "id": "java-coding-problems",
+      "title": "Java Coding Problems",
+      "structuralUnits": 269,
+      "unitIds": null,
+      "firstPassAuthoredUnits": null
+    },
+    {
+      "id": "complete-coding-interview-guide-java",
+      "title": "Complete Coding Interview Guide in Java",
+      "structuralUnits": 19,
+      "unitIds": null,
+      "firstPassAuthoredUnits": null
+    }
+  ],
+  "reportedClaims": {
+    "structuralUnits": 504,
+    "preliminaryMappedUnits": 157,
+    "reportedUnmappedUnits": 347,
+    "effectiveJavaFirstPassAuthorNotes": {
+      "count": 90,
+      "denominator": 90
+    },
+    "missionBlueprintSlots": 419,
+    "deepOverlaySlots": 360,
+    "revisionEvents": {
+      "count": 424,
+      "additiveToMissionBlueprintSlots": false,
+      "records": null
+    },
+    "independentApprovals": 0,
+    "productionGraders": 0,
+    "hunterProductionImports": 0
+  }
+}

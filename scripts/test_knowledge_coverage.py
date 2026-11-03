@@ -77,6 +77,24 @@ class CoverageLedgerTest(unittest.TestCase):
         with self.assertRaisesRegex(knowledge_coverage.LedgerError, "prior-checkpoint regression"):
             knowledge_coverage.validate_no_regression(previous, current)
 
+    def test_known_checkpoint_counts_cannot_disappear_or_become_unknown(self):
+        previous = {"effective-java": {"structuralUnits": 90, "firstPassAuthoredUnits": 90}}
+        for new_book in (
+            {"structuralUnits": 90, "firstPassAuthoredUnits": None},
+            {"structuralUnits": 90},
+            {"structuralUnits": 90, "firstPassAuthoredUnits": "UNKNOWN"},
+            {"structuralUnits": 90, "firstPassAuthoredUnits": True},
+        ):
+            with self.subTest(new_book=new_book):
+                with self.assertRaisesRegex(knowledge_coverage.LedgerError, "prior-checkpoint regression"):
+                    knowledge_coverage.validate_no_regression(previous, {"effective-java": new_book})
+
+    def test_unknown_checkpoint_count_can_become_known_without_regression(self):
+        previous = {"effective-java": {"structuralUnits": 90, "firstPassAuthoredUnits": None}}
+        current = {"effective-java": {"structuralUnits": 90, "firstPassAuthoredUnits": 90}}
+        knowledge_coverage.validate_no_regression(previous, current)
+        knowledge_coverage.validate_no_regression(current, current)
+
     def test_generation_is_deterministic_read_only_and_private_body_free(self):
         original = copy.deepcopy(self.ledger)
         report = knowledge_coverage.build_report(self.ledger)

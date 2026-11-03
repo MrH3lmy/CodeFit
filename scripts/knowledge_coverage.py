@@ -170,15 +170,18 @@ def validate_ledger(ledger):
 
 
 def validate_no_regression(previous, current):
-    """Reject decreases in comparable, reported checkpoint counters."""
+    """Reject missing, invalid, or decreased previously known checkpoint counts."""
     for book_id, old_book in previous.items():
         _require(book_id in current, "prior checkpoint book missing")
         new_book = current[book_id]
         for field in ("structuralUnits", *STAGES):
             old_value = old_book.get(field)
             new_value = new_book.get(field)
-            if old_value is not None and new_value is not None:
-                _require(new_value >= old_value, f"prior-checkpoint regression: {book_id}.{field}")
+            if old_value is not None:
+                _require(
+                    type(old_value) is int and type(new_value) is int and new_value >= old_value,
+                    f"prior-checkpoint regression: {book_id}.{field}",
+                )
 
 
 def _book_stages(book, claims):

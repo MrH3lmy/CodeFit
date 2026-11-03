@@ -189,7 +189,9 @@ test("real Java metadata, four responsive theme compositions, keyboard inspector
     await p.keyboard.press("End");
     await expect(p.getByRole("tab", { name: /Defend/ })).toBeFocused();
   }
-  await p.getByLabel("Find a draft skill").fill("no-match");
+  await p
+    .getByLabel("Find a draft skill")
+    .fill("PRIVATE-PROMPT-SENTINEL");
   await expect(p.getByText("No matching draft definitions.")).toBeVisible();
   await p.getByRole("button", { name: "Clear search" }).click();
   const firstSkill = result.result.preview.skills[0];
@@ -227,11 +229,16 @@ test("real Java metadata, four responsive theme compositions, keyboard inspector
     }
   }
   expect(JSON.stringify(result)).not.toMatch(
-    /private_checkpoint|PRIVATE-|solution|answerKey/,
+    /private_checkpoint|PRIVATE-|solution|answerKey|drive\.google\.com/i,
   );
+  expect(
+    await p.evaluate(() => document.documentElement.outerHTML),
+  ).not.toMatch(/private_checkpoint|PRIVATE-|answerKey|drive\.google\.com/i);
   expect(externalRequests).toEqual([]);
   expect(browserErrors).toEqual([]);
-  expect(browserLogs.join("\n")).not.toMatch(/private_checkpoint|PRIVATE-|answerKey/);
+  expect(browserLogs.join("\n")).not.toMatch(
+    /private_checkpoint|PRIVATE-|answerKey|drive\.google\.com/i,
+  );
   expect(existsSync(join(dir, "CodeFit-Gate0/experimental-library-v1"))).toBe(
     false,
   );
@@ -276,14 +283,40 @@ test("owning-frame authorization and zero arguments enforced on actual registere
       read({ sender, senderFrame: { url: "file:///untrusted", ...{} } }),
       read({ sender, senderFrame: sender.mainFrame }, "/private"),
     ]);
+    const secondWindow = new BrowserWindow({ show: false });
+    let secondWindowResult;
+    try {
+      secondWindowResult = await read({
+        sender: secondWindow.webContents,
+        senderFrame: secondWindow.webContents.mainFrame,
+      });
+    } finally {
+      secondWindow.destroy();
+    }
     await cancel({ sender, senderFrame: null });
     await cancel({ sender, senderFrame: sender.mainFrame }, "arbitrary");
-    return failures;
+    return [...failures, secondWindowResult];
   });
-  expect(results).toEqual(Array(4).fill({ ok: false, code: "UNAVAILABLE" }));
+  expect(results).toEqual(Array(5).fill({ ok: false, code: "UNAVAILABLE" }));
   const p = await app.firstWindow();
   await open(p);
   await loaded(p);
+});
+
+test("packaged Atlas archive contains no private sentinels or renderer source maps", async () => {
+  test.skip(!process.env.CODEFIT_DESKTOP_EXECUTABLE);
+  const archivePath = await app.evaluate(({ app }) => app.getAppPath());
+  expect(archivePath).toMatch(/\.asar$/);
+  const archive = readFileSync(archivePath, "utf8");
+  for (const forbidden of [
+    "private_checkpoint",
+    "PRIVATE-LEARNER-SENTINEL",
+    "PRIVATE-PROMPT-SENTINEL",
+    "PRIVATE-ANSWER-SENTINEL",
+    "drive.google.com",
+  ])
+    expect(archive).not.toContain(forbidden);
+  expect(archive).not.toMatch(/dist\/assets\/[^"\\]+\.js\.map/);
 });
 
 test("renderer reload, cancellation and application restart read the same immutable catalog", async () => {

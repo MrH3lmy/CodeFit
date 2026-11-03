@@ -295,6 +295,39 @@ test("release and caller authorization gates do not create a Java process", asyn
   assert.equal(creates, 0);
 });
 
+test("concurrent atlas reads share one reader and one immutable response", async () => {
+  let creates = 0;
+  let reads = 0;
+  let stops = 0;
+  let finish!: (result: CurriculumResult) => void;
+  const owner = new CurriculumOwner(true, (): CurriculumReader => {
+    creates++;
+    return {
+      read: () => {
+        reads++;
+        return new Promise((resolve) => {
+          finish = resolve;
+        });
+      },
+      stop: async () => {
+        stops++;
+      },
+    };
+  });
+  const first = owner.read(() => true);
+  const second = owner.read(() => true);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(creates, 1);
+  assert.equal(reads, 1);
+  finish({ ok: false, code: "INVALID_CATALOG" });
+  assert.deepEqual(await Promise.all([first, second]), [
+    { ok: false, code: "INVALID_CATALOG" },
+    { ok: false, code: "INVALID_CATALOG" },
+  ]);
+  assert.equal(stops, 1);
+  await owner.shutdown();
+});
+
 test("cancel/reload fences delayed readers and allows a clean new generation", async () => {
   const resolvers: ((r: CurriculumResult) => void)[] = [];
   const owner = new CurriculumOwner(

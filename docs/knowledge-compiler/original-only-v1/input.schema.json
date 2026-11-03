@@ -11,8 +11,8 @@
     "sourceKind": {"const": "ORIGINAL_ONLY"},
     "permittedRelease": {"$ref": "#/$defs/release"},
     "books": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"$ref": "#/$defs/book"}},
-    "units": {"type": "array", "minItems": 5, "maxItems": 100, "items": {"$ref": "#/$defs/unit"}},
-    "skills": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/skill"}}
+    "units": {"type": "array", "minItems": 5, "maxItems": 1024, "items": {"$ref": "#/$defs/unit"}},
+    "skills": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/skill"}}
   },
   "$defs": {
     "id": {"type": "string", "maxLength": 128, "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$"},
@@ -30,7 +30,7 @@
         "id": {"$ref": "#/$defs/id"},
         "bookId": {"$ref": "#/$defs/id"},
         "coverage": {"$ref": "#/$defs/coverage"},
-        "skillIds": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+        "skillIds": {"type": "array", "maxItems": 512, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
       }
     },
     "skill": {

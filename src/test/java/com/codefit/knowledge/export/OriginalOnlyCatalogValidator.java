@@ -9,7 +9,7 @@ import java.util.*;
 
 /** Developer-only, stdin-to-stdout validation; deliberately absent from the application JAR. */
 public final class OriginalOnlyCatalogValidator {
-    static final int MAX_BYTES = 131_072;
+    static final int MAX_BYTES = 2_097_152;
     static final String SCHEMA = "codefit-original-only/1";
     private static final Set<String> STAGES = Set.of("PREDICT", "DEBUG", "BUILD", "DEFEND");
     private static final JsonFactory JSON = JsonFactory.builder()
@@ -51,13 +51,13 @@ public final class OriginalOnlyCatalogValidator {
                 bookIds.add(unique(book, allIds));
             }
             Map<String, Map<String, Object>> units = new LinkedHashMap<>();
-            for (Object value : array(root.get("units"), 5, 100)) {
+            for (Object value : array(root.get("units"), 5, 1024)) {
                 var unit = object(value);
                 fields(unit, "id", "bookId", "coverage", "skillIds");
                 String id = unique(unit, allIds);
                 reference(text(unit, "bookId"), bookIds);
                 coverage(unit);
-                identifiers(unit.get("skillIds"), 100);
+                identifiers(unit.get("skillIds"), 512);
                 units.put(id, unit);
             }
             Set<String> representedBooks = new HashSet<>();
@@ -65,7 +65,7 @@ public final class OriginalOnlyCatalogValidator {
             if (!representedBooks.equals(bookIds)) throw reject("LINKS", "BOOK_WITHOUT_UNIT");
 
             Map<String, Map<String, Object>> skills = new LinkedHashMap<>();
-            for (Object value : array(root.get("skills"), 0, 100)) {
+            for (Object value : array(root.get("skills"), 0, 512)) {
                 var skill = object(value);
                 fields(skill, "id", "bookId", "unitId", "mappingStatus", "prerequisites", "stages");
                 String id = unique(skill, allIds);
@@ -95,7 +95,7 @@ public final class OriginalOnlyCatalogValidator {
                 skills.put(id, skill);
             }
             for (var unit : units.values()) {
-                Set<String> declared = identifiers(unit.get("skillIds"), 100);
+                Set<String> declared = identifiers(unit.get("skillIds"), 512);
                 Set<String> actual = new HashSet<>();
                 skills.forEach((id, s) -> { if (text(s, "unitId").equals(text(unit, "id"))) actual.add(id); });
                 if (!declared.equals(actual)) throw reject("LINKS", "UNIT_SKILL_MISMATCH");
@@ -274,7 +274,7 @@ public final class OriginalOnlyCatalogValidator {
     }
 
     private static Object value(JsonParser parser, int[] count) throws IOException {
-        if (++count[0] > 16_384) throw reject("FORMAT", "LIMIT");
+        if (++count[0] > 131_072) throw reject("FORMAT", "LIMIT");
         if (parser.currentToken() == JsonToken.START_OBJECT) {
             Map<String, Object> result = new TreeMap<>();
             while (parser.nextToken() != JsonToken.END_OBJECT) {

@@ -10,6 +10,8 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.regex.*;
 import java.util.stream.Stream;
+import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -174,7 +176,52 @@ class OriginalOnlyCatalogValidatorTest {
         rejected(OriginalOnlyCatalogValidator.validate(new byte[]{(byte) 0xff}, REVISION, PIN), "FORMAT", "INVALID_JSON");
         for (String scalar : List.of("null", "true", "1", "1.0", "\"x\""))
             rejected(validate(scalar), "FORMAT", "TYPE");
-        rejected(validate("[" + "\"x\",".repeat(16_384) + "\"x\"]"), "FORMAT", "LIMIT");
+        rejected(validate("[" + "\"x\",".repeat(131_072) + "\"x\"]"), "FORMAT", "LIMIT");
+    }
+
+    @Test
+    void enforcesCatalogAndRelationshipCountCaps() throws Exception {
+        rejected(validate(source().replace("\"units\": [", "\"units\": [" + "{},".repeat(1025))),
+                "FORMAT", "COUNT");
+        rejected(validate(source().replace("\"skills\": [", "\"skills\": [" + "{},".repeat(513))),
+                "FORMAT", "COUNT");
+        rejected(validate(source().replace("\"skillIds\": [\"synthetic-skill-one\"]",
+                "\"skillIds\": [" + String.join(",", Collections.nCopies(513, "\"synthetic-skill-one\"")) + "]")),
+                "FORMAT", "COUNT");
+        rejected(validate(source().replace("\"prerequisites\": []",
+                "\"prerequisites\": [" + String.join(",", Collections.nCopies(17, "\"synthetic-skill-one\"")) + "]")),
+                "FORMAT", "COUNT");
+    }
+
+    @Test
+    void supportsFiveBookScaleWithoutInventingCoverageOrApprovals() {
+        String books = IntStream.range(0, 5).mapToObj(i -> "{\"id\":\"book-" + i + "\"}").collect(Collectors.joining(","));
+        String units = IntStream.range(0, 600).mapToObj(i -> """
+                {"id":"unit-%d","bookId":"book-%d","coverage":"UNREPORTED","skillIds":[%s]}
+                """.formatted(i, i % 5, i < 200 ? "\"skill-" + i + "\"" : "")).collect(Collectors.joining(","));
+        String skills = IntStream.range(0, 200).mapToObj(i -> {
+            String stages = Stream.of("PREDICT", "DEBUG", "BUILD", "DEFEND").map(stage -> """
+                    {"id":"stage-%d-%s","bookId":"book-%d","unitId":"unit-%d","skillId":"skill-%d",
+                     "stage":"%s","status":"ABSENT","coverage":"UNREPORTED","brief":{"status":"ABSENT","text":""},
+                     "independentReview":{"revision":"synthetic-r1",
+                      "technical":{"status":"UNREVIEWED","history":["UNREVIEWED"]},
+                      "pedagogical":{"status":"UNREVIEWED","history":["UNREVIEWED"]}},
+                     "permittedRelease":"METADATA_ONLY"}
+                    """.formatted(i, stage, i % 5, i, i, stage)).collect(Collectors.joining(","));
+            return """
+                    {"id":"skill-%d","bookId":"book-%d","unitId":"unit-%d","mappingStatus":"UNMAPPED",
+                     "prerequisites":[%s],"stages":[%s]}
+                    """.formatted(i, i % 5, i, i == 0 ? "" : "\"skill-" + (i - 1) + "\"", stages);
+        }).collect(Collectors.joining(","));
+        String input = """
+                {"schema":"codefit-original-only/1","revision":"synthetic-r1","sourceKind":"ORIGINAL_ONLY",
+                 "permittedRelease":"METADATA_ONLY","books":[%s],"units":[%s],"skills":[%s]}
+                """.formatted(books, units, skills);
+        assertTrue(input.getBytes(StandardCharsets.UTF_8).length < OriginalOnlyCatalogValidator.MAX_BYTES);
+        var result = validate(input);
+        assertTrue(result.valid(), () -> String.valueOf(result.error()));
+        assertFalse(result.preview().contains("AUTHOR_REPORTED"));
+        assertTrue(result.preview().contains("\"releaseEligible\":false"));
     }
 
     @Test

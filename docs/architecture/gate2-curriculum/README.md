@@ -59,9 +59,10 @@ Java stdout (one complete response and a clean exit, at most 32 KiB plus newline
 ```ts
 type CurriculumWire =
   | { v: 1; id: string; ok: true; result: {
-      v: 1; kind: "author-draft-curriculum-preview";
+      v: 2; kind: "author-draft-curriculum-preview";
       source: "bundled-author-metadata"; learnerBound: false;
       preview: PublicPreviewV1;
+      coverage: LocalReviewCoverageV1;
     } }
   | { v: 1; id: string; ok: false; code: "INVALID_CATALOG" };
 ```
@@ -74,6 +75,46 @@ also hashes the schema-validated serialized preview and requires the pinned publ
 export hash. No titles, prerequisite lists or stage content are copied into React.
 The renderer validates the strict result again, before rendering plain React text.
 No raw HTML or Markdown renderer is used.
+
+### Five-book local-review projection
+
+The same gated read now returns a separate versioned coverage projection from the
+fixed original-only `coverage-ledger-input.json` merged in #306 (`1ba7a9b`).
+Java verifies the bounded bundled ledger against a compiled byte pin and projects
+only allowlisted metadata. Maven bundles that exact checked-in ledger; React has
+no ledger copy, direct SQLite access or replacement inventory. The #309 validator
+remains test-classpath-only and is not a production importer.
+
+The delivery report attributed in #298 is not independently enumerated or verified:
+504 structural units, 157 preliminary mappings and 347 unmapped units are
+**source-attributed historical claims**, not current runtime coverage. Every
+per-book preliminary mapping count remains `UNKNOWN`. Effective Java's 90/90
+first-pass author notes are not approvals. The 419 mission blueprint slots and
+424 nonadditive revision events are distinct measures; neither is a playable
+mission count. Book inventory, author notes, independent review, runtime imports
+and learner validation remain separate. The four pilot skills are not additional
+book units and still have no approved mappings or independent review.
+
+The result envelope advances to version 2; request/wire framing stays version 1
+and the existing public pilot export stays byte-identical. Both projections must
+validate before publication. Missing, malformed, stale or source-mismatched
+metadata returns only `INVALID_CATALOG`, without a partial inventory or fallback.
+The host separately pins the serialized coverage export. Cancellation and retry
+clear both projections; no persistent metadata cache is introduced.
+
+The ledger byte pin is
+`0466d16b2ec5809383b7d0bb40d068430bcd3890e06115f5be2cfffe46a4057e`;
+the compact public coverage export pin is
+`9609e1794c79681eb5b0558f2b0c8d965c732434bda841c2e3c9172902a2830d`.
+These are integrity checks for historical metadata, not approval tokens.
+
+The five-book collection uses the existing Atlas theme/layout, with book search,
+status filtering and keyboard-accessible gap details. Original pilot titles,
+stage IDs and prerequisites remain inspectable. Objectives are not supplied by
+the vetted metadata and are explicitly unavailable, not inferred. Default
+distribution gating stays OFF; no executable mission, grade, XP or mastered state
+is added. #267/#261/#270 remain open. This is review evidence, not curriculum,
+visual, release or learner-validation approval.
 
 Main returns `{ok:true,result}` or `{ok:false,code}`; its redacted error vocabulary
 is `UNAVAILABLE`, `RELEASE_DISABLED`, `INVALID_CATALOG`, `CANCELLED`, `TIMEOUT`,
@@ -140,6 +181,13 @@ scrollbar occupies part of the PNG width. They show actual Java metadata, not mo
 Native Windows/macOS execution and assistive-technology testing remain unverified.
 Existing real-profile platform restrictions are unchanged.
 
+The four gallery images were refreshed on 2026-11-03 from the actual packaged
+five-book view, with Chromium sandboxing enabled, browser-offline mode and reduced
+motion. They retain the original Atlas hero, theme tokens and draft inspector.
+The new book cards and details show unknown mappings and learner validation,
+reported zeros, historical inventory, first-pass notes and nonadditive revisions
+without progress bars. This evidence is supplied for visual review, not approval.
+
 ## Adversarial verification and residual risks
 
 Tests exercise strict framing, duplicate/invalid UTF-8, wrong versions/IDs,
@@ -181,6 +229,39 @@ CODEFIT_DESKTOP_EXECUTABLE="$PWD/release/CodeFit-Gate0-linux-x64/codefit-gate0" 
 Set `CODEFIT_CAPTURE_CURRICULUM_SCREENSHOTS=1` while running the packaged curriculum
 E2E test to reproduce screenshots. The final draft PR records exact SHA, full-suite
 counts and CI links. No public release or learning pilot is authorized or executed.
+
+The five-book implementation was checked with Java 21 and Node 22. The existing
+coverage-generator suite passed all 11 tests. The final Java regression passed
+2,111 tests with no failures, errors or skips and Maven `BUILD SUCCESS`, after
+75 targeted tests verified the final coverage labels and export pin. An initial
+run lost generated build classes and was discarded; the subsequent full run also
+passed all 2,111 tests. The final run's Xvfb wrapper returned exit 5 **after Maven
+success**, because concurrent Playwright cleanup removed its temporary directory.
+This is a harness cleanup limitation, not a silently ignored test failure.
+
+The Linux host cannot create the stronger offline user/network namespace
+(`unshare` fails while writing `uid_map`). This does not justify disabling the
+Chromium sandbox. The focused packaged test instead exercises browser-offline
+mode, bundled file assets and the real local Java reader. Native Windows/macOS
+packaging and manual assistive-technology validation remain unverified.
+
+The final real-Java Node suite passed all 98 tests, including malformed/missing/
+stale/source-mismatched coverage, dual export pins and zero learner writes.
+The eight focused packaged curriculum E2Es passed, including release OFF,
+owning-frame authorization, cancellation/reload/restart, synthetic connected
+learner byte/projection preservation, filters, keyboard details and responsive
+light/dark captures. Browser-offline assertions observed no external HTTP(S)
+requests, console/page errors or private sentinels.
+The complete packaged Linux Electron suite passed all 95 tests with sandboxing
+enabled. Unrelated screenshots regenerated by existing full-suite tests were
+restored; only the four curriculum captures are changed. Build, Java preparation
+and unsigned Linux packaging succeeded. Normal launch still denies preview reads.
+
+Final diff review found no significant issues, and secret scanning found no
+secrets in the changed files. CodeQL completed JavaScript analysis with zero
+alerts, but timed out before every language completed; Java CodeQL coverage is
+therefore unverified. Passing runtime tests or partial static analysis does not
+grant release, curriculum or learner-validation approval.
 
 ## Future reviewed integration (not implemented)
 

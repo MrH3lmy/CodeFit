@@ -19,6 +19,8 @@ import {
 import { runtimeLocation } from "../electron/java-session";
 import {
   CurriculumResultSchema,
+  COVERAGE_LEDGER_SHA,
+  PUBLIC_COVERAGE_SHA,
   PUBLIC_PREVIEW_SHA,
   type CurriculumResult,
 } from "../src/curriculum-contract";
@@ -78,6 +80,26 @@ test("real pinned Java read needs no database, survives restart and strips injec
         );
         assert.equal(p.skills.length, 4);
         assert.equal(p.blockers.length, 10);
+        const coverage = result.result.coverage;
+        assert.equal(coverage.ledgerSha256, COVERAGE_LEDGER_SHA);
+        assert.equal(
+          createHash("sha256").update(JSON.stringify(coverage)).digest("hex"),
+          PUBLIC_COVERAGE_SHA,
+        );
+        assert.equal(coverage.books.length, 5);
+        assert.equal(coverage.reportedClaims.structuralUnits, 504);
+        assert.equal(coverage.reportedClaims.preliminaryMappedUnits, 157);
+        assert.equal(coverage.reportedClaims.reportedUnmappedUnits, 347);
+        assert.equal(coverage.reportedClaims.missionBlueprintSlots, 419);
+        assert.equal(coverage.reportedClaims.revisionEvents.count, 424);
+        assert.equal(
+          coverage.reportedClaims.revisionEvents.additiveToMissionBlueprintSlots,
+          false,
+        );
+        assert.ok(coverage.books.every((b) =>
+          b.preliminaryMapped.status === "UNKNOWN" &&
+          b.preliminaryMapped.count === null));
+        assert.equal(coverage.learnerValidated.status, "UNKNOWN");
         assert.ok(!JSON.stringify(result).includes("PRIVATE-"));
         assert.ok(!JSON.stringify(result).includes("private_checkpoint"));
         if (last) assert.deepEqual(result, last);
@@ -119,6 +141,49 @@ for (const mode of ["missing", "corrupt"] as const)
     });
     try {
       assert.deepEqual(await s.read(), { ok: false, code: "INVALID_CATALOG" });
+    } finally {
+      await s.stop();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+for (const mode of ["missing", "malformed", "stale", "source mismatch"] as const)
+  test(`${mode} coverage metadata fails closed without learner writes`, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "atlas-coverage-"));
+    cpSync(resolve("java/engine/classes"), join(dir, "classes"), {
+      recursive: true,
+    });
+    const file = join(
+      dir,
+      "classes/knowledge/hunter-pilot-v0.41/coverage-ledger-input.json",
+    );
+    const original = readFileSync(file, "utf8");
+    if (mode === "missing") rmSync(file);
+    else
+      writeFileSync(
+        file,
+        mode === "malformed"
+          ? '{"private":"PRIVATE-COVERAGE-SENTINEL"}'
+          : mode === "stale"
+            ? original.replace('"1.0.0"', '"0.9.0"')
+            : original.replace("issue #298", "issue #999"),
+      );
+    writeFileSync(join(dir, "codefit.db"), "PRIVATE-LEARNER-SENTINEL");
+    const before = readdirSync(dir);
+    const s = new CurriculumSession({
+      ...runtimeLocation(resolve("java")),
+      cwd: dir,
+      classpath: [join(dir, "classes"), resolve("java/engine/lib/*")].join(
+        delimiter,
+      ),
+    });
+    try {
+      assert.deepEqual(await s.read(), { ok: false, code: "INVALID_CATALOG" });
+      assert.deepEqual(readdirSync(dir), before);
+      assert.equal(
+        readFileSync(join(dir, "codefit.db"), "utf8"),
+        "PRIVATE-LEARNER-SENTINEL",
+      );
     } finally {
       await s.stop();
       rmSync(dir, { recursive: true, force: true });
@@ -168,6 +233,17 @@ test("spoofed approvals, changed public metadata and unsupported actions fail sc
     (r: any) => (r.result.preview.skills[0].stages[0].prompt = "protected"),
     (r: any) => r.result.preview.blockers.pop(),
     (r: any) => (r.result.preview.skills[0].id = "java.general.fake.v1"),
+    (r: any) => delete r.result.coverage,
+    (r: any) => (r.result.coverage.localReviewOnly = false),
+    (r: any) => (r.result.coverage.productionImportSupported = true),
+    (r: any) => (r.result.coverage.privateNotes = "PRIVATE-COVERAGE-SENTINEL"),
+    (r: any) => (r.result.coverage.ledgerVersion = "0.9.0"),
+    (r: any) => (r.result.coverage.ledgerSha256 = "0".repeat(64)),
+    (r: any) => (r.result.coverage.provenance.source = "Unattributed source"),
+    (r: any) => (r.result.coverage.books[0].preliminaryMapped.count = 1),
+    (r: any) => (r.result.coverage.books[0].inventory.count += 1),
+    (r: any) => (r.result.coverage.books[0].title = "Altered book"),
+    (r: any) => (r.result.coverage.reportedClaims.revisionEvents.additiveToMissionBlueprintSlots = true),
   ]) {
     const bad = structuredClone(valid);
     mutate(bad);

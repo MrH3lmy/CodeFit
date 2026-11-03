@@ -54,6 +54,19 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>docs/knowledge-compiler/hunter-pilot-v0.41</directory>
+                <targetPath>knowledge/hunter-pilot-v0.41</targetPath>
+                <includes>
+                    <include>coverage-ledger-input.json</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

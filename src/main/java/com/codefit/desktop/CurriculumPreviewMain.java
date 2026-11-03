@@ -2,6 +2,7 @@ package com.codefit.desktop;
 
 import com.codefit.knowledge.KnowledgePreview;
 import com.codefit.knowledge.KnowledgePreviewCli;
+import com.codefit.knowledge.KnowledgeCoverage;
 import com.codefit.knowledge.PreviewFailure;
 import com.fasterxml.jackson.core.*;
 
@@ -66,9 +67,17 @@ public final class CurriculumPreviewMain {
     }
 
     static byte[] response(String id) throws IOException {
+        return response(id, KnowledgeCoverage::loadBundled);
+    }
+
+    static byte[] response(String id,
+            java.util.function.Supplier<com.codefit.knowledge.PublicCoverage> coverageReader)
+            throws IOException {
         byte[] preview;
+        byte[] coverage;
         try {
             preview = KnowledgePreviewCli.export(KnowledgePreview.loadBundled());
+            coverage = KnowledgeCoverage.export(coverageReader.get());
         } catch (PreviewFailure failure) {
             return failure(id);
         }
@@ -79,12 +88,14 @@ public final class CurriculumPreviewMain {
             j.writeStringField("id", id);
             j.writeBooleanField("ok", true);
             j.writeObjectFieldStart("result");
-            j.writeNumberField("v", 1);
+            j.writeNumberField("v", 2);
             j.writeStringField("kind", "author-draft-curriculum-preview");
             j.writeStringField("source", "bundled-author-metadata");
             j.writeBooleanField("learnerBound", false);
             j.writeFieldName("preview");
             j.writeRawValue(new String(preview, StandardCharsets.UTF_8));
+            j.writeFieldName("coverage");
+            j.writeRawValue(new String(coverage, StandardCharsets.UTF_8));
             j.writeEndObject();
             j.writeEndObject();
         }

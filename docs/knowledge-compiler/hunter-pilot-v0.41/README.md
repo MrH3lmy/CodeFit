@@ -53,6 +53,10 @@ For every row:
 - Renderer boundary: immutable preview DTOs only, never an executable
   `ChallengeSpec`, evidence mapping, recommendation or mastery estimate.
 
+The separate [review-only graph and prerequisite mapping proposal](graph-proposal.md)
+preserves the internal edge and records every missing exact mapping as a blocker;
+it does not register or select a graph.
+
 Items 57–60 were selected by the author in the supplied handoff, not independently
 selected or approved by the adapter. The sixteen IDs replace draft stage slots;
 they are not sixteen additional approved missions.

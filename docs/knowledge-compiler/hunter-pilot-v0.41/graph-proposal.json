@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "sourceVersion": "v0.41",
+  "sourceSha256": "76377d04ecb0ff45690df32bbc001f66bfaa672e1935327e1c09b2b047a46f52",
+  "status": "AUTHOR_DRAFT_PENDING_EXTERNAL_REVIEW",
+  "independentApprovals": 0,
+  "productionPublication": false,
+  "practiceEligible": false,
+  "existingGraphRef": {
+    "graphId": "java-debugging-concurrency",
+    "graphVersion": 1
+  },
+  "candidateGraphRef": null,
+  "skills": [
+    {
+      "compilerId": "java.general.local.scope.v1",
+      "sourceItem": "EJ-ITEM-057",
+      "sourceSectionSha256": "43b67abff90d1f079a80f0a24a3a519bf1a482c674fed3f53c9b6e767bef4adb",
+      "targetSkillRef": null,
+      "mappingDisposition": "MISSING_REVIEW_REQUIRED",
+      "prerequisiteIds": [
+        "java.control.flow",
+        "java.exceptions.checked"
+      ]
+    },
+    {
+      "compilerId": "java.general.enhanced.iteration.v1",
+      "sourceItem": "EJ-ITEM-058",
+      "sourceSectionSha256": "404141b214d90785fd561df84980f2e70323ac8f93465ce1827e1cedd3017071",
+      "targetSkillRef": null,
+      "mappingDisposition": "MISSING_REVIEW_REQUIRED",
+      "prerequisiteIds": [
+        "java.general.local.scope.v1",
+        "java.collections.iteration"
+      ]
+    },
+    {
+      "compilerId": "java.general.library.selection.v1",
+      "sourceItem": "EJ-ITEM-059",
+      "sourceSectionSha256": "9a5ba3619b897ce2a87ec19ee7fdfc08ea9eee96c389816af45ca5034889b80f",
+      "targetSkillRef": null,
+      "mappingDisposition": "MISSING_REVIEW_REQUIRED",
+      "prerequisiteIds": [
+        "java.numeric.integer.overflow",
+        "java.api.contracts"
+      ]
+    },
+    {
+      "compilerId": "java.general.exact.decimal.v1",
+      "sourceItem": "EJ-ITEM-060",
+      "sourceSectionSha256": "62cf6e625613fbd1e7dc0e83baa5c96d1f4c105c2e393281fc7345b5c4bf51f6",
+      "targetSkillRef": null,
+      "mappingDisposition": "MISSING_REVIEW_REQUIRED",
+      "prerequisiteIds": [
+        "java.numeric.integer.overflow",
+        "java.api.preconditions.v1"
+      ]
+    }
+  ],
+  "prerequisiteEdges": [
+    {
+      "dependentCompilerId": "java.general.local.scope.v1",
+      "prerequisiteId": "java.control.flow",
+      "kind": "external",
+      "disposition": "MISSING_REVIEW_REQUIRED"
+    },
+    {
+      "dependentCompilerId": "java.general.local.scope.v1",
+      "prerequisiteId": "java.exceptions.checked",
+      "kind": "external",
+      "disposition": "MISSING_REVIEW_REQUIRED"
+    },
+    {
+      "dependentCompilerId": "java.general.enhanced.iteration.v1",
+      "prerequisiteId": "java.general.local.scope.v1",
+      "kind": "internal",
+      "disposition": "PRESERVED"
+    },
+    {
+      "dependentCompilerId": "java.general.enhanced.iteration.v1",
+      "prerequisiteId": "java.collections.iteration",
+      "kind": "external",
+      "disposition": "MISSING_REVIEW_REQUIRED"
+    },
+    {
+      "dependentCompilerId": "java.general.library.selection.v1",
+      "prerequisiteId": "java.numeric.integer.overflow",
+      "kind": "external",
+      "disposition": "MISSING_REVIEW_REQUIRED"
+    },
+    {
+      "dependentCompilerId": "java.general.library.selection.v1",
+      "prerequisiteId": "java.api.contracts",
+      "kind": "external",
+      "disposition": "MISSING_REVIEW_REQUIRED"
+    },
+    {
+      "dependentCompilerId": "java.general.exact.decimal.v1",
+      "prerequisiteId": "java.numeric.integer.overflow",
+      "kind": "external",
+      "disposition": "MISSING_REVIEW_REQUIRED"
+    },
+    {
+      "dependentCompilerId": "java.general.exact.decimal.v1",
+      "prerequisiteId": "java.api.preconditions.v1",
+      "kind": "external",
+      "disposition": "MISSING_REVIEW_REQUIRED"
+    }
+  ]
+}

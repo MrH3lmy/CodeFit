@@ -23,12 +23,20 @@ const errors: Record<CurriculumError, string> = {
     "The bundled Java reader could not start. No learner profile is needed for this view.",
 };
 const label = (stage: string) => stage[0] + stage.slice(1).toLowerCase();
+const coverageStatusLabel = (status: string) => {
+  switch (status) {
+    case "REPORTED_NOT_ENUMERATED": return "Reported, not enumerated";
+    case "ZERO_REPORTED": return "Reported zero, not independently verified";
+    case "REPORTED_FIRST_PASS_NOT_REVIEWED": return "First-pass notes, not approved";
+    case "UNKNOWN": return "Unknown, not supplied";
+    default: return "Unverified status";
+  }
+};
 function CoverageBrowser({ coverage }: { coverage: Coverage }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [selected, setSelected] = useState(coverage.books[0].id);
   const details = useRef<HTMLHeadingElement>(null);
-  const book = coverage.books.find((b) => b.id === selected)!;
   const books = coverage.books.filter(
     (b) =>
       `${b.title} ${b.id}`.toLowerCase().includes(query.toLowerCase().trim()) &&
@@ -36,6 +44,7 @@ function CoverageBrowser({ coverage }: { coverage: Coverage }) {
         (status === "first-pass" && b.authorDraft.count !== null) ||
         (status === "unknown-author" && b.authorDraft.status === "UNKNOWN")),
   );
+  const book = books.find((b) => b.id === selected) ?? books[0];
   const claims = coverage.reportedClaims;
   return (
     <section className="atlas-coverage" aria-label="Source-attributed book coverage">
@@ -78,41 +87,42 @@ function CoverageBrowser({ coverage }: { coverage: Coverage }) {
           <p className="atlas-ledger-note" role="status">{books.length} matching reported books</p>
           <div className="atlas-book-list" aria-label="Reported books">
             {books.map((b) => (
-              <button className={`atlas-card atlas-book-card ${selected === b.id ? "selected" : ""}`}
-                key={b.id} aria-pressed={selected === b.id} onClick={() => setSelected(b.id)}>
+              <button className={`atlas-card atlas-book-card ${book?.id === b.id ? "selected" : ""}`}
+                key={b.id} aria-pressed={book?.id === b.id} onClick={() => setSelected(b.id)}>
                 <strong>{b.title}</strong>
                 <code>{b.id}</code>
-                <span className="atlas-book-inventory">{b.inventory.count} inventory units · {b.inventory.status}</span>
+                <span className="atlas-book-inventory">{b.inventory.count} inventory units · {coverageStatusLabel(b.inventory.status)}</span>
                 <span className="atlas-book-card-statuses">
-                  <span>Preliminary mapping <strong>{b.preliminaryMapped.status}</strong></span>
-                  <span>Independent review <strong>{b.independentReview.count} · {b.independentReview.status}</strong></span>
-                  <span>Runtime imports <strong>{b.runtimeLearning.count} · {b.runtimeLearning.status}</strong></span>
-                  <span>Learner validation <strong>{coverage.learnerValidated.status}</strong></span>
+                  <span>Preliminary mapping <strong>{coverageStatusLabel(b.preliminaryMapped.status)}</strong></span>
+                  <span>Independent review <strong>{b.independentReview.count} · {coverageStatusLabel(b.independentReview.status)}</strong></span>
+                  <span>Runtime imports <strong>{b.runtimeLearning.count} · {coverageStatusLabel(b.runtimeLearning.status)}</strong></span>
+                  <span>Learner validation <strong>{coverageStatusLabel(coverage.learnerValidated.status)}</strong></span>
                 </span>
                 <span className="atlas-card-bottom">
-                  <span>{b.authorDraft.status === "UNKNOWN" ? "Author draft UNKNOWN" : `Author draft · ${b.authorDraft.count}/${b.authorDraft.denominator} first-pass author notes · not approvals`}</span>
+                  <span>{b.authorDraft.status === "UNKNOWN" ? "Author draft unknown, not supplied" : `Author draft · ${b.authorDraft.count}/${b.authorDraft.denominator} first-pass author notes · not approvals`}</span>
                   <Icon name="arrow" size={18} />
                 </span>
               </button>
             ))}
             {books.length === 0 && <p role="status">No matching reported books. <button onClick={() => { setQuery(""); setStatus("all"); }}>Clear book filters</button></p>}
           </div>
-          <button className="atlas-inspect-link" onClick={() => details.current?.focus()}>
+          <button className="atlas-inspect-link" disabled={!book} onClick={() => details.current?.focus()}>
             Go to selected book details <Icon name="arrow" size={14} />
           </button>
         </div>
         <section className="atlas-inspector atlas-book-inspector" aria-label="Selected book details">
           <p className="eyebrow">SOURCE-ATTRIBUTED / {coverage.provenance.sourceVersion}</p>
+          {book ? (
+          <>
           <h2 ref={details} tabIndex={-1}>{book.title}</h2>
           <code className="atlas-exact-id">{book.id}</code>
-          {!books.some((b) => b.id === book.id) && <p className="atlas-unknown">Selected book is outside the current filters.</p>}
           <dl className="atlas-book-stages">
-            <div><dt>Inventory</dt><dd>{book.inventory.count} · {book.inventory.status}</dd></div>
-            <div><dt>Preliminary mapping</dt><dd>{book.preliminaryMapped.status} · per-book count not supplied</dd></div>
-            <div><dt>Author draft</dt><dd>{book.authorDraft.count === null ? "UNKNOWN · not supplied" : `${book.authorDraft.count}/${book.authorDraft.denominator} first-pass author notes · ${book.authorDraft.status} · not approvals`}</dd></div>
-            <div><dt>Independent review</dt><dd>{book.independentReview.count} · {book.independentReview.status} · no reported approvals</dd></div>
-            <div><dt>Runtime imported</dt><dd>{book.runtimeLearning.count} · {book.runtimeLearning.status} · no reported imports</dd></div>
-            <div><dt>Learner validation</dt><dd>{coverage.learnerValidated.status} · not supplied</dd></div>
+            <div><dt>Inventory</dt><dd>{book.inventory.count} · {coverageStatusLabel(book.inventory.status)}</dd></div>
+            <div><dt>Preliminary mapping</dt><dd>{coverageStatusLabel(book.preliminaryMapped.status)} · per-book count not supplied</dd></div>
+            <div><dt>Author draft</dt><dd>{book.authorDraft.count === null ? "Unknown, not supplied" : `${book.authorDraft.count}/${book.authorDraft.denominator} first-pass author notes · ${coverageStatusLabel(book.authorDraft.status)}`}</dd></div>
+            <div><dt>Independent review</dt><dd>{book.independentReview.count} · {coverageStatusLabel(book.independentReview.status)} · no reported approvals</dd></div>
+            <div><dt>Runtime imported</dt><dd>{book.runtimeLearning.count} · {coverageStatusLabel(book.runtimeLearning.status)} · no reported imports</dd></div>
+            <div><dt>Learner validation</dt><dd>{coverageStatusLabel(coverage.learnerValidated.status)}</dd></div>
           </dl>
           <h3>Follow-up gaps</h3>
           <p className="atlas-unknown">Source-unit IDs and per-book mappings need enumeration. First-pass author notes are not independent review, runtime import or learner validation.</p>
@@ -126,6 +136,12 @@ function CoverageBrowser({ coverage }: { coverage: Coverage }) {
             <ul>{coverage.provenance.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
             <p>Private source bodies: {coverage.provenance.privateSourceBodies}. Previous checkpoint: {coverage.provenance.previousCheckpoint}.</p>
           </details>
+          </>
+          ) : (
+            <p className="atlas-unknown" role="status">
+              No book matches the current filters. Clear the filters to inspect source-attributed details.
+            </p>
+          )}
         </section>
       </div>
     </section>

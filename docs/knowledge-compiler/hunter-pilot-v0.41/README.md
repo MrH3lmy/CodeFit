@@ -4,6 +4,25 @@ Original author-side metadata only, supplied as a v0.41 preview (author reports 
 
 **Release status: UNREVIEWED.** Zero independent content approvals, production graders, Hunter imports, or verified learner mastery. Source SHA-256 is a source-section locator, not evidence of semantic accuracy. Preview metadata is not a deployable mission catalog.
 
+## Five-book coverage ledger
+
+The [coverage ledger fixture](coverage-ledger-input.json) records the source-attributed
+v0.41 delivery-report counts without presenting them as independently enumerated
+inventory. Its deterministic [JSON report](coverage-report.json) and
+[per-book Markdown gap matrix](coverage-report.md) distinguish each lifecycle
+stage; unknown book-level distributions remain `UNKNOWN`.
+
+Regenerate both reports from the repository root with:
+
+```sh
+python3 scripts/knowledge_coverage.py
+```
+
+The generator reads only the checked-in original-only fixture and writes the two
+reports beside it. It does not read the private archive, invoke `KnowledgePreview`,
+access SQLite, or mutate learner state. Reported counts are not evidence of content
+accuracy, approval, runtime import, grading, or learner validation.
+
 ## Copilot continuation for draft PR #271 / Issue #266
 
 1. Inspect Java 21 SkillRef/GraphRef catalog and exposure/auth contracts. Map four skill IDs and prerequisites to pinned graph versions only where actual mappings exist; report gaps without guessing.

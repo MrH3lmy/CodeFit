@@ -1,0 +1,290 @@
+{
+  "books": [
+    {
+      "followUp": "Enumerate source-unit IDs, reconcile book-specific mapping and authoring counts, then obtain independent review before any runtime or learner claims.",
+      "id": "ocp-java-se-17-guide",
+      "inventory": {
+        "count": 26,
+        "status": "REPORTED_NOT_ENUMERATED"
+      },
+      "stages": {
+        "deepOverlaySlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "firstPassAuthoredUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "gradedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "learnerValidatedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "locallyPreviewableUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "missionBlueprintSlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "preliminaryMappedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "reviewApprovedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        },
+        "runtimeImportedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        }
+      },
+      "title": "OCP Java SE 17 Guide"
+    },
+    {
+      "followUp": "Enumerate source-unit IDs and independently reconcile the 90 first-pass notes; then map, review, and assess each unit without treating author notes as approval.",
+      "id": "effective-java",
+      "inventory": {
+        "count": 90,
+        "status": "REPORTED_NOT_ENUMERATED"
+      },
+      "stages": {
+        "deepOverlaySlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "firstPassAuthoredUnits": {
+          "count": 90,
+          "status": "REPORTED_FIRST_PASS_NOT_REVIEWED"
+        },
+        "gradedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "learnerValidatedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "locallyPreviewableUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "missionBlueprintSlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "preliminaryMappedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "reviewApprovedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        },
+        "runtimeImportedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        }
+      },
+      "title": "Effective Java"
+    },
+    {
+      "followUp": "Enumerate source-unit IDs, reconcile book-specific mapping and authoring counts, then obtain independent review before any runtime or learner claims.",
+      "id": "100-java-mistakes",
+      "inventory": {
+        "count": 100,
+        "status": "REPORTED_NOT_ENUMERATED"
+      },
+      "stages": {
+        "deepOverlaySlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "firstPassAuthoredUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "gradedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "learnerValidatedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "locallyPreviewableUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "missionBlueprintSlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "preliminaryMappedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "reviewApprovedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        },
+        "runtimeImportedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        }
+      },
+      "title": "100 Java Mistakes"
+    },
+    {
+      "followUp": "Enumerate source-unit IDs, reconcile book-specific mapping and authoring counts, then obtain independent review before any runtime or learner claims.",
+      "id": "java-coding-problems",
+      "inventory": {
+        "count": 269,
+        "status": "REPORTED_NOT_ENUMERATED"
+      },
+      "stages": {
+        "deepOverlaySlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "firstPassAuthoredUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "gradedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "learnerValidatedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "locallyPreviewableUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "missionBlueprintSlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "preliminaryMappedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "reviewApprovedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        },
+        "runtimeImportedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        }
+      },
+      "title": "Java Coding Problems"
+    },
+    {
+      "followUp": "Enumerate source-unit IDs, reconcile book-specific mapping and authoring counts, then obtain independent review before any runtime or learner claims.",
+      "id": "complete-coding-interview-guide-java",
+      "inventory": {
+        "count": 19,
+        "status": "REPORTED_NOT_ENUMERATED"
+      },
+      "stages": {
+        "deepOverlaySlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "firstPassAuthoredUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "gradedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "learnerValidatedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "locallyPreviewableUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "missionBlueprintSlots": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "preliminaryMappedUnits": {
+          "count": null,
+          "status": "UNKNOWN"
+        },
+        "reviewApprovedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        },
+        "runtimeImportedUnits": {
+          "count": 0,
+          "status": "ZERO_REPORTED"
+        }
+      },
+      "title": "Complete Coding Interview Guide in Java"
+    }
+  ],
+  "ledgerVersion": "1.0.0",
+  "previewBoundary": {
+    "authorMetadataSkillRecords": 4,
+    "graderAvailable": false,
+    "independentApprovals": 0,
+    "interpretation": "These author-preview records are not enumerated book units or additional blueprint slots.",
+    "metadataStageIds": 16,
+    "productionImportSupported": false,
+    "source": "Checked-in Java KnowledgePreview v0.41"
+  },
+  "provenance": {
+    "limitations": [
+      "The delivery report is cited by the issue but is not checked in; reported totals are historical claims, not an independently enumerated inventory.",
+      "The private archive and source bodies are unavailable and are not read by this tool.",
+      "A checksum/readback report is not a CodeFit runtime, semantic accuracy, or content approval."
+    ],
+    "observedAt": "2026-10-23",
+    "previousCheckpoint": "NOT_AVAILABLE",
+    "privateSourceBodies": "NOT_INDEPENDENTLY_VERIFIED",
+    "source": "v0.41 delivery report, as attributed in CodeFit issue #298",
+    "sourceVersion": "v0.41",
+    "verification": "SOURCE_ATTRIBUTED_NOT_INDEPENDENTLY_VERIFIED"
+  },
+  "reportedTotals": {
+    "deepOverlaySlots": 360,
+    "effectiveJavaFirstPassAuthorNotes": {
+      "count": 90,
+      "denominator": 90
+    },
+    "hunterProductionImports": 0,
+    "independentApprovals": 0,
+    "missionBlueprintSlots": 419,
+    "preliminaryMappedUnits": 157,
+    "productionGraders": 0,
+    "reportedUnmappedUnits": 347,
+    "revisionEvents": 424,
+    "revisionEventsAdditiveToMissionBlueprintSlots": false,
+    "structuralUnits": 504
+  },
+  "schema": "codefit-knowledge-coverage-report/1",
+  "stageDefinitions": {
+    "deepOverlaySlots": "Reported overlay slots; per-book distribution is UNKNOWN.",
+    "firstPassAuthoredUnits": "First-pass author notes only; not review approval or learning completion.",
+    "gradedUnits": "Units with production grading evidence; UNKNOWN (zero production graders reported).",
+    "learnerValidatedUnits": "Units validated by learners; UNKNOWN.",
+    "locallyPreviewableUnits": "Book-unit local preview coverage; UNKNOWN and distinct from metadata preview records.",
+    "missionBlueprintSlots": "Unique reported blueprint slots; revision events are not additive.",
+    "preliminaryMappedUnits": "Reported preliminary mappings; per-book distribution is UNKNOWN.",
+    "reviewApprovedUnits": "Independent review-approved units; the report records zero approvals.",
+    "runtimeImportedUnits": "Hunter production imports; report records zero."
+  }
+}

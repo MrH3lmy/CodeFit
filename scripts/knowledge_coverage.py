@@ -124,7 +124,7 @@ def validate_ledger(ledger):
     _require(type(mapped) is int and type(unmapped) is int
              and mapped == 157 and unmapped == 347
              and mapped + unmapped == claims["structuralUnits"],
-             "historical reported preliminary mapping baseline does not reconcile")
+             "historical reported preliminary mapping baseline counts do not reconcile")
     effective_java = by_id["effective-java"]
     first_pass_claim = claims.get("effectiveJavaFirstPassAuthorNotes", {})
     _require(set(first_pass_claim) == {"count", "denominator"}, "invalid first-pass claim fields")
